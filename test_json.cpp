@@ -1,645 +1,165 @@
-#include "json.hpp"
+//===- unittests/json/test_json.cpp ---------------------------------------===//
+//*    _                  *
+//*   (_)___  ___  _ __   *
+//*   | / __|/ _ \| '_ \  *
+//*   | \__ \ (_) | | | | *
+//*  _/ |___/\___/|_| |_| *
+//* |__/                  *
+//===----------------------------------------------------------------------===//
+//
+// Part of the pstore project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://github.com/SNSystems/pstore/blob/master/LICENSE.txt
+// for license information. SPDX-License-Identifier: Apache-2.0 WITH
+// LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 #include <stack>
-#include "dom_types.hpp"
-#include "gmock/gmock.h"
+
+#include "callbacks.hpp"
+#include "json/json.hpp"
+
+using namespace std::string_literals;
+using testing::DoubleEq;
+using testing::StrictMock;
+
 namespace {
 
-    class json_callbacks_base {
-    public:
-        virtual ~json_callbacks_base () {}
+class Json : public ::testing::Test {
+protected:
+  static void check_error (std::string const& src, json::error_code err) {
+    ASSERT_NE (err, json::error_code::none);
+    json::parser<json_out_callbacks> p;
+    std::string const res = p.input (src).eof ();
+    EXPECT_EQ (res, "");
+    EXPECT_NE (p.last_error (), make_error_code (json::error_code::none));
+  }
+};
 
-        virtual void string_value (std::string const &) {}
-        virtual void integer_value (long) {}
-        virtual void float_value (double) {}
-        virtual void boolean_value (bool) {}
-        virtual void null_value () {}
-        virtual void begin_array () {}
-        virtual void end_array () {}
-        virtual void begin_object () {}
-        virtual void end_object () {}
-    };
-
-    class mock_json_callbacks : public json_callbacks_base {
-    public:
-        MOCK_METHOD1 (string_value, void(std::string const &));
-        MOCK_METHOD1 (integer_value, void(long));
-        MOCK_METHOD1 (float_value, void(double));
-        MOCK_METHOD1 (boolean_value, void(bool));
-        MOCK_METHOD0 (null_value, void());
-        MOCK_METHOD0 (begin_array, void());
-        MOCK_METHOD0 (end_array, void());
-        MOCK_METHOD0 (begin_object, void());
-        MOCK_METHOD0 (end_object, void());
-    };
-
-    template <typename T>
-    class callbacks_proxy {
-    public:
-        using result_type = void;
-        result_type result () {}
-
-        explicit callbacks_proxy (T & original)
-                : original_{original} {}
-        callbacks_proxy (callbacks_proxy const &) = default;
-
-        void string_value (std::string const & s) { original_.string_value (s); }
-        void integer_value (long v) { original_.integer_value (v); }
-        void float_value (double v) { original_.float_value (v); }
-        void boolean_value (bool v) { original_.boolean_value (v); }
-        void null_value () { original_.null_value (); }
-        void begin_array () { original_.begin_array (); }
-        void end_array () { original_.end_array (); }
-        void begin_object () { original_.begin_object (); }
-        void end_object () { original_.end_object (); }
-
-    private:
-        T & original_;
-    };
-
-    class null_callbacks {
-    public:
-        using result_type = void;
-        result_type result () {}
-
-        void string_value (std::string const &) {}
-        void integer_value (long) {}
-        void float_value (double v) {}
-        void boolean_value (bool v) {}
-        void null_value () {}
-        void begin_array () {}
-        void end_array () {}
-        void begin_object () {}
-        void end_object () {}
-    };
-
-    class Json : public ::testing::Test {
-    protected:
-        static std::shared_ptr<json::value::dom_element> parse (char const * src) {
-            json::parser<json::yaml_output> p;
-            std::shared_ptr<json::value::dom_element> v = p.parse (src);
-            EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-            return v;
-        }
-
-        static void check_error (char const * src, json::error_code err) {
-            ASSERT_NE (err, json::error_code::none);
-            json::parser<json::yaml_output> p;
-            std::shared_ptr<json::value::dom_element> v = p.parse (src);
-            EXPECT_EQ (v, nullptr);
-            EXPECT_NE (p.last_error (), std::make_error_code (json::error_code::none));
-        }
-    };
-
-} // end anonymous namespace
+}  // end anonymous namespace
 
 TEST_F (Json, Empty) {
-    check_error ("", json::error_code::expected_token);
-    check_error ("   \t    ", json::error_code::expected_token);
+  json::parser<json_out_callbacks> p;
+  p.input (std::string{}).eof ();
+  EXPECT_EQ (p.last_error (),
+             make_error_code (json::error_code::expected_token));
+  EXPECT_EQ (p.coordinate (), (json::coord{1U, 1U}));
 }
 
-using ::testing::StrictMock;
+TEST_F (Json, StringAndIteratorAPI) {
+  std::string const src = "null";
+  {
+    json::parser<json_out_callbacks> p1;
+    std::string const res = p1.input (src).eof ();
+    EXPECT_FALSE (p1.has_error ());
+    EXPECT_EQ (res, "null");
+    EXPECT_EQ (p1.coordinate (), (json::coord{5U, 1U}));
+  }
+  {
+    json::parser<json_out_callbacks> p2;
+    std::string const res = p2.input (std::begin (src), std::end (src)).eof ();
+    EXPECT_FALSE (p2.has_error ());
+    EXPECT_EQ (res, "null");
+    EXPECT_EQ (p2.coordinate (), (json::coord{5U, 1U}));
+  }
+}
+
+TEST_F (Json, Whitespace) {
+  {
+    json::parser<json_out_callbacks> p1;
+    std::string const res = p1.input ("   \t    null"s).eof ();
+    EXPECT_FALSE (p1.has_error ());
+    EXPECT_EQ (res, "null");
+    EXPECT_EQ (p1.coordinate (), (json::coord{13U, 1U}));
+  }
+
+  auto const cr = "\r"s;
+  auto const lf = "\n"s;
+  auto const crlf = cr + lf;
+  auto const keyword = "null"s;
+  auto const xord = static_cast<unsigned> (keyword.length ()) + 1U;
+
+  {
+    json::parser<json_out_callbacks> p2;
+    p2.input (lf + lf + keyword);  // POSIX-style line endings
+    std::string const res = p2.eof ();
+    EXPECT_FALSE (p2.has_error ());
+    EXPECT_EQ (res, keyword);
+    EXPECT_EQ (p2.coordinate (), (json::coord{xord, 3U}));
+  }
+  {
+    json::parser<json_out_callbacks> p3;
+    p3.input (cr + cr + keyword);  // MacOS Classic line endings
+    std::string const res = p3.eof ();
+    EXPECT_FALSE (p3.has_error ());
+    EXPECT_EQ (res, keyword);
+    EXPECT_EQ (p3.coordinate (), (json::coord{xord, 3U}));
+  }
+  {
+    json::parser<json_out_callbacks> p4;
+    p4.input (crlf + crlf + keyword);  // Windows-style CRLF
+    std::string const res = p4.eof ();
+    EXPECT_FALSE (p4.has_error ());
+    EXPECT_EQ (res, keyword);
+    EXPECT_EQ (p4.coordinate (), (json::coord{xord, 3U}));
+  }
+  {
+    json::parser<json_out_callbacks> p5;
+    // Nobody's line-endings. Each counts as a new line. Note that the middle
+    // cr+lf pair will match a single Windows crlf.
+    std::string const res = p5.input (lf + cr + lf + cr + keyword).eof ();
+    EXPECT_FALSE (p5.has_error ());
+    EXPECT_EQ (res, keyword);
+    EXPECT_EQ (p5.coordinate (), (json::coord{xord, 4U}));
+  }
+  {
+    json::parser<json_out_callbacks> p6;
+    p6.input (lf + lf + crlf + cr +
+              keyword);  // A groovy mixture of line-ending characters.
+    std::string const res = p6.eof ();
+    EXPECT_FALSE (p6.has_error ());
+    EXPECT_EQ (res, "null");
+    EXPECT_EQ (p6.coordinate (), (json::coord{xord, 5U}));
+  }
+}
 
 TEST_F (Json, Null) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    EXPECT_CALL (callbacks, null_value ()).Times (1);
+  StrictMock<mock_json_callbacks> callbacks;
+  callbacks_proxy<mock_json_callbacks> proxy (callbacks);
+  EXPECT_CALL (callbacks, null_value ()).Times (1);
 
-    json::parser<decltype (proxy)> p (proxy);
-    p.parse (" null ");
+  json::parser<decltype (proxy)> p (proxy);
+  p.input (" null "s).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (p.coordinate (), (json::coord{7U, 1U}));
 }
+
+TEST_F (Json, Move) {
+  StrictMock<mock_json_callbacks> callbacks;
+  callbacks_proxy<mock_json_callbacks> proxy (callbacks);
+  EXPECT_CALL (callbacks, null_value ()).Times (1);
+
+  json::parser<decltype (proxy)> p (proxy);
+  // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
+  // usuable.
+  auto p2 = std::move (p);
+  p2.input (" null "s).eof ();
+  EXPECT_FALSE (p2.has_error ());
+  EXPECT_EQ (p2.coordinate (), (json::coord{7U, 1U}));
+}
+
 TEST_F (Json, TwoKeywords) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse (" true false ");
-    EXPECT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::unexpected_extra_input));
+  json::parser<json_out_callbacks> p;
+  p.input (" true false "s);
+  std::string const res = p.eof ();
+  EXPECT_EQ (res, "");
+  EXPECT_EQ (p.last_error (),
+             make_error_code (json::error_code::unexpected_extra_input));
+  EXPECT_EQ (p.coordinate (), (json::coord{7U, 1U}));
 }
+
 TEST_F (Json, BadKeyword) {
-    check_error ("nu", json::error_code::expected_token);
-    check_error ("bad", json::error_code::expected_token);
-    check_error ("fal", json::error_code::expected_token);
-    check_error ("falsehood", json::error_code::unexpected_extra_input);
-}
-
-
-namespace {
-    class JsonNumber : public Json {};
-} // namespace
-
-TEST_F (JsonNumber, MinusOnly) {
-    this->check_error ("-", json::error_code::expected_digits);
-}
-TEST_F (JsonNumber, One) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    EXPECT_CALL (callbacks, integer_value (1L)).Times (1);
-
-    json::parser<decltype (proxy)> p (proxy);
-    p.parse (" 1 ");
-}
-TEST_F (JsonNumber, LeadingZero) {
-    this->check_error ("01", json::error_code::unexpected_extra_input);
-}
-TEST_F (JsonNumber, AllDigits) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    EXPECT_CALL (callbacks, integer_value (1234567890L)).Times (1);
-
-    json::parser<decltype (proxy)> p (proxy);
-    p.parse ("1234567890");
-}
-TEST_F (JsonNumber, NegativeZero) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    EXPECT_CALL (callbacks, integer_value (0L)).Times (1);
-
-    json::parser<decltype (proxy)> p (proxy);
-    p.parse ("-0");
-}
-TEST_F (JsonNumber, NegativeOne) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    EXPECT_CALL (callbacks, integer_value (-1L)).Times (1);
-
-    json::parser<decltype (proxy)> p (proxy);
-    p.parse ("-1");
-}
-TEST_F (JsonNumber, NegativeOneLeadingZero) {
-    this->check_error ("-01", json::error_code::unexpected_extra_input);
-}
-TEST_F (JsonNumber, RealUnderflow) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    json::parser<decltype (proxy)> p = json::make_parser (proxy);
-    p.parse ("123e-10000000");
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::number_out_of_range));
-}
-
-
-namespace {
-
-    class JsonBoolean : public Json {
-    protected:
-        void check_bool (char const * src, bool expected) {
-            std::shared_ptr<json::value::dom_element> v = this->parse (src);
-            ASSERT_NE (v, nullptr);
-            auto b = v->as_boolean ();
-            ASSERT_NE (b, nullptr);
-            EXPECT_EQ (b->get (), expected);
-        }
-    };
-
-} // end anonymous namespace
-
-TEST_F (JsonBoolean, True) {
-    char const * input = " true ";
-    {
-        StrictMock<mock_json_callbacks> callbacks;
-        callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-        EXPECT_CALL (callbacks, boolean_value (true)).Times (1);
-
-        json::parser<decltype (proxy)> p = json::make_parser (proxy);
-        p.parse (input);
-    }
-    {
-        json::parser<json::yaml_output> p2;
-        p2.parse (input);
-
-        std::shared_ptr<json::value::dom_element> resl = p2.callbacks ().result ();
-        ASSERT_NE (resl, nullptr);
-
-        auto b = resl->as_boolean ();
-        ASSERT_NE (b, nullptr);
-        EXPECT_TRUE (b->get ());
-    }
-}
-TEST_F (JsonBoolean, False) {
-    StrictMock<mock_json_callbacks> callbacks;
-    callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-    EXPECT_CALL (callbacks, boolean_value (false)).Times (1);
-
-    json::parser<decltype (proxy)> p = json::make_parser (proxy);
-    p.parse (" false ");
-}
-
-
-
-namespace {
-
-    class JsonString : public Json {
-    protected:
-        void check (char const * src, char const * expected) {
-            ASSERT_NE (src, nullptr);
-            ASSERT_NE (expected, nullptr);
-
-            StrictMock<mock_json_callbacks> callbacks;
-            callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-            EXPECT_CALL (callbacks, string_value (expected)).Times (1);
-
-            json::parser<decltype (proxy)> p = json::make_parser (proxy);
-            p.parse (src);
-            EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-        }
-    };
-
-} // namespace
-
-TEST_F (JsonString, Simple) {
-    this->check ("\"\"", "");
-    this->check ("\"hello\"", "hello");
-}
-TEST_F (JsonString, Unterminated) {
-    this->check_error ("\"hello", json::error_code::expected_close_quote);
-}
-TEST_F (JsonString, EscapeN) {
-    this->check ("\"a\\n\"", "a\n");
-}
-TEST_F (JsonString, BadEscape) {
-    this->check_error ("\"a\\qb\"", json::error_code::invalid_escape_char);
-}
-TEST_F (JsonString, BackslashQuoteUnterminated) {
-    this->check_error ("\"a\\\"", json::error_code::expected_close_quote);
-}
-TEST_F (JsonString, TrailingBackslashUnterminated) {
-    this->check_error ("\"a\\", json::error_code::invalid_escape_char);
-}
-TEST_F (JsonString, GCleffUtf8) {
-    // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed in UTF-8
-    this->check ("\"\xF0\x9D\x84\x9E\"", "\xF0\x9D\x84\x9E");
-}
-TEST_F (JsonString, SlashUnicodeUpper) {
-    this->check ("\"\\u002F\"", "/");
-}
-TEST_F (JsonString, TwoUtf16Chars) {
-    // Encoding for TURNED AMPERSAND (U+214B) followed by KATAKANA LETTER SMALL A (u+30A1)
-    // expressed as a pair of UTF-16 characters.
-    this->check ("\"\\u214B\\u30A1\"", "\xE2\x85\x8B\xE3\x82\xA1");
-}
-TEST_F (JsonString, Utf16Surrogates) {
-    // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as a UTF-16
-    // surrogate pair.
-    this->check ("\"\\uD834\\uDD1E\"", "\xF0\x9D\x84\x9E");
-}
-TEST_F (JsonString, Utf16HighWithNoLowSurrogate) {
-    // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
-    this->check_error ("\"\\uD834\\u30A1\"", json::error_code::bad_unicode_code_point);
-}
-TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
-    // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
-    this->check_error ("\"\\uD834!\"", json::error_code::bad_unicode_code_point);
-}
-TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
-    // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as a UTF-16
-    // surrogate pair.
-    this->check_error ("\"\\uDD1E\\u30A1\"", json::error_code::bad_unicode_code_point);
-}
-TEST_F (JsonString, ControlCharacter) {
-    this->check_error ("\"\t\"", json::error_code::bad_unicode_code_point);
-
-    this->check ("\"\\u0009\"", "\t");
-}
-
-TEST_F (JsonString, Utf16LowWithNoHighSurrogate) {
-    // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
-    this->check_error ("\"\\uD834\"", json::error_code::bad_unicode_code_point);
-}
-TEST_F (JsonString, SlashBadHexChar) {
-    this->check_error ("\"\\u00xF\"", json::error_code::invalid_escape_char);
-}
-TEST_F (JsonString, PartialHexChar) {
-    this->check_error ("\"\\u00", json::error_code::invalid_escape_char);
-}
-
-
-
-TEST (JsonArray, Empty) {
-    StrictMock<mock_json_callbacks> callbacks;
-    {
-        ::testing::InSequence _;
-        EXPECT_CALL (callbacks, begin_array ()).Times (1);
-        EXPECT_CALL (callbacks, end_array ()).Times (1);
-    }
-    auto p = json::make_parser (callbacks_proxy<mock_json_callbacks> (callbacks));
-    p.parse (" [ ] ");
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-}
-
-TEST (JsonArray, ArrayNoCloseBracket) {
-    StrictMock<mock_json_callbacks> callbacks;
-    EXPECT_CALL (callbacks, begin_array ()).Times (1);
-
-    auto p = json::make_parser (callbacks_proxy<mock_json_callbacks> (callbacks));
-    p.parse ("[");
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_array_member));
-}
-
-TEST (JsonArray, SingleElement) {
-    char const * input = "[ 1 ]";
-    {
-        StrictMock<mock_json_callbacks> callbacks;
-        {
-            ::testing::InSequence _;
-            EXPECT_CALL (callbacks, begin_array ()).Times (1);
-            EXPECT_CALL (callbacks, integer_value (1L)).Times (1);
-            EXPECT_CALL (callbacks, end_array ()).Times (1);
-        }
-        auto p = json::make_parser (callbacks_proxy<mock_json_callbacks> (callbacks));
-        p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-    }
-    {
-        json::parser<json::yaml_output> p;
-        std::shared_ptr<json::value::dom_element> resl = p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-
-        ASSERT_NE (resl, nullptr);
-
-        auto arr = resl->as_array ();
-        ASSERT_NE (arr, nullptr);
-        ASSERT_EQ (arr->size (), 1U);
-        auto element = ((*arr)[0])->as_long ();
-        ASSERT_NE (element, nullptr);
-        EXPECT_EQ (element->get (), 1);
-    }
-}
-
-TEST (JsonArray, SingleStringElement) {
-    char const * input = "[\"a\"]";
-    {
-        StrictMock<mock_json_callbacks> callbacks;
-        {
-            ::testing::InSequence _;
-            EXPECT_CALL (callbacks, begin_array ()).Times (1);
-            EXPECT_CALL (callbacks, string_value ("a")).Times (1);
-            EXPECT_CALL (callbacks, end_array ()).Times (1);
-        }
-        auto p = json::make_parser (callbacks_proxy<mock_json_callbacks> (callbacks));
-        p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-    }
-    {
-        json::parser<json::yaml_output> p;
-        p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-
-        std::shared_ptr<json::value::dom_element> v = p.callbacks ().result ();
-        ASSERT_NE (v, nullptr);
-
-        auto arr = v->as_array ();
-        ASSERT_NE (arr, nullptr);
-        ASSERT_EQ (arr->size (), 1U);
-        auto element = ((*arr)[0])->as_string ();
-        ASSERT_NE (element, nullptr);
-        EXPECT_EQ (element->get (), "a");
-    }
-}
-
-TEST (JsonArray, ZeroExpPlus1) {
-    char const * input = "[0e+1]";
-
-    {
-        StrictMock<mock_json_callbacks> callbacks;
-        {
-            ::testing::InSequence _;
-            EXPECT_CALL (callbacks, begin_array ()).Times (1);
-            EXPECT_CALL (callbacks, float_value (::testing::DoubleEq (0.0))).Times (1);
-            EXPECT_CALL (callbacks, end_array ()).Times (1);
-        }
-        auto p = json::make_parser (callbacks_proxy<mock_json_callbacks> (callbacks));
-        p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-    }
-    {
-        json::parser<json::yaml_output> p;
-        std::shared_ptr<json::value::dom_element> v = p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-        ASSERT_NE (v, nullptr);
-
-        auto arr = v->as_array ();
-        ASSERT_NE (arr, nullptr);
-        ASSERT_EQ (arr->size (), 1U);
-        auto element = ((*arr)[0])->as_double ();
-        ASSERT_NE (element, nullptr);
-        EXPECT_EQ (element->get (), 0);
-    }
-}
-TEST (JsonArray, MinusZero) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[-0]");
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-    ASSERT_NE (v, nullptr);
-
-    auto arr = v->as_array ();
-    ASSERT_NE (arr, nullptr);
-    ASSERT_EQ (arr->size (), 1U);
-    auto element = ((*arr)[0])->as_long ();
-    ASSERT_NE (element, nullptr);
-    EXPECT_EQ (element->get (), 0);
-}
-
-
-TEST (JsonArray, TwoElements) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[ 1 , \"hello\" ]");
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-    ASSERT_NE (v, nullptr);
-
-    auto arr = v->as_array ();
-    ASSERT_NE (arr, nullptr);
-    ASSERT_EQ (arr->size (), 2U);
-
-    auto element0 = ((*arr)[0])->as_long ();
-    ASSERT_NE (element0, nullptr);
-    EXPECT_EQ (element0->get (), 1);
-
-    auto element1 = ((*arr)[1])->as_string ();
-    ASSERT_NE (element1, nullptr);
-    EXPECT_EQ (element1->get (), "hello");
-}
-
-TEST (JsonArray, TrailingComma) {
-    {
-        json::parser<json::yaml_output> p;
-        std::shared_ptr<json::value::dom_element> v = p.parse ("[,");
-        EXPECT_EQ (v, nullptr);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-    }
-    {
-        json::parser<json::yaml_output> p;
-        std::shared_ptr<json::value::dom_element> v = p.parse ("[,]");
-        EXPECT_EQ (v, nullptr);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-    }
-    {
-        json::parser<json::yaml_output> p;
-        std::shared_ptr<json::value::dom_element> v = p.parse ("[\"\",]");
-        EXPECT_EQ (v, nullptr);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-    }
-}
-TEST (JsonArray, TrailingCommaWithExtraText) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[,1");
-    ASSERT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-}
-TEST (JsonArray, ArraySingleElementComma) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[1,");
-    ASSERT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_array_member));
-}
-TEST (JsonArray, Nested) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[[no");
-    ASSERT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::unrecognized_token));
-}
-TEST (JsonArray, MissingComma) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[1 true]");
-    ASSERT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_array_member));
-}
-TEST (JsonArray, ExtraComma) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[1,,2]");
-    ASSERT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-}
-TEST (JsonArray, SimpleFloat) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("[1.234]");
-    ASSERT_NE (v, nullptr);
-
-    auto arr = v->as_array ();
-    ASSERT_NE (arr, nullptr);
-    ASSERT_EQ (arr->size (), 1U);
-
-    auto element0 = ((*arr)[0])->as_double ();
-    ASSERT_NE (element0, nullptr);
-    EXPECT_DOUBLE_EQ (element0->get (), 1.234);
-}
-
-
-
-TEST (JsonObject, Empty) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{}");
-    auto obj = v->as_object ();
-    ASSERT_NE (obj, nullptr);
-    EXPECT_EQ (obj->size (), 0U);
-}
-TEST (JsonObject, SingleKvp) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{\"a\":1}");
-    ASSERT_NE (v, nullptr);
-    auto obj = v->as_object ();
-    ASSERT_NE (obj, nullptr);
-    EXPECT_EQ (obj->size (), 1U);
-
-    auto pos = obj->find ("a");
-    ASSERT_NE (pos, obj->end ());
-    EXPECT_EQ (pos->first, "a");
-
-    auto value = pos->second->as_long ();
-    ASSERT_NE (value, nullptr);
-    EXPECT_EQ (value->get (), 1);
-}
-TEST (JsonObject, TwoKvps) {
-    char const * input = "{\"a\":1, \"b\" : true }";
-    {
-        StrictMock<mock_json_callbacks> callbacks;
-        {
-            ::testing::InSequence _;
-            EXPECT_CALL (callbacks, begin_object ()).Times (1);
-            EXPECT_CALL (callbacks, string_value ("a")).Times (1);
-            EXPECT_CALL (callbacks, integer_value (1)).Times (1);
-            EXPECT_CALL (callbacks, string_value ("b")).Times (1);
-            EXPECT_CALL (callbacks, boolean_value (true)).Times (1);
-            EXPECT_CALL (callbacks, end_object ()).Times (1);
-        }
-        auto p = json::make_parser (callbacks_proxy<mock_json_callbacks> (callbacks));
-        p.parse (input);
-        EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::none));
-    }
-    {
-        json::parser<json::yaml_output> p;
-        std::shared_ptr<json::value::dom_element> v = p.parse (input);
-        ASSERT_NE (v, nullptr);
-        auto obj = v->as_object ();
-        ASSERT_NE (obj, nullptr);
-        EXPECT_EQ (obj->size (), 2U);
-        {
-            auto pos_a = obj->find ("a");
-            ASSERT_NE (pos_a, obj->end ());
-
-            EXPECT_EQ (pos_a->first, "a");
-            auto value = pos_a->second->as_long ();
-            ASSERT_NE (value, nullptr);
-            EXPECT_EQ (value->get (), 1);
-        }
-        {
-            auto pos_b = obj->find ("b");
-            ASSERT_NE (pos_b, obj->end ());
-
-            EXPECT_EQ (pos_b->first, "b");
-            auto value = pos_b->second->as_boolean ();
-            ASSERT_NE (value, nullptr);
-            EXPECT_EQ (value->get (), true);
-        }
-    }
-}
-TEST (JsonObject, ArrayValue) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{\"a\": [1,2]}");
-    ASSERT_NE (v, nullptr);
-    auto obj = v->as_object ();
-    ASSERT_NE (obj, nullptr);
-    EXPECT_EQ (obj->size (), 1U);
-
-    auto pos = obj->find ("a");
-    ASSERT_NE (pos, obj->end ());
-
-    auto value = pos->second->as_array ();
-    ASSERT_NE (value, nullptr);
-    EXPECT_EQ (value->size (), 2U);
-    {
-        auto v0 = ((*value)[0])->as_long ();
-        ASSERT_NE (v0, nullptr);
-        ASSERT_EQ (v0->get (), 1);
-    }
-    {
-        auto v1 = ((*value)[1])->as_long ();
-        ASSERT_NE (v1, nullptr);
-        ASSERT_EQ (v1->get (), 2);
-    }
-}
-TEST (JsonObject, TrailingComma) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{\"a\":1,}");
-    EXPECT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-}
-TEST (JsonObject, MissingComma) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{\"a\":1 \"b\":1}");
-    EXPECT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_object_member));
-}
-TEST (JsonObject, ExtraComma) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{\"a\":1,,\"b\":1}");
-    EXPECT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_token));
-}
-TEST (JsonObject, KeyIsNotString) {
-    json::parser<json::yaml_output> p;
-    p.parse ("{{}:{}}");
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::expected_string));
-}
-TEST (JsonObject, BadNestedObject) {
-    json::parser<json::yaml_output> p;
-    std::shared_ptr<json::value::dom_element> v = p.parse ("{\"a\":nu}");
-    EXPECT_EQ (v, nullptr);
-    EXPECT_EQ (p.last_error (), std::make_error_code (json::error_code::unrecognized_token));
+  check_error ("nu", json::error_code::expected_token);
+  check_error ("bad", json::error_code::expected_token);
+  check_error ("fal", json::error_code::expected_token);
+  check_error ("falsehood", json::error_code::unexpected_extra_input);
 }

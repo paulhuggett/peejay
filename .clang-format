@@ -1,0 +1,19 @@
+
+---
+BasedOnStyle : Google
+
+AccessModifierOffset    : -2
+CommentPragmas          :  '^\\.+'
+SpaceBeforeParens       : Always
+SpaceInEmptyParentheses : false
+Standard                : c++20
+
+AllowShortBlocksOnASingleLine       : false
+AllowShortCaseLabelsOnASingleLine   : true
+AllowShortEnumsOnASingleLine        : true
+AllowShortFunctionsOnASingleLine    : InlineOnly
+AllowShortIfStatementsOnASingleLine : false
+AllowShortLambdasOnASingleLine      : true
+AllowShortLoopsOnASingleLine        : false
+IndentCaseLabels                    : false
+
