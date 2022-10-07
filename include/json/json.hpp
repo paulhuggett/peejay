@@ -19,6 +19,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <optional>
 #include <ostream>
 #include <span>

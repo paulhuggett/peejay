@@ -18,7 +18,7 @@
 #define JSON_DOM_TYPES_HPP
 
 #include <cstdint>
-#include <string>
+#include <string_view>
 #include <system_error>
 
 namespace json {
@@ -33,8 +33,8 @@ public:
   }
   std::error_code int64_value (std::int64_t) noexcept { return {}; }
   std::error_code uint64_value (std::uint64_t) noexcept { return {}; }
-  std::error_code double_value (double v) noexcept { return {}; }
-  std::error_code boolean_value (bool v) noexcept { return {}; }
+  std::error_code double_value (double) noexcept { return {}; }
+  std::error_code boolean_value (bool) noexcept { return {}; }
   std::error_code null_value () noexcept { return {}; }
 
   std::error_code begin_array () noexcept { return {}; }
