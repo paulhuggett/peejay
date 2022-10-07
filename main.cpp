@@ -2,25 +2,86 @@
 #include <fstream>
 #include <iostream>
 
-#include "json/dom_types.hpp"
 #include "json/json.hpp"
 #include "json/utf.hpp"
 
 namespace {
 
+class json_writer {
+public:
+  explicit json_writer (std::ostream& os) : os_{os} {}
+
+  using result_type = void;
+  result_type result () {}
+
+  std::error_code string_value (std::string_view const& s) {
+    os_ << '"';
+    std::copy (std::begin (s), std::end (s),
+               std::ostream_iterator<char>{os_, ""});
+    os_ << '"';
+    return {};
+  }
+
+  std::error_code int64_value (std::int64_t v) {
+    os_ << v;
+    return {};
+  }
+  std::error_code uint64_value (std::uint64_t v) {
+    os_ << v;
+    return {};
+  }
+  std::error_code double_value (double v) {
+    os_ << v;
+    return {};
+  }
+  std::error_code boolean_value (bool v) {
+    os_ << (v ? "true" : "false");
+    return {};
+  }
+  std::error_code null_value () {
+    os_ << "null";
+    return {};
+  }
+
+  std::error_code begin_array () {
+    os_ << '[';
+    return {};
+  }
+  std::error_code end_array () {
+    os_ << ']';
+    return {};
+  }
+
+  std::error_code begin_object () {
+    os_ << '{';
+    return {};
+  }
+  std::error_code key (std::string_view const& s) {
+    return this->string_value (s);
+  }
+  std::error_code end_object () {
+    os_ << '}';
+    return {};
+  }
+
+private:
+  std::ostream& os_;
+};
+
 template <typename IStream>
 int slurp (IStream& in) {
   int exit_code = EXIT_SUCCESS;
-#if 0
+
         using ustreamsize = std::make_unsigned<std::streamsize>::type;
         std::array<char, 256> buffer{{0}};
-        json::parser<json::yaml_output> p;
+        json::parser<json_writer> p{json_writer{std::cout}};
 
         while ((in.rdstate () &
                 (std::ios_base::badbit | std::ios_base::failbit | std::ios_base::eofbit)) == 0) {
             in.read (&buffer[0], buffer.size ());
-            p.input (&buffer[0],
-                     static_cast<ustreamsize> (std::max (in.gcount (), std::streamsize{0})));
+            p.input (std::span<char>{
+                &buffer[0], static_cast<ustreamsize> (
+                                std::max (in.gcount (), std::streamsize{0}))});
         }
 
         p.eof ();
@@ -29,11 +90,8 @@ int slurp (IStream& in) {
         if (err) {
             std::cerr << "Error: " << p.last_error ().message () << '\n';
             exit_code = EXIT_FAILURE;
-        } else {
-            auto obj = p.callbacks ().result ();
-            std::cout << "\n----\n" << *obj << '\n';
         }
-#endif
+
   return exit_code;
 }
 
