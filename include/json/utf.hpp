@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iosfwd>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <tuple>

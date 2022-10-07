@@ -31,7 +31,7 @@ protected:
 }  // end anonymous namespace
 
 TEST_F (JsonString, Empty) {
-  EXPECT_CALL (callbacks_, string_value ("")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{""})).Times (1);
 
   json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
   p.input (R"("")"s).eof ();
@@ -41,7 +41,7 @@ TEST_F (JsonString, Empty) {
 }
 
 TEST_F (JsonString, Simple) {
-  EXPECT_CALL (callbacks_, string_value ("hello")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"hello"})).Times (1);
 
   json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
   p.input (R"("hello")"s).eof ();
@@ -59,7 +59,7 @@ TEST_F (JsonString, Unterminated) {
 }
 
 TEST_F (JsonString, EscapeN) {
-  EXPECT_CALL (callbacks_, string_value ("a\n")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"a\n"})).Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input (R"("a\n")"s).eof ();
@@ -103,7 +103,8 @@ TEST_F (JsonString, TrailingBackslashUnterminated) {
 TEST_F (JsonString, GCleffUtf8) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed in UTF-8
   // Note that the 4 bytes making up the code point count as a single column.
-  EXPECT_CALL (callbacks_, string_value ("\xF0\x9D\x84\x9E")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"\xF0\x9D\x84\x9E"}))
+      .Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input ("\"\xF0\x9D\x84\x9E\""s).eof ();
@@ -113,7 +114,7 @@ TEST_F (JsonString, GCleffUtf8) {
 }
 
 TEST_F (JsonString, SlashUnicodeUpper) {
-  EXPECT_CALL (callbacks_, string_value ("/")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"/"})).Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input ("\"\\u002F\"").eof ();
@@ -124,7 +125,8 @@ TEST_F (JsonString, SlashUnicodeUpper) {
 
 TEST_F (JsonString, FourFs) {
   // Note that there is no unicode code-point at U+FFFF.
-  EXPECT_CALL (callbacks_, string_value ("\xEF\xBF\xBF")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"\xEF\xBF\xBF"}))
+      .Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input ("\"\\uFFFF\"").eof ();
@@ -136,7 +138,9 @@ TEST_F (JsonString, FourFs) {
 TEST_F (JsonString, TwoUtf16Chars) {
   // Encoding for TURNED AMPERSAND (U+214B) followed by KATAKANA LETTER SMALL A
   // (u+30A1) expressed as a pair of UTF-16 characters.
-  EXPECT_CALL (callbacks_, string_value ("\xE2\x85\x8B\xE3\x82\xA1")).Times (1);
+  EXPECT_CALL (callbacks_,
+               string_value (std::string_view{"\xE2\x85\x8B\xE3\x82\xA1"}))
+      .Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input (R"("\u214B\u30A1")").eof ();
@@ -148,7 +152,8 @@ TEST_F (JsonString, TwoUtf16Chars) {
 TEST_F (JsonString, Utf16Surrogates) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as a UTF-16
   // surrogate pair.
-  EXPECT_CALL (callbacks_, string_value ("\xF0\x9D\x84\x9E")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"\xF0\x9D\x84\x9E"}))
+      .Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input (R"("\uD834\uDD1E")").eof ();
@@ -194,7 +199,7 @@ TEST_F (JsonString, ControlCharacter) {
 }
 
 TEST_F (JsonString, ControlCharacterUTF16) {
-  EXPECT_CALL (callbacks_, string_value ("\t")).Times (1);
+  EXPECT_CALL (callbacks_, string_value (std::string_view{"\t"})).Times (1);
 
   auto p = json::make_parser (proxy_);
   p.input (R"("\u0009")").eof ();

@@ -80,7 +80,7 @@ TEST_F (JsonArray, SingleStringElement) {
   {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-    EXPECT_CALL (callbacks_, string_value ("a")).Times (1);
+    EXPECT_CALL (callbacks_, string_value (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, end_array ()).Times (1);
   }
   auto p = json::make_parser (proxy_);
@@ -129,7 +129,8 @@ TEST_F (JsonArray, TwoElements) {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_array ()).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-    EXPECT_CALL (callbacks_, string_value ("hello")).Times (1);
+    EXPECT_CALL (callbacks_, string_value (std::string_view{"hello"}))
+        .Times (1);
     EXPECT_CALL (callbacks_, end_array ()).Times (1);
   }
   auto p = json::make_parser (proxy_);

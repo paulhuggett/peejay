@@ -48,7 +48,7 @@ TEST_F (JsonObject, SingleKvp) {
   {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-    EXPECT_CALL (callbacks_, key ("a")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
@@ -84,9 +84,9 @@ TEST_F (JsonObject, TwoKvps) {
   {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-    EXPECT_CALL (callbacks_, key ("a")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-    EXPECT_CALL (callbacks_, key ("b")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"b"})).Times (1);
     EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
@@ -100,9 +100,9 @@ TEST_F (JsonObject, DuplicateKeys) {
   {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-    EXPECT_CALL (callbacks_, key ("a")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-    EXPECT_CALL (callbacks_, key ("a")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
@@ -116,7 +116,7 @@ TEST_F (JsonObject, ArrayValue) {
   {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-    EXPECT_CALL (callbacks_, key ("a")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, begin_array ()).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (2)).Times (1);
@@ -159,10 +159,10 @@ TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
   {
     ::testing::InSequence _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-    EXPECT_CALL (callbacks_, key ("a")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (16)).Times (1);
-    EXPECT_CALL (callbacks_, key ("b")).Times (1);
-    EXPECT_CALL (callbacks_, string_value ("c")).Times (1);
+    EXPECT_CALL (callbacks_, key (std::string_view{"b"})).Times (1);
+    EXPECT_CALL (callbacks_, string_value (std::string_view{"c"})).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
 
