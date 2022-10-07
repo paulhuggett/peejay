@@ -132,11 +132,50 @@ struct characteristics {
 
 namespace json {
 
+template <typename T>
+concept notifications = requires (T &&v) {
+  /// Returns the result of the parse. If the parse was successful, this
+  /// function is called by parser<>::eof() which will return its result.
+  { v.result () } -> std::convertible_to<typename T::result_type>;
+
+  /// Called when a JSON string has been parsed.
+  {
+    v.string_value (std::string_view{})
+    } -> std::convertible_to<std::error_code>;
+  /// Called when an integer value has been parsed.
+  { v.int64_value (std::int64_t{}) } -> std::convertible_to<std::error_code>;
+  /// Called when an unsigned integer value has been parsed.
+  { v.uint64_value (std::uint64_t{}) } -> std::convertible_to<std::error_code>;
+  /// Called when a floating-point value has been parsed.
+  { v.double_value (double{}) } -> std::convertible_to<std::error_code>;
+  /// Called when a boolean value has been parsed
+  { v.boolean_value (bool{}) } -> std::convertible_to<std::error_code>;
+  /// Called when a null value has been parsed.
+  { v.null_value () } -> std::convertible_to<std::error_code>;
+  /// Called to notify the start of an array. Subsequent event notifications are
+  /// for members of this array until a matching call to Callbacks::end_array().
+  { v.begin_array () } -> std::convertible_to<std::error_code>;
+  /// Called indicate that an array has been completely parsed. This will always
+  /// follow an earlier call to begin_array().
+  { v.end_array () } -> std::convertible_to<std::error_code>;
+  /// Called to notify the start of an object. Subsequent event notifications
+  /// are for members of this object until a matching call to
+  /// Callbacks::end_object().
+  { v.begin_object () } -> std::convertible_to<std::error_code>;
+  /// Called when an object key string has been parsed.
+  { v.key (std::string_view{}) } -> std::convertible_to<std::error_code>;
+  /// Called to indicate that an object has been completely parsed. This will
+  /// always follow an earlier call to begin_object().
+  { v.end_object () } -> std::convertible_to<std::error_code>;
+};
+
 /// \brief JSON parser implementation details.
 namespace details {
 
 template <typename Callbacks>
+requires notifications<Callbacks>
 class matcher;
+
 template <typename Callbacks>
 class root_matcher;
 template <typename Callbacks>
@@ -205,47 +244,10 @@ constexpr extensions operator| (extensions a, extensions b) noexcept {
                                   static_cast<unsigned> (b));
 }
 
-template <typename T>
-concept json_callbacks = requires (T v) {
-  /// Returns the result of the parse. If the parse was successful, this
-  /// function is called by parser<>::eof() which will return its result.
-  { v.result () } -> std::convertible_to<typename T::result_type>;
-
-  /// Called when a JSON string has been parsed.
-  {
-    v.string_value (std::string_view{})
-    } -> std::convertible_to<std::error_code>;
-  /// Called when an integer value has been parsed.
-  { v.int64_value (std::int64_t{}) } -> std::convertible_to<std::error_code>;
-  /// Called when an unsigned integer value has been parsed.
-  { v.uint64_value (std::uint64_t{}) } -> std::convertible_to<std::error_code>;
-  /// Called when a floating-point value has been parsed.
-  { v.double_value (double{}) } -> std::convertible_to<std::error_code>;
-  /// Called when a boolean value has been parsed
-  { v.boolean_value (bool{}) } -> std::convertible_to<std::error_code>;
-  /// Called when a null value has been parsed.
-  { v.null_value () } -> std::convertible_to<std::error_code>;
-  /// Called to notify the start of an array. Subsequent event notifications are
-  /// for members of this array until a matching call to Callbacks::end_array().
-  { v.begin_array () } -> std::convertible_to<std::error_code>;
-  /// Called indicate that an array has been completely parsed. This will always
-  /// follow an earlier call to begin_array().
-  { v.end_array () } -> std::convertible_to<std::error_code>;
-  /// Called to notify the start of an object. Subsequent event notifications
-  /// are for members of this object until a matching call to
-  /// Callbacks::end_object().
-  { v.begin_object () } -> std::convertible_to<std::error_code>;
-  /// Called when an object key string has been parsed.
-  { v.key (std::string_view{}) } -> std::convertible_to<std::error_code>;
-  /// Called to indicate that an object has been completely parsed. This will
-  /// always follow an earlier call to begin_object().
-  { v.end_object () } -> std::convertible_to<std::error_code>;
-};
-
 //-MARK:parser
-/// \tparam Callbacks A type meeting the json_callbacks requirements.
+/// \tparam Callbacks A type meeting the notifications<> requirements.
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 class parser {
   friend class details::matcher<Callbacks>;
   friend class details::root_matcher<Callbacks>;
@@ -275,13 +277,20 @@ public:
   }
 
   /// \param span The span of UTF-8 code units to be parsed.
-  template <typename SpanType>
-  parser &input (SpanType const &span);
+  template <size_t Extent>
+  parser &input (std::span<char, Extent> const &span) {
+    return this->input (std::begin (span), std::end (span));
+  }
+  template <size_t Extent>
+  parser &input (std::span<char const, Extent> const &span) {
+    return this->input (std::begin (span), std::end (span));
+  }
 
   /// \param first The element in the half-open range of UTF-8 code-units to be parsed.
   /// \param last The end of the range of UTF-8 code-units to be parsed.
   template <typename InputIterator>
-  parser &input (InputIterator first, InputIterator last);
+  requires std::input_iterator<InputIterator> parser &input (
+      InputIterator first, InputIterator last);
 
   ///@}
 
@@ -386,6 +395,7 @@ private:
 };
 
 template <typename Callbacks>
+requires notifications<Callbacks>
 inline parser<Callbacks> make_parser (
     Callbacks const &callbacks,
     extensions const extensions = extensions::none) {
@@ -412,6 +422,7 @@ constexpr bool isspace (char const c) noexcept {
 /// the various productions of the JSON grammar.
 //-MARK:matcher
 template <typename Callbacks>
+requires notifications<Callbacks>
 class matcher {
 public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
@@ -491,20 +502,18 @@ private:
 //*  \__\___/_\_\___|_||_| *
 //*                        *
 /// A matcher which checks for a specific keyword such as "true", "false", or
-/// "null". \tparam Callbacks  The parser callback structure.
-/// \tparam DoneFunction  A function matching the signature void(parser<Callbacks>&)
-///   that will be called when the token is successfully matched.
+/// "null".
+/// \tparam Callbacks  The parser callback structure.
 //-MARK:token matcher
 template <typename Callbacks, typename DoneFunction>
-class token_matcher : public matcher<Callbacks> {
+requires notifications<Callbacks> && std::invocable < DoneFunction,
+    parser<Callbacks>
+& > class token_matcher : public matcher<Callbacks> {
 public:
   /// \param text  The string to be matched.
-  /// \param done_fn  The function called when the source string is matched.
-  explicit token_matcher (char const *text,
-                          DoneFunction done_fn = DoneFunction ()) noexcept
-      : matcher<Callbacks> (start_state),
-        text_{text},
-        done_{std::move (done_fn)} {}
+  /// \param done  The function called when the source string is matched.
+  explicit token_matcher (char const *text, DoneFunction done) noexcept
+      : matcher<Callbacks> (start_state), text_{text}, done_{done} {}
 
   std::pair<typename matcher<Callbacks>::pointer, bool> consume (
       parser<Callbacks> &parser, std::optional<char> ch) override;
@@ -522,13 +531,15 @@ private:
   char const *text_;
 
   /// This function is called once the complete token text has been matched.
-  DoneFunction done_;
+  DoneFunction const done_;
 };
 
 template <typename Callbacks, typename DoneFunction>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-token_matcher<Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
-                                                 std::optional<char> ch) {
+requires notifications<Callbacks> && std::invocable < DoneFunction,
+    parser<Callbacks>
+& > std::pair<typename matcher<Callbacks>::pointer, bool>
+    token_matcher<Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
+                                                     std::optional<char> ch) {
   bool match = true;
   switch (this->get_state ()) {
   case start_state:
@@ -566,15 +577,15 @@ token_matcher<Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
 //*                                             *
 
 //-MARK:false token
+template <typename Callbacks>
 struct false_complete {
-  template <typename Callbacks>
-  std::error_code operator() (parser<Callbacks> &parser) const {
-    return parser.callbacks ().boolean_value (false);
+  std::error_code operator() (parser<Callbacks> &p) const {
+    return p.callbacks ().boolean_value (false);
   }
 };
 
 template <typename Callbacks>
-using false_token_matcher = token_matcher<Callbacks, false_complete>;
+using false_token_matcher = token_matcher<Callbacks, false_complete<Callbacks>>;
 
 //*  _                  _       _             *
 //* | |_ _ _ _  _ ___  | |_ ___| |_____ _ _   *
@@ -583,15 +594,15 @@ using false_token_matcher = token_matcher<Callbacks, false_complete>;
 //*                                           *
 
 //-MARK:true token
+template <typename Callbacks>
 struct true_complete {
-  template <typename Callbacks>
-  std::error_code operator() (parser<Callbacks> &parser) const {
-    return parser.callbacks ().boolean_value (true);
+  std::error_code operator() (parser<Callbacks> &p) const {
+    return p.callbacks ().boolean_value (true);
   }
 };
 
 template <typename Callbacks>
-using true_token_matcher = token_matcher<Callbacks, true_complete>;
+using true_token_matcher = token_matcher<Callbacks, true_complete<Callbacks>>;
 
 //*           _ _   _       _             *
 //*  _ _ _  _| | | | |_ ___| |_____ _ _   *
@@ -600,15 +611,15 @@ using true_token_matcher = token_matcher<Callbacks, true_complete>;
 //*                                       *
 
 //-MARK:null token
+template <typename Callbacks>
 struct null_complete {
-  template <typename Callbacks>
-  std::error_code operator() (parser<Callbacks> &parser) const {
-    return parser.callbacks ().null_value ();
+  std::error_code operator() (parser<Callbacks> &p) const {
+    return p.callbacks ().null_value ();
   }
 };
 
 template <typename Callbacks>
-using null_token_matcher = token_matcher<Callbacks, null_complete>;
+using null_token_matcher = token_matcher<Callbacks, null_complete<Callbacks>>;
 
 //*                 _              *
 //*  _ _ _  _ _ __ | |__  ___ _ _  *
@@ -1786,17 +1797,17 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     case 't':
       return {
           this->template make_terminal_matcher<true_token_matcher<Callbacks>> (
-              parser, "true"),
+              parser, "true", true_complete<Callbacks>{}),
           false};
     case 'f':
       return {
           this->template make_terminal_matcher<false_token_matcher<Callbacks>> (
-              parser, "false"),
+              parser, "false", false_complete<Callbacks>{}),
           false};
     case 'n':
       return {
           this->template make_terminal_matcher<null_token_matcher<Callbacks>> (
-              parser, "null"),
+              parser, "null", null_complete<Callbacks>{}),
           false};
     case '[':
       return {typename matcher<Callbacks>::pointer (
@@ -1858,7 +1869,7 @@ struct default_return<void> {
 // (ctor)
 // ~~~~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks> parser<Callbacks>::parser (
+requires notifications<Callbacks> parser<Callbacks>::parser (
     Callbacks callbacks, extensions const extensions)
     : callbacks_ (std::move (callbacks)), extensions_{extensions} {
   using mpointer = typename matcher::pointer;
@@ -1878,7 +1889,7 @@ requires json_callbacks<Callbacks> parser<Callbacks>::parser (
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
   using root_matcher = details::root_matcher<Callbacks>;
   return pointer (new (&singletons_->root) root_matcher (object_key),
@@ -1888,7 +1899,7 @@ auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Callbacks>;
   return this->make_terminal_matcher<whitespace_matcher> ();
@@ -1897,7 +1908,7 @@ auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
 // get terminal storage
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 void const *parser<Callbacks>::get_terminal_storage () const noexcept {
   return &singletons_->terminal;
 }
@@ -1905,7 +1916,7 @@ void const *parser<Callbacks>::get_terminal_storage () const noexcept {
 // make terminal matcher
 // ~~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 template <typename Matcher, typename... Args>
 auto parser<Callbacks>::make_terminal_matcher (Args &&...args) -> pointer {
   static_assert (sizeof (Matcher) <= sizeof (decltype (singletons_->terminal)),
@@ -1922,27 +1933,16 @@ auto parser<Callbacks>::make_terminal_matcher (Args &&...args) -> pointer {
 // input
 // ~~~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
-template <typename SpanType>
-auto parser<Callbacks>::input (SpanType const &span) -> parser & {
-  static_assert (
-      std::is_same<
-          typename std::remove_cv<typename SpanType::element_type>::type,
-          char>::value,
-      "span element type must be char");
-  return this->input (std::begin (span), std::end (span));
-}
-
-template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 template <typename InputIterator>
+requires std::input_iterator<InputIterator>
 auto parser<Callbacks>::input (InputIterator first, InputIterator last)
     -> parser & {
   static_assert (
       std::is_same<typename std::remove_cv<typename std::iterator_traits<
                        InputIterator>::value_type>::type,
                    char>::value,
-      "iterator value_type must be char");
+      "iterator value_type must be char (with optional cv)");
   if (error_) {
     return *this;
   }
@@ -1985,7 +1985,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
 // eof
 // ~~~
 template <typename Callbacks>
-requires json_callbacks<Callbacks>
+requires notifications<Callbacks>
 auto parser<Callbacks>::eof () -> result_type {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
