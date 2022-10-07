@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "dom_types.hpp"
+#include "json/dom_types.hpp"
 #include "json/json.hpp"
 #include "json/utf.hpp"
 
