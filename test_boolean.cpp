@@ -24,11 +24,9 @@ TEST_F (JsonBoolean, True) {
 }
 
 TEST_F (JsonBoolean, False) {
-  StrictMock<mock_json_callbacks> callbacks;
-  callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-  EXPECT_CALL (callbacks, boolean_value (false)).Times (1);
+  EXPECT_CALL (callbacks_, boolean_value (false)).Times (1);
 
-  json::parser<decltype (proxy)> p = json::make_parser (proxy);
+  json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
   p.input (" false ").eof ();
   EXPECT_FALSE (p.has_error ());
 }
