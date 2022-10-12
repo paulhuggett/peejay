@@ -7,17 +7,13 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 function (setup_target target)
   set (clang_options
     -Weverything
-    -Wno-c99-extensions
+    -Wno-c++14-extensions
     -Wno-c++98-compat
     -Wno-c++98-compat-pedantic
-    -Wno-c++14-extensions
-    -Wno-disabled-macro-expansion
+    -Wno-c99-extensions
     -Wno-exit-time-destructors
-    -Wno-global-constructors
     -Wno-padded
-    -Wno-weak-vtables
-    -Wno-nullability-extension
-    -Wno-used-but-marked-unused
+    -Wno-undef
   )
   set (gcc_options
     -Wall
