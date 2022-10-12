@@ -36,7 +36,7 @@ inline std::optional<T> just (T const &t) {
 }
 template <typename T>
 inline std::optional<T> nothing () {
-  return {};
+  return {std::nullopt};
 }
 
 /// The monadic "bind" operator for maybe<T>. If \p t is "nothing", then returns
