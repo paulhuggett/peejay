@@ -22,49 +22,30 @@ public:
     return {};
   }
 
-  std::error_code int64_value (std::int64_t v) {
-    os_ << v;
-    return {};
-  }
-  std::error_code uint64_value (std::uint64_t v) {
-    os_ << v;
-    return {};
-  }
-  std::error_code double_value (double v) {
-    os_ << v;
-    return {};
-  }
+  std::error_code int64_value (std::int64_t v) { return write (v); }
+  std::error_code uint64_value (std::uint64_t v) { return write (v); }
+  std::error_code double_value (double v) { return write (v); }
   std::error_code boolean_value (bool v) {
-    os_ << (v ? "true" : "false");
-    return {};
+    return write (v ? "true" : "false");
   }
-  std::error_code null_value () {
-    os_ << "null";
-    return {};
-  }
+  std::error_code null_value () { return write ("null"); }
 
-  std::error_code begin_array () {
-    os_ << '[';
-    return {};
-  }
-  std::error_code end_array () {
-    os_ << ']';
-    return {};
-  }
+  std::error_code begin_array () { return write ('['); }
+  std::error_code end_array () { return write (']'); }
 
-  std::error_code begin_object () {
-    os_ << '{';
-    return {};
-  }
+  std::error_code begin_object () { return write ('{'); }
   std::error_code key (std::string_view const& s) {
-    return this->string_value (s);
+    this->string_value (s);
+    return write (": ");
   }
-  std::error_code end_object () {
-    os_ << '}';
-    return {};
-  }
+  std::error_code end_object () { return write ('}'); }
 
 private:
+  template <typename T>
+  inline std::error_code write (T const& t) {
+    os_ << t;
+    return {};
+  }
   std::ostream& os_;
 };
 
