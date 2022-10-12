@@ -1,3 +1,18 @@
+#===- CMakeLists.txt ------------------------------------------------------===//
+#*   ____ __  __       _        _     _     _        *
+#*  / ___|  \/  | __ _| | _____| |   (_)___| |_ ___  *
+#* | |   | |\/| |/ _` | |/ / _ \ |   | / __| __/ __| *
+#* | |___| |  | | (_| |   <  __/ |___| \__ \ |_\__ \ *
+#*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
+#*                                                   *
+#===----------------------------------------------------------------------===//
+#
+# Distributed under the Apache License v2.0 with LLVM Exceptions.
+# See https://github.com/paulhuggett/json/blob/master/LICENSE.txt for license
+# information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+#===----------------------------------------------------------------------===//
 cmake_minimum_required(VERSION 3.0)
 
 project (json C CXX)
@@ -94,4 +109,3 @@ add_executable (main-klee main_klee.cpp)
 target_link_libraries (main-klee PUBLIC json-parser)
 setup_target (main-klee)
 
-#eof:CMakeLists.txt

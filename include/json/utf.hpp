@@ -1,3 +1,18 @@
+//===- include/json/utf.hpp -------------------------------*- mode: C++ -*-===//
+//*        _    __  *
+//*  _   _| |_ / _| *
+//* | | | | __| |_  *
+//* | |_| | |_|  _| *
+//*  \__,_|\__|_|   *
+//*                 *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0 with LLVM Exceptions.
+// See https://github.com/paulhuggett/json/blob/master/LICENSE.txt for license
+// information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 #ifndef JSON_UTF_HPP
 #define JSON_UTF_HPP
 
@@ -208,4 +223,3 @@ ResultType utf16_to_utf8 (InputType const& src, Swapper swapper) {
 }  // namespace json
 
 #endif  // JSON_UTF_HPP
-// eof:utf.hpp

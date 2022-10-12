@@ -1,4 +1,4 @@
-//===- unittests/json/test_object.cpp -------------------------------------===//
+//===- unittests/test_object.cpp ------------------------------------------===//
 //*        _     _           _    *
 //*   ___ | |__ (_) ___  ___| |_  *
 //*  / _ \| '_ \| |/ _ \/ __| __| *
@@ -7,10 +7,10 @@
 //*           |__/                *
 //===----------------------------------------------------------------------===//
 //
-// Part of the pstore project, under the Apache License v2.0 with LLVM
-// Exceptions. See https://github.com/SNSystems/pstore/blob/master/LICENSE.txt
-// for license information. SPDX-License-Identifier: Apache-2.0 WITH
-// LLVM-exception
+// Distributed under the Apache License v2.0 with LLVM Exceptions.
+// See https://github.com/paulhuggett/json/blob/master/LICENSE.txt for license
+// information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 #include "callbacks.hpp"

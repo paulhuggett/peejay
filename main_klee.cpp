@@ -1,3 +1,18 @@
+//===- main_klee.cpp ------------------------------------------------------===//
+//*                  _         _    _            *
+//*  _ __ ___   __ _(_)_ __   | | _| | ___  ___  *
+//* | '_ ` _ \ / _` | | '_ \  | |/ / |/ _ \/ _ \ *
+//* | | | | | | (_| | | | | | |   <| |  __/  __/ *
+//* |_| |_| |_|\__,_|_|_| |_| |_|\_\_|\___|\___| *
+//*                                              *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0 with LLVM Exceptions.
+// See https://github.com/paulhuggett/json/blob/master/LICENSE.txt for license
+// information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 #include <cstddef>
 #include <iostream>
 
