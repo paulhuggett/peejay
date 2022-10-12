@@ -259,6 +259,10 @@ public:
 
   explicit parser (Callbacks callbacks = Callbacks{},
                    extensions extensions = extensions::none);
+  parser (parser const &) = default;
+  parser (parser &&) = default;
+  parser &operator= (parser const &) = default;
+  parser &operator= (parser &&) = default;
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
@@ -383,8 +387,6 @@ private:
   /// The parse stack.
   std::stack<pointer> stack_;
   std::error_code error_;
-  Callbacks callbacks_;
-  extensions const extensions_;
 
   /// Each instance of the string matcher uses this string object to record its
   /// output. This avoids having to create a new instance each time we scan a
@@ -393,14 +395,16 @@ private:
 
   /// The column and row number of the parse within the input stream.
   coord coordinate_{1U, 1U};
+  extensions const extensions_;
+  Callbacks callbacks_;
 };
 
 template <typename Callbacks>
-requires notifications<Callbacks>
-inline parser<Callbacks> make_parser (
-    Callbacks const &callbacks,
-    extensions const extensions = extensions::none) {
-  return parser<Callbacks>{callbacks, extensions};
+requires notifications<std::remove_reference_t<Callbacks>>
+inline parser<std::remove_reference_t<Callbacks>> make_parser (
+    Callbacks &&callbacks, extensions const extensions = extensions::none) {
+  return parser<std::remove_reference_t<Callbacks>>{
+      std::forward<Callbacks> (callbacks), extensions};
 }
 
 namespace details {
@@ -1872,7 +1876,7 @@ struct default_return<void> {
 template <typename Callbacks>
 requires notifications<Callbacks> parser<Callbacks>::parser (
     Callbacks callbacks, extensions const extensions)
-    : callbacks_ (std::move (callbacks)), extensions_{extensions} {
+    : extensions_{extensions}, callbacks_{std::move (callbacks)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
