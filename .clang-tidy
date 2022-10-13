@@ -1,0 +1,20 @@
+---
+Checks:            |-
+  *,
+  -altera-*,
+  -fuchsia-*,
+  -llvmlibc-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length
+WarningsAsErrors:  ''
+HeaderFilterRegex: ''
+FormatStyle:       file
+User:              paul
+CheckOptions:
+  - key:   cppcoreguidelines-avoid-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
+  - key:   readability-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
+  - key:   hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
+    value: true
+...

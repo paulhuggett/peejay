@@ -1,0 +1,98 @@
+name: CI Build & Test
+# Triggers the workflow on push or pull request events
+on: [push, pull_request]
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # macOS builds
+          # ~~~~~~~~~~~~
+          - name: macOS-12/Xcode/Debug
+            build_type: Debug
+            generator: Xcode
+            os: macos-12
+
+          - name: macOS-12/Xcode/Release
+            build_type: Release
+            generator: Xcode
+            os: macos-12
+
+          # Ubuntu builds
+          # ~~~~~~~~~~~~~
+          - name: Ubuntu-latest/gcc-10/Debug
+            build_type: Debug
+            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_C_COMPILER=gcc-10
+            generator: Unix Makefiles
+            os: ubuntu-latest
+
+          - name: Ubuntu-latest/gcc-10/Release
+            build_type: Release
+            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_C_COMPILER=gcc-10
+            generator: Unix Makefiles
+            os: ubuntu-latest
+
+
+          - name: Ubuntu-latest/clang-12/Debug
+            build_type: Debug
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            generator: Unix Makefiles
+            options: '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
+            os: ubuntu-latest
+
+          - name: Ubuntu-latest/clang-12/Release
+            build_type: Release
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            generator: Unix Makefiles
+            options: '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
+            os: ubuntu-latest
+
+          - name: Ubuntu-latest/clang-12/Release/C++17
+            build_type: Release
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            generator: Unix Makefiles
+            options: -DCXX17=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
+            os: ubuntu-latest
+
+          # Windows builds
+          # ~~~~~~~~~~~~~~
+          - name: Windows-latest/VS2022/Debug
+            build_type: Debug
+            generator: Visual Studio 17 2022
+            os: windows-latest
+
+          - name: Windows-latest/VS2022/Release
+            build_type: Release
+            generator: Visual Studio 17 2022
+            os: windows-latest
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: 'True'
+
+      - name: Install Dependencies (Linux)
+        if: startsWith (matrix.os, 'ubuntu-') && matrix.apt_install != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt_install }}
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{ runner.workspace }}/build
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          cmake -S "$GITHUB_WORKSPACE"                       \
+                -B "${{ runner.workspace }}/build"           \
+                -G "${{ matrix.generator }}"                 \
+                -D CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                -D WERROR=Yes                                \
+                ${{ matrix.cxx_compiler }}                   \
+                ${{ matrix.options }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build "${{ runner.workspace }}/build" --config ${{ matrix.build_type }}

@@ -1,3 +1,18 @@
+//===- main_klee.cpp ------------------------------------------------------===//
+//*                  _         _    _            *
+//*  _ __ ___   __ _(_)_ __   | | _| | ___  ___  *
+//* | '_ ` _ \ / _` | | '_ \  | |/ / |/ _ \/ _ \ *
+//* | | | | | | (_| | | | | | |   <| |  __/  __/ *
+//* |_| |_| |_|\__,_|_|_| |_| |_|\_\_|\___|\___| *
+//*                                              *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0 with LLVM Exceptions.
+// See https://github.com/paulhuggett/json/blob/master/LICENSE.txt for license
+// information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 #include <cstddef>
 #include <iostream>
 
@@ -5,17 +20,17 @@
 #include "klee/klee.h"
 #endif
 
-#include "json.hpp"
+#include "json/json.hpp"
 int main () {
 #ifdef KLEE
-    static constexpr std::size_t const size = 10;
-    char input[size];
+  static constexpr std::size_t const size = 10;
+  char input[size];
 
-    // Make the input symbolic.
-    klee_make_symbolic (input, sizeof input, "input");
-    input[size - 1] = '\0';
+  // Make the input symbolic.
+  klee_make_symbolic (input, sizeof input, "input");
+  input[size - 1] = '\0';
 
-    json::parser p;
-    p.match_number (input);
+  json::parser p;
+  p.match_number (input);
 #endif
 }
