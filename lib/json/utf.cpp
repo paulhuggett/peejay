@@ -1,3 +1,19 @@
+//===- lib/json/utf.cpp ---------------------------------------------------===//
+//*        _    __  *
+//*  _   _| |_ / _| *
+//* | | | | __| |_  *
+//* | |_| | |_|  _| *
+//*  \__,_|\__|_|   *
+//*                 *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0 with LLVM Exceptions.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
 // Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy

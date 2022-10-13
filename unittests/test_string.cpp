@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 //
 // Distributed under the Apache License v2.0 with LLVM Exceptions.
-// See https://github.com/paulhuggett/json/blob/master/LICENSE.txt for license
-// information.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
