@@ -37,14 +37,13 @@ jobs:
           cmake -S .                                 \
                 -B build                             \
                 -D CMAKE_EXPORT_COMPILE_COMMANDS=Yes \
+                -D CMAKE_BUILD_TYPE=Release          \
                 -D CMAKE_C_COMPILER=clang-12         \
                 -D CMAKE_CXX_COMPILER=clang++-12
 
       - name: Run clang-tidy
         run: |
-          clang-tidy-12 -extra-arg=-std=c++20          \
-                        -extra-arg=-DNDEBUG            \
-                        -p=build/compile_commands.json \
+          clang-tidy-12 -p=build/compile_commands.json \
                         ./*.?pp                        \
                         > "${{ env.CLANG_TIDY_OUT }}"
 
