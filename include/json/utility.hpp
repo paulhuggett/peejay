@@ -13,8 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-#ifndef JSON_UTILITY_HPP
-#define JSON_UTILITY_HPP
+#ifndef PEEJAY_UTILITY_HPP
+#define PEEJAY_UTILITY_HPP
 
 #include <string>
 
@@ -24,4 +24,4 @@ bool is_valid (std::string const& str);
 
 }  // end namespace json
 
-#endif  // JSON_UTILITY_HPP
+#endif  // PEEJAY_UTILITY_HPP

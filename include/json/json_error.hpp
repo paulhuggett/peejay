@@ -13,8 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-#ifndef JSON_JSON_ERROR_HPP
-#define JSON_JSON_ERROR_HPP
+#ifndef PEEJAY_JSON_ERROR_HPP
+#define PEEJAY_JSON_ERROR_HPP
 
 #include <string>
 #include <system_error>
@@ -64,4 +64,4 @@ struct is_error_code_enum<::json::error_code> : std::true_type {};
 
 }  // end namespace std
 
-#endif  // JSON_JSON_ERROR_HPP
+#endif  // PEEJAY_JSON_ERROR_HPP

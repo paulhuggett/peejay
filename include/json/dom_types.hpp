@@ -14,8 +14,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef JSON_DOM_TYPES_HPP
-#define JSON_DOM_TYPES_HPP
+#ifndef PEEJAY_DOM_TYPES_HPP
+#define PEEJAY_DOM_TYPES_HPP
 
 #include <cstdint>
 #include <string_view>
@@ -47,4 +47,4 @@ public:
 
 }  // end namespace json
 
-#endif  // JSON_DOM_TYPES_HPP
+#endif  // PEEJAY_DOM_TYPES_HPP

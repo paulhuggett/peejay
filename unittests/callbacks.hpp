@@ -14,8 +14,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef UNIT_TESTS_JSON_CALLBACKS_HPP
-#define UNIT_TESTS_JSON_CALLBACKS_HPP
+#ifndef UNIT_TESTS_PEEJAY_CALLBACKS_HPP
+#define UNIT_TESTS_PEEJAY_CALLBACKS_HPP
 
 #include <gmock/gmock.h>
 
@@ -136,4 +136,4 @@ private:
   std::string out_;
 };
 
-#endif  // UNIT_TESTS_JSON_CALLBACKS_H
+#endif  // UNIT_TESTS_PEEJAY_CALLBACKS_H

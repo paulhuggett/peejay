@@ -13,12 +13,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-#ifndef JSON_JSON_HPP
-#define JSON_JSON_HPP
+#ifndef PEEJAY_JSON_HPP
+#define PEEJAY_JSON_HPP
 
 #include <cctype>
 #include <cmath>
-#include <concepts>
+#include <concepts>z
 #include <cstring>
 #include <memory>
 #include <optional>
@@ -111,25 +111,25 @@ struct characteristics {
   static constexpr std::size_t align = maxof_v<align_, Types...>;
 };
 
-/// JSON_FALLTHROUGH - Mark fallthrough cases in switch statements.
+/// PEEJAY_FALLTHROUGH - Mark fallthrough cases in switch statements.
 #if __cplusplus > 201402L && __has_cpp_attribute(fallthrough)
-#define JSON_FALLTHROUGH [[fallthrough]]
+#define PEEJAY_FALLTHROUGH [[fallthrough]]
 #elif __has_cpp_attribute(gnu::fallthrough)
-#define JSON_FALLTHROUGH [[gnu::fallthrough]]
+#define PEEJAY_FALLTHROUGH [[gnu::fallthrough]]
 #elif defined(_MSC_VER)
 // MSVC's __fallthrough annotations are checked by /analyze (Code Analysis):
 // https://msdn.microsoft.com/en-us/library/ms235402%28VS.80%29.aspx
 #include <sal.h>
-#define JSON_FALLTHROUGH __fallthrough
+#define PEEJAY_FALLTHROUGH __fallthrough
 #elif !__cplusplus
 // Workaround for llvm.org/PR23435, since clang 3.6 and below emit a spurious
 // error when __has_cpp_attribute is given a scoped attribute in C mode.
-#define JSON_FALLTHROUGH
+#define PEEJAY_FALLTHROUGH
 #elif __clang__ && __has_feature(cxx_attributes) && \
     __has_warning("-Wimplicit-fallthrough")
-#define JSON_FALLTHROUGH [[clang::fallthrough]]
+#define PEEJAY_FALLTHROUGH [[clang::fallthrough]]
 #else
-#define JSON_FALLTHROUGH
+#define PEEJAY_FALLTHROUGH
 #endif
 
 namespace json {
@@ -1271,7 +1271,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->set_error (parser, std::get<1> (escape_resl));
     } break;
 
-    case hex1_state: hex_ = 0; JSON_FALLTHROUGH;
+    case hex1_state: hex_ = 0; PEEJAY_FALLTHROUGH;
     case hex2_state:
     case hex3_state:
     case hex4_state: {
@@ -1354,7 +1354,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->end_array (parser);
       break;
     }
-    JSON_FALLTHROUGH;
+    PEEJAY_FALLTHROUGH;
   case object_state:
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
@@ -1445,7 +1445,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->end_object (parser);
       break;
     }
-    JSON_FALLTHROUGH;
+    PEEJAY_FALLTHROUGH;
   case key_state:
     // Match a property name then expect a colon.
     this->set_state (colon_state);
@@ -1582,7 +1582,7 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       if (crlf (parser, c)) {
         break;
       }
-      JSON_FALLTHROUGH;
+      PEEJAY_FALLTHROUGH;
     case body_state: return this->consume_body (parser, c);
     case comment_start_state: return this->consume_comment_start (parser, c);
 
@@ -1598,7 +1598,7 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       if (crlf (parser, c)) {
         break;
       }
-      JSON_FALLTHROUGH;
+      PEEJAY_FALLTHROUGH;
     case multi_line_comment_body_state:
       return this->multi_line_comment_body (parser, c);
     case single_line_comment_state:
@@ -2018,4 +2018,4 @@ auto parser<Callbacks>::eof () -> result_type {
 
 }  // namespace json
 
-#endif  // JSON_JSON_HPP
+#endif  // PEEJAY_JSON_HPP

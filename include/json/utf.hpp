@@ -13,8 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-#ifndef JSON_UTF_HPP
-#define JSON_UTF_HPP
+#ifndef PEEJAY_UTF_HPP
+#define PEEJAY_UTF_HPP
 
 #include <cassert>
 #include <cstdint>
@@ -222,4 +222,4 @@ ResultType utf16_to_utf8 (InputType const& src, Swapper swapper) {
 
 }  // namespace json
 
-#endif  // JSON_UTF_HPP
+#endif  // PEEJAY_UTF_HPP
