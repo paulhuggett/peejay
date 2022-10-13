@@ -265,10 +265,11 @@ public:
 
   explicit parser (Callbacks callbacks = Callbacks{},
                    extensions extensions = extensions::none);
-  parser (parser const &) = default;
-  parser (parser &&) = default;
-  parser &operator= (parser const &) = default;
-  parser &operator= (parser &&) = default;
+  parser (parser const &) = delete;
+  parser (parser &&) noexcept(std::is_nothrow_constructible_v<Callbacks>) = default;
+
+  parser &operator= (parser const &) = delete;
+  parser &operator= (parser &&) noexcept(std::is_nothrow_move_assignable_v<Callbacks>) = default;
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
@@ -389,7 +390,7 @@ private:
 
   void const *get_terminal_storage () const noexcept;
 
-  /// Preallocated storage for "singleton" matcher. These are the matchers, such
+  /// Preallocated storage for "singleton" matchers. These are the matchers, such
   /// as numbers of strings, which are "terminal" and can't have child objects.
   std::unique_ptr<details::singleton_storage<Callbacks>> singletons_{
       new details::singleton_storage<Callbacks>};
@@ -414,10 +415,9 @@ private:
 
 template <typename Callbacks>
 CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
-inline parser<std::remove_reference_t<Callbacks>> make_parser (
-    Callbacks &&callbacks, extensions const extensions = extensions::none) {
-  return parser<std::remove_reference_t<Callbacks>>{
-      std::forward<Callbacks> (callbacks), extensions};
+inline parser<std::remove_reference_t<Callbacks>>
+make_parser (Callbacks &&callbacks, extensions const extensions = extensions::none) {
+  return parser<std::remove_reference_t<Callbacks>>{std::forward<Callbacks> (callbacks), extensions};
 }
 
 namespace details {
