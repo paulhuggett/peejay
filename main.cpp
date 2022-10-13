@@ -68,32 +68,32 @@ template <typename IStream>
 int slurp (IStream& in) {
   int exit_code = EXIT_SUCCESS;
 
-        using ustreamsize = std::make_unsigned<std::streamsize>::type;
-        std::array<char, 256> buffer{{0}};
-        json::parser<json_writer> p{json_writer{std::cout}};
+  using ustreamsize = std::make_unsigned<std::streamsize>::type;
+  std::array<char, 256> buffer{{0}};
+  json::parser<json_writer> p{json_writer{std::cout}};
 
-        while ((in.rdstate () &
-                (std::ios_base::badbit | std::ios_base::failbit | std::ios_base::eofbit)) == 0) {
-            in.read (&buffer[0], buffer.size ());
-            p.input (std::span<char>{
-                &buffer[0], static_cast<ustreamsize> (
-                                std::max (in.gcount (), std::streamsize{0}))});
-        }
+  while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
+                           std::ios_base::eofbit)) == 0) {
+    in.read (buffer.data (), buffer.size ());
+    p.input (std::span<char>{buffer.data (),
+                             static_cast<ustreamsize> (
+                                 std::max (in.gcount (), std::streamsize{0}))});
+  }
 
-        p.eof ();
+  p.eof ();
 
-        auto err = p.last_error ();
-        if (err) {
-            std::cerr << "Error: " << p.last_error ().message () << '\n';
-            exit_code = EXIT_FAILURE;
-        }
+  auto err = p.last_error ();
+  if (err) {
+    std::cerr << "Error: " << p.last_error ().message () << '\n';
+    exit_code = EXIT_FAILURE;
+  }
 
   return exit_code;
 }
 
 }  // end anonymous namespace
 
-int main (int argc, const char* argv[]) {
+int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
     if (argc < 2) {
