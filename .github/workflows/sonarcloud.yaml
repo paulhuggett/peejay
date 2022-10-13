@@ -1,0 +1,78 @@
+name: SonarCloud
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  build:
+    name: Build
+    runs-on: macos-12
+    env:
+      SONAR_SCANNER_VERSION: 4.7.0.2747 # Find the latest version in the "MacOS" link on this page:
+                                        # https://docs.sonarcloud.io/advanced-setup/ci-based-analysis/sonarscanner-cli/
+      SONAR_SERVER_URL: "https://sonarcloud.io"
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+      SONAR_CACHE_DIR: build_cache_dir
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+          submodules: 'True'
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Install ninja
+        run: brew install ninja
+
+      - name: Cache SonarCloud packages and analysis
+        uses: actions/cache@v3
+        with:
+          key: ${{ runner.os }}-sonar
+          path: |
+            ~/.sonar/cache
+            ${{ env.SONAR_CACHE_DIR }}
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Download and set up sonar-scanner
+        env:
+          SONAR_SCANNER_DOWNLOAD_URL: https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-macosx.zip
+        run: |
+          mkdir -p "$HOME/.sonar"
+          curl -sSLo "$HOME/.sonar/sonar-scanner.zip" "${{ env.SONAR_SCANNER_DOWNLOAD_URL }}"
+          unzip -o "$HOME/.sonar/sonar-scanner.zip" -d "$HOME/.sonar/"
+          echo "$HOME/.sonar/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-macosx/bin" >> "$GITHUB_PATH"
+
+      - name: Download and set up build-wrapper
+        env:
+          BUILD_WRAPPER_DOWNLOAD_URL: ${{ env.SONAR_SERVER_URL }}/static/cpp/build-wrapper-macosx-x86.zip
+        run: |
+          curl -sSLo "$HOME/.sonar/build-wrapper-macosx-x86.zip" "${{ env.BUILD_WRAPPER_DOWNLOAD_URL }}"
+          unzip -o "$HOME/.sonar/build-wrapper-macosx-x86.zip" -d "$HOME/.sonar/"
+          echo "$HOME/.sonar/build-wrapper-macosx-x86" >> "$GITHUB_PATH"
+
+      - name: Run build-wrapper
+        run: |
+          mkdir build
+          cmake -G Ninja -S . -B build
+          build-wrapper-macosx-x86 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
+
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner -X \
+                        --define sonar.host.url="${{ env.SONAR_SERVER_URL }}"                          \
+                        --define sonar.cfamily.cache.enabled=true                                      \
+                        --define sonar.cfamily.cache.path="${{ env.SONAR_CACHE_DIR }}"                 \
+                        --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+                        --define sonar.projectVersion="$(git rev-parse HEAD)"                          \
+                        --define sonar.projectKey=paulhuggett_peejay                                   \
+                        --define sonar.organization=paulhuggett-github                                 \
+                        --define sonar.sourceEncoding=UTF-8                                            \
+                        --define sonar.exclusions='build/**/*','docs/**/*'
