@@ -47,6 +47,13 @@ jobs:
             options: '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-latest
 
+          - name: Ubuntu-latest/clang-12/Release/C++17
+            build_type: Release
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            generator: Unix Makefiles
+            options: -DCXX17=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
+            os: ubuntu-latest
+
           # Windows builds
           # ~~~~~~~~~~~~~~
           - name: Windows-latest/VS2022/Debug

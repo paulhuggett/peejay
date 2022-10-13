@@ -134,6 +134,7 @@ struct characteristics {
 
 namespace json {
 
+#if __cplusplus >= 202002L
 template <typename T>
 concept notifications = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
@@ -170,12 +171,16 @@ concept notifications = requires (T &&v) {
   /// always follow an earlier call to begin_object().
   { v.end_object () } -> std::convertible_to<std::error_code>;
 };
+#define CXX20REQUIRES(x) requires x
+#else
+#define CXX20REQUIRES(x)
+#endif  // __cplusplus >= 202002L
 
 /// \brief JSON parser implementation details.
 namespace details {
 
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 class matcher;
 
 template <typename Callbacks>
@@ -249,7 +254,7 @@ constexpr extensions operator| (extensions a, extensions b) noexcept {
 //-MARK:parser
 /// \tparam Callbacks A type meeting the notifications<> requirements.
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 class parser {
   friend class details::matcher<Callbacks>;
   friend class details::root_matcher<Callbacks>;
@@ -273,10 +278,11 @@ public:
 
   /// \param src The data to be parsed.
   parser &input (std::string const &src) {
-    return this->input (std::span<char const>{src.data (), src.length ()});
+    return this->input (std::begin (src), std::end (src));
   }
 
-  /// \param src The data to be parsed.
+#if __cplusplus >= 202002L
+  /// \param src The null-terminated string to be parsed.
   parser &input (char const *src) {
     assert (src != nullptr);
     return this->input (std::span<char const>{src, std::strlen (src)});
@@ -291,12 +297,18 @@ public:
   parser &input (std::span<char const, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
-
+#else
+  /// \param src The null-terminated string to be parsed.
+  parser &input (char const *src) {
+    assert (src != nullptr);
+    return this->input (src, src + std::strlen (src));
+  }
+#endif  // __cplusplus >= 202002L
   /// \param first The element in the half-open range of UTF-8 code-units to be parsed.
   /// \param last The end of the range of UTF-8 code-units to be parsed.
   template <typename InputIterator>
-  requires std::input_iterator<InputIterator> parser &input (
-      InputIterator first, InputIterator last);
+  CXX20REQUIRES (std::input_iterator<InputIterator>)
+  parser &input (InputIterator first, InputIterator last);
 
   ///@}
 
@@ -401,7 +413,7 @@ private:
 };
 
 template <typename Callbacks>
-requires notifications<std::remove_reference_t<Callbacks>>
+CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
 inline parser<std::remove_reference_t<Callbacks>> make_parser (
     Callbacks &&callbacks, extensions const extensions = extensions::none) {
   return parser<std::remove_reference_t<Callbacks>>{
@@ -428,7 +440,7 @@ constexpr bool isspace (char const c) noexcept {
 /// the various productions of the JSON grammar.
 //-MARK:matcher
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 class matcher {
 public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
@@ -512,9 +524,9 @@ private:
 /// \tparam Callbacks  The parser callback structure.
 //-MARK:token matcher
 template <typename Callbacks, typename DoneFunction>
-requires notifications<Callbacks> && std::invocable < DoneFunction,
-    parser<Callbacks>
-& > class token_matcher : public matcher<Callbacks> {
+CXX20REQUIRES ((notifications<Callbacks> &&
+                std::invocable<DoneFunction, parser<Callbacks> &>))
+class token_matcher : public matcher<Callbacks> {
 public:
   /// \param text  The string to be matched.
   /// \param done  The function called when the source string is matched.
@@ -541,11 +553,11 @@ private:
 };
 
 template <typename Callbacks, typename DoneFunction>
-requires notifications<Callbacks> && std::invocable < DoneFunction,
-    parser<Callbacks>
-& > std::pair<typename matcher<Callbacks>::pointer, bool>
-    token_matcher<Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
-                                                     std::optional<char> ch) {
+CXX20REQUIRES ((notifications<Callbacks> &&
+                std::invocable<DoneFunction, parser<Callbacks> &>))
+std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
+    Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
+                                       std::optional<char> ch) {
   bool match = true;
   switch (this->get_state ()) {
   case start_state:
@@ -1875,8 +1887,8 @@ struct default_return<void> {
 // (ctor)
 // ~~~~~~
 template <typename Callbacks>
-requires notifications<Callbacks> parser<Callbacks>::parser (
-    Callbacks callbacks, extensions const extensions)
+CXX20REQUIRES (notifications<Callbacks>)
+parser<Callbacks>::parser (Callbacks callbacks, extensions const extensions)
     : extensions_{extensions}, callbacks_{std::move (callbacks)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
@@ -1895,7 +1907,7 @@ requires notifications<Callbacks> parser<Callbacks>::parser (
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
   using root_matcher = details::root_matcher<Callbacks>;
   return pointer (new (&singletons_->root) root_matcher (object_key),
@@ -1905,7 +1917,7 @@ auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Callbacks>;
   return this->make_terminal_matcher<whitespace_matcher> ();
@@ -1914,7 +1926,7 @@ auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
 // get terminal storage
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 void const *parser<Callbacks>::get_terminal_storage () const noexcept {
   return &singletons_->terminal;
 }
@@ -1922,7 +1934,7 @@ void const *parser<Callbacks>::get_terminal_storage () const noexcept {
 // make terminal matcher
 // ~~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 template <typename Matcher, typename... Args>
 auto parser<Callbacks>::make_terminal_matcher (Args &&...args) -> pointer {
   static_assert (sizeof (Matcher) <= sizeof (decltype (singletons_->terminal)),
@@ -1939,9 +1951,9 @@ auto parser<Callbacks>::make_terminal_matcher (Args &&...args) -> pointer {
 // input
 // ~~~~~
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 template <typename InputIterator>
-requires std::input_iterator<InputIterator>
+CXX20REQUIRES (std::input_iterator<InputIterator>)
 auto parser<Callbacks>::input (InputIterator first, InputIterator last)
     -> parser & {
   static_assert (
@@ -1991,7 +2003,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
 // eof
 // ~~~
 template <typename Callbacks>
-requires notifications<Callbacks>
+CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::eof () -> result_type {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();

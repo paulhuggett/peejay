@@ -22,8 +22,7 @@ namespace json {
 
 bool is_valid (std::string const& str) {
   json::parser<json::null_output> p;
-  p.input (std::span<char const>{str.data (), str.length ()});
-  p.eof ();
+  p.input (str).eof ();
   return !p.has_error ();
 }
 

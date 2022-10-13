@@ -19,6 +19,9 @@ project (json C CXX)
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
+option (WERROR "Compiler warnings are errors")
+option (CXX17 "Use C++17 (rather than the default C++20")
+
 function (setup_target target)
   set (clang_options
     -Weverything
@@ -45,15 +48,14 @@ function (setup_target target)
     list (APPEND gcc_options -Werror)
     list (APPEND msvc_options /WX)
   endif ()
-  if (INTEL_DIALECT)
-    list (APPEND clang_options -masm=intel)
-    list (APPEND gcc_options -masm=intel)
-  endif ()
 
-  set_target_properties (${target} PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED Yes
-  )
+  if (CXX17)
+      set_property (TARGET ${target} PROPERTY CXX_STANDARD 17)
+  else()
+      set_property (TARGET ${target} PROPERTY CXX_STANDARD 20)
+  endif()
+  set_property (TARGET ${target} PROPERTY CXX_STANDARD_REQUIRED Yes)
+
   target_compile_options (${target} PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>

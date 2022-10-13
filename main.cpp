@@ -77,7 +77,11 @@ std::error_code slurp (IStream&& in) {
     in.read (data, buffer.size ());
     auto const available =
         static_cast<ustreamsize> (std::max (in.gcount (), std::streamsize{0}));
+#if __cplusplus >= 202002L
     p.input (std::span<char>{data, available});
+#else
+    p.input (data, data + available);
+#endif
     if (auto const err = p.last_error ()) {
       return err;
     }
