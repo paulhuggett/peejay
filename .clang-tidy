@@ -1,7 +1,7 @@
 ---
 Checks:            |-
   *,
-  -altera-struct-pack-align,
+  -altera-*,
   -fuchsia-*,
   -llvmlibc-*,
   -modernize-use-trailing-return-type,
