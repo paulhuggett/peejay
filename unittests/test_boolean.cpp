@@ -13,12 +13,17 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-#include <gtest/gtest.h>
-
-#include "callbacks.hpp"
 #include "json/json.hpp"
 
+// Standard library
+#include <string>
+// 3rd party
+#include <gtest/gtest.h>
+// Local
+#include "callbacks.hpp"
+
 using testing::StrictMock;
+using namespace std::string_literals;
 
 namespace {
 
@@ -34,7 +39,7 @@ TEST_F (JsonBoolean, True) {
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
 
   json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
-  p.input ("true").eof ();
+  p.input ("true"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -42,6 +47,6 @@ TEST_F (JsonBoolean, False) {
   EXPECT_CALL (callbacks_, boolean_value (false)).Times (1);
 
   json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
-  p.input (" false ").eof ();
+  p.input (" false "s).eof ();
   EXPECT_FALSE (p.has_error ());
 }

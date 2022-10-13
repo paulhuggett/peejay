@@ -142,25 +142,25 @@ TEST_F (JsonArray, TwoElements) {
 TEST_F (JsonArray, MisplacedComma) {
   {
     json::parser<json_out_callbacks> p;
-    p.input ("[,").eof ();
+    p.input ("[,"s).eof ();
     EXPECT_EQ (p.last_error (),
                make_error_code (json::error_code::expected_token));
   }
   {
     json::parser<json_out_callbacks> p;
-    p.input ("[,1").eof ();
+    p.input ("[,1"s).eof ();
     EXPECT_EQ (p.last_error (),
                make_error_code (json::error_code::expected_token));
   }
   {
     json::parser<json_out_callbacks> p;
-    p.input ("[1,,2]").eof ();
+    p.input ("[1,,2]"s).eof ();
     EXPECT_EQ (p.last_error (),
                make_error_code (json::error_code::expected_token));
   }
   {
     json::parser<json_out_callbacks> p;
-    p.input ("[1 true]").eof ();
+    p.input ("[1 true]"s).eof ();
     EXPECT_EQ (p.last_error (),
                make_error_code (json::error_code::expected_array_member));
   }

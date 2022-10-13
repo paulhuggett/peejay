@@ -18,12 +18,16 @@
 
 #include <cctype>
 #include <cmath>
+#if __cplusplus >= 202002L
 #include <concepts>
+#endif
 #include <cstring>
 #include <memory>
 #include <optional>
 #include <ostream>
+#if __cplusplus >= 202002L
 #include <span>
+#endif
 #include <stack>
 #include <string>
 #include <tuple>
@@ -281,28 +285,19 @@ public:
   parser &input (std::string const &src) {
     return this->input (std::begin (src), std::end (src));
   }
-
-#if __cplusplus >= 202002L
-  /// \param src The null-terminated string to be parsed.
-  parser &input (char const *src) {
-    assert (src != nullptr);
-    return this->input (std::span<char const>{src, std::strlen (src)});
+  parser &input (std::string_view const &src) {
+    return this->input (std::begin (src), std::end (src));
   }
-
+#if __cplusplus >= 202002L
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
   parser &input (std::span<char, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
+  /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
   parser &input (std::span<char const, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
-  }
-#else
-  /// \param src The null-terminated string to be parsed.
-  parser &input (char const *src) {
-    assert (src != nullptr);
-    return this->input (src, src + std::strlen (src));
   }
 #endif  // __cplusplus >= 202002L
   /// \param first The element in the half-open range of UTF-8 code-units to be parsed.
@@ -310,7 +305,6 @@ public:
   template <typename InputIterator>
   CXX20REQUIRES (std::input_iterator<InputIterator>)
   parser &input (InputIterator first, InputIterator last);
-
   ///@}
 
   /// Informs the parser that the complete input stream has been passed by calls
@@ -1220,10 +1214,8 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
     char32_t const cp = std::get<0> (s);
     state const next_state = std::get<1> (s);
     assert (next_state == normal_char_state || next_state == hex1_state);
-    if (next_state == normal_char_state) {
-      if (!app.append32 (cp)) {
-        return nothing<state> ();
-      }
+    if (next_state == normal_char_state && !app.append32 (cp)) {
+      return nothing<state> ();
     }
     return just (next_state);
   };
