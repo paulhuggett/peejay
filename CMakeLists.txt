@@ -22,6 +22,12 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 option (WERROR "Compiler warnings are errors")
 option (CXX17 "Use C++17 (rather than the default C++20")
 
+if (CXX17)
+  set (STANDARD 17)
+else ()
+  set (STANDARD 20)
+endif ()
+
 function (setup_target target)
   set (clang_options
     -Weverything
@@ -49,12 +55,10 @@ function (setup_target target)
     list (APPEND msvc_options /WX)
   endif ()
 
-  if (CXX17)
-      set_property (TARGET ${target} PROPERTY CXX_STANDARD 17)
-  else()
-      set_property (TARGET ${target} PROPERTY CXX_STANDARD 20)
-  endif()
-  set_property (TARGET ${target} PROPERTY CXX_STANDARD_REQUIRED Yes)
+  set_target_properties (${target} PROPERTIES
+    CXX_STANDARD ${STANDARD}
+    CXX_STANDARD_REQUIRED Yes
+  )
 
   target_compile_options (${target} PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
@@ -70,11 +74,10 @@ endfunction (setup_target)
 # library" on Windows.
 set (gtest_force_shared_crt ON CACHE BOOL "Always use msvcrt.dll")
 add_subdirectory (googletest)
-set_target_properties (gtest gmock gmock_main gtest_main PROPERTIES
-  CXX_STANDARD 20
-  CXX_STANDARD_REQUIRED Yes
+set_target_properties (gtest gmock gmock_main gtest_main
+  PROPERTIES CXX_STANDARD ${STANDARD}
+             CXX_STANDARD_REQUIRED Yes
 )
-
 add_library (json-parser STATIC
     include/json/dom_types.hpp
     include/json/json.hpp
