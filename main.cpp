@@ -57,7 +57,7 @@ public:
 
 private:
   template <typename T>
-  inline std::error_code write (T const& t) {
+  std::error_code write (T t) {
     os_ << t;
     return {};
   }
@@ -65,30 +65,26 @@ private:
 };
 
 template <typename IStream>
-int slurp (IStream& in) {
-  int exit_code = EXIT_SUCCESS;
+std::error_code slurp (IStream&& in) {
+  auto p = json::make_parser (json_writer{std::cout});
 
-  using ustreamsize = std::make_unsigned<std::streamsize>::type;
+  using ustreamsize = std::make_unsigned_t<std::streamsize>;
   std::array<char, 256> buffer{{0}};
-  json::parser<json_writer> p{json_writer{std::cout}};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
-    in.read (buffer.data (), buffer.size ());
-    p.input (std::span<char>{buffer.data (),
-                             static_cast<ustreamsize> (
-                                 std::max (in.gcount (), std::streamsize{0}))});
+    auto* const data = buffer.data ();
+    in.read (data, buffer.size ());
+    auto const available =
+        static_cast<ustreamsize> (std::max (in.gcount (), std::streamsize{0}));
+    p.input (std::span<char>{data, available});
+    if (auto const err = p.last_error ()) {
+      return err;
+    }
   }
 
   p.eof ();
-
-  auto err = p.last_error ();
-  if (err) {
-    std::cerr << "Error: " << p.last_error ().message () << '\n';
-    exit_code = EXIT_FAILURE;
-  }
-
-  return exit_code;
+  return p.last_error ();
 }
 
 }  // end anonymous namespace
@@ -96,11 +92,11 @@ int slurp (IStream& in) {
 int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
-    if (argc < 2) {
-      exit_code = slurp (std::cin);
-    } else {
-      std::ifstream input (argv[1]);
-      exit_code = slurp (input);
+    auto const err =
+        argc < 2 ? slurp (std::cin) : slurp (std::ifstream{argv[1]});
+    if (err) {
+      std::cerr << "Error: " << err.message () << '\n';
+      exit_code = EXIT_FAILURE;
     }
   } catch (std::exception const& ex) {
     std::cerr << "Error: " << ex.what () << '\n';
