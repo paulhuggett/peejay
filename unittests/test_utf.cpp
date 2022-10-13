@@ -25,9 +25,9 @@
 #include <gmock/gmock.h>
 
 TEST (CuToUtf8, All) {
-  using namespace json;
+  using namespace peejay;
 
-  EXPECT_EQ (code_point_to_utf8<json::utf8_string> (0x0001),
+  EXPECT_EQ (code_point_to_utf8<peejay::utf8_string> (0x0001),
              utf8_string ({0x01}));
   EXPECT_EQ (code_point_to_utf8<utf8_string> (0x0024), utf8_string ({0x24}));
   EXPECT_EQ (code_point_to_utf8<utf8_string> (0x00A2),
@@ -65,7 +65,7 @@ TEST (CuToUtf8, All) {
 }
 
 TEST (Utf16ToUtf8, All) {
-  using namespace json;
+  using namespace peejay;
 
   EXPECT_EQ (utf16_to_code_point (utf16_string ({char16_t{'a'}}), nop_swapper),
              97U /*'a'*/);
@@ -93,7 +93,7 @@ protected:
   using cpstring = std::basic_string<char32_t>;
   using bytes = std::vector<std::uint8_t>;
 
-  cpstring decode (json::utf8_decoder &decoder, char const *src) {
+  cpstring decode (peejay::utf8_decoder &decoder, char const *src) {
     cpstring result;
     for (; *src != '\0'; ++src) {
       if (std::optional<char32_t> const code_point =
@@ -106,7 +106,7 @@ protected:
 
   cpstring decode (bytes &&input, bool good) {
     input.push_back (0x00);  // add terminating NUL
-    json::utf8_decoder decoder;
+    peejay::utf8_decoder decoder;
     cpstring result =
         decode (decoder, reinterpret_cast<char const *> (input.data ()));
     EXPECT_EQ (decoder.is_well_formed (), good);

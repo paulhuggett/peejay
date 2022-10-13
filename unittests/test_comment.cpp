@@ -29,7 +29,7 @@ protected:
 }  // end anonymous namespace
 
 TEST_F (Comment, BashDisabled) {
-  json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
+  peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
   p.input ("# comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
 }
@@ -37,8 +37,8 @@ TEST_F (Comment, BashDisabled) {
 TEST_F (Comment, BashSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::bash_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::bash_comments);
   p.input ("# comment\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -47,8 +47,8 @@ TEST_F (Comment, BashSingleLeading) {
 TEST_F (Comment, BashMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::bash_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::bash_comments);
   p.input ("# comment\n\n    # remark\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -57,8 +57,8 @@ TEST_F (Comment, BashMultipleLeading) {
 TEST_F (Comment, BashTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::bash_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::bash_comments);
   p.input ("null # comment"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -70,8 +70,8 @@ TEST_F (Comment, BashInsideArray) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::bash_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::bash_comments);
   p.input (R"([#comment
 1,     # comment containing #
 2 # comment
@@ -83,18 +83,18 @@ TEST_F (Comment, BashInsideArray) {
 }
 
 TEST_F (Comment, SingleLineDisabled) {
-  json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
+  peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (),
-             make_error_code (json::error_code::expected_token));
+             make_error_code (peejay::error_code::expected_token));
 }
 
 TEST_F (Comment, SingleLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::single_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::single_line_comments);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -103,8 +103,8 @@ TEST_F (Comment, SingleLineSingleLeading) {
 TEST_F (Comment, SingleLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::single_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::single_line_comments);
   p.input ("// comment\n\n    // remark\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -113,8 +113,8 @@ TEST_F (Comment, SingleLineMultipleLeading) {
 TEST_F (Comment, SingleLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::single_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::single_line_comments);
   p.input ("null // comment"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -126,8 +126,8 @@ TEST_F (Comment, SingleLineInsideArray) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::single_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::single_line_comments);
   p.input (R"([//comment
 1,    // comment containing //
 2 // comment
@@ -144,8 +144,8 @@ TEST_F (Comment, SingleLineRowCounting) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::single_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::single_line_comments);
   p.input (R"([ //comment
 1, // comment
 2 // comment
@@ -155,22 +155,22 @@ TEST_F (Comment, SingleLineRowCounting) {
       .eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.coordinate (), (json::coord{1, 6}));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{1, 6}));
 }
 
 TEST_F (Comment, MultiLineDisabled) {
-  json::parser<decltype (proxy_)> p = json::make_parser (proxy_);
+  peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (),
-             make_error_code (json::error_code::expected_token));
+             make_error_code (peejay::error_code::expected_token));
 }
 
 TEST_F (Comment, MultiLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::multi_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::multi_line_comments);
   p.input ("/* comment */\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -179,8 +179,8 @@ TEST_F (Comment, MultiLineSingleLeading) {
 TEST_F (Comment, MultiLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::multi_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::multi_line_comments);
   p.input ("/* comment\ncomment */\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -189,8 +189,8 @@ TEST_F (Comment, MultiLineMultipleLeading) {
 TEST_F (Comment, MultiLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::multi_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::multi_line_comments);
   p.input ("null\n/* comment */\n"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -202,8 +202,8 @@ TEST_F (Comment, MultiLineInsideArray) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::multi_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::multi_line_comments);
   p.input (R"([ /* comment */
 1,    /* comment containing / * */
 2 /* comment */
@@ -220,8 +220,8 @@ TEST_F (Comment, MultiLineRowCounting) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::multi_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::multi_line_comments);
   p.input (R"([ /*comment */
 1, /* comment
 comment
@@ -234,7 +234,7 @@ comment */
       .eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.coordinate (), (json::coord{1, 9}));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{1, 9}));
 }
 
 // A missing multi-line comment close is currently ignored. It could reasonably
@@ -243,10 +243,10 @@ TEST_F (Comment, MultiLineUnclosed) {
   using testing::_;
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  json::parser<decltype (proxy_)> p =
-      json::make_parser (proxy_, json::extensions::multi_line_comments);
+  peejay::parser<decltype (proxy_)> p =
+      peejay::make_parser (proxy_, peejay::extensions::multi_line_comments);
   p.input ("null /*comment"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.coordinate (), (json::coord{15, 1}));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{15, 1}));
 }

@@ -18,14 +18,14 @@
 // ******************
 // * error category *
 // ******************
-json::error_category::error_category () noexcept = default;
+peejay::error_category::error_category () noexcept = default;
 
-char const* json::error_category::name () const noexcept {
-  return "json parser category";
+char const* peejay::error_category::name () const noexcept {
+  return "peejay json parser category";
 }
 
-std::string json::error_category::message (int const error) const {
-  auto* result = "unknown json::error_category error";
+std::string peejay::error_category::message (int const error) const {
+  auto* result = "unknown peejay::error_category error";
   switch (static_cast<error_code> (error)) {
   case error_code::none: result = "none"; break;
   case error_code::bad_unicode_code_point:
@@ -60,7 +60,7 @@ std::string json::error_category::message (int const error) const {
   return result;
 }
 
-std::error_category const& json::get_error_category () noexcept {
-  static json::error_category const cat;
+std::error_category const& peejay::get_error_category () noexcept {
+  static peejay::error_category const cat;
   return cat;
 }

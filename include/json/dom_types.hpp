@@ -21,7 +21,7 @@
 #include <string_view>
 #include <system_error>
 
-namespace json {
+namespace peejay {
 
 class null_output {
 public:
@@ -45,6 +45,6 @@ public:
   std::error_code end_object () const noexcept { return {}; }
 };
 
-}  // end namespace json
+}  // end namespace peejay
 
 #endif  // PEEJAY_DOM_TYPES_HPP

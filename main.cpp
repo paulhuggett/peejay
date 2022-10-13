@@ -66,7 +66,7 @@ private:
 
 template <typename IStream>
 std::error_code slurp (IStream&& in) {
-  auto p = json::make_parser (json_writer{std::cout});
+  auto p = peejay::make_parser (json_writer{std::cout});
 
   using ustreamsize = std::make_unsigned_t<std::streamsize>;
   std::array<char, 256> buffer{{0}};

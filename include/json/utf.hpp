@@ -26,7 +26,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace json {
+namespace peejay {
 
 using utf8_string = std::basic_string<std::uint8_t>;
 using utf16_string = std::basic_string<char16_t>;
@@ -220,6 +220,6 @@ ResultType utf16_to_utf8 (InputType const& src, Swapper swapper) {
   return utf16_to_utf8<ResultType> (std::begin (src), std::end (src), swapper);
 }
 
-}  // namespace json
+}  // namespace peejay
 
 #endif  // PEEJAY_UTF_HPP

@@ -37,11 +37,11 @@ TEST_F (JsonObject, Empty) {
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
-  auto p = json::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input ("{\r\n}\n"s);
   p.eof ();
   EXPECT_FALSE (p.has_error ());
-  EXPECT_EQ (p.coordinate (), (json::coord{1U, 3U}));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{1U, 3U}));
 }
 
 TEST_F (JsonObject, SingleKvp) {
@@ -53,11 +53,11 @@ TEST_F (JsonObject, SingleKvp) {
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
 
-  auto p = json::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input (std::string{"{\n\"a\" : 1\n}"});
   p.eof ();
   EXPECT_FALSE (p.has_error ());
-  EXPECT_EQ (p.coordinate (), (json::coord{2U, 3U}));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{2U, 3U}));
 }
 
 TEST_F (JsonObject, SingleKvpBadEndObject) {
@@ -71,13 +71,13 @@ TEST_F (JsonObject, SingleKvpBadEndObject) {
   EXPECT_CALL (callbacks_, uint64_value (_));
   EXPECT_CALL (callbacks_, end_object ()).WillOnce (Return (end_object_error));
 
-  auto p = json::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input (std::string{"{\n\"a\" : 1\n}"});
   p.eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), end_object_error)
       << "Expected the error to be propagated from the end_object() callback";
-  EXPECT_EQ (p.coordinate (), (json::coord{1U, 3U}));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{1U, 3U}));
 }
 
 TEST_F (JsonObject, TwoKvps) {
@@ -90,7 +90,7 @@ TEST_F (JsonObject, TwoKvps) {
     EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
-  auto p = json::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input (std::string{"{\"a\":1, \"b\" : true }"});
   p.eof ();
   EXPECT_FALSE (p.has_error ());
@@ -106,7 +106,7 @@ TEST_F (JsonObject, DuplicateKeys) {
     EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
-  auto p = json::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input (std::string{"{\"a\":1, \"a\" : true }"});
   p.eof ();
   EXPECT_FALSE (p.has_error ());
@@ -124,7 +124,7 @@ TEST_F (JsonObject, ArrayValue) {
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
 
-  auto p = json::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input (std::string{"{\"a\": [1,2]}"});
   p.eof ();
   EXPECT_FALSE (p.has_error ());
@@ -133,25 +133,25 @@ TEST_F (JsonObject, ArrayValue) {
 TEST_F (JsonObject, MisplacedComma) {
   {
     // An object with a trailing comma but with the extension disabled.
-    json::parser<json::null_output> p1;
+    peejay::parser<peejay::null_output> p1;
     p1.input (R"({"a":1,})"s).eof ();
     EXPECT_EQ (p1.last_error (),
-               make_error_code (json::error_code::expected_token));
-    EXPECT_EQ (p1.coordinate (), (json::coord{8U, 1U}));
+               make_error_code (peejay::error_code::expected_token));
+    EXPECT_EQ (p1.coordinate (), (peejay::coord{8U, 1U}));
   }
   {
-    json::parser<json::null_output> p2;
+    peejay::parser<peejay::null_output> p2;
     p2.input (R"({"a":1 "b":1})"s).eof ();
     EXPECT_EQ (p2.last_error (),
-               make_error_code (json::error_code::expected_object_member));
-    EXPECT_EQ (p2.coordinate (), (json::coord{8U, 1U}));
+               make_error_code (peejay::error_code::expected_object_member));
+    EXPECT_EQ (p2.coordinate (), (peejay::coord{8U, 1U}));
   }
   {
-    json::parser<json::null_output> p3;
+    peejay::parser<peejay::null_output> p3;
     p3.input (R"({"a":1,,"b":1})"s).eof ();
     EXPECT_EQ (p3.last_error (),
-               make_error_code (json::error_code::expected_token));
-    EXPECT_EQ (p3.coordinate (), (json::coord{8U, 1U}));
+               make_error_code (peejay::error_code::expected_token));
+    EXPECT_EQ (p3.coordinate (), (peejay::coord{8U, 1U}));
   }
 }
 
@@ -168,28 +168,29 @@ TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
 
   // An object with a trailing comma but with the extension _enabled_. Note that
   // there is deliberate whitespace around the final comma.
-  auto p = json::make_parser (proxy_, json::extensions::object_trailing_comma);
+  auto p =
+      peejay::make_parser (proxy_, peejay::extensions::object_trailing_comma);
   p.input (R"({ "a":16, "b":"c" , })"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (JsonObject, KeyIsNotString) {
-  json::parser<json::null_output> p;
+  peejay::parser<peejay::null_output> p;
   p.input ("{{}:{}}"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (json::error_code::expected_string));
-  EXPECT_EQ (p.coordinate (), (json::coord{2U, 1U}));
+             make_error_code (peejay::error_code::expected_string));
+  EXPECT_EQ (p.coordinate (), (peejay::coord{2U, 1U}));
 }
 
 TEST_F (JsonObject, BadNestedObject) {
-  json::parser<json::null_output> p;
+  peejay::parser<peejay::null_output> p;
   p.input (std::string{"{\"a\":nu}"}).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (json::error_code::unrecognized_token));
+             make_error_code (peejay::error_code::unrecognized_token));
 }
 
 TEST_F (JsonObject, TooDeeplyNested) {
-  json::parser<json::null_output> p;
+  peejay::parser<peejay::null_output> p;
 
   std::string input;
   for (auto ctr = 0U; ctr < 200U; ++ctr) {
@@ -197,5 +198,5 @@ TEST_F (JsonObject, TooDeeplyNested) {
   }
   p.input (input).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (json::error_code::nesting_too_deep));
+             make_error_code (peejay::error_code::nesting_too_deep));
 }

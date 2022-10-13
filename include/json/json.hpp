@@ -136,7 +136,7 @@ struct characteristics {
 #define PEEJAY_FALLTHROUGH
 #endif
 
-namespace json {
+namespace peejay {
 
 #if __cplusplus >= 202002L
 template <typename T>
@@ -270,10 +270,12 @@ public:
   explicit parser (Callbacks callbacks = Callbacks{},
                    extensions extensions = extensions::none);
   parser (parser const &) = delete;
-  parser (parser &&) noexcept(std::is_nothrow_constructible_v<Callbacks>) = default;
+  parser (parser &&) noexcept (std::is_nothrow_constructible_v<Callbacks>) =
+      default;
 
   parser &operator= (parser const &) = delete;
-  parser &operator= (parser &&) noexcept(std::is_nothrow_move_assignable_v<Callbacks>) = default;
+  parser &operator= (parser &&) noexcept (
+      std::is_nothrow_move_assignable_v<Callbacks>) = default;
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
@@ -327,8 +329,12 @@ public:
   }
 
   ///@{
-  constexpr Callbacks &callbacks () noexcept { return callbacks_; }
-  constexpr Callbacks const &callbacks () const noexcept { return callbacks_; }
+  constexpr Callbacks &callbacks () noexcept {
+    return callbacks_;
+  }
+  constexpr Callbacks const &callbacks () const noexcept {
+    return callbacks_;
+  }
   ///@}
 
   /// \param flag  A selection of bits from the parser_extensions enum.
@@ -339,7 +345,9 @@ public:
   }
 
   /// Returns the parser's position in the input text.
-  constexpr coord coordinate () const noexcept { return coordinate_; }
+  constexpr coord coordinate () const noexcept {
+    return coordinate_;
+  }
 
 private:
   using matcher = details::matcher<Callbacks>;
@@ -349,7 +357,9 @@ private:
   /// \brief Managing the column and row number (the "coordinate").
 
   /// Increments the column number.
-  void advance_column () noexcept { ++coordinate_.column; }
+  void advance_column () noexcept {
+    ++coordinate_.column;
+  }
 
   /// Increments the row number and resets the column.
   void advance_row () noexcept {
@@ -361,7 +371,9 @@ private:
   }
 
   /// Resets the column count but does not affect the row number.
-  void reset_column () noexcept { coordinate_.column = 0U; }
+  void reset_column () noexcept {
+    coordinate_.column = 0U;
+  }
   ///@}
 
   /// Records an error for this parse. The parse will stop as soon as a non-zero
@@ -384,8 +396,9 @@ private:
 
   void const *get_terminal_storage () const noexcept;
 
-  /// Preallocated storage for "singleton" matchers. These are the matchers, such
-  /// as numbers of strings, which are "terminal" and can't have child objects.
+  /// Preallocated storage for "singleton" matchers. These are the matchers,
+  /// such as numbers of strings, which are "terminal" and can't have child
+  /// objects.
   std::unique_ptr<details::singleton_storage<Callbacks>> singletons_{
       new details::singleton_storage<Callbacks>};
   /// The maximum depth to which we allow the parse stack to grow. This value
@@ -2008,6 +2021,6 @@ auto parser<Callbacks>::eof () -> result_type {
                       : this->callbacks ().result ();
 }
 
-}  // namespace json
+}  // namespace peejay
 
 #endif  // PEEJAY_JSON_HPP

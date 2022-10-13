@@ -30,7 +30,7 @@ int main () {
   klee_make_symbolic (input, sizeof input, "input");
   input[size - 1] = '\0';
 
-  json::parser p;
+  peejay::parser p;
   p.match_number (input);
 #endif
 }

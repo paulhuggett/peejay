@@ -40,9 +40,9 @@
 
 #include <cctype>
 
-char32_t const json::replacement_char_code_point = 0xFFFD;
+char32_t const peejay::replacement_char_code_point = 0xFFFD;
 
-std::uint8_t const json::utf8_decoder::utf8d_[] = {
+std::uint8_t const peejay::utf8_decoder::utf8d_[] = {
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  // 00..1f
@@ -84,9 +84,9 @@ std::uint8_t const json::utf8_decoder::utf8d_[] = {
     1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  // s7..s8
 };
 
-std::uint8_t json::utf8_decoder::decode (std::uint8_t* const state,
-                                         char32_t* const codep,
-                                         std::uint32_t const byte) {
+std::uint8_t peejay::utf8_decoder::decode (std::uint8_t* const state,
+                                           char32_t* const codep,
+                                           std::uint32_t const byte) {
   auto const type = utf8d_[byte];
   *codep = (*state != state::accept) ? (byte & 0x3F) | (*codep << 6)
                                      : (0xFF >> type) & byte;
@@ -94,7 +94,7 @@ std::uint8_t json::utf8_decoder::decode (std::uint8_t* const state,
   return *state;
 }
 
-std::optional<char32_t> json::utf8_decoder::get (
+std::optional<char32_t> peejay::utf8_decoder::get (
     std::uint8_t const byte) noexcept {
   if (decode (&state_, &codepoint_, byte) != 0U) {
     well_formed_ = false;

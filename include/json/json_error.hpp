@@ -19,7 +19,7 @@
 #include <string>
 #include <system_error>
 
-namespace json {
+namespace peejay {
 
 enum class error_code : int {
   none,
@@ -55,12 +55,12 @@ inline std::error_code make_error_code (error_code const e) noexcept {
   return {static_cast<int> (e), get_error_category ()};
 }
 
-}  // end namespace json
+}  // end namespace peejay
 
 namespace std {
 
 template <>
-struct is_error_code_enum<::json::error_code> : std::true_type {};
+struct is_error_code_enum<::peejay::error_code> : std::true_type {};
 
 }  // end namespace std
 

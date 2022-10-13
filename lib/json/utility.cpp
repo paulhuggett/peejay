@@ -18,12 +18,12 @@
 #include "json/dom_types.hpp"
 #include "json/json.hpp"
 
-namespace json {
+namespace peejay {
 
 bool is_valid (std::string const& str) {
-  json::parser<json::null_output> p;
+  parser<null_output> p;
   p.input (str).eof ();
   return !p.has_error ();
 }
 
-}  // end namespace json
+}  // end namespace peejay

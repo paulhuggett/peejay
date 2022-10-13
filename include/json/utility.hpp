@@ -18,10 +18,10 @@
 
 #include <string>
 
-namespace json {
+namespace peejay {
 
 bool is_valid (std::string const& str);
 
-}  // end namespace json
+}  // end namespace peejay
 
 #endif  // PEEJAY_UTILITY_HPP
