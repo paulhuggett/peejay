@@ -20,6 +20,7 @@ add_executable (json-tests
     test_array.cpp
     test_boolean.cpp
     test_comment.cpp
+    test_coord.cpp
     test_json.cpp
     test_object.cpp
     test_utf.cpp

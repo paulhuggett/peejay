@@ -222,23 +222,26 @@ private:
 
 }  // end namespace details
 
-struct coord {
-  constexpr coord (unsigned const x, unsigned const y) noexcept
-      : column{x}, row{y} {}
-  bool operator== (coord const &rhs) const noexcept {
-    return column == rhs.column && row == rhs.row;
-  }
-  bool operator!= (coord const &rhs) const noexcept {
-    return !operator== (rhs);
-  }
-
-  unsigned column;
-  unsigned row;
+struct row {
+  explicit constexpr operator unsigned () const noexcept { return x; }
+  unsigned x;
+};
+struct column {
+  explicit constexpr operator unsigned () const noexcept { return y; }
+  unsigned y;
 };
 
-inline std::ostream &operator<< (std::ostream &os, coord const &c) {
-  return os << '(' << c.row << ':' << c.column << ')';
-}
+struct coord {
+  constexpr coord () noexcept = default;
+  constexpr coord (column x, row y) noexcept : column{x}, row{y} {}
+  constexpr coord (row y, column x) noexcept : column{x}, row{y} {}
+
+  bool operator== (coord const &rhs) const noexcept = default;
+  bool operator!= (coord const &rhs) const noexcept = default;
+
+  unsigned column = 1U;
+  unsigned row = 1U;
+};
 
 enum class extensions : unsigned {
   none = 0U,
@@ -415,7 +418,7 @@ private:
   std::string string_;
 
   /// The column and row number of the parse within the input stream.
-  coord coordinate_{1U, 1U};
+  coord coordinate_;
   extensions const extensions_;
   Callbacks callbacks_;
 };
