@@ -236,9 +236,17 @@ struct coord {
   constexpr coord (column x, row y) noexcept : column{x}, row{y} {}
   constexpr coord (row y, column x) noexcept : column{x}, row{y} {}
 
+#if __cplusplus >= 202002L
   bool operator== (coord const &rhs) const noexcept = default;
   bool operator!= (coord const &rhs) const noexcept = default;
-
+#else
+  bool operator== (coord const &rhs) const noexcept {
+    return column == rhs.column && row == rhs.row;
+  }
+  bool operator!= (coord const &rhs) const noexcept {
+    return !operator== (rhs);
+  }
+#endif  // __cplusplus >= 202002L
   unsigned column = 1U;
   unsigned row = 1U;
 };
