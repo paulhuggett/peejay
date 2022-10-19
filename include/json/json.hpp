@@ -170,10 +170,9 @@ struct coord {
 
 #if __cplusplus >= 202002L
   // https://github.com/llvm/llvm-project/issues/55919
-  _Pragma ("GCC diagnostic push") _Pragma (
-      "GCC diagnostic ignored "
-      "\"-Wzero-as-null-pointer-constant\"") constexpr auto
-  operator<=> (coord const &) const noexcept = default;
+  _Pragma ("GCC diagnostic push")
+  _Pragma ("GCC diagnostic ignored \"-Wzero-as-null-pointer-constant\"")
+  constexpr auto operator<=> (coord const &) const noexcept = default;
   _Pragma ("GCC diagnostic pop")
 #else
   constexpr bool operator== (coord const &rhs) const noexcept {
@@ -1216,7 +1215,7 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
     state const next_state = std::get<1> (s);
     assert (next_state == normal_char_state || next_state == hex1_state);
     if (next_state == normal_char_state && !app.append32 (cp)) {
-      return {std::nullopt};
+      return std::optional<state>{std::nullopt};
     }
     return just (next_state);
   };
