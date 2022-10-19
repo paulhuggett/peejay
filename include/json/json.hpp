@@ -31,6 +31,7 @@
 #include <stack>
 #include <string>
 #include <tuple>
+#include <variant>
 
 #include "json/json_error.hpp"
 #include "json/utf.hpp"
@@ -58,83 +59,6 @@ inline auto operator>>= (std::optional<T> &&t, Function f)
   }
   return std::optional<typename decltype (f (*t))::value_type>{};
 }
-
-// max
-// ~~~
-template <size_t V, size_t... Others>
-struct max;
-template <size_t V>
-struct max<V> {
-  static constexpr size_t value = V;
-};
-template <size_t V1, size_t V2, size_t... Others>
-struct max<V1, V2, Others...> {
-  static constexpr size_t value =
-      V1 > V2 ? max<V1, Others...>::value : max<V2, Others...>::value;
-};
-
-template <size_t V1, size_t... Others>
-constexpr inline auto max_v = max<V1, Others...>::value;
-
-static_assert (max_v<1, 2, 5, 4, 3> == 5, "max<> result should be 5");
-static_assert (max_v<1> == 1, "max<> result should be 1");
-
-static_assert (max_v<sizeof (int), sizeof (long), sizeof (long long)> ==
-               sizeof (long long));
-static_assert (max_v<alignof (int), alignof (long), alignof (long long)> ==
-               alignof (long long));
-
-// maxof
-// ~~~~~
-template <typename TypeValue, typename... T>
-struct maxof;
-template <typename TypeValue>
-struct maxof<TypeValue> {
-  static constexpr auto value = std::size_t{0};
-};
-template <typename TypeValue, typename Head, typename... Tail>
-struct maxof<TypeValue, Head, Tail...> {
-  static constexpr auto value = std::max (TypeValue::template value<Head>,
-                                          maxof<TypeValue, Tail...>::value);
-};
-template <typename TypeValue, typename... Types>
-constexpr inline auto maxof_v = maxof<TypeValue, Types...>::value;
-
-template <typename... Types>
-struct characteristics {
-  struct size_ {
-    template <typename T>
-    static constexpr std::size_t value = sizeof (T);
-  };
-  struct align_ {
-    template <typename T>
-    static constexpr std::size_t value = alignof (T);
-  };
-
-  static constexpr std::size_t size = maxof_v<size_, Types...>;
-  static constexpr std::size_t align = maxof_v<align_, Types...>;
-};
-
-/// PEEJAY_FALLTHROUGH - Mark fallthrough cases in switch statements.
-#if __cplusplus > 201402L && __has_cpp_attribute(fallthrough)
-#define PEEJAY_FALLTHROUGH [[fallthrough]]
-#elif __has_cpp_attribute(gnu::fallthrough)
-#define PEEJAY_FALLTHROUGH [[gnu::fallthrough]]
-#elif defined(_MSC_VER)
-// MSVC's __fallthrough annotations are checked by /analyze (Code Analysis):
-// https://msdn.microsoft.com/en-us/library/ms235402%28VS.80%29.aspx
-#include <sal.h>
-#define PEEJAY_FALLTHROUGH __fallthrough
-#elif !__cplusplus
-// Workaround for llvm.org/PR23435, since clang 3.6 and below emit a spurious
-// error when __has_cpp_attribute is given a scoped attribute in C mode.
-#define PEEJAY_FALLTHROUGH
-#elif __clang__ && __has_feature(cxx_attributes) && \
-    __has_warning("-Wimplicit-fallthrough")
-#define PEEJAY_FALLTHROUGH [[clang::fallthrough]]
-#else
-#define PEEJAY_FALLTHROUGH
-#endif
 
 namespace peejay {
 
@@ -191,6 +115,18 @@ template <typename Callbacks>
 class root_matcher;
 template <typename Callbacks>
 class whitespace_matcher;
+template <typename Callbacks>
+class number_matcher;
+template <typename Callbacks>
+class string_matcher;
+template <typename Callbacks>
+class true_token_matcher;
+template <typename Callbacks>
+class false_token_matcher;
+template <typename Callbacks>
+class null_token_matcher;
+template <typename Callbacks>
+class whitespace_matcher;
 
 template <typename Callbacks>
 struct singleton_storage;
@@ -207,12 +143,6 @@ public:
   void operator() (T *const p) const noexcept {
     if (delete_) {
       delete p;
-    } else {
-      // this instance of T is in unowned memory: call the destructor but don't
-      // try to free the storage.
-      if (p) {
-        p->~T ();
-      }
     }
   }
 
@@ -233,22 +163,40 @@ struct column {
 
 struct coord {
   constexpr coord () noexcept = default;
-  constexpr coord (column x, row y) noexcept : column{x}, row{y} {}
-  constexpr coord (row y, column x) noexcept : column{x}, row{y} {}
+  constexpr coord (struct column x, struct row y) noexcept
+      : row{y}, column{x} {}
+  constexpr coord (struct row y, struct column x) noexcept
+      : row{y}, column{x} {}
 
 #if __cplusplus >= 202002L
-  bool operator== (coord const &rhs) const noexcept = default;
-  bool operator!= (coord const &rhs) const noexcept = default;
+  // https://github.com/llvm/llvm-project/issues/55919
+  _Pragma ("GCC diagnostic push") _Pragma (
+      "GCC diagnostic ignored "
+      "\"-Wzero-as-null-pointer-constant\"") constexpr auto
+  operator<=> (coord const &) const noexcept = default;
+  _Pragma ("GCC diagnostic pop")
 #else
-  bool operator== (coord const &rhs) const noexcept {
-    return column == rhs.column && row == rhs.row;
+  constexpr bool operator== (coord const &rhs) const noexcept {
+    return std::make_pair (row, column) == std::make_pair (rhs.row, rhs.column);
   }
-  bool operator!= (coord const &rhs) const noexcept {
+  constexpr bool operator!= (coord const &rhs) const noexcept {
     return !operator== (rhs);
   }
+  constexpr bool operator<(coord const &rhs) const noexcept {
+    return std::make_pair (row, column) < std::make_pair (rhs.row, rhs.column);
+  }
+  constexpr bool operator<= (coord const &rhs) const noexcept {
+    return std::make_pair (row, column) <= std::make_pair (rhs.row, rhs.column);
+  }
+  constexpr bool operator> (coord const &rhs) const noexcept {
+    return std::make_pair (row, column) > std::make_pair (rhs.row, rhs.column);
+  }
+  constexpr bool operator>= (coord const &rhs) const noexcept {
+    return std::make_pair (row, column) >= std::make_pair (rhs.row, rhs.column);
+  }
 #endif  // __cplusplus >= 202002L
+      unsigned row = 1U;
   unsigned column = 1U;
-  unsigned row = 1U;
 };
 
 enum class extensions : unsigned {
@@ -403,18 +351,17 @@ private:
   pointer make_whitespace_matcher ();
 
   template <typename Matcher, typename... Args>
+  CXX20REQUIRES ((std::derived_from<Matcher, matcher>))
   pointer make_terminal_matcher (Args &&...args);
 
-  void const *get_terminal_storage () const noexcept;
+  /// Preallocated storage for "terminal" matchers. These are the matchers,
+  /// such as numbers or strings which can't have child objects.
+  details::singleton_storage<Callbacks> singletons_;
 
-  /// Preallocated storage for "singleton" matchers. These are the matchers,
-  /// such as numbers of strings, which are "terminal" and can't have child
-  /// objects.
-  std::unique_ptr<details::singleton_storage<Callbacks>> singletons_{
-      new details::singleton_storage<Callbacks>};
   /// The maximum depth to which we allow the parse stack to grow. This value
   /// should be sufficient for any reasonable input: its intention is to prevent
-  /// bogus (attack) inputs from taking the parser down.
+  /// bogus (attack) inputs from causing the parser's memory consumption to grow
+  /// uncontrollably.
   static constexpr std::size_t max_stack_depth_ = 200;
   /// The parse stack.
   std::stack<pointer> stack_;
@@ -464,12 +411,8 @@ public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
 
   matcher (matcher const &) = delete;
-  matcher (matcher &&) noexcept = delete;
-
-  virtual ~matcher () = default;
-
+  virtual ~matcher () noexcept = default;
   matcher &operator= (matcher const &) = delete;
-  matcher &operator= (matcher &&) noexcept = delete;
 
   /// Called for each character as it is consumed from the input.
   ///
@@ -491,6 +434,9 @@ public:
 protected:
   explicit constexpr matcher (int const initial_state) noexcept
       : state_{initial_state} {}
+
+  matcher (matcher &&) noexcept = default;
+  matcher &operator= (matcher &&) noexcept = default;
 
   constexpr int get_state () const noexcept { return state_; }
   void set_state (int const s) noexcept { state_ = s; }
@@ -519,7 +465,6 @@ protected:
 
   template <typename Matcher, typename... Args>
   pointer make_terminal_matcher (parser<Callbacks> &parser, Args &&...args) {
-    assert (this != parser.get_terminal_storage ());
     return parser.template make_terminal_matcher<Matcher, Args...> (
         std::forward<Args> (args)...);
   }
@@ -550,6 +495,11 @@ public:
   /// \param done  The function called when the source string is matched.
   explicit token_matcher (char const *text, DoneFunction done) noexcept
       : matcher<Callbacks> (start_state), text_{text}, done_{done} {}
+  token_matcher (token_matcher const &) = delete;
+  token_matcher (token_matcher &&) noexcept = default;
+
+  token_matcher &operator= (token_matcher const &) = delete;
+  token_matcher &operator= (token_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Callbacks>::pointer, bool> consume (
       parser<Callbacks> &parser, std::optional<char> ch) override;
@@ -621,7 +571,12 @@ struct false_complete {
 };
 
 template <typename Callbacks>
-using false_token_matcher = token_matcher<Callbacks, false_complete<Callbacks>>;
+class false_token_matcher
+    : public token_matcher<Callbacks, false_complete<Callbacks>> {
+public:
+  false_token_matcher ()
+      : token_matcher<Callbacks, false_complete<Callbacks>> ("false", {}) {}
+};
 
 //*  _                  _       _             *
 //* | |_ _ _ _  _ ___  | |_ ___| |_____ _ _   *
@@ -638,7 +593,12 @@ struct true_complete {
 };
 
 template <typename Callbacks>
-using true_token_matcher = token_matcher<Callbacks, true_complete<Callbacks>>;
+class true_token_matcher
+    : public token_matcher<Callbacks, true_complete<Callbacks>> {
+public:
+  true_token_matcher ()
+      : token_matcher<Callbacks, true_complete<Callbacks>> ("true", {}) {}
+};
 
 //*           _ _   _       _             *
 //*  _ _ _  _| | | | |_ ___| |_____ _ _   *
@@ -655,7 +615,12 @@ struct null_complete {
 };
 
 template <typename Callbacks>
-using null_token_matcher = token_matcher<Callbacks, null_complete<Callbacks>>;
+class null_token_matcher
+    : public token_matcher<Callbacks, null_complete<Callbacks>> {
+public:
+  null_token_matcher ()
+      : token_matcher<Callbacks, null_complete<Callbacks>> ("null", {}) {}
+};
 
 //*                 _              *
 //*  _ _ _  _ _ __ | |__  ___ _ _  *
@@ -678,6 +643,11 @@ template <typename Callbacks>
 class number_matcher final : public matcher<Callbacks> {
 public:
   number_matcher () noexcept : matcher<Callbacks> (leading_minus_state) {}
+  number_matcher (number_matcher const &) = delete;
+  number_matcher (number_matcher &&) noexcept = default;
+
+  number_matcher &operator= (number_matcher const &) = delete;
+  number_matcher &operator= (number_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Callbacks>::pointer, bool> consume (
       parser<Callbacks> &parser, std::optional<char> ch) override;
@@ -1024,10 +994,17 @@ template <typename Callbacks>
 class string_matcher final : public matcher<Callbacks> {
 public:
   explicit string_matcher (std::string *const str, bool object_key) noexcept
-      : matcher<Callbacks> (start_state), object_key_{object_key}, app_{str} {
+      : matcher<Callbacks> (start_state),
+        is_object_key_{object_key},
+        app_{str} {
     assert (str != nullptr);
     str->clear ();
   }
+  string_matcher (string_matcher const &) = delete;
+  string_matcher (string_matcher &&) noexcept = default;
+
+  string_matcher &operator= (string_matcher const &) = delete;
+  string_matcher &operator= (string_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Callbacks>::pointer, bool> consume (
       parser<Callbacks> &parser, std::optional<char> ch) override;
@@ -1069,7 +1046,7 @@ private:
 
   static std::tuple<state, error_code> consume_escape_state (
       char32_t code_point, appender &app);
-  bool object_key_;
+  bool is_object_key_;
   utf8_decoder decoder_;
   appender app_;
   unsigned hex_ = 0U;
@@ -1142,7 +1119,7 @@ auto string_matcher<Callbacks>::consume_normal_state (parser<Callbacks> &parser,
       error = error_code::bad_unicode_code_point;
     } else {
       // Consume the closing quote character.
-      if (object_key_) {
+      if (is_object_key_) {
         error = parser.callbacks ().key (*app.result ());
       } else {
         error = parser.callbacks ().string_value (*app.result ());
@@ -1176,7 +1153,7 @@ std::optional<unsigned> string_matcher<Callbacks>::hex_value (
   } else if (c >= 'A' && c <= 'F') {
     digit = static_cast<unsigned> (c) - 'A' + 10;
   } else {
-    return nothing<unsigned> ();
+    return {std::nullopt};
   }
   return just (16 * value + digit);
 }
@@ -1239,7 +1216,7 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
     state const next_state = std::get<1> (s);
     assert (next_state == normal_char_state || next_state == hex1_state);
     if (next_state == normal_char_state && !app.append32 (cp)) {
-      return nothing<state> ();
+      return {std::nullopt};
     }
     return just (next_state);
   };
@@ -1287,7 +1264,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->set_error (parser, std::get<1> (escape_resl));
     } break;
 
-    case hex1_state: hex_ = 0; PEEJAY_FALLTHROUGH;
+    case hex1_state: hex_ = 0; [[fallthrough]];
     case hex2_state:
     case hex3_state:
     case hex4_state: {
@@ -1370,7 +1347,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->end_array (parser);
       break;
     }
-    PEEJAY_FALLTHROUGH;
+    [[fallthrough]];
   case object_state:
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
@@ -1461,7 +1438,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->end_object (parser);
       break;
     }
-    PEEJAY_FALLTHROUGH;
+    [[fallthrough]];
   case key_state:
     // Match a property name then expect a colon.
     this->set_state (colon_state);
@@ -1530,6 +1507,11 @@ template <typename Callbacks>
 class whitespace_matcher final : public matcher<Callbacks> {
 public:
   whitespace_matcher () noexcept : matcher<Callbacks> (body_state) {}
+  whitespace_matcher (whitespace_matcher const &) = delete;
+  whitespace_matcher (whitespace_matcher &&) noexcept = default;
+
+  whitespace_matcher &operator= (whitespace_matcher const &) = delete;
+  whitespace_matcher &operator= (whitespace_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Callbacks>::pointer, bool> consume (
       parser<Callbacks> &parser, std::optional<char> ch) override;
@@ -1598,7 +1580,7 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       if (crlf (parser, c)) {
         break;
       }
-      PEEJAY_FALLTHROUGH;
+      [[fallthrough]];
     case body_state: return this->consume_body (parser, c);
     case comment_start_state: return this->consume_comment_start (parser, c);
 
@@ -1614,7 +1596,7 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       if (crlf (parser, c)) {
         break;
       }
-      PEEJAY_FALLTHROUGH;
+      [[fallthrough]];
     case multi_line_comment_body_state:
       return this->multi_line_comment_body (parser, c);
     case single_line_comment_state:
@@ -1771,8 +1753,8 @@ eof_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 template <typename Callbacks>
 class root_matcher final : public matcher<Callbacks> {
 public:
-  explicit constexpr root_matcher (bool const object_key = false) noexcept
-      : matcher<Callbacks> (start_state), object_key_{object_key} {}
+  explicit constexpr root_matcher (bool const is_object_key = false) noexcept
+      : matcher<Callbacks> (start_state), object_key_{is_object_key} {}
 
   std::pair<typename matcher<Callbacks>::pointer, bool> consume (
       parser<Callbacks> &parser, std::optional<char> ch) override;
@@ -1831,17 +1813,17 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     case 't':
       return {
           this->template make_terminal_matcher<true_token_matcher<Callbacks>> (
-              parser, "true", true_complete<Callbacks>{}),
+              parser),
           false};
     case 'f':
       return {
           this->template make_terminal_matcher<false_token_matcher<Callbacks>> (
-              parser, "false", false_complete<Callbacks>{}),
+              parser),
           false};
     case 'n':
       return {
           this->template make_terminal_matcher<null_token_matcher<Callbacks>> (
-              parser, "null", null_complete<Callbacks>{}),
+              parser),
           false};
     case '[':
       return {typename matcher<Callbacks>::pointer (
@@ -1851,6 +1833,7 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       return {typename matcher<Callbacks>::pointer (
                   new object_matcher<Callbacks> ()),
               false};
+
     default:
       this->set_error (parser, error_code::expected_token);
       return {nullptr, true};
@@ -1879,13 +1862,13 @@ struct singleton_storage {
   typename storage<whitespace_matcher<Callbacks>>::type trailing_ws;
   typename storage<root_matcher<Callbacks>>::type root;
 
-  using matcher_characteristics = characteristics<
-      number_matcher<Callbacks>, string_matcher<Callbacks>,
-      true_token_matcher<Callbacks>, false_token_matcher<Callbacks>,
-      null_token_matcher<Callbacks>, whitespace_matcher<Callbacks>>;
-
-  typename std::aligned_storage<matcher_characteristics::size,
-                                matcher_characteristics::align>::type terminal;
+  std::variant<details::number_matcher<Callbacks>,
+               details::string_matcher<Callbacks>,
+               details::true_token_matcher<Callbacks>,
+               details::false_token_matcher<Callbacks>,
+               details::null_token_matcher<Callbacks>,
+               details::whitespace_matcher<Callbacks>>
+      terminals_;
 };
 
 /// Returns a default-initialized instance of type T.
@@ -1910,11 +1893,11 @@ parser<Callbacks>::parser (Callbacks callbacks, extensions const extensions)
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
   // input JSON ends after a single top-level object.
-  stack_.push (mpointer (new (&singletons_->eof)
+  stack_.push (mpointer (new (&singletons_.eof)
                              details::eof_matcher<Callbacks>{},
                          deleter{false}));
   // We permit whitespace after the top-level object.
-  stack_.push (mpointer (new (&singletons_->trailing_ws)
+  stack_.push (mpointer (new (&singletons_.trailing_ws)
                              details::whitespace_matcher<Callbacks>{},
                          deleter{false}));
   stack_.push (this->make_root_matcher ());
@@ -1926,7 +1909,7 @@ template <typename Callbacks>
 CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
   using root_matcher = details::root_matcher<Callbacks>;
-  return pointer (new (&singletons_->root) root_matcher (object_key),
+  return pointer (new (&singletons_.root) root_matcher (object_key),
                   typename pointer::deleter_type{false});
 }
 
@@ -1939,29 +1922,16 @@ auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
   return this->make_terminal_matcher<whitespace_matcher> ();
 }
 
-// get terminal storage
-// ~~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
-void const *parser<Callbacks>::get_terminal_storage () const noexcept {
-  return &singletons_->terminal;
-}
-
 // make terminal matcher
 // ~~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
 CXX20REQUIRES (notifications<Callbacks>)
 template <typename Matcher, typename... Args>
+CXX20REQUIRES ((std::derived_from<Matcher, details::matcher<Callbacks>>))
 auto parser<Callbacks>::make_terminal_matcher (Args &&...args) -> pointer {
-  static_assert (sizeof (Matcher) <= sizeof (decltype (singletons_->terminal)),
-                 "terminal storage is not large enough for Matcher type");
-  static_assert (
-      alignof (Matcher) <= alignof (decltype (singletons_->terminal)),
-      "terminal storage is not sufficiently aligned for Matcher type");
-
-  return pointer (new (&singletons_->terminal)
-                      Matcher (std::forward<Args> (args)...),
-                  typename pointer::deleter_type{false});
+  Matcher &m = singletons_.terminals_.template emplace<Matcher> (
+      std::forward<Args> (args)...);
+  return pointer{&m, details::deleter<matcher>{false}};
 }
 
 // input
@@ -2023,7 +1993,7 @@ CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::eof () -> result_type {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
-    auto res = handler->consume (*this, nothing<char> ());
+    auto res = handler->consume (*this, std::optional<char>{std::nullopt});
     assert (handler->is_done ());
     assert (res.second);
     stack_.pop ();  // release the topmost matcher object.

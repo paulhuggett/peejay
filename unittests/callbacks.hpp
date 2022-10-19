@@ -23,7 +23,7 @@
 
 class json_callbacks_base {
 public:
-  virtual ~json_callbacks_base ();
+  virtual ~json_callbacks_base () noexcept;
 
   virtual std::error_code string_value (std::string_view const &) = 0;
   virtual std::error_code int64_value (std::int64_t) = 0;
@@ -42,7 +42,7 @@ public:
 
 class mock_json_callbacks : public json_callbacks_base {
 public:
-  ~mock_json_callbacks () override;
+  ~mock_json_callbacks () noexcept override;
 
   MOCK_METHOD1 (string_value, std::error_code (std::string_view const &));
   MOCK_METHOD1 (int64_value, std::error_code (std::int64_t));

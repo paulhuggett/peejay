@@ -13,10 +13,13 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+// "self" include
+#include "json/json.hpp"
+// standard library
 #include <stack>
 
 #include "callbacks.hpp"
-#include "json/json.hpp"
+#include "json/dom_types.hpp"
 
 using namespace std::string_literals;
 using testing::DoubleEq;
@@ -134,17 +137,13 @@ TEST_F (Json, Null) {
 }
 
 TEST_F (Json, Move) {
-  StrictMock<mock_json_callbacks> callbacks;
-  callbacks_proxy<mock_json_callbacks> proxy (callbacks);
-  EXPECT_CALL (callbacks, null_value ()).Times (1);
-
-  parser<decltype (proxy)> p (proxy);
   // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
-  // usuable.
-  auto p2 = std::move (p);
-  p2.input (" null "s).eof ();
+  // usable.
+  auto p1 = parser<null_output>{};
+  auto p2 = std::move (p1);
+  p2.input ("null"s).eof ();
   EXPECT_FALSE (p2.has_error ());
-  EXPECT_EQ (p2.coordinate (), (coord{column{7U}, row{1U}}));
+  EXPECT_EQ (p2.coordinate (), (coord{column{5U}, row{1U}}));
 }
 
 TEST_F (Json, TwoKeywords) {

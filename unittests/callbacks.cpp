@@ -15,5 +15,5 @@
 //===----------------------------------------------------------------------===//
 #include "callbacks.hpp"
 
-json_callbacks_base::~json_callbacks_base () = default;
-mock_json_callbacks::~mock_json_callbacks () = default;
+json_callbacks_base::~json_callbacks_base () noexcept = default;
+mock_json_callbacks::~mock_json_callbacks () noexcept = default;
