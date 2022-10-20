@@ -112,10 +112,10 @@ OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
   return out;
 }
 
-inline constexpr bool is_utf16_high_surrogate (char16_t code_unit) {
+constexpr bool is_utf16_high_surrogate (char16_t code_unit) {
   return code_unit >= 0xD800 && code_unit <= 0xDBFF;
 }
-inline constexpr bool is_utf16_low_surrogate (char16_t code_unit) {
+constexpr bool is_utf16_low_surrogate (char16_t code_unit) {
   return code_unit >= 0xDC00 && code_unit <= 0xDFFF;
 }
 
