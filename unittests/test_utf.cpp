@@ -92,21 +92,8 @@ namespace {
 class Utf8Decode : public ::testing::Test {
 protected:
   using cpstring = std::basic_string<char32_t>;
-  using bytes = std::vector<std::uint8_t>;
 
   static cpstring decode (std::initializer_list<uint8_t> input, bool good) {
-    cpstring result;
-    peejay::utf8_decoder decoder;
-    for (uint8_t b : input) {
-      if (std::optional<char32_t> const code_point = decoder.get (b)) {
-        result += *code_point;
-      }
-    }
-    EXPECT_EQ (decoder.is_well_formed (), good);
-    return result;
-  }
-
-  static cpstring decode (bytes const &input, bool good) {
     cpstring result;
     peejay::utf8_decoder decoder;
     for (uint8_t b : input) {
