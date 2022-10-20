@@ -32,7 +32,7 @@ class Json : public ::testing::Test {
 protected:
   static void check_error (std::string const& src, error_code err) {
     ASSERT_NE (err, error_code::none);
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     std::string const res = p.input (src).eof ();
     EXPECT_EQ (res, "");
     EXPECT_NE (p.last_error (), make_error_code (error_code::none));
@@ -42,7 +42,7 @@ protected:
 }  // end anonymous namespace
 
 TEST_F (Json, Empty) {
-  parser<json_out_callbacks> p;
+  parser p{json_out_callbacks{}};
   p.input (std::string{}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
   EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{1U}}));
@@ -51,14 +51,14 @@ TEST_F (Json, Empty) {
 TEST_F (Json, StringAndIteratorAPI) {
   std::string const src = "null";
   {
-    parser<json_out_callbacks> p1;
+    parser p1{json_out_callbacks{}};
     std::string const res = p1.input (src).eof ();
     EXPECT_FALSE (p1.has_error ());
     EXPECT_EQ (res, "null");
     EXPECT_EQ (p1.coordinate (), (coord{column{5U}, row{1U}}));
   }
   {
-    parser<json_out_callbacks> p2;
+    parser p2{json_out_callbacks{}};
     std::string const res = p2.input (std::begin (src), std::end (src)).eof ();
     EXPECT_FALSE (p2.has_error ());
     EXPECT_EQ (res, "null");
@@ -68,7 +68,7 @@ TEST_F (Json, StringAndIteratorAPI) {
 
 TEST_F (Json, Whitespace) {
   {
-    parser<json_out_callbacks> p1;
+    parser p1{json_out_callbacks{}};
     std::string const res = p1.input ("   \t    null"s).eof ();
     EXPECT_FALSE (p1.has_error ());
     EXPECT_EQ (res, "null");
@@ -82,7 +82,7 @@ TEST_F (Json, Whitespace) {
   auto const xord = static_cast<unsigned> (keyword.length ()) + 1U;
 
   {
-    parser<json_out_callbacks> p2;
+    parser p2{json_out_callbacks{}};
     p2.input (lf + lf + keyword);  // POSIX-style line endings
     std::string const res = p2.eof ();
     EXPECT_FALSE (p2.has_error ());
@@ -90,7 +90,7 @@ TEST_F (Json, Whitespace) {
     EXPECT_EQ (p2.coordinate (), (coord{column{xord}, row{3U}}));
   }
   {
-    parser<json_out_callbacks> p3;
+    parser p3{json_out_callbacks{}};
     p3.input (cr + cr + keyword);  // MacOS Classic line endings
     std::string const res = p3.eof ();
     EXPECT_FALSE (p3.has_error ());
@@ -98,7 +98,7 @@ TEST_F (Json, Whitespace) {
     EXPECT_EQ (p3.coordinate (), (coord{column{xord}, row{3U}}));
   }
   {
-    parser<json_out_callbacks> p4;
+    parser p4{json_out_callbacks{}};
     p4.input (crlf + crlf + keyword);  // Windows-style CRLF
     std::string const res = p4.eof ();
     EXPECT_FALSE (p4.has_error ());
@@ -106,7 +106,7 @@ TEST_F (Json, Whitespace) {
     EXPECT_EQ (p4.coordinate (), (coord{column{xord}, row{3U}}));
   }
   {
-    parser<json_out_callbacks> p5;
+    parser p5{json_out_callbacks{}};
     // Nobody's line-endings. Each counts as a new line. Note that the middle
     // cr+lf pair will match a single Windows crlf.
     std::string const res = p5.input (lf + cr + lf + cr + keyword).eof ();
@@ -115,7 +115,7 @@ TEST_F (Json, Whitespace) {
     EXPECT_EQ (p5.coordinate (), (coord{column{xord}, row{4U}}));
   }
   {
-    parser<json_out_callbacks> p6;
+    parser p6{json_out_callbacks{}};
     p6.input (lf + lf + crlf + cr +
               keyword);  // A groovy mixture of line-ending characters.
     std::string const res = p6.eof ();
@@ -127,7 +127,7 @@ TEST_F (Json, Whitespace) {
 
 TEST_F (Json, Null) {
   StrictMock<mock_json_callbacks> callbacks;
-  callbacks_proxy<mock_json_callbacks> proxy (callbacks);
+  callbacks_proxy proxy{callbacks};
   EXPECT_CALL (callbacks, null_value ()).Times (1);
 
   parser<decltype (proxy)> p (proxy);
@@ -147,7 +147,7 @@ TEST_F (Json, Move) {
 }
 
 TEST_F (Json, TwoKeywords) {
-  parser<json_out_callbacks> p;
+  parser p{json_out_callbacks{}};
   p.input (" true false "s);
   std::string const res = p.eof ();
   EXPECT_EQ (res, "");

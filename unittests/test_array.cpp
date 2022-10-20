@@ -143,22 +143,22 @@ TEST_F (JsonArray, TwoElements) {
 
 TEST_F (JsonArray, MisplacedComma) {
   {
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     p.input ("[,"s).eof ();
     EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
   }
   {
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     p.input ("[,1"s).eof ();
     EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
   }
   {
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     p.input ("[1,,2]"s).eof ();
     EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
   }
   {
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     p.input ("[1 true]"s).eof ();
     EXPECT_EQ (p.last_error (),
                make_error_code (error_code::expected_array_member));
@@ -203,14 +203,14 @@ TEST_F (JsonArray, TrailingCommaDisabled) {
 
 TEST_F (JsonArray, NestedError) {
   {
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     p.input ("[[no"s);
     p.eof ();
     EXPECT_EQ (p.last_error (),
                make_error_code (error_code::unrecognized_token));
   }
   {
-    parser<json_out_callbacks> p;
+    parser p{json_out_callbacks{}};
     p.input ("[[null"s);
     p.eof ();
     EXPECT_EQ (p.last_error (),
@@ -247,7 +247,7 @@ TEST_F (JsonArray, Nested2) {
 }
 
 TEST_F (JsonArray, TooDeeplyNested) {
-  parser<json_out_callbacks> p;
+  parser p{json_out_callbacks{}};
   p.input (std::string (std::string::size_type{200}, '[')).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::nesting_too_deep));
 }

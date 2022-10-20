@@ -92,6 +92,11 @@ private:
   T &original_;
 };
 
+template <typename T>
+callbacks_proxy(testing::StrictMock<T>&) -> callbacks_proxy<T>;
+template <typename T>
+callbacks_proxy(T&) -> callbacks_proxy<T>;
+
 class json_out_callbacks {
 public:
   using result_type = std::string;

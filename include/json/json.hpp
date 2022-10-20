@@ -373,6 +373,10 @@ private:
 };
 
 template <typename Callbacks>
+parser(Callbacks) -> parser<Callbacks>;
+
+
+template <typename Callbacks>
 CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
 inline parser<std::remove_reference_t<Callbacks>>
 make_parser (Callbacks &&callbacks, extensions const extensions = extensions::none) {
