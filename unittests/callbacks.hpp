@@ -95,7 +95,7 @@ private:
 class json_out_callbacks {
 public:
   using result_type = std::string;
-  result_type result () { return out_; }
+  result_type result () const { return out_; }
 
   std::error_code string_value (std::string_view const &s) {
     return this->append ('"' + std::string{std::begin (s), std::end (s)} + '"');
