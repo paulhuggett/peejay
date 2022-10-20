@@ -112,19 +112,17 @@ CXX20REQUIRES (notifications<Callbacks>)
 class matcher;
 
 template <typename Callbacks>
-class root_matcher;
+class false_token_matcher;
 template <typename Callbacks>
-class whitespace_matcher;
+class null_token_matcher;
 template <typename Callbacks>
 class number_matcher;
+template <typename Callbacks>
+class root_matcher;
 template <typename Callbacks>
 class string_matcher;
 template <typename Callbacks>
 class true_token_matcher;
-template <typename Callbacks>
-class false_token_matcher;
-template <typename Callbacks>
-class null_token_matcher;
 template <typename Callbacks>
 class whitespace_matcher;
 
