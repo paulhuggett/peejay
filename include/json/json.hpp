@@ -1942,9 +1942,9 @@ CXX20REQUIRES (std::input_iterator<InputIterator>)
 auto parser<Callbacks>::input (InputIterator first, InputIterator last)
     -> parser & {
   static_assert (
-      std::is_same<typename std::remove_cv<typename std::iterator_traits<
-                       InputIterator>::value_type>::type,
-                   char>::value,
+      std::is_same_v<typename std::remove_cv_t<typename std::iterator_traits<
+                         InputIterator>::value_type>,
+                     char>,
       "iterator value_type must be char (with optional cv)");
   if (error_) {
     return *this;
