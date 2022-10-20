@@ -38,8 +38,7 @@ std::ostream& operator<< (std::ostream& os, utf8_string const& s);
 /// start of a character.
 template <typename CharType>
 constexpr bool is_utf_char_start (CharType c) noexcept {
-  using uchar_type = typename std::make_unsigned<CharType>::type;
-  return (static_cast<uchar_type> (c) & 0xC0U) != 0x80U;
+  return (static_cast<std::make_unsigned_t<CharType>> (c) & 0xC0U) != 0x80U;
 }
 
 class utf8_decoder {
@@ -129,9 +128,9 @@ inline bool is_utf16_low_surrogate (std::uint16_t code_unit) {
 template <typename InputIterator, typename SwapperFunction>
 std::pair<InputIterator, char32_t> utf16_to_code_point (
     InputIterator first, InputIterator last, SwapperFunction swapper) {
-  using value_type = typename std::remove_cv<
-      typename std::iterator_traits<InputIterator>::value_type>::type;
-  static_assert (std::is_same<value_type, char16_t>::value,
+  using value_type = typename std::remove_cv_t<
+      typename std::iterator_traits<InputIterator>::value_type>;
+  static_assert (std::is_same_v<value_type, char16_t>,
                  "iterator must produce char16_t");
 
   assert (first != last);
@@ -139,20 +138,18 @@ std::pair<InputIterator, char32_t> utf16_to_code_point (
   char16_t code_unit = swapper (*(first++));
   if (!is_utf16_high_surrogate (code_unit)) {
     code_point = code_unit;
+  } else if (first == last) {
+    code_point = replacement_char_code_point;
   } else {
-    if (first == last) {
+    auto const high = code_unit;
+    auto const low = swapper (*(first++));
+
+    if (low < 0xDC00 || low > 0xDFFF) {
       code_point = replacement_char_code_point;
     } else {
-      auto const high = code_unit;
-      auto const low = swapper (*(first++));
-
-      if (low < 0xDC00 || low > 0xDFFF) {
-        code_point = replacement_char_code_point;
-      } else {
-        code_point = 0x10000;
-        code_point += (high & 0x03FFU) << 10U;
-        code_point += (low & 0x03FFU);
-      }
+      code_point = 0x10000;
+      code_point += (high & 0x03FFU) << 10U;
+      code_point += (low & 0x03FFU);
     }
   }
   return {first, code_point};
