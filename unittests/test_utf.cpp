@@ -93,7 +93,7 @@ protected:
   using cpstring = std::basic_string<char32_t>;
   using bytes = std::vector<std::uint8_t>;
 
-  cpstring decode (peejay::utf8_decoder &decoder, char const *src) {
+  static cpstring decode (peejay::utf8_decoder &decoder, char const *src) {
     cpstring result;
     for (; *src != '\0'; ++src) {
       if (std::optional<char32_t> const code_point =
@@ -104,7 +104,7 @@ protected:
     return result;
   }
 
-  cpstring decode (bytes &&input, bool good) {
+  static cpstring decode (bytes &&input, bool good) {
     input.push_back (0x00);  // add terminating NUL
     peejay::utf8_decoder decoder;
     cpstring result =
@@ -112,10 +112,10 @@ protected:
     EXPECT_EQ (decoder.is_well_formed (), good);
     return result;
   }
-  cpstring decode_good (bytes &&input) {
+  static cpstring decode_good (bytes &&input) {
     return decode (std::move (input), true);
   }
-  cpstring decode_bad (bytes &&input) {
+  static cpstring decode_bad (bytes &&input) {
     return decode (std::move (input), false);
   }
 };
