@@ -25,77 +25,99 @@
 // 3rd party includes
 #include <gmock/gmock.h>
 
+using namespace peejay;
+
+namespace {
+
+template <typename ResultType>
+ResultType code_point_to_utf8_container (char32_t c) {
+  ResultType result;
+  peejay::code_point_to_utf8<typename ResultType::value_type> (
+      c, std::back_inserter (result));
+  return result;
+}
+
+}  // end anonymous namespace
+
 TEST (CuToUtf8, All) {
   using namespace peejay;
 
-  EXPECT_EQ (code_point_to_utf8<peejay::utf8_string> (0x0001),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x0001),
              utf8_string ({0x01}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x0024), utf8_string ({0x24}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x00A2),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x0024),
+             utf8_string ({0x24}));
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x00A2),
              utf8_string ({0xC2, 0xA2}));
 
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x007F), utf8_string ({0x7F}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x0080),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x007F),
+             utf8_string ({0x7F}));
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x0080),
              utf8_string ({0b11000010, 0x80}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x07FF),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x07FF),
              utf8_string ({0b11011111, 0xBF}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x0800),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x0800),
              utf8_string ({0xE0, 0xA0, 0x80}));
 
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0xD7FF),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0xD7FF),
              utf8_string ({0xED, 0x9F, 0xBF}));
 
   // Since RFC 3629 (November 2003), the high and low surrogate halves used by
   // UTF-16 (U+D800 through U+DFFF) and code points not encodable by UTF-16
   // (those after U+10FFFF) are not legal Unicode values
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0xD800),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0xD800),
              utf8_string ({0xEF, 0xBF, 0xBD}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0xDFFF),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0xDFFF),
              utf8_string ({0xEF, 0xBF, 0xBD}));
 
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0xE000),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0xE000),
              utf8_string ({0xEE, 0x80, 0x80}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0xFFFF),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0xFFFF),
              utf8_string ({0xEF, 0xBF, 0xBF}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x10000),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x10000),
              utf8_string ({0xF0, 0x90, 0x80, 0x80}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x10FFFF),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x10FFFF),
              utf8_string ({0xF4, 0x8F, 0xBF, 0xBF}));
-  EXPECT_EQ (code_point_to_utf8<utf8_string> (0x110000),
+  EXPECT_EQ (code_point_to_utf8_container<utf8_string> (0x110000),
              utf8_string ({0xEF, 0xBF, 0xBD}));
-}
-
-TEST (Utf16ToUtf8, All) {
-  using namespace peejay;
-
-  EXPECT_EQ (utf16_to_code_point (utf16_string ({char16_t{'a'}}), nop_swapper),
-             97U /*'a'*/);
-  EXPECT_EQ (
-      utf16_to_code_point (utf16_string ({char16_t{'a'} << 8}), byte_swapper),
-      97U /*'a'*/);
-  EXPECT_EQ (utf16_to_code_point (utf16_string ({0x00E0}), byte_swapper),
-             0xE000U);
-  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xD800, 0xDC00}), nop_swapper),
-             0x010000U);
-  EXPECT_EQ (
-      utf16_to_code_point (utf16_string ({0x00D8, 0x00DC}), byte_swapper),
-      0x010000U);
-  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xD800, 0x0000}), nop_swapper),
-             replacement_char_code_point);
-  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xD800, 0xDBFF}), nop_swapper),
-             replacement_char_code_point);
-  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xDFFF}), nop_swapper),
-             0xDFFFU);
 }
 
 namespace {
+
+template <typename InputType>
+char32_t utf16_to_code_point (InputType const& src) {
+  auto const [end, cp] =
+      peejay::utf16_to_code_point (std::begin (src), std::end (src));
+  assert (end == std::end (src));
+  return cp;
+}
+
+}  // end anonymous namespace
+
+TEST (Utf16ToCodePoint, All) {
+  EXPECT_EQ (utf16_to_code_point (utf16_string ({char16_t{'a'}})), 97U /*'a'*/);
+  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xD800, 0xDC00})), 0x010000U);
+  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xD800, 0x0000})),
+             replacement_char_code_point);
+  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xD800, 0xDBFF})),
+             replacement_char_code_point);
+  EXPECT_EQ (utf16_to_code_point (utf16_string ({0xDFFF})), 0xDFFFU);
+}
+
+namespace {
+
 class Utf8Decode : public ::testing::Test {
 protected:
-  using cpstring = std::basic_string<char32_t>;
+  static utf32_string decode_good (std::initializer_list<uint8_t> input) {
+    return decode (input, true);
+  }
+  static utf32_string decode_bad (std::initializer_list<uint8_t> input) {
+    return decode (input, false);
+  }
 
-  static cpstring decode (std::initializer_list<uint8_t> input, bool good) {
-    cpstring result;
-    peejay::utf8_decoder decoder;
+private:
+  static utf32_string decode (std::initializer_list<uint8_t> input, bool good) {
+    utf32_string result;
+    utf8_decoder decoder;
     for (uint8_t b : input) {
       if (std::optional<char32_t> const code_point = decoder.get (b)) {
         result += *code_point;
@@ -104,14 +126,9 @@ protected:
     EXPECT_EQ (decoder.is_well_formed (), good);
     return result;
   }
-  static cpstring decode_good (std::initializer_list<uint8_t> input) {
-    return decode (input, true);
-  }
-  static cpstring decode_bad (std::initializer_list<uint8_t> input) {
-    return decode (input, false);
-  }
 };
-}  // namespace
+
+}  // end anonymous namespace
 
 TEST_F (Utf8Decode, Good) {
   EXPECT_EQ (decode_good ({
@@ -121,24 +138,26 @@ TEST_F (Utf8Decode, Good) {
                  0xCE, 0xBC,  // GREEK SMALL LETTER MU (U+03BC)
                  0xCE, 0xB5,  // GREEK SMALL LETTER EPSILON (U+03B5)
              }),
-             cpstring ({0x03BA, 0x03CC, 0x03C3, 0x03BC, 0x03B5}));
+             utf32_string ({0x03BA, 0x03CC, 0x03C3, 0x03BC, 0x03B5}));
 }
 
 TEST_F (Utf8Decode, FirstPossibleSequenceOfACertainLength) {
-  EXPECT_EQ (decode_good ({0xC2, 0x80}), cpstring ({0x00000080}));
-  EXPECT_EQ (decode_good ({0xE0, 0xA0, 0x80}), cpstring ({0x00000800}));
-  EXPECT_EQ (decode_good ({0xF0, 0x90, 0x80, 0x80}), cpstring ({0x00010000}));
+  EXPECT_EQ (decode_good ({0xC2, 0x80}), utf32_string ({0x00000080}));
+  EXPECT_EQ (decode_good ({0xE0, 0xA0, 0x80}), utf32_string ({0x00000800}));
+  EXPECT_EQ (decode_good ({0xF0, 0x90, 0x80, 0x80}),
+             utf32_string ({0x00010000}));
 }
 TEST_F (Utf8Decode, LastPossibleSequenceOfACertainLength) {
-  EXPECT_EQ (decode_good ({0x7F}), cpstring ({0x0000007F}));
-  EXPECT_EQ (decode_good ({0xDF, 0xBF}), cpstring ({0x000007FF}));
-  EXPECT_EQ (decode_good ({0xEF, 0xBF, 0xBF}), cpstring ({0x0000FFFF}));
+  EXPECT_EQ (decode_good ({0x7F}), utf32_string ({0x0000007F}));
+  EXPECT_EQ (decode_good ({0xDF, 0xBF}), utf32_string ({0x000007FF}));
+  EXPECT_EQ (decode_good ({0xEF, 0xBF, 0xBF}), utf32_string ({0x0000FFFF}));
 }
 TEST_F (Utf8Decode, OtherBoundaryConditions) {
-  EXPECT_EQ (decode_good ({0xED, 0x9F, 0xBF}), cpstring ({0x0000D7FF}));
-  EXPECT_EQ (decode_good ({0xEE, 0x80, 0x80}), cpstring ({0x0000E000}));
-  EXPECT_EQ (decode_good ({0xEF, 0xBF, 0xBD}), cpstring ({0x0000FFFD}));
-  EXPECT_EQ (decode_good ({0xF4, 0x8F, 0xBF, 0xBF}), cpstring ({0x0010FFFF}));
+  EXPECT_EQ (decode_good ({0xED, 0x9F, 0xBF}), utf32_string ({0x0000D7FF}));
+  EXPECT_EQ (decode_good ({0xEE, 0x80, 0x80}), utf32_string ({0x0000E000}));
+  EXPECT_EQ (decode_good ({0xEF, 0xBF, 0xBD}), utf32_string ({0x0000FFFD}));
+  EXPECT_EQ (decode_good ({0xF4, 0x8F, 0xBF, 0xBF}),
+             utf32_string ({0x0010FFFF}));
 }
 TEST_F (Utf8Decode, UnexpectedContinuationBytes) {
   decode_bad ({0x80});                    // first continuation byte

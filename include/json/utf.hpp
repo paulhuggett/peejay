@@ -17,6 +17,9 @@
 #define PEEJAY_UTF_HPP
 
 #include <cassert>
+#if __cplusplus >= 202002L
+#include <concepts>
+#endif
 #include <cstdint>
 #include <iosfwd>
 #include <iterator>
@@ -26,10 +29,21 @@
 #include <type_traits>
 #include <vector>
 
+#if __cplusplus >= 202002L
+#define CXX20REQUIRES(x) requires x
+#else
+#define CXX20REQUIRES(x)
+#endif  // __cplusplus >= 202002L
+
 namespace peejay {
 
+#if __cplusplus >= 202002L
+using utf8_string = std::basic_string<char8_t>;
+#else
 using utf8_string = std::basic_string<std::uint8_t>;
+#endif  // __cplusplus >= 202002L
 using utf16_string = std::basic_string<char16_t>;
+using utf32_string = std::basic_string<char32_t>;
 
 std::ostream& operator<< (std::ostream& os, utf8_string const& s);
 
@@ -61,6 +75,7 @@ private:
 extern char32_t const replacement_char_code_point;
 
 template <typename CharType = char, typename OutputIt>
+CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
 OutputIt replacement_char (OutputIt out) {
   *(out++) = static_cast<CharType> (0xEF);
   *(out++) = static_cast<CharType> (0xBF);
@@ -68,14 +83,10 @@ OutputIt replacement_char (OutputIt out) {
   return out;
 }
 
-template <typename ResultType>
-ResultType replacement_char () {
-  ResultType result;
-  replacement_char (std::back_inserter (result));
-  return result;
-}
-
+// code point to utf8
+// ~~~~~~~~~~~~~~~~~~
 template <typename CharType = char, typename OutputIt>
+CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
 OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
   if (c < 0x80) {
     *(out++) = static_cast<CharType> (c);
@@ -101,120 +112,44 @@ OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
   return out;
 }
 
-template <typename ResultType>
-ResultType code_point_to_utf8 (char32_t c) {
-  ResultType result;
-  code_point_to_utf8<typename ResultType::value_type> (
-      c, std::back_inserter (result));
-  return result;
-}
-
-inline std::uint16_t nop_swapper (std::uint16_t v) {
-  return v;
-}
-inline std::uint16_t byte_swapper (std::uint16_t v) {
-  return static_cast<std::uint16_t> (((v & 0x00FF) << 8) | ((v & 0xFF00) >> 8));
-}
-
-inline bool is_utf16_high_surrogate (std::uint16_t code_unit) {
+inline constexpr bool is_utf16_high_surrogate (char16_t code_unit) {
   return code_unit >= 0xD800 && code_unit <= 0xDBFF;
 }
-inline bool is_utf16_low_surrogate (std::uint16_t code_unit) {
+inline constexpr bool is_utf16_low_surrogate (char16_t code_unit) {
   return code_unit >= 0xDC00 && code_unit <= 0xDFFF;
 }
 
-// utf16_to_code_point
+// utf16 to code point
 // ~~~~~~~~~~~~~~~~~~~
-template <typename InputIterator, typename SwapperFunction>
-std::pair<InputIterator, char32_t> utf16_to_code_point (
-    InputIterator first, InputIterator last, SwapperFunction swapper) {
-  using value_type = typename std::remove_cv_t<
-      typename std::iterator_traits<InputIterator>::value_type>;
-  static_assert (std::is_same_v<value_type, char16_t>,
-                 "iterator must produce char16_t");
-
-  assert (first != last);
-  char32_t code_point = 0;
-  char16_t code_unit = swapper (*(first++));
+/// \tparam InputIterator  An input iterator which must produce (possible const/volatile qualified) char16_t.
+template <typename InputIterator>
+CXX20REQUIRES ((std::input_iterator<InputIterator> &&
+                std::is_same_v<std::remove_cv_t<typename std::iterator_traits<
+                                   InputIterator>::value_type>,
+                               char16_t>))
+std::pair<InputIterator, char32_t> utf16_to_code_point (InputIterator first,
+                                                        InputIterator last) {
+  if (first == last) {
+    return {first, replacement_char_code_point};
+  }
+  char16_t const code_unit = *(first++);
   if (!is_utf16_high_surrogate (code_unit)) {
-    code_point = code_unit;
-  } else if (first == last) {
-    code_point = replacement_char_code_point;
-  } else {
-    auto const high = code_unit;
-    auto const low = swapper (*(first++));
-
-    if (low < 0xDC00 || low > 0xDFFF) {
-      code_point = replacement_char_code_point;
-    } else {
-      code_point = 0x10000;
-      code_point += (high & 0x03FFU) << 10U;
-      code_point += (low & 0x03FFU);
-    }
+    return {first, static_cast<char32_t> (code_unit)};
   }
-  return {first, code_point};
-}
-
-// utf16_to_code_points
-// ~~~~~~~~~~~~~~~~~~~~
-template <typename InputIt, typename OutputIt, typename Swapper>
-OutputIt utf16_to_code_points (InputIt first, InputIt last, OutputIt out,
-                               Swapper swapper) {
-  while (first != last) {
-    char32_t code_point;
-    std::tie (first, code_point) = utf16_to_code_point (first, last, swapper);
-    *(out++) = code_point;
+  if (first == last) {
+    return {first, replacement_char_code_point};
   }
-  return out;
-}
 
-template <typename ResultType, typename InputIt, typename Swapper>
-ResultType utf16_to_code_points (InputIt first, InputIt last, Swapper swapper) {
-  ResultType result;
-  utf16_to_code_points (first, last, std::back_inserter (result), swapper);
-  return result;
-}
-
-template <typename ResultType, typename InputType, typename Swapper>
-ResultType utf16_to_code_points (InputType const& src, Swapper swapper) {
-  return utf16_to_code_points<ResultType> (std::begin (src), std::end (src),
-                                           swapper);
-}
-
-// utf16_to_code_point
-// ~~~~~~~~~~~~~~~~~~~
-template <typename InputType, typename Swapper>
-char32_t utf16_to_code_point (InputType const& src, Swapper swapper) {
-  auto end = std::end (src);
-  char32_t cp;
-  std::tie (end, cp) = utf16_to_code_point (std::begin (src), end, swapper);
-  assert (end == std::end (src));
-  return cp;
-}
-
-// utf16_to_utf8
-// ~~~~~~~~~~~~~
-template <typename InputIt, typename OutputIt, typename Swapper>
-OutputIt utf16_to_utf8 (InputIt first, InputIt last, OutputIt out,
-                        Swapper swapper) {
-  while (first != last) {
-    char32_t code_point;
-    std::tie (first, code_point) = utf16_to_code_point (first, last, swapper);
-    out = code_unit_to_utf8 (code_point, out);
+  auto const high = code_unit;
+  auto const low = *(first++);
+  if (!is_utf16_low_surrogate (low)) {
+    return {first, replacement_char_code_point};
   }
-  return out;
-}
 
-template <typename ResultType, typename InputIt, typename Swapper>
-ResultType utf16_to_utf8 (InputIt first, InputIt last, Swapper swapper) {
-  ResultType result;
-  utf16_to_utf8 (first, last, std::back_inserter (result), swapper);
-  return result;
-}
-
-template <typename ResultType, typename InputType, typename Swapper>
-ResultType utf16_to_utf8 (InputType const& src, Swapper swapper) {
-  return utf16_to_utf8<ResultType> (std::begin (src), std::end (src), swapper);
+  uint32_t code_point = 0x10000 +
+                        ((static_cast<uint16_t> (high) & 0x03FFU) << 10U) +
+                        (static_cast<uint16_t> (low) & 0x03FFU);
+  return {first, static_cast<char32_t> (code_point)};
 }
 
 }  // namespace peejay
