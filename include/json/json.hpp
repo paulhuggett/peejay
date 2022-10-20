@@ -99,9 +99,6 @@ concept notifications = requires (T &&v) {
   /// always follow an earlier call to begin_object().
   { v.end_object () } -> std::convertible_to<std::error_code>;
 };
-#define CXX20REQUIRES(x) requires x
-#else
-#define CXX20REQUIRES(x)
 #endif  // __cplusplus >= 202002L
 
 /// \brief JSON parser implementation details.
@@ -372,7 +369,7 @@ private:
   /// The column and row number of the parse within the input stream.
   coord coordinate_;
   extensions const extensions_;
-  Callbacks callbacks_;
+  [[no_unique_address]] Callbacks callbacks_;
 };
 
 template <typename Callbacks>
@@ -514,7 +511,7 @@ private:
   char const *text_;
 
   /// This function is called once the complete token text has been matched.
-  DoneFunction const done_;
+  [[no_unique_address]] DoneFunction const done_;
 };
 
 template <typename Callbacks, typename DoneFunction>
@@ -1084,8 +1081,7 @@ bool string_matcher<Callbacks>::appender::append16 (char16_t const cu) {
       auto first = std::begin (surrogates);
       auto const last = std::end (surrogates);
       auto code_point = char32_t{0};
-      std::tie (first, code_point) =
-          utf16_to_code_point (first, last, nop_swapper);
+      std::tie (first, code_point) = utf16_to_code_point (first, last);
       code_point_to_utf8 (code_point, std::back_inserter (*result_));
       high_surrogate_ = 0;
     }
