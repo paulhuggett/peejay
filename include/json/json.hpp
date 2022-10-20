@@ -1854,7 +1854,7 @@ template <typename Callbacks>
 struct singleton_storage {
   template <typename T>
   struct storage {
-    using type = typename std::aligned_storage<sizeof (T), alignof (T)>::type;
+    using type = typename std::aligned_storage_t<sizeof (T), alignof (T)>;
   };
 
   typename storage<eof_matcher<Callbacks>>::type eof;
