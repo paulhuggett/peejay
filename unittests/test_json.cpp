@@ -37,6 +37,13 @@ protected:
     EXPECT_EQ (res, "");
     EXPECT_NE (p.last_error (), make_error_code (error_code::none));
   }
+
+  static inline auto const cr = "\r"s;
+  static inline auto const lf = "\n"s;
+  static inline auto const crlf = cr + lf;
+  static inline auto const keyword = "null"s;
+  static inline auto const xord =
+      static_cast<unsigned> (keyword.length ()) + 1U;
 };
 
 }  // end anonymous namespace
@@ -48,81 +55,76 @@ TEST_F (Json, Empty) {
   EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{1U}}));
 }
 
-TEST_F (Json, StringAndIteratorAPI) {
-  std::string const src = "null";
-  {
-    parser p1{json_out_callbacks{}};
-    std::string const res = p1.input (src).eof ();
-    EXPECT_FALSE (p1.has_error ());
-    EXPECT_EQ (res, "null");
-    EXPECT_EQ (p1.coordinate (), (coord{column{5U}, row{1U}}));
-  }
-  {
-    parser p2{json_out_callbacks{}};
-    std::string const res = p2.input (std::begin (src), std::end (src)).eof ();
-    EXPECT_FALSE (p2.has_error ());
-    EXPECT_EQ (res, "null");
-    EXPECT_EQ (p2.coordinate (), (coord{column{5U}, row{1U}}));
-  }
+TEST_F (Json, StringInput) {
+  parser p{json_out_callbacks{}};
+  std::string const res = p.input (keyword).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{5U}, row{1U}}));
 }
 
-TEST_F (Json, Whitespace) {
-  {
-    parser p1{json_out_callbacks{}};
-    std::string const res = p1.input ("   \t    null"s).eof ();
-    EXPECT_FALSE (p1.has_error ());
-    EXPECT_EQ (res, "null");
-    EXPECT_EQ (p1.coordinate (), (coord{column{13U}, row{1U}}));
-  }
+TEST_F (Json, IteratorInput) {
+  parser p{json_out_callbacks{}};
+  std::string const res =
+      p.input (std::begin (keyword), std::end (keyword)).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{5U}, row{1U}}));
+}
 
-  auto const cr = "\r"s;
-  auto const lf = "\n"s;
-  auto const crlf = cr + lf;
-  auto const keyword = "null"s;
-  auto const xord = static_cast<unsigned> (keyword.length ()) + 1U;
+TEST_F (Json, LeadingWhitespace) {
+  parser p1{json_out_callbacks{}};
+  std::string const res = p1.input ("   \t    null"s).eof ();
+  EXPECT_FALSE (p1.has_error ());
+  EXPECT_EQ (res, "null");
+  EXPECT_EQ (p1.coordinate (), (coord{column{13U}, row{1U}}));
+}
 
-  {
-    parser p2{json_out_callbacks{}};
-    p2.input (lf + lf + keyword);  // POSIX-style line endings
-    std::string const res = p2.eof ();
-    EXPECT_FALSE (p2.has_error ());
-    EXPECT_EQ (res, keyword);
-    EXPECT_EQ (p2.coordinate (), (coord{column{xord}, row{3U}}));
-  }
-  {
-    parser p3{json_out_callbacks{}};
-    p3.input (cr + cr + keyword);  // MacOS Classic line endings
-    std::string const res = p3.eof ();
-    EXPECT_FALSE (p3.has_error ());
-    EXPECT_EQ (res, keyword);
-    EXPECT_EQ (p3.coordinate (), (coord{column{xord}, row{3U}}));
-  }
-  {
-    parser p4{json_out_callbacks{}};
-    p4.input (crlf + crlf + keyword);  // Windows-style CRLF
-    std::string const res = p4.eof ();
-    EXPECT_FALSE (p4.has_error ());
-    EXPECT_EQ (res, keyword);
-    EXPECT_EQ (p4.coordinate (), (coord{column{xord}, row{3U}}));
-  }
-  {
-    parser p5{json_out_callbacks{}};
-    // Nobody's line-endings. Each counts as a new line. Note that the middle
-    // cr+lf pair will match a single Windows crlf.
-    std::string const res = p5.input (lf + cr + lf + cr + keyword).eof ();
-    EXPECT_FALSE (p5.has_error ());
-    EXPECT_EQ (res, keyword);
-    EXPECT_EQ (p5.coordinate (), (coord{column{xord}, row{4U}}));
-  }
-  {
-    parser p6{json_out_callbacks{}};
-    p6.input (lf + lf + crlf + cr +
-              keyword);  // A groovy mixture of line-ending characters.
-    std::string const res = p6.eof ();
-    EXPECT_FALSE (p6.has_error ());
-    EXPECT_EQ (res, "null");
-    EXPECT_EQ (p6.coordinate (), (coord{column{xord}, row{5U}}));
-  }
+TEST_F (Json, POSIXLeadingLineEndings) {
+  parser p{json_out_callbacks{}};
+  p.input (lf + lf + keyword);
+  std::string const res = p.eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{xord}, row{3U}}));
+}
+
+TEST_F (Json, ClassicMacLeadingLineEndings) {
+  parser p{json_out_callbacks{}};
+  p.input (cr + cr + keyword);  // MacOS Classic line endings
+  std::string const res = p.eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{xord}, row{3U}}));
+}
+
+TEST_F (Json, CrLfLeadingLineEndings) {
+  parser p{json_out_callbacks{}};
+  p.input (crlf + crlf + keyword);  // Windows-style CRLF
+  std::string const res = p.eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{xord}, row{3U}}));
+}
+
+TEST_F (Json, BadLeadingLineEndings) {
+  parser p{json_out_callbacks{}};
+  // Nobody's line-endings. Each counts as a new line. Note that the middle
+  // cr+lf pair will match a single Windows crlf.
+  std::string const res = p.input (lf + cr + lf + cr + keyword).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{xord}, row{4U}}));
+}
+
+TEST_F (Json, MixedLeadingLineEndings) {
+  parser p{json_out_callbacks{}};
+  // A groovy mixture of line-ending characters.
+  p.input (lf + lf + crlf + cr + keyword);
+  std::string const res = p.eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_EQ (res, keyword);
+  EXPECT_EQ (p.coordinate (), (coord{column{xord}, row{5U}}));
 }
 
 TEST_F (Json, Null) {
