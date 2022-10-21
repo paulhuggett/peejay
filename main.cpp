@@ -24,14 +24,18 @@ namespace {
 
 class json_writer {
 public:
-  explicit json_writer (std::ostream& os) : os_{os} {}
+  constexpr explicit json_writer (std::ostream& os) noexcept : os_{os} {}
 
-  constexpr void result () const {}
+  constexpr void result () const noexcept {}
 
   std::error_code string_value (std::string_view const& s) {
     os_ << '"';
-    std::copy (std::begin (s), std::end (s),
-               std::ostream_iterator<char>{os_, ""});
+    std::ostream_iterator<char> out{os_};
+#if __cplusplus >= 202002L
+    std::ranges::copy (s, out);
+#else
+    std::copy (std::begin (s), std::end (s), out);
+#endif  // __cplusplus >= 202002L
     os_ << '"';
     return {};
   }
@@ -56,8 +60,8 @@ public:
 
 private:
   template <typename T>
-  std::error_code write (T t) {
-    os_ << t;
+  std::error_code write (T&& t) {
+    os_ << std::forward<T> (t);
     return {};
   }
   std::ostream& os_;
@@ -67,20 +71,19 @@ template <typename IStream>
 std::error_code slurp (IStream&& in) {
   auto p = peejay::make_parser (json_writer{std::cout});
 
-  using ustreamsize = std::make_unsigned_t<std::streamsize>;
   std::array<char, 256> buffer{{0}};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
     auto* const data = buffer.data ();
     in.read (data, buffer.size ());
-    auto const available =
-        static_cast<ustreamsize> (std::max (in.gcount (), std::streamsize{0}));
+    auto const available = static_cast<std::make_unsigned_t<std::streamsize>> (
+        std::max (in.gcount (), std::streamsize{0}));
 #if __cplusplus >= 202002L
     p.input (std::span<char>{data, available});
 #else
     p.input (data, data + available);
-#endif
+#endif  // __cplusplus >= 202002L
     if (auto const err = p.last_error ()) {
       return err;
     }
