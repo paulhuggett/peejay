@@ -71,7 +71,7 @@ inline auto operator>>= (std::optional<T> const &t, Function f)
 template <typename T>
 concept notifications = requires (T &&v) {
   /// The type that result() will return.
-  typename Callbacks::result_type;
+  typename T::result_type;
 
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
