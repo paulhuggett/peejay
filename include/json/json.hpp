@@ -16,32 +16,37 @@
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
+// Standard library
 #include <cctype>
 #include <cmath>
-#if __cplusplus >= 202002L
-#include <concepts>
-#endif
 #include <cstring>
 #include <memory>
 #include <optional>
 #include <ostream>
-#if __cplusplus >= 202002L
-#include <span>
-#endif
 #include <stack>
 #include <string>
 #include <tuple>
 #include <variant>
 
+// C++20 standard library
+#if __cplusplus >= 202002L
+#include <concepts>
+#include <span>
+#endif
+
 #include "json/json_error.hpp"
 #include "json/utf.hpp"
 
+namespace peejay {
+
 template <typename T>
-inline std::optional<T> just (T const &t) {
-  return {t};
+constexpr std::optional<
+    typename std::remove_const_t<typename std::remove_reference_t<T>>>
+just (T &&t) {
+  return {std::forward<T> (t)};
 }
 template <typename T>
-inline std::optional<T> nothing () {
+constexpr std::optional<T> nothing () {
   return {std::nullopt};
 }
 
@@ -53,15 +58,13 @@ inline std::optional<T> nothing () {
 /// \tparam T  The input type wrapped by a std::optional<>.
 /// \tparam Function  A callable object whose signature is of the form `std::optional<U> f(T t)`.
 template <typename T, typename Function>
-inline auto operator>>= (std::optional<T> &&t, Function f)
+inline auto operator>>= (std::optional<T> const &t, Function f)
     -> decltype (f (*t)) {
   if (t) {
     return f (*t);
   }
   return std::optional<typename decltype (f (*t))::value_type>{};
 }
-
-namespace peejay {
 
 #if __cplusplus >= 202002L
 template <typename T>
