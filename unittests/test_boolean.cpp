@@ -38,7 +38,7 @@ protected:
 TEST_F (JsonBoolean, True) {
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
 
-  peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
+  auto p = peejay::make_parser (proxy_);
   p.input ("true"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }

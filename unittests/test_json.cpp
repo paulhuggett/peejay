@@ -132,7 +132,7 @@ TEST_F (Json, Null) {
   callbacks_proxy proxy{callbacks};
   EXPECT_CALL (callbacks, null_value ()).Times (1);
 
-  parser<decltype (proxy)> p (proxy);
+  parser p{proxy};
   p.input (" null "s).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (p.coordinate (), (coord{column{7U}, row{1U}}));
@@ -151,8 +151,6 @@ TEST_F (Json, Move) {
 TEST_F (Json, TwoKeywords) {
   parser p{json_out_callbacks{}};
   p.input (" true false "s);
-  std::string const res = p.eof ();
-  EXPECT_EQ (res, "");
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::unexpected_extra_input));
   EXPECT_EQ (p.coordinate (), (coord{column{7U}, row{1U}}));

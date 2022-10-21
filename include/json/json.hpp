@@ -70,12 +70,9 @@ inline auto operator>>= (std::optional<T> const &t, Function f)
 #if __cplusplus >= 202002L
 template <typename T>
 concept notifications = requires (T &&v) {
-  /// The type that result() will return.
-  typename T::result_type;
-
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
-  { v.result () } -> std::convertible_to<typename T::result_type>;
+  {v.result ()};
 
   /// Called when a JSON string has been parsed.
   {
@@ -226,8 +223,6 @@ class parser {
   friend class details::whitespace_matcher<Callbacks>;
 
 public:
-  using result_type = typename Callbacks::result_type;
-
   explicit parser (Callbacks callbacks = Callbacks{},
                    extensions extensions = extensions::none);
   parser (parser const &) = delete;
@@ -274,9 +269,8 @@ public:
   /// to parser<>::input().
   ///
   /// \returns If the parse completes successfully, Callbacks::result()
-  /// is called and its result returned. If the parse failed, then a
-  /// default-constructed instance of result_type is returned.
-  result_type eof ();
+  /// is called and its result returned.
+  decltype (auto) eof ();
 
   ///@{
 
@@ -1877,16 +1871,6 @@ struct singleton_storage {
       terminals_;
 };
 
-/// Returns a default-initialized instance of type T.
-template <typename T>
-struct default_return {
-  static T get () { return T{}; }
-};
-template <>
-struct default_return<void> {
-  static void get () {}
-};
-
 }  // end namespace details
 
 // (ctor)
@@ -1894,7 +1878,7 @@ struct default_return<void> {
 template <typename Callbacks>
 CXX20REQUIRES (notifications<Callbacks>)
 parser<Callbacks>::parser (Callbacks callbacks, extensions const extensions)
-    : extensions_{extensions}, callbacks_{std::move (callbacks)} {
+    : extensions_{std::move (extensions)}, callbacks_{std::move (callbacks)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
@@ -1996,7 +1980,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
 // ~~~
 template <typename Callbacks>
 CXX20REQUIRES (notifications<Callbacks>)
-auto parser<Callbacks>::eof () -> result_type {
+decltype (auto) parser<Callbacks>::eof () {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
     auto res = handler->consume (*this, std::optional<char>{std::nullopt});
@@ -2004,8 +1988,7 @@ auto parser<Callbacks>::eof () -> result_type {
     assert (res.second);
     stack_.pop ();  // release the topmost matcher object.
   }
-  return has_error () ? details::default_return<result_type>::get ()
-                      : this->callbacks ().result ();
+  return this->callbacks ().result ();
 }
 
 }  // namespace peejay

@@ -26,8 +26,7 @@ class json_writer {
 public:
   explicit json_writer (std::ostream& os) : os_{os} {}
 
-  using result_type = void;
-  constexpr result_type result () const {}
+  constexpr void result () const {}
 
   std::error_code string_value (std::string_view const& s) {
     os_ << '"';

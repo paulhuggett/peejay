@@ -25,8 +25,7 @@ namespace peejay {
 
 class null_output {
 public:
-  using result_type = void;
-  constexpr result_type result () const noexcept {}
+  constexpr void result () const noexcept {}
 
   std::error_code string_value (std::string_view const &) const noexcept {
     return {};

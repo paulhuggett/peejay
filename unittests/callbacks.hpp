@@ -62,8 +62,7 @@ public:
 template <typename T>
 class callbacks_proxy {
 public:
-  using result_type = void;
-  result_type result () {}
+  static constexpr void result () noexcept {}
 
   explicit callbacks_proxy (T &original) : original_ (original) {}
   callbacks_proxy (callbacks_proxy const &) = default;
@@ -99,8 +98,7 @@ callbacks_proxy(T&) -> callbacks_proxy<T>;
 
 class json_out_callbacks {
 public:
-  using result_type = std::string;
-  result_type result () const { return out_; }
+  constexpr std::string const &result () const noexcept { return out_; }
 
   std::error_code string_value (std::string_view const &s) {
     return this->append ('"' + std::string{std::begin (s), std::end (s)} + '"');
