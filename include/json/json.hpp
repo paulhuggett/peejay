@@ -17,6 +17,7 @@
 #define PEEJAY_JSON_HPP
 
 // Standard library
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstring>
@@ -1063,14 +1064,12 @@ private:
 // ~~~~~~~~
 template <typename Callbacks>
 bool string_matcher<Callbacks>::appender::append32 (char32_t const code_point) {
-  bool ok = true;
   if (this->has_high_surrogate ()) {
     // A high surrogate followed by something other than a low surrogate.
-    ok = false;
-  } else {
-    code_point_to_utf8<char> (code_point, std::back_inserter (*result_));
+    return false;
   }
-  return ok;
+  code_point_to_utf8<char> (code_point, std::back_inserter (*result_));
+  return true;
 }
 
 // append16
@@ -1090,11 +1089,9 @@ bool string_matcher<Callbacks>::appender::append16 (char16_t const cu) {
       // A low surrogate following by something other than a high surrogate.
       ok = false;
     } else {
-      char16_t const surrogates[] = {high_surrogate_, cu};
-      auto first = std::begin (surrogates);
-      auto const last = std::end (surrogates);
-      auto code_point = char32_t{0};
-      std::tie (first, code_point) = utf16_to_code_point (first, last);
+      std::array<char16_t, 2> const surrogates{{high_surrogate_, cu}};
+      auto [_, code_point] =
+          utf16_to_code_point (std::begin (surrogates), std::end (surrogates));
       code_point_to_utf8 (code_point, std::back_inserter (*result_));
       high_surrogate_ = 0;
     }
