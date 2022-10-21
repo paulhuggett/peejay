@@ -127,14 +127,14 @@ TEST_F (JsonObject, ArrayValue) {
 
 TEST_F (JsonObject, MisplacedCommaBeforeCloseBrace) {
   // An object with a trailing comma but with the extension disabled.
-  parser<null_output> p;
+  parser p{null_output{}};
   p.input (R"({"a":1,})"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
   EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
 }
 
 TEST_F (JsonObject, NoCommaBeforeProperty) {
-  parser<null_output> p;
+  parser p{null_output{}};
   p.input (R"({"a":1 "b":1})"s).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::expected_object_member));
@@ -142,10 +142,10 @@ TEST_F (JsonObject, NoCommaBeforeProperty) {
 }
 
 TEST_F (JsonObject, TwoCommasBeforeProperty) {
-  parser<null_output> p3;
-  p3.input (R"({"a":1,,"b":1})"s).eof ();
-  EXPECT_EQ (p3.last_error (), make_error_code (error_code::expected_token));
-  EXPECT_EQ (p3.coordinate (), (coord{column{8U}, row{1U}}));
+  parser p{null_output{}};
+  p.input (R"({"a":1,,"b":1})"s).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
+  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
 }
 
 TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
@@ -165,20 +165,20 @@ TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
 }
 
 TEST_F (JsonObject, KeyIsNotString) {
-  parser<null_output> p;
+  parser p{null_output{}};
   p.input ("{{}:{}}"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_string));
   EXPECT_EQ (p.coordinate (), (coord{column{2U}, row{1U}}));
 }
 
 TEST_F (JsonObject, BadNestedObject) {
-  parser<null_output> p;
+  parser p{null_output{}};
   p.input (std::string{"{\"a\":nu}"}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::unrecognized_token));
 }
 
 TEST_F (JsonObject, TooDeeplyNested) {
-  parser<null_output> p;
+  parser p{null_output{}};
 
   std::string input;
   for (auto ctr = 0U; ctr < 200U; ++ctr) {
