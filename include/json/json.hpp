@@ -45,12 +45,13 @@ inline std::optional<T> nothing () {
   return {std::nullopt};
 }
 
-/// The monadic "bind" operator for maybe<T>. If \p t is "nothing", then returns
-/// nothing where the type of the return is derived from the return type of \p
-/// f.  If \p t has a value then returns the result of calling \p f.
+/// The monadic "bind" operator for std::optional<T>. If \p t has no value then
+/// returns an empty optional<> where the type of the return is derived from the
+/// return type of \p f.  If \p t has a value then returns the result of calling
+/// \p f.
 ///
-/// \tparam T  The input type wrapped by a maybe<>.
-/// \tparam Function  A callable object whose signature is of the form `maybe<U> f(T t)`.
+/// \tparam T  The input type wrapped by a std::optional<>.
+/// \tparam Function  A callable object whose signature is of the form `std::optional<U> f(T t)`.
 template <typename T, typename Function>
 inline auto operator>>= (std::optional<T> &&t, Function f)
     -> decltype (f (*t)) {
@@ -469,7 +470,7 @@ protected:
 
   /// The value to be used for the "done" state in the each of the matcher state
   /// machines.
-  static constexpr auto done = std::uint8_t{1};
+  static constexpr auto done = 1;
 
 private:
   int state_;
@@ -549,7 +550,8 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     this->set_error (parser, done_ (parser));
     this->set_state (done_state);
     break;
-  case done_state: assert (false); break;
+  case done_state:
+  default: assert (false); break;
   }
   return {nullptr, match};
 }
@@ -918,7 +920,8 @@ number_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     case exponent_digit_state:
       match = this->do_exponent_digit_state (parser, c);
       break;
-    case done_state: assert (false); break;
+    case done_state:
+    default: assert (false); break;
     }
   } else {
     assert (!parser.has_error ());
@@ -1365,6 +1368,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     default: this->set_error (parser, error_code::expected_array_member); break;
     }
     break;
+  default:
   case done_state: assert (false); break;
   }
   return {nullptr, true};
@@ -1477,6 +1481,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->set_error (parser, error_code::expected_object_member);
     }
     break;
+  default:
   case done_state: assert (false); break;
   }
   // No change of matcher. Consume the input character.
@@ -1609,7 +1614,8 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       // Just consume the character.
       break;
 
-    case done_state: assert (false); break;
+    case done_state:
+    default: assert (false); break;
     }
   }
   return {nullptr, true};
@@ -1836,7 +1842,8 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       return {nullptr, true};
     }
   } break;
-  case done_state: assert (false); break;
+  case done_state:
+  default: assert (false); break;
   }
   assert (false);  // unreachable.
   return {nullptr, true};
