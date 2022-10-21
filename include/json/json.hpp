@@ -1218,8 +1218,7 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
   };
 
   auto append = [&app] (std::tuple<char32_t, state> const &s) {
-    char32_t const cp = std::get<0> (s);
-    state const next_state = std::get<1> (s);
+    auto const [cp, next_state] = s;
     assert (next_state == normal_char_state || next_state == hex1_state);
     if (next_state == normal_char_state && !app.append32 (cp)) {
       return std::optional<state>{std::nullopt};
