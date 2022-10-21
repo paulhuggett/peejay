@@ -66,6 +66,9 @@ namespace peejay {
 #if __cplusplus >= 202002L
 template <typename T>
 concept notifications = requires (T &&v) {
+  /// The type that result() will return.
+  typename Callbacks::result_type;
+
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
   { v.result () } -> std::convertible_to<typename T::result_type>;
@@ -190,7 +193,7 @@ struct coord {
     return std::make_pair (row, column) >= std::make_pair (rhs.row, rhs.column);
   }
 #endif  // __cplusplus >= 202002L
-      unsigned row = 1U;
+  unsigned row = 1U;
   unsigned column = 1U;
 };
 
