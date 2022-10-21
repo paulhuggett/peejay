@@ -32,11 +32,9 @@ public:
   std::error_code string_value (std::string_view const& s) {
     os_ << '"';
     std::ostream_iterator<char> out{os_};
-#if __cplusplus >= 202002L
-    std::ranges::copy (s, out);
-#else
+    // TODO: not yet supported by Xcode 14.0.1
+    // std::ranges::copy (s, out);
     std::copy (std::begin (s), std::end (s), out);
-#endif  // __cplusplus >= 202002L
     os_ << '"';
     return {};
   }
