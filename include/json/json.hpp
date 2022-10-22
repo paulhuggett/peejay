@@ -1281,13 +1281,13 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       // We're done with the hex characters and are switching back to the
       // "normal" state. The means that we can add the accumulated code-point
       // (in hex_) to the string.
-      if (next_state == normal_char_state) {
-        if (!app_.append16 (static_cast<char16_t> (hex_))) {
-          this->set_error (parser, error_code::bad_unicode_code_point);
-        }
+      if (next_state == normal_char_state &&
+          !app_.append16 (static_cast<char16_t> (hex_))) {
+        this->set_error (parser, error_code::bad_unicode_code_point);
       }
     } break;
 
+    default:
     case done_state: assert (false); break;
     }
   }
