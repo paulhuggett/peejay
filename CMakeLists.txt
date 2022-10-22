@@ -21,6 +21,7 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 option (WERROR "Compiler warnings are errors")
 option (CXX17 "Use C++17 (rather than the default C++20")
+option (COVERAGE "Generate LLVM Source-based Coverage")
 
 if (CXX17)
   set (STANDARD 17)
@@ -55,6 +56,10 @@ function (setup_target target)
     list (APPEND msvc_options /WX)
   endif ()
 
+  if (COVERAGE)
+    list (APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
+  endif ()
+
   set_target_properties (${target} PROPERTIES
     CXX_STANDARD ${STANDARD}
     CXX_STANDARD_REQUIRED Yes
@@ -64,6 +69,11 @@ function (setup_target target)
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
+  )
+  target_link_options (${target} PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
+    $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
+    $<$<CXX_COMPILER_ID:MSVC>:>
   )
 endfunction (setup_target)
 
