@@ -223,7 +223,11 @@ class parser {
   friend class details::whitespace_matcher<Callbacks>;
 
 public:
-  explicit parser (Callbacks callbacks = Callbacks{},
+  parser (extensions extensions = extensions::none)
+      : parser (Callbacks{}, extensions) {}
+  template <typename OtherCallbacks>
+  CXX20REQUIRES (notifications<OtherCallbacks>)
+  explicit parser (OtherCallbacks &&callbacks,
                    extensions extensions = extensions::none);
   parser (parser const &) = delete;
   parser (parser &&) noexcept (std::is_nothrow_constructible_v<Callbacks>) =
@@ -370,7 +374,7 @@ private:
 
   /// The column and row number of the parse within the input stream.
   coord coordinate_;
-  extensions const extensions_;
+  extensions extensions_;
   [[no_unique_address]] Callbacks callbacks_;
 };
 
@@ -1877,8 +1881,12 @@ struct singleton_storage {
 // ~~~~~~
 template <typename Callbacks>
 CXX20REQUIRES (notifications<Callbacks>)
-parser<Callbacks>::parser (Callbacks callbacks, extensions const extensions)
-    : extensions_{std::move (extensions)}, callbacks_{std::move (callbacks)} {
+template <typename OtherCallbacks>
+CXX20REQUIRES (notifications<OtherCallbacks>)
+parser<Callbacks>::parser (OtherCallbacks &&callbacks,
+                           extensions const extensions)
+    : extensions_{extensions},
+      callbacks_{std::forward<OtherCallbacks> (callbacks)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
