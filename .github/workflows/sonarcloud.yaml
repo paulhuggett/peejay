@@ -15,6 +15,7 @@ jobs:
       SONAR_SERVER_URL: "https://sonarcloud.io"
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
       SONAR_CACHE_DIR: build_cache_dir
+      CLANG_VERSION: 14
     steps:
       - uses: actions/checkout@v3
         with:
@@ -56,11 +57,24 @@ jobs:
           unzip -o "$HOME/.sonar/build-wrapper-linux-x86.zip" -d "$HOME/.sonar/"
           echo "$HOME/.sonar/build-wrapper-linux-x86" >> "$GITHUB_PATH"
 
-      - name: Run build-wrapper
+      - name: Perform build
         run: |
           mkdir build
-          cmake -G Ninja -S . -B build -D COVERAGE=Yes -D CMAKE_C_COMPILER=clang-14 -D CMAKE_CXX_COMPILER=clang++-14
+          cmake -G Ninja                                           \
+                -S .                                               \
+                -B build                                           \
+                -D COVERAGE=Yes                                    \
+                -D CMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
+                -D CMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }}
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
+
+      - name: Index the raw profile
+        run: |
+          llvm-profdata-${{ env.CLANG_VERSION }} merge -sparse build/default.profraw -o build/merged.profdata
+
+      - name: Collect the coverage
+        run: |
+           llvm-cov-${{ env.CLANG_VERSION }} show --instr-profile build/merged.profdata build/unittests/json-tests > coverage.txt
 
       - name: Run sonar-scanner
         env:
@@ -72,6 +86,7 @@ jobs:
                         --define sonar.cfamily.cache.enabled=true                                      \
                         --define sonar.cfamily.cache.path="${{ env.SONAR_CACHE_DIR }}"                 \
                         --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+                        --define sonar.cfamily.llvm-cov.reportPath=coverage.txt                        \
                         --define sonar.projectVersion="$(git rev-parse HEAD)"                          \
                         --define sonar.projectKey=paulhuggett_peejay                                   \
                         --define sonar.organization=paulhuggett-github                                 \
