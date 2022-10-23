@@ -27,7 +27,10 @@ class json_writer {
 public:
   constexpr explicit json_writer (std::ostream& os) noexcept : os_{os} {}
 
-  constexpr void result () const noexcept {}
+  constexpr void result () const noexcept {
+    // There's no "result" from this output class: the output is all in the
+    // side-effects of writing to os_.
+  }
 
   std::error_code string_value (std::string_view const& s) {
     os_ << '"';
