@@ -60,7 +60,7 @@ jobs:
         run: |
           mkdir build
           cmake -G Ninja -S . -B build -D COVERAGE=Yes -D CMAKE_C_COMPILER=clang-14 -D CMAKE_CXX_COMPILER=clang++-14
-          build-wrapper-linux-x86 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
 
       - name: Run sonar-scanner
         env:
