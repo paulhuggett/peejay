@@ -7,10 +7,10 @@
 #*                                                   *
 #===----------------------------------------------------------------------===//
 #
-# Distributed under the Apache License v2.0 with LLVM Exceptions.
+# Distributed under the Apache License v2.0.
 # See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
 # for license information.
-# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+# SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
 cmake_minimum_required(VERSION 3.0)
@@ -123,3 +123,5 @@ add_custom_command (TARGET json-main
 add_executable (main-klee main_klee.cpp)
 target_link_libraries (main-klee PUBLIC json-parser)
 setup_target (main-klee)
+
+add_subdirectory (tools)
