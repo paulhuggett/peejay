@@ -1,4 +1,18 @@
-// Self include
+//===- unittests/test_coord.cpp -------------------------------------------===//
+//*                          _  *
+//*   ___ ___   ___  _ __ __| | *
+//*  / __/ _ \ / _ \| '__/ _` | *
+//* | (_| (_) | (_) | | | (_| | *
+//*  \___\___/ \___/|_|  \__,_| *
+//*                             *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 #include "json/json.hpp"
 
 // 3rd party includes
