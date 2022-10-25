@@ -28,7 +28,6 @@
 #endif  // !_WIN32
 
 // Local includes
-#include "dom.hpp"
 #include "emit.hpp"
 
 namespace {
@@ -128,7 +127,7 @@ std::error_code slurp_file (peejay::parser<Notifications>& p,
 int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
-    auto p = peejay::make_parser (dom_tree{});
+    auto p = peejay::make_parser (peejay::dom{});
     auto const err = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
     if (err) {
       std::cerr << "Error: " << err.message () << '\n';

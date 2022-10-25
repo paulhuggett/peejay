@@ -18,7 +18,7 @@
 #include <stack>
 
 #include "callbacks.hpp"
-#include "json/dom_types.hpp"
+#include "json/null.hpp"
 
 using namespace std::string_literals;
 using testing::DoubleEq;

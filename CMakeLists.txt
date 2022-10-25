@@ -89,11 +89,13 @@ set_target_properties (gtest gmock gmock_main gtest_main
              CXX_STANDARD_REQUIRED Yes
 )
 add_library (json-parser STATIC
-    include/json/dom_types.hpp
+    include/json/dom.hpp
     include/json/json.hpp
     include/json/json_error.hpp
+    include/json/null.hpp
     include/json/utf.hpp
     include/json/utility.hpp
+    lib/json/dom.cpp
     lib/json/json_error.cpp
     lib/json/utf.cpp
     lib/json/utility.cpp

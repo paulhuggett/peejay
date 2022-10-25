@@ -1,10 +1,10 @@
-//===- include/json/dom_types.hpp -------------------------*- mode: C++ -*-===//
-//*      _                   _                          *
-//*   __| | ___  _ __ ___   | |_ _   _ _ __   ___  ___  *
-//*  / _` |/ _ \| '_ ` _ \  | __| | | | '_ \ / _ \/ __| *
-//* | (_| | (_) | | | | | | | |_| |_| | |_) |  __/\__ \ *
-//*  \__,_|\___/|_| |_| |_|  \__|\__, | .__/ \___||___/ *
-//*                              |___/|_|               *
+//===- include/json/null.hpp ------------------------------*- mode: C++ -*-===//
+//*              _ _  *
+//*  _ __  _   _| | | *
+//* | '_ \| | | | | | *
+//* | | | | |_| | | | *
+//* |_| |_|\__,_|_|_| *
+//*                   *
 //===----------------------------------------------------------------------===//
 //
 // Distributed under the Apache License v2.0.
@@ -14,8 +14,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PEEJAY_DOM_TYPES_HPP
-#define PEEJAY_DOM_TYPES_HPP
+#ifndef PEEJAY_NULL_HPP
+#define PEEJAY_NULL_HPP
 
 #include <cstdint>
 #include <string_view>
@@ -46,4 +46,4 @@ public:
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DOM_TYPES_HPP
+#endif  // PEEJAY_NULL_HPP

@@ -15,8 +15,8 @@
 //===----------------------------------------------------------------------===//
 #include "json/utility.hpp"
 
-#include "json/dom_types.hpp"
 #include "json/json.hpp"
+#include "json/null.hpp"
 
 namespace peejay {
 

@@ -18,8 +18,8 @@
 
 #include <iosfwd>
 
-#include "dom.hpp"
+#include "json/dom.hpp"
 
-void emit (std::ostream& os, element const& el);
+void emit (std::ostream& os, peejay::dom::element const& root);
 
 #endif  // PEEJAY_TREE_EMIT_HPP

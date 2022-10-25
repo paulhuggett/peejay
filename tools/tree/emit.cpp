@@ -47,8 +47,8 @@ struct overloaded : Ts... {
 template <typename... Ts>
 overloaded (Ts...) -> overloaded<Ts...>;
 
-void emit (std::ostream& os, indent const i, element const& el) {
-  auto const emit_object = [&] (object const& obj) {
+void emit (std::ostream& os, indent const i, peejay::dom::element const& el) {
+  auto const emit_object = [&] (peejay::dom::object const& obj) {
     os << "{\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
@@ -59,7 +59,7 @@ void emit (std::ostream& os, indent const i, element const& el) {
     }
     os << '\n' << i << "}";
   };
-  auto const emit_array = [&] (array const& arr) {
+  auto const emit_array = [&] (peejay::dom::array const& arr) {
     os << "[\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
@@ -75,14 +75,14 @@ void emit (std::ostream& os, indent const i, element const& el) {
                  [&os] (int64_t v) { os << v; },
                  [&os] (uint64_t v) { os << v; }, [&os] (double v) { os << v; },
                  [&os] (bool b) { os << (b ? "true" : "false"); },
-                 [&os] (std::nullopt_t) { os << "null"; }, emit_array,
-                 emit_object, [] (mark) { assert (false); }},
+                 [&os] (peejay::dom::null) { os << "null"; }, emit_array,
+                 emit_object, [] (peejay::dom::mark) { assert (false); }},
       el);
 }
 
 }  // end anonymous namespace
 
-void emit (std::ostream& os, element const& el) {
-  emit (os, indent{}, el);
+void emit (std::ostream& os, peejay::dom::element const& root) {
+  emit (os, indent{}, root);
   os << '\n';
 }
