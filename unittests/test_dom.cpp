@@ -69,3 +69,38 @@ TEST (Dom, Object) {
       UnorderedElementsAre (std::make_pair ("a"s, dom::element{uint64_t{1}}),
                             std::make_pair ("b"s, dom::element{uint64_t{2}})));
 }
+
+TEST (Dom, ObjectInsideArray1) {
+  using testing::UnorderedElementsAre;
+  auto const arr = std::get<dom::array> (
+      make_parser (dom{}).input (R"([{"a":1,"b":2},3])"sv).eof ());
+  ASSERT_EQ (arr.size (), 2U);
+  EXPECT_THAT (
+      std::get<dom::object> (arr[0]),
+      UnorderedElementsAre (std::make_pair ("a"s, dom::element{uint64_t{1}}),
+                            std::make_pair ("b"s, dom::element{uint64_t{2}})));
+  EXPECT_THAT (arr[1], dom::element{uint64_t{3}});
+}
+
+TEST (Dom, ObjectInsideArray2) {
+  using testing::UnorderedElementsAre;
+  auto const arr = std::get<dom::array> (
+      make_parser (dom{}).input (R"([1,{"a":2,"b":3}])"sv).eof ());
+  ASSERT_EQ (arr.size (), 2U);
+  EXPECT_THAT (arr[0], dom::element{uint64_t{1}});
+  EXPECT_THAT (
+      std::get<dom::object> (arr[1]),
+      UnorderedElementsAre (std::make_pair ("a"s, dom::element{uint64_t{2}}),
+                            std::make_pair ("b"s, dom::element{uint64_t{3}})));
+}
+
+TEST (Dom, ArrayInsideObject) {
+  using testing::ElementsAre;
+  auto const obj = std::get<dom::object> (
+      make_parser (dom{}).input (R"({"a":[1,2],"b":3})"sv).eof ());
+  ASSERT_EQ (obj.size (), 2U);
+  EXPECT_THAT (
+      std::get<dom::array> (obj.at ("a")),
+      ElementsAre (dom::element{uint64_t{1}}, dom::element{uint64_t{2}}));
+  EXPECT_EQ (obj.at ("b"), dom::element{uint64_t{3}});
+}
