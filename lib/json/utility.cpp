@@ -21,7 +21,7 @@
 namespace peejay {
 
 bool is_valid (std::string const& str) {
-  parser p{null_output{}};
+  parser p{null{}};
   p.input (str).eof ();
   return !p.has_error ();
 }

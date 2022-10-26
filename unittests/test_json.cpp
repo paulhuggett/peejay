@@ -140,7 +140,7 @@ TEST_F (Json, Null) {
 TEST_F (Json, Move) {
   // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
   // usable.
-  auto p1 = parser<null_output>{};
+  auto p1 = parser<null>{};
   auto p2 = std::move (p1);
   p2.input ("null"s).eof ();
   EXPECT_FALSE (p2.has_error ());

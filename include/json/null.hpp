@@ -23,7 +23,7 @@
 
 namespace peejay {
 
-class null_output {
+class null {
 public:
   constexpr void result () const noexcept {}
 
