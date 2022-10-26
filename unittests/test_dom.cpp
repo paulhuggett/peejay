@@ -22,6 +22,16 @@ using namespace peejay;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
+TEST (Dom, MarkObjectsAllEqual) {
+  EXPECT_TRUE (dom::mark{} == dom::mark{});
+  EXPECT_FALSE (dom::mark{} != dom::mark{});
+}
+
+TEST (Dom, NullObjectsAllEqual) {
+  EXPECT_TRUE (dom::null{} == dom::null{});
+  EXPECT_FALSE (dom::null{} != dom::null{});
+}
+
 TEST (Dom, Null) {
   dom::element const root = make_parser (dom{}).input ("null"sv).eof ();
   EXPECT_EQ (std::get<dom::null> (root), dom::null{});

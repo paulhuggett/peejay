@@ -90,11 +90,15 @@ public:
   struct element;
   struct null {
     bool operator== (null) const noexcept { return true; }
+#if __cplusplus < 202002L
     bool operator!= (null) const noexcept { return false; }
+#endif  // __cplusplus < 202002L
   };
   struct mark {
     bool operator== (mark) const noexcept { return true; }
+#if __cplusplus < 202002L
     bool operator!= (mark) const noexcept { return false; }
+#endif  // __cplusplus < 202002L
   };
 
   using variant = std::variant<int64_t, uint64_t, double, bool, null,
