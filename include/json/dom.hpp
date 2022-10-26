@@ -40,9 +40,9 @@ public:
   using size_type = typename container_type::size_type;
   static_assert (std::is_same_v<Tp, value_type>);
 
-  static_assert (std::is_nothrow_default_constructible<container_type>::value);
-  static_assert (std::is_nothrow_move_constructible<container_type>::value);
-  static_assert (std::is_nothrow_move_assignable<container_type>::value);
+  static_assert (std::is_nothrow_default_constructible_v<container_type>);
+  static_assert (std::is_nothrow_move_constructible_v<container_type>);
+  static_assert (std::is_nothrow_move_assignable_v<container_type>);
 
   stack () : stack (Container ()) {}
   explicit stack (Container const &cont) : c_{cont} {}
@@ -90,52 +90,33 @@ public:
   struct element;
   struct null {
     bool operator== (null) const noexcept { return true; }
+    bool operator!= (null) const noexcept { return false; }
   };
   struct mark {
     bool operator== (mark) const noexcept { return true; }
+    bool operator!= (mark) const noexcept { return false; }
   };
 
   using variant = std::variant<int64_t, uint64_t, double, bool, null,
                                std::string, std::vector<element>,
                                std::unordered_map<std::string, element>, mark>;
   struct element : variant {
-#if 1
     using variant::variant;
-#else
-    template <typename Ty>
-    element (Ty &&t) : variant (std::forward<Ty> (t)) {
-    }
-
-    element (element const &) = delete;
-    element (element &&) noexcept = default;
-    element &operator= (element const &) = delete;
-    element &operator= (element &&) noexcept = default;
-#endif
-
-    constexpr bool operator== (dom::element const &other) const {
-      return static_cast<variant const &> (*this) ==
-             static_cast<variant const &> (other);
-    }
-    constexpr bool operator!= (dom::element const &other) const {
-      return !operator== (other);
-    }
+    friend constexpr bool operator== (element const &lhs, element const &rhs);
+    friend constexpr bool operator!= (element const &lhs, element const &rhs);
   };
 
   using object = std::unordered_map<std::string, element>;
   using array = std::vector<element>;
 
   dom ();
-#if 1
   dom (dom const &) = delete;
   dom (dom &&) noexcept = default;
 
   dom &operator= (dom const &) = delete;
   dom &operator= (dom &&) noexcept = default;
-#endif
 
-  element const &result () const noexcept {
-    return stack_.top ();
-  }
+  element result () noexcept { return std::move (stack_.top ()); }
 
   std::error_code string_value (std::string_view const &s);
   std::error_code int64_value (int64_t v);
@@ -167,6 +148,20 @@ private:
   }
   details::stack<element, std::vector<element>> stack_;
 };
+
+constexpr bool operator== (dom::element const &lhs, dom::element const &rhs) {
+  return static_cast<dom::variant const &> (lhs) ==
+         static_cast<dom::variant const &> (rhs);
+}
+
+#if __cplusplus >= 202002L
+constexpr bool operator!= (dom::element const &lhs,
+                           dom::element const &rhs) = default;
+#else
+constexpr bool operator!= (dom::element const &lhs, dom::element const &rhs) {
+  return !operator== (lhs, rhs);
+}
+#endif  // __cplusplus >= 202002L
 
 }  // end namespace peejay
 
