@@ -73,7 +73,10 @@ public:
     if (pos == rend) {
       return 0;
     }
-    return std::distance (pos.base (), std::end (c_));
+
+    auto const result = std::distance (pos.base (), std::end (c_));
+    assert (result >= 0);
+    return static_cast<std::make_unsigned_t<decltype (result)>> (result);
   }
 
 private:
