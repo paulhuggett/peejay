@@ -36,6 +36,7 @@ jobs:
 
 
           - name: Ubuntu-22.04/clang-14/Debug
+            apt_install: libstdc++-12-dev
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Unix Makefiles
@@ -43,6 +44,7 @@ jobs:
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release
+            apt_install: libstdc++-12-dev
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Unix Makefiles
@@ -50,6 +52,7 @@ jobs:
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release/C++17
+            apt_install: libstdc++-12-dev
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Unix Makefiles
