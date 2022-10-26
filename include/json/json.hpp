@@ -223,7 +223,7 @@ class parser {
   friend class details::whitespace_matcher<Callbacks>;
 
 public:
-  parser (extensions extensions = extensions::none)
+  explicit parser (extensions extensions = extensions::none)
       : parser (Callbacks{}, extensions) {}
   template <typename OtherCallbacks>
   CXX20REQUIRES (notifications<OtherCallbacks>)
