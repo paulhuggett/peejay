@@ -48,7 +48,7 @@ template <typename... Ts>
 overloaded (Ts...) -> overloaded<Ts...>;
 
 void emit (std::ostream& os, indent const i, peejay::dom::element const& el) {
-  auto const emit_object = [&] (peejay::dom::object const& obj) {
+  auto const emit_object = [&os, i] (peejay::dom::object const& obj) {
     os << "{\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
@@ -59,7 +59,7 @@ void emit (std::ostream& os, indent const i, peejay::dom::element const& el) {
     }
     os << '\n' << i << "}";
   };
-  auto const emit_array = [&] (peejay::dom::array const& arr) {
+  auto const emit_array = [&os, i] (peejay::dom::array const& arr) {
     os << "[\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
