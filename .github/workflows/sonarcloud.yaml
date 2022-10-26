@@ -28,8 +28,8 @@ jobs:
           distribution: 'zulu'
           java-version: '11'
 
-      - name: Install ninja
-        run: sudo apt-get install ninja-build
+      - name: Install libstdc++ and ninja
+        run: sudo apt-get install libstdc++-12-dev ninja-build
 
       - name: Cache SonarCloud packages and analysis
         uses: actions/cache@v3
