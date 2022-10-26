@@ -71,6 +71,8 @@ std::error_code slurp_file (peejay::parser<Notifications>& p,
 class closer {
 public:
   explicit constexpr closer (int const fd) noexcept : fd_{fd} {}
+  closer (closer const&) = delete;
+  closer& operator= (closer const&) = delete;
   ~closer () noexcept {
     if (fd_ != -1) {
       close (fd_);
@@ -87,6 +89,8 @@ class unmapper {
 public:
   explicit constexpr unmapper (void* ptr, size_t size) noexcept
       : span_{ptr, size} {}
+  unmapper (unmapper const&) = delete;
+  unmapper& operator= (unmapper const&) = delete;
   ~unmapper () noexcept { ::munmap (span_.first, span_.second); }
   constexpr T const* begin () const noexcept {
     return reinterpret_cast<T const*> (span_.first);
