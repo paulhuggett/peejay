@@ -7,13 +7,6 @@ using namespace peejay;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
-bool operator== (std::nullopt_t const &, std::nullopt_t const &) noexcept {
-  return true;
-}
-bool operator== (dom::mark, dom::mark) noexcept {
-  return true;
-}
-
 TEST (Dom, One) {
   dom::element const root = make_parser (dom{}).input ("1"sv).eof ();
   EXPECT_EQ (std::get<uint64_t> (root), 1U);
