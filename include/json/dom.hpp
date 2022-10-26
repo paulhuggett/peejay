@@ -153,15 +153,9 @@ constexpr bool operator== (dom::element const &lhs, dom::element const &rhs) {
   return static_cast<dom::variant const &> (lhs) ==
          static_cast<dom::variant const &> (rhs);
 }
-
-#if __cplusplus >= 202002L
-constexpr bool operator!= (dom::element const &lhs,
-                           dom::element const &rhs) = default;
-#else
 constexpr bool operator!= (dom::element const &lhs, dom::element const &rhs) {
   return !operator== (lhs, rhs);
 }
-#endif  // __cplusplus >= 202002L
 
 }  // end namespace peejay
 
