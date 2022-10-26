@@ -109,7 +109,7 @@ public:
   using object = std::unordered_map<std::string, element>;
   using array = std::vector<element>;
 
-  dom ();
+  dom () = default;
   dom (dom const &) = delete;
   dom (dom &&) noexcept = default;
 
@@ -137,7 +137,7 @@ public:
   std::error_code end_object ();
 
 private:
-  static decltype (auto) initial_container () {
+  static std::vector<element> initial_container () {
     std::vector<element> cont;
     cont.reserve (512);
     return cont;
@@ -146,7 +146,7 @@ private:
     return stack_.find_if (
         [] (element const &v) { return std::holds_alternative<mark> (v); });
   }
-  details::stack<element, std::vector<element>> stack_;
+  details::stack<element, std::vector<element>> stack_{initial_container ()};
 };
 
 constexpr bool operator== (dom::element const &lhs, dom::element const &rhs) {

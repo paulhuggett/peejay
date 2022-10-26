@@ -15,11 +15,6 @@
 //===----------------------------------------------------------------------===//
 #include "json/dom.hpp"
 
-// ctor
-// ~~~~
-peejay::dom::dom () : stack_{initial_container ()} {
-}
-
 // string
 // ~~~~~~
 std::error_code peejay::dom::string_value (std::string_view const& s) {
