@@ -22,6 +22,11 @@ using namespace peejay;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
+TEST (Dom, Null) {
+  dom::element const root = make_parser (dom{}).input ("null"sv).eof ();
+  EXPECT_EQ (std::get<dom::null> (root), dom::null{});
+}
+
 TEST (Dom, One) {
   dom::element const root = make_parser (dom{}).input ("1"sv).eof ();
   EXPECT_EQ (std::get<uint64_t> (root), 1U);
