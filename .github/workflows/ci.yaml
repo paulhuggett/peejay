@@ -20,17 +20,17 @@ jobs:
 
           # Ubuntu builds
           # ~~~~~~~~~~~~~
-          - name: Ubuntu-22.04/gcc-11/Debug
-            apt_install: libstdc++-12-dev
+          - name: Ubuntu-22.04/gcc-12/Debug
+            apt_install: g++-12 libstdc++-12-dev
             build_type: Debug
-            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-11 -DCMAKE_C_COMPILER=gcc-11
+            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Unix Makefiles
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-11/Release
             apt_install: libstdc++-12-dev
             build_type: Release
-            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
+            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-11 -DCMAKE_C_COMPILER=gcc-11
             generator: Unix Makefiles
             os: ubuntu-22.04
 
