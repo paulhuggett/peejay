@@ -20,38 +20,38 @@ jobs:
 
           # Ubuntu builds
           # ~~~~~~~~~~~~~
-          - name: Ubuntu-22.04/gcc-12/Debug
+          #- name: Ubuntu-22.04/gcc-12/Debug
+          #  build_type: Debug
+          #  apt_install: g++-12
+          #  cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
+          #  generator: Unix Makefiles
+          #  os: ubuntu-22.04
+
+          #- name: Ubuntu-22.04/gcc-11/Release
+          #  build_type: Release
+          #  apt_install: g++-12
+          #  cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
+          #  generator: Unix Makefiles
+          #  os: ubuntu-22.04
+
+
+          - name: Ubuntu-22.04/clang-14/Debug
             build_type: Debug
-            apt_install: g++-12
-            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
-            generator: Unix Makefiles
-            os: ubuntu-22.04
-
-          - name: Ubuntu-22.04/gcc-11/Release
-            build_type: Release
-            apt_install: g++-12
-            cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
-            generator: Unix Makefiles
-            os: ubuntu-22.04
-
-
-          - name: Ubuntu-22.04/clang-12/Debug
-            build_type: Debug
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Unix Makefiles
             options: '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
-          - name: Ubuntu-22.04/clang-12/Release
+          - name: Ubuntu-22.04/clang-14/Release
             build_type: Release
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Unix Makefiles
             options: '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
-          - name: Ubuntu-22.04/clang-12/Release/C++17
+          - name: Ubuntu-22.04/clang-14/Release/C++17
             build_type: Release
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-12 -DCMAKE_C_COMPILER=clang-12
+            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Unix Makefiles
             options: -DCXX17=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
             os: ubuntu-22.04
