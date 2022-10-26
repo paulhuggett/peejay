@@ -1287,8 +1287,8 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       }
     } break;
 
-    default:
-    case done_state: assert (false); break;
+    case done_state:
+    default: assert (false); break;
     }
   }
   return {nullptr, true};
@@ -1368,8 +1368,8 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     default: this->set_error (parser, error_code::expected_array_member); break;
     }
     break;
-  default:
-  case done_state: assert (false); break;
+  case done_state:
+  default: assert (false); break;
   }
   return {nullptr, true};
 }
@@ -1481,8 +1481,8 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       this->set_error (parser, error_code::expected_object_member);
     }
     break;
-  default:
-  case done_state: assert (false); break;
+  case done_state:
+  default: assert (false); break;
   }
   // No change of matcher. Consume the input character.
   return {nullptr, true};
