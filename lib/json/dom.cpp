@@ -104,7 +104,7 @@ std::error_code peejay::dom::end_object () {
     }
     auto& key = stack_.top ();
     assert (std::holds_alternative<std::string> (key));
-    obj.emplace (std::move (std::get<std::string> (key)), std::move (value));
+    obj.try_emplace (std::move (std::get<std::string> (key)), std::move (value));
     stack_.pop ();
   }
   assert (obj.size () == size);
