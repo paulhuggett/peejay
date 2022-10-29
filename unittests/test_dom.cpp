@@ -22,6 +22,9 @@ using namespace peejay;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
+using testing::ElementsAre;
+using testing::UnorderedElementsAre;
+
 TEST (Dom, MarkObjectsAllEqual) {
   EXPECT_TRUE (dom::mark{} == dom::mark{});
   EXPECT_FALSE (dom::mark{} != dom::mark{});
@@ -33,62 +36,84 @@ TEST (Dom, NullObjectsAllEqual) {
 }
 
 TEST (Dom, Null) {
-  dom::element const root = make_parser (dom{}).input ("null"sv).eof ();
-  EXPECT_EQ (std::get<dom::null> (root), dom::null{});
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("null"sv).eof ();
+  ASSERT_TRUE (root);
+  EXPECT_EQ (std::get<dom::null> (*root), dom::null{});
 }
 
 TEST (Dom, One) {
-  dom::element const root = make_parser (dom{}).input ("1"sv).eof ();
-  EXPECT_EQ (std::get<uint64_t> (root), 1U);
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("1"sv).eof ();
+  ASSERT_TRUE (root);
+  EXPECT_EQ (std::get<uint64_t> (*root), 1U);
 }
 
 TEST (Dom, NegativeOne) {
-  dom::element const root = make_parser (dom{}).input ("-1"sv).eof ();
-  EXPECT_EQ (std::get<int64_t> (root), -1);
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("-1"sv).eof ();
+  ASSERT_TRUE (root);
+  EXPECT_EQ (std::get<int64_t> (*root), -1);
 }
 
 TEST (Dom, String) {
-  dom::element const root = make_parser (dom{}).input (R"("string")"sv).eof ();
-  EXPECT_EQ (std::get<std::string> (root), "string");
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input (R"("string")"sv).eof ();
+  EXPECT_EQ (std::get<std::string> (*root), "string");
 }
 
 TEST (Dom, Double) {
-  dom::element const root = make_parser (dom{}).input ("3.14"sv).eof ();
-  EXPECT_DOUBLE_EQ (std::get<double> (root), 3.14);
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("3.14"sv).eof ();
+  ASSERT_TRUE (root);
+  EXPECT_DOUBLE_EQ (std::get<double> (*root), 3.14);
 }
 
 TEST (Dom, BooleanTrue) {
-  dom::element const root = make_parser (dom{}).input ("true"sv).eof ();
-  EXPECT_TRUE (std::get<bool> (root));
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("true"sv).eof ();
+  EXPECT_TRUE (std::get<bool> (*root));
 }
 
 TEST (Dom, BooleanFalse) {
-  dom::element const root = make_parser (dom{}).input ("false"sv).eof ();
-  EXPECT_FALSE (std::get<bool> (root));
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("false"sv).eof ();
+  ASSERT_TRUE (root);
+  EXPECT_FALSE (std::get<bool> (*root));
 }
 
 TEST (Dom, Array) {
-  using testing::ElementsAre;
-  dom::element const root = make_parser (dom{}).input ("[1,2]"sv).eof ();
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input ("[1,2]"sv).eof ();
+  ASSERT_TRUE (root);
   EXPECT_THAT (
-      std::get<dom::array> (root),
+      std::get<dom::array> (*root),
       ElementsAre (dom::element{uint64_t{1}}, dom::element{uint64_t{2}}));
 }
 
+TEST (Dom, Array2) {
+  auto const src = R"(["\uFFFF"])"sv;
+  auto p = make_parser (dom{});
+  std::optional<dom::element> const root = p.input (src).eof ();
+  EXPECT_FALSE (p.has_error ());
+  ASSERT_TRUE (root);
+}
+
 TEST (Dom, Object) {
-  using testing::UnorderedElementsAre;
-  dom::element const root =
+  std::optional<dom::element> const root =
       make_parser (dom{}).input (R"({"a":1,"b":2})"sv).eof ();
+  ASSERT_TRUE (root);
   EXPECT_THAT (
-      std::get<dom::object> (root),
+      std::get<dom::object> (*root),
       UnorderedElementsAre (std::make_pair ("a"s, dom::element{uint64_t{1}}),
                             std::make_pair ("b"s, dom::element{uint64_t{2}})));
 }
 
 TEST (Dom, ObjectInsideArray1) {
-  using testing::UnorderedElementsAre;
-  auto const arr = std::get<dom::array> (
-      make_parser (dom{}).input (R"([{"a":1,"b":2},3])"sv).eof ());
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input (R"([{"a":1,"b":2},3])"sv).eof ();
+  ASSERT_TRUE (root);
+  auto const arr = std::get<dom::array> (*root);
   ASSERT_EQ (arr.size (), 2U);
   EXPECT_THAT (
       std::get<dom::object> (arr[0]),
@@ -98,9 +123,10 @@ TEST (Dom, ObjectInsideArray1) {
 }
 
 TEST (Dom, ObjectInsideArray2) {
-  using testing::UnorderedElementsAre;
-  auto const arr = std::get<dom::array> (
-      make_parser (dom{}).input (R"([1,{"a":2,"b":3}])"sv).eof ());
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input (R"([1,{"a":2,"b":3}])"sv).eof ();
+  ASSERT_TRUE (root);
+  auto const arr = std::get<dom::array> (*root);
   ASSERT_EQ (arr.size (), 2U);
   EXPECT_THAT (arr[0], dom::element{uint64_t{1}});
   EXPECT_THAT (
@@ -110,12 +136,24 @@ TEST (Dom, ObjectInsideArray2) {
 }
 
 TEST (Dom, ArrayInsideObject) {
-  using testing::ElementsAre;
-  auto const obj = std::get<dom::object> (
-      make_parser (dom{}).input (R"({"a":[1,2],"b":3})"sv).eof ());
+  std::optional<dom::element> const root =
+      make_parser (dom{}).input (R"({"a":[1,2],"b":3})"sv).eof ();
+  ASSERT_TRUE (root);
+  auto const obj = std::get<dom::object> (*root);
   ASSERT_EQ (obj.size (), 2U);
   EXPECT_THAT (
       std::get<dom::array> (obj.at ("a")),
       ElementsAre (dom::element{uint64_t{1}}, dom::element{uint64_t{2}}));
   EXPECT_EQ (obj.at ("b"), dom::element{uint64_t{3}});
+}
+
+TEST (Dom, DuplicateKeys) {
+  auto p = make_parser (dom{});
+  p.input (R"({"a":"b","a":"c"})"sv);
+  EXPECT_FALSE (p.has_error ());
+  std::optional<dom::element> const root = p.eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_THAT (
+      std::get<dom::object> (*root),
+      UnorderedElementsAre (std::make_pair ("a"s, dom::element{"c"s})));
 }

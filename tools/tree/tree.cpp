@@ -39,7 +39,8 @@ constexpr auto as_unsigned (T v) {
 }
 
 template <typename Notifications, typename IStream>
-std::error_code slurp (peejay::parser<Notifications>& p, IStream&& in) {
+std::variant<std::error_code, std::optional<peejay::dom::element>> slurp (
+    peejay::parser<Notifications>& p, IStream&& in) {
   std::array<char, 256> buffer{{0}};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
@@ -53,17 +54,21 @@ std::error_code slurp (peejay::parser<Notifications>& p, IStream&& in) {
     p.input (data, data + available);
 #endif  // __cplusplus >= 202002L
     if (auto const err = p.last_error ()) {
-      return err;
+      return {err};
     }
   }
-  return p.last_error ();
+  std::optional<peejay::dom::element> result = p.eof ();
+  if (std::error_code const erc = p.last_error ()) {
+    return {erc};
+  }
+  return {std::move (result)};
 }
 
 #ifdef _WIN32
 
 template <typename Notifications>
-std::error_code slurp_file (peejay::parser<Notifications>& p,
-                            char const* file) {
+std::variant<std::error_code, std::optional<peejay::dom::element>> slurp_file (
+    peejay::parser<Notifications>& p, char const* file) {
   return slurp (p, std::ifstream{file});
 }
 
@@ -105,8 +110,8 @@ private:
 };
 
 template <typename Notifications>
-std::error_code slurp_file (peejay::parser<Notifications>& p,
-                            char const* file) {
+std::variant<std::error_code, std::optional<peejay::dom::element>> slurp_file (
+    peejay::parser<Notifications>& p, char const* file) {
   closer fd{::open (file, O_RDONLY)};
   if (fd.get () == -1) {
     return make_error_code (static_cast<std::errc> (errno));
@@ -121,8 +126,12 @@ std::error_code slurp_file (peejay::parser<Notifications>& p,
     return make_error_code (static_cast<std::errc> (errno));
   }
   unmapper<char const> ptr{mapped, as_unsigned (sb.st_size)};
-  p.input (std::begin (ptr), std::end (ptr)).eof ();
-  return p.last_error ();
+  std::optional<peejay::dom::element> result =
+      p.input (std::begin (ptr), std::end (ptr)).eof ();
+  if (std::error_code const erc = p.last_error ()) {
+    return {erc};
+  }
+  return {std::move (result)};
 }
 #endif  // _WIN32
 
@@ -132,12 +141,13 @@ int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
     auto p = peejay::make_parser (peejay::dom{});
-    auto const err = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
-    if (err) {
-      std::cerr << "Error: " << err.message () << '\n';
+    auto const res = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
+    if (std::holds_alternative<std::error_code> (res)) {
+      std::cerr << "Error: " << std::get<std::error_code> (res).message ()
+                << '\n';
       exit_code = EXIT_FAILURE;
     } else {
-      emit (std::cout, p.eof ());
+      emit (std::cout, std::get<1> (res));
     }
   } catch (std::exception const& ex) {
     std::cerr << "Error: " << ex.what () << '\n';

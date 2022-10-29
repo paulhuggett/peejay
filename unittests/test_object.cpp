@@ -18,6 +18,8 @@
 #include "json/null.hpp"
 
 using namespace std::string_literals;
+using namespace std::string_view_literals;
+
 using testing::DoubleEq;
 using testing::StrictMock;
 
@@ -104,8 +106,7 @@ TEST_F (JsonObject, DuplicateKeys) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"{\"a\":1, \"a\" : true }"});
-  p.eof ();
+  p.input (R"({"a":1, "a":true})"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 

@@ -102,7 +102,9 @@ std::error_code peejay::dom::end_object () {
     obj.try_emplace (std::move (std::get<std::string> (key)), std::move (value));
     stack_.pop ();
   }
-  assert (obj.size () == size);
+  // The presence of duplicate keys can mean that we end up with fewer entries
+  // in the map than there were key/value pairs on the stack.
+  assert (obj.size () <= size);
   stack_.emplace (std::move (obj));
   return {};
 }

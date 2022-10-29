@@ -20,6 +20,6 @@
 
 #include "json/dom.hpp"
 
-void emit (std::ostream& os, peejay::dom::element const& root);
+void emit (std::ostream& os, std::optional<peejay::dom::element> const& root);
 
 #endif  // PEEJAY_TREE_EMIT_HPP

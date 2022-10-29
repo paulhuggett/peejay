@@ -15,6 +15,8 @@
 //===----------------------------------------------------------------------===//
 #include "emit.hpp"
 
+#include <span>
+
 namespace {
 
 class indent {
@@ -38,6 +40,46 @@ std::ostream& operator<< (std::ostream& os, indent const& i) {
   return i.write (os);
 }
 
+constexpr char to_hex (unsigned v) noexcept {
+  assert (v < 0x10);
+  return static_cast<char> (v + ((v < 10) ? '0' : 'A' - 10));
+}
+
+void emit_string_view (std::ostream& os, std::string_view const& str) {
+  os << '"';
+  auto first = std::begin (str);
+  auto const last = std::end (str);
+  auto pos = first;
+  while ((pos = std::find_if (first, last, [] (char const c) {
+            return c < ' ' || c == '"' || c == '\\';
+          })) != last) {
+    assert (pos >= first);
+    os.write (&*first, static_cast<size_t> (pos - first));
+    os << '\\';
+    switch (*pos) {
+    case '"': os << '"'; break;    // quotation mark  U+0022
+    case '\\': os << '\\'; break;  // reverse solidus U+005C
+    case 0x08: os << 'b'; break;   // backspace       U+0008
+    case 0x0C: os << 'f'; break;   // form feed       U+000C
+    case 0x0A: os << 'n'; break;   // line feed       U+000A
+    case 0x0D: os << 'r'; break;   // carriage return U+000D
+    case 0x09: os << 't'; break;   // tab             U+0009
+    default: {
+      auto const c = static_cast<uint8_t> (*pos);
+      char hex[5] = {'u', '0', '0', to_hex ((c & 0xF0) >> 4),
+                     to_hex (c & 0x0F)};
+      os.write (hex, 5);
+    } break;
+    }
+    first = pos + 1;
+  }
+  if (first != last) {
+    assert (last > first);
+    os.write (&*first, static_cast<size_t> (last - first));
+  }
+  os << '"';
+}
+
 // helper type for the visitor
 template <typename... Ts>
 struct overloaded : Ts... {
@@ -49,17 +91,25 @@ overloaded (Ts...) -> overloaded<Ts...>;
 
 void emit (std::ostream& os, indent const i, peejay::dom::element const& el) {
   auto const emit_object = [&os, i] (peejay::dom::object const& obj) {
+    if (obj.empty ()) {
+      os << "{}";
+      return;
+    }
     os << "{\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
-    for (auto const& kvp : obj) {
-      os << separator << next_indent << '"' << kvp.first << "\": ";
-      emit (os, next_indent, kvp.second);
+    for (auto const& [key, value] : obj) {
+      os << separator << next_indent << '"' << key << "\": ";
+      emit (os, next_indent, value);
       separator = ",\n";
     }
     os << '\n' << i << "}";
   };
   auto const emit_array = [&os, i] (peejay::dom::array const& arr) {
+    if (arr.empty ()) {
+      os << "[]";
+      return;
+    }
     os << "[\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
@@ -71,7 +121,7 @@ void emit (std::ostream& os, indent const i, peejay::dom::element const& el) {
     os << '\n' << i << "]";
   };
   std::visit (
-      overloaded{[&os] (std::string const& s) { os << '"' << s << '"'; },
+      overloaded{[&os] (std::string const& s) { emit_string_view (os, s); },
                  [&os] (int64_t v) { os << v; },
                  [&os] (uint64_t v) { os << v; }, [&os] (double v) { os << v; },
                  [&os] (bool b) { os << (b ? "true" : "false"); },
@@ -82,7 +132,10 @@ void emit (std::ostream& os, indent const i, peejay::dom::element const& el) {
 
 }  // end anonymous namespace
 
-void emit (std::ostream& os, peejay::dom::element const& root) {
-  emit (os, indent{}, root);
+void emit (std::ostream& os, std::optional<peejay::dom::element> const& root) {
+  if (!root) {
+    return;
+  }
+  emit (os, indent{}, *root);
   os << '\n';
 }

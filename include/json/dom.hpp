@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 #include <system_error>
 #include <unordered_map>
@@ -120,7 +121,12 @@ public:
   dom &operator= (dom const &) = delete;
   dom &operator= (dom &&) noexcept = default;
 
-  element result () noexcept { return std::move (stack_.top ()); }
+  std::optional<element> result () noexcept {
+    if (stack_.empty ()) {
+      return {std::nullopt};
+    }
+    return {std::move (stack_.top ())};
+  }
 
   std::error_code string_value (std::string_view const &s);
   std::error_code int64_value (int64_t v);
