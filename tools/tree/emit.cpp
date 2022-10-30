@@ -54,7 +54,7 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
             return c < ' ' || c == '"' || c == '\\';
           })) != last) {
     assert (pos >= first);
-    os.write (&*first, static_cast<size_t> (pos - first));
+    os.write (&*first, std::distance (first, pos));
     os << '\\';
     switch (*pos) {
     case '"': os << '"'; break;    // quotation mark  U+0022
@@ -75,7 +75,7 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
   }
   if (first != last) {
     assert (last > first);
-    os.write (&*first, static_cast<size_t> (last - first));
+    os.write (&*first, std::distance (first, last));
   }
   os << '"';
 }
