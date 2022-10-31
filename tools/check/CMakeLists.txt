@@ -1,4 +1,4 @@
-#===- tools/CMakeLists.txt ------------------------------------------------===//
+#===- tools/check/CMakeLists.txt ------------------------------------------===//
 #*   ____ __  __       _        _     _     _        *
 #*  / ___|  \/  | __ _| | _____| |   (_)___| |_ ___  *
 #* | |   | |\/| |/ _` | |/ / _ \ |   | / __| __/ __| *
@@ -13,5 +13,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
-add_subdirectory (check)
-add_subdirectory (tree)
+add_executable (pj-check check.cpp)
+target_link_libraries (pj-check PUBLIC json-parser)
+setup_target (pj-check)

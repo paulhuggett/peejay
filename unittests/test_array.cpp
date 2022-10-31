@@ -17,6 +17,7 @@
 #include "json/json.hpp"
 
 using namespace std::string_literals;
+using namespace std::string_view_literals;
 using testing::DoubleEq;
 using testing::StrictMock;
 using namespace peejay;
@@ -37,10 +38,11 @@ TEST_F (JsonArray, Empty) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("[\n]\n"s);
+  p.input ("[\n]\n"sv);
   p.eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse to succeed";
-  EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{3U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{1U}, line{3U}}));
 }
 
 TEST_F (JsonArray, BeginArrayReturnsError) {
@@ -51,7 +53,7 @@ TEST_F (JsonArray, BeginArrayReturnsError) {
   auto p = make_parser (proxy_);
   p.input ("[\n]\n"s);
   EXPECT_EQ (p.last_error (), error);
-  EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
 }
 
 TEST_F (JsonArray, ArrayNoCloseBracket) {
@@ -71,9 +73,10 @@ TEST_F (JsonArray, SingleElement) {
   std::string const input = "[ 1 ]";
   p.input (input).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
+  EXPECT_EQ (p.pos (), (coord{column{5}, line{1U}}));
   EXPECT_EQ (
-      p.coordinate (),
-      (coord{column{static_cast<unsigned> (input.length ()) + 1U}, row{1U}}));
+      p.input_pos (),
+      (coord{column{static_cast<unsigned> (input.length ()) + 1U}, line{1U}}));
 }
 
 TEST_F (JsonArray, SingleStringElement) {
@@ -128,9 +131,10 @@ TEST_F (JsonArray, TwoElements) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"[ 1 ,\n \"hello\" ]"});
+  p.input ("[ 1 ,\n \"hello\" ]"sv);
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{11U}, row{2U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{11U}, line{2U}}));
+  EXPECT_EQ (p.pos (), (coord{column{10U}, line{2U}}));
 }
 
 TEST_F (JsonArray, MisplacedComma1) {
@@ -172,21 +176,21 @@ TEST_F (JsonArray, EmptyTrailingCommaEnabled) {
   auto p = make_parser (json_out_callbacks{}, extensions::array_trailing_comma);
   p.input ("[,]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
-  EXPECT_EQ (p.coordinate (), (coord{column{2U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonArray, TrailingCommaDisabled1) {
   parser p{json_out_callbacks{}};
   p.input ("[,]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
-  EXPECT_EQ (p.coordinate (), (coord{column{2U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonArray, TrailingCommaDisabled2) {
   parser p{json_out_callbacks{}};
   p.input ("[1,]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
-  EXPECT_EQ (p.coordinate (), (coord{column{4U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonArray, NestedError1) {

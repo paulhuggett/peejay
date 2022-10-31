@@ -152,7 +152,7 @@ private:
 
 }  // end namespace details
 
-struct row {
+struct line {
   explicit constexpr operator unsigned () const noexcept { return x; }
   unsigned x;
 };
@@ -163,10 +163,10 @@ struct column {
 
 struct coord {
   constexpr coord () noexcept = default;
-  constexpr coord (struct column x, struct row y) noexcept
-      : row{y}, column{x} {}
-  constexpr coord (struct row y, struct column x) noexcept
-      : row{y}, column{x} {}
+  constexpr coord (struct column x, struct line y) noexcept
+      : line{y}, column{x} {}
+  constexpr coord (struct line y, struct column x) noexcept
+      : line{y}, column{x} {}
 
 #if __cplusplus >= 202002L
   // https://github.com/llvm/llvm-project/issues/55919
@@ -194,9 +194,14 @@ struct coord {
     return std::make_pair (row, column) >= std::make_pair (rhs.row, rhs.column);
   }
 #endif  // __cplusplus >= 202002L
-  unsigned row = 1U;
+
+      unsigned line = 1U;
   unsigned column = 1U;
 };
+
+inline std::ostream &operator<< (std::ostream &os, coord const &c) {
+  return os << c.line << ':' << c.column;
+}
 
 enum class extensions : unsigned {
   none = 0U,
@@ -304,8 +309,12 @@ public:
   }
 
   /// Returns the parser's position in the input text.
-  constexpr coord coordinate () const noexcept {
-    return coordinate_;
+  constexpr coord input_pos () const noexcept {
+    return pos_;
+  }
+  /// Returns the position of the most recent token in the input text.
+  constexpr coord pos () const noexcept {
+    return matcher_pos_;
   }
 
 private:
@@ -317,7 +326,7 @@ private:
 
   /// Increments the column number.
   void advance_column () noexcept {
-    ++coordinate_.column;
+    ++pos_.column;
   }
 
   /// Increments the row number and resets the column.
@@ -325,13 +334,13 @@ private:
     // The column number is set to 0. This is because the outer parse loop
     // automatically advances the column number for each character consumed.
     // This happens after the row is advanced by a matcher's consume() function.
-    coordinate_.column = 0U;
-    ++coordinate_.row;
+    pos_.column = 0U;
+    ++pos_.line;
   }
 
   /// Resets the column count but does not affect the row number.
   void reset_column () noexcept {
-    coordinate_.column = 0U;
+    pos_.column = 0U;
   }
   ///@}
 
@@ -373,7 +382,8 @@ private:
   std::string string_;
 
   /// The column and row number of the parse within the input stream.
-  coord coordinate_;
+  coord pos_;
+  coord matcher_pos_;
   extensions extensions_;
   [[no_unique_address]] Callbacks callbacks_;
 };
@@ -1957,6 +1967,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
         break;
       }
       stack_.pop ();  // release the topmost matcher object.
+      matcher_pos_ = pos_;
     }
 
     if (res.first != nullptr) {
@@ -1969,6 +1980,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
       }
 
       stack_.push (std::move (res.first));
+      matcher_pos_ = pos_;
     }
     // If we're matching this character, advance the column number and increment
     // the iterator.

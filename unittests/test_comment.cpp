@@ -17,6 +17,8 @@
 #include "json/json.hpp"
 
 using namespace std::string_literals;
+using namespace std::string_view_literals;
+
 using namespace peejay;
 
 namespace {
@@ -30,7 +32,7 @@ protected:
 }  // end anonymous namespace
 
 TEST_F (Comment, BashDisabled) {
-  parser<decltype (proxy_)> p = make_parser (proxy_);
+  auto p = make_parser (proxy_);
   p.input ("# comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
 }
@@ -38,7 +40,7 @@ TEST_F (Comment, BashDisabled) {
 TEST_F (Comment, BashSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p = make_parser (proxy_, extensions::bash_comments);
+  auto p = make_parser (proxy_, extensions::bash_comments);
   p.input ("# comment\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -47,7 +49,7 @@ TEST_F (Comment, BashSingleLeading) {
 TEST_F (Comment, BashMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p = make_parser (proxy_, extensions::bash_comments);
+  auto p = make_parser (proxy_, extensions::bash_comments);
   p.input ("# comment\n\n    # remark\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -56,7 +58,7 @@ TEST_F (Comment, BashMultipleLeading) {
 TEST_F (Comment, BashTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p = make_parser (proxy_, extensions::bash_comments);
+  auto p = make_parser (proxy_, extensions::bash_comments);
   p.input ("null # comment"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -68,7 +70,7 @@ TEST_F (Comment, BashInsideArray) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  parser<decltype (proxy_)> p = make_parser (proxy_, extensions::bash_comments);
+  auto p = make_parser (proxy_, extensions::bash_comments);
   p.input (R"([#comment
 1,     # comment containing #
 2 # comment
@@ -80,7 +82,7 @@ TEST_F (Comment, BashInsideArray) {
 }
 
 TEST_F (Comment, SingleLineDisabled) {
-  parser<decltype (proxy_)> p = make_parser (proxy_);
+  auto p = make_parser (proxy_);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
@@ -89,8 +91,7 @@ TEST_F (Comment, SingleLineDisabled) {
 TEST_F (Comment, SingleLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::single_line_comments);
+  auto p = make_parser (proxy_, extensions::single_line_comments);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -99,8 +100,7 @@ TEST_F (Comment, SingleLineSingleLeading) {
 TEST_F (Comment, SingleLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::single_line_comments);
+  auto p = make_parser (proxy_, extensions::single_line_comments);
   p.input ("// comment\n\n    // remark\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -109,8 +109,7 @@ TEST_F (Comment, SingleLineMultipleLeading) {
 TEST_F (Comment, SingleLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::single_line_comments);
+  auto p = make_parser (proxy_, extensions::single_line_comments);
   p.input ("null // comment"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -122,8 +121,7 @@ TEST_F (Comment, SingleLineInsideArray) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::single_line_comments);
+  auto p = make_parser (proxy_, extensions::single_line_comments);
   p.input (R"([//comment
 1,    // comment containing //
 2 // comment
@@ -140,22 +138,23 @@ TEST_F (Comment, SingleLineRowCounting) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::single_line_comments);
+  auto p = make_parser (proxy_, extensions::single_line_comments);
   p.input (R"([ //comment
 1, // comment
 2 // comment
 ] // comment
 // comment
-)"s)
+)"sv)
       .eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{6U}}));
+  EXPECT_EQ (p.pos (), (coord{line{4U}, column{1U}}))
+      << "Comments count as whitespace so the last token start was line 4";
+  EXPECT_EQ (p.input_pos (), (coord{line{6U}, column{1U}}));
 }
 
 TEST_F (Comment, MultiLineDisabled) {
-  parser<decltype (proxy_)> p = make_parser (proxy_);
+  auto p = make_parser (proxy_);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
@@ -164,8 +163,7 @@ TEST_F (Comment, MultiLineDisabled) {
 TEST_F (Comment, MultiLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::multi_line_comments);
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
   p.input ("/* comment */\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -174,8 +172,7 @@ TEST_F (Comment, MultiLineSingleLeading) {
 TEST_F (Comment, MultiLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::multi_line_comments);
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
   p.input ("/* comment\ncomment */\nnull"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -184,8 +181,7 @@ TEST_F (Comment, MultiLineMultipleLeading) {
 TEST_F (Comment, MultiLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::multi_line_comments);
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
   p.input ("null\n/* comment */\n"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -197,8 +193,7 @@ TEST_F (Comment, MultiLineInsideArray) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::multi_line_comments);
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
   p.input (R"([ /* comment */
 1,    /* comment containing / * */
 2 /* comment */
@@ -215,8 +210,7 @@ TEST_F (Comment, MultiLineRowCounting) {
   EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::multi_line_comments);
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
   p.input (R"([ /*comment */
 1, /* comment
 comment
@@ -229,7 +223,8 @@ comment */
       .eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{9U}}));
+  EXPECT_EQ (p.pos (), (coord{line{6U}, column{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{line{9U}, column{1U}}));
 }
 
 // A missing multi-line comment close is currently ignored. It could reasonably
@@ -238,10 +233,10 @@ TEST_F (Comment, MultiLineUnclosed) {
   using testing::_;
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
-  parser<decltype (proxy_)> p =
-      make_parser (proxy_, extensions::multi_line_comments);
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
   p.input ("null /*comment"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.coordinate (), (coord{column{15U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{line{1U}, column{5U}}));
+  EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{15U}}));
 }

@@ -44,7 +44,8 @@ TEST_F (JsonObject, Empty) {
   p.input ("{\r\n}\n"s);
   p.eof ();
   EXPECT_FALSE (p.has_error ());
-  EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{3U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{1U}, line{3U}}));
 }
 
 TEST_F (JsonObject, SingleKvp) {
@@ -58,7 +59,8 @@ TEST_F (JsonObject, SingleKvp) {
   p.input (std::string{"{\n\"a\" : 1\n}"});
   p.eof ();
   EXPECT_FALSE (p.has_error ());
-  EXPECT_EQ (p.coordinate (), (coord{column{2U}, row{3U}}));
+  EXPECT_EQ (p.pos (), (coord{line{3U}, column{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{line{3U}, column{2U}}));
 }
 
 TEST_F (JsonObject, SingleKvpBadEndObject) {
@@ -78,7 +80,7 @@ TEST_F (JsonObject, SingleKvpBadEndObject) {
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), end_object_error)
       << "Expected the error to be propagated from the end_object() callback";
-  EXPECT_EQ (p.coordinate (), (coord{column{1U}, row{3U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{3U}}));
 }
 
 TEST_F (JsonObject, TwoKvps) {
@@ -131,7 +133,7 @@ TEST_F (JsonObject, MisplacedCommaBeforeCloseBrace) {
   parser p{null{}};
   p.input (R"({"a":1,})"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
-  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, NoCommaBeforeProperty) {
@@ -139,14 +141,14 @@ TEST_F (JsonObject, NoCommaBeforeProperty) {
   p.input (R"({"a":1 "b":1})"s).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::expected_object_member));
-  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, TwoCommasBeforeProperty) {
   parser p{null{}};
   p.input (R"({"a":1,,"b":1})"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
-  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
@@ -169,7 +171,7 @@ TEST_F (JsonObject, KeyIsNotString) {
   parser p{null{}};
   p.input ("{{}:{}}"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_string));
-  EXPECT_EQ (p.coordinate (), (coord{column{2U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonObject, BadNestedObject) {

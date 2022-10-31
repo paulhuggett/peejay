@@ -16,7 +16,8 @@
 #include "callbacks.hpp"
 #include "json/json.hpp"
 
-using namespace std::string_literals;
+using namespace std::string_view_literals;
+
 using testing::DoubleEq;
 using testing::StrictMock;
 
@@ -35,71 +36,79 @@ protected:
 TEST_F (JsonString, Empty) {
   EXPECT_CALL (callbacks_, string_value (std::string_view{""})).Times (1);
 
-  parser<decltype (proxy_)> p = make_parser (proxy_);
-  p.input (R"("")"s).eof ();
+  auto p = make_parser (proxy_);
+  p.input (R"("")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{3U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
 }
 
 TEST_F (JsonString, Simple) {
   EXPECT_CALL (callbacks_, string_value (std::string_view{"hello"})).Times (1);
 
-  parser<decltype (proxy_)> p = make_parser (proxy_);
-  p.input (R"("hello")"s).eof ();
+  auto p = make_parser (proxy_);
+  p.input (R"("hello")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{7U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonString, Unterminated) {
   auto p = make_parser (proxy_);
-  p.input (R"("hello)"s).eof ();
+  p.input (R"("hello)"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::expected_close_quote));
-  EXPECT_EQ (p.coordinate (), (coord{column{7U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
 
 TEST_F (JsonString, EscapeN) {
   EXPECT_CALL (callbacks_, string_value (std::string_view{"a\n"})).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (R"("a\n")"s).eof ();
+  p.input (R"("a\n")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{6U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{5U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }
 
 TEST_F (JsonString, BadEscape1) {
   auto p = make_parser (proxy_);
-  p.input (R"("a\qb")"s).eof ();
+  p.input (R"("a\qb")"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::invalid_escape_char));
-  EXPECT_EQ (p.coordinate (), (coord{column{4U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonString, BadEscape2) {
   auto p = make_parser (proxy_);
-  p.input ("\"\\\xC3\xBF\""s).eof ();
+  p.input ("\"\\\xC3\xBF\""sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::invalid_escape_char));
-  EXPECT_EQ (p.coordinate (), (coord{column{4U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonString, BackslashQuoteUnterminated) {
   auto p = make_parser (proxy_);
-  p.input (R"("a\")"s).eof ();
+  p.input (R"("a\")"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::expected_close_quote));
-  EXPECT_EQ (p.coordinate (), (coord{column{5U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{5U}, line{1U}}));
 }
 
 TEST_F (JsonString, TrailingBackslashUnterminated) {
   auto p = make_parser (proxy_);
-  p.input (R"("a\)"s).eof ();
+  p.input (R"("a\)"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::expected_close_quote));
-  EXPECT_EQ (p.coordinate (), (coord{column{4U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonString, GCleffUtf8) {
@@ -109,20 +118,22 @@ TEST_F (JsonString, GCleffUtf8) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("\"\xF0\x9D\x84\x9E\""s).eof ();
+  p.input ("\"\xF0\x9D\x84\x9E\""sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{4U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonString, SlashUnicodeUpper) {
   EXPECT_CALL (callbacks_, string_value (std::string_view{"/"})).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("\"\\u002F\""s).eof ();
+  p.input ("\"\\u002F\""sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{9U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
 }
 
 TEST_F (JsonString, FourFs) {
@@ -131,10 +142,11 @@ TEST_F (JsonString, FourFs) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("\"\\uFFFF\""s).eof ();
+  p.input (R"("\uFFFF")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{9U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
 }
 
 TEST_F (JsonString, TwoUtf16Chars) {
@@ -145,10 +157,11 @@ TEST_F (JsonString, TwoUtf16Chars) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (R"("\u214B\u30A1")"s).eof ();
+  p.input (R"("\u214B\u30A1")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{15U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{14U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{15U}, line{1U}}));
 }
 
 TEST_F (JsonString, Utf16Surrogates) {
@@ -158,78 +171,87 @@ TEST_F (JsonString, Utf16Surrogates) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (R"("\uD834\uDD1E")"s).eof ();
+  p.input (R"("\uD834\uDD1E")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{15U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{14U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{15U}, line{1U}}));
 }
 
 TEST_F (JsonString, Utf16HighWithNoLowSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
-  p.input (R"("\uD834\u30A1")"s).eof ();
+  p.input (R"("\uD834\u30A1")"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::bad_unicode_code_point));
-  EXPECT_EQ (p.coordinate (), (coord{column{13U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{13U}, line{1U}}));
 }
 
 TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
-  p.input (R"("\uD834!")"s).eof ();
+  p.input (R"("\uD834!")"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::bad_unicode_code_point));
-  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as a UTF-16
   // surrogate pair.
   auto p = make_parser (proxy_);
-  p.input (R"("\uDD1E\u30A1")"s).eof ();
+  p.input (R"("\uDD1E\u30A1")"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::bad_unicode_code_point));
-  EXPECT_EQ (p.coordinate (), (coord{column{7U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
 
 TEST_F (JsonString, ControlCharacter) {
   auto p = make_parser (proxy_);
-  p.input ("\"\t\""s).eof ();
+  p.input ("\"\t\""sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::bad_unicode_code_point));
-  EXPECT_EQ (p.coordinate (), (coord{column{2U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonString, ControlCharacterUTF16) {
   EXPECT_CALL (callbacks_, string_value (std::string_view{"\t"})).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (R"("\u0009")"s).eof ();
+  p.input (R"("\u0009")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.coordinate (), (coord{column{9U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
 }
 
 TEST_F (JsonString, Utf16LowWithNoHighSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
-  p.input (R"("\uD834")"s).eof ();
+  p.input (R"("\uD834")"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::bad_unicode_code_point));
-  EXPECT_EQ (p.coordinate (), (coord{column{8U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonString, SlashBadHexChar) {
   auto p = make_parser (proxy_);
-  p.input ("\"\\u00xF\""s).eof ();
+  p.input ("\"\\u00xF\""sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error_code::invalid_hex_char));
-  EXPECT_EQ (p.coordinate (), (coord{column{6U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }
 
 TEST_F (JsonString, PartialHexChar) {
   auto p = make_parser (proxy_);
-  p.input (R"("\u00)"s).eof ();
+  p.input (R"("\u00)"sv).eof ();
   EXPECT_EQ (p.last_error (),
              make_error_code (error_code::expected_close_quote));
-  EXPECT_EQ (p.coordinate (), (coord{column{6U}, row{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }
