@@ -14,7 +14,7 @@
 #
 #===----------------------------------------------------------------------===//
 add_executable (json-tests
-    "${PROJECT_SOURCE_DIR}/googletest/googlemock/src/gmock_main.cc"
+    harness.cpp
     callbacks.cpp
     callbacks.hpp
     test_array.cpp
