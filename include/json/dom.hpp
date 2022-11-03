@@ -25,13 +25,14 @@
 #include <variant>
 #include <vector>
 
+#include "json/arrayvec.hpp"
 #include "json/json.hpp"
 
 namespace peejay {
 
 namespace details {
 
-template <typename Tp, class Container = std::deque<Tp>>
+template <typename Tp, class Container = arrayvec<Tp, 256>>
 class stack {
 public:
   using container_type = Container;
@@ -41,13 +42,14 @@ public:
   using size_type = typename container_type::size_type;
   static_assert (std::is_same_v<Tp, value_type>);
 
-  static_assert (std::is_nothrow_default_constructible_v<container_type>);
-  static_assert (std::is_nothrow_move_constructible_v<container_type>);
-  static_assert (std::is_nothrow_move_assignable_v<container_type>);
-
-  stack () : stack (Container ()) {}
-  explicit stack (Container const &cont) : c_{cont} {}
-  explicit stack (Container &&cont) : c_{std::move (cont)} {}
+  stack () noexcept (std::is_nothrow_default_constructible_v<Container>)
+      : stack (Container ()) {}
+  explicit stack (Container const &cont) noexcept (
+      std::is_nothrow_move_assignable_v<Container>)
+      : c_{cont} {}
+  explicit stack (Container &&cont) noexcept (
+      std::is_nothrow_move_constructible_v<Container>)
+      : c_{std::move (cont)} {}
 
   stack (stack const &) = default;
   stack (stack &&) noexcept = default;
@@ -86,6 +88,28 @@ private:
 
 }  // end namespace details
 
+enum class dom_error_code : int {
+  none,
+  nesting_too_deep,
+};
+
+// ******************
+// * error category *
+// ******************
+class dom_error_category final : public std::error_category {
+public:
+  dom_error_category () noexcept = default;
+  char const* name () const noexcept override;
+  std::string message (int error) const override;
+};
+
+std::error_category const& get_dom_error_category () noexcept;
+
+inline std::error_code make_error_code (dom_error_code const e) noexcept {
+  return {static_cast<int> (e), get_dom_error_category ()};
+}
+
+
 class dom {
 public:
   struct element;
@@ -101,10 +125,10 @@ public:
     bool operator!= (mark) const noexcept { return false; }
 #endif  // __cplusplus < 202002L
   };
-
   using variant = std::variant<int64_t, uint64_t, double, bool, null,
                                std::string, std::vector<element>,
                                std::unordered_map<std::string, element>, mark>;
+
   struct element : variant {
     using variant::variant;
     friend constexpr bool operator== (element const &lhs, element const &rhs);
@@ -117,15 +141,16 @@ public:
   dom () = default;
   dom (dom const &) = delete;
   dom (dom &&) noexcept = default;
+  ~dom () noexcept = default;
 
   dom &operator= (dom const &) = delete;
   dom &operator= (dom &&) noexcept = default;
 
   std::optional<element> result () noexcept {
-    if (stack_.empty ()) {
+    if (stack_->empty ()) {
       return {std::nullopt};
     }
-    return {std::move (stack_.top ())};
+    return {std::move (stack_->top ())};
   }
 
   std::error_code string_value (std::string_view const &s);
@@ -147,16 +172,13 @@ public:
   std::error_code end_object ();
 
 private:
-  static std::vector<element> initial_container () {
-    std::vector<element> cont;
-    cont.reserve (512);
-    return cont;
-  }
   size_t elements_until_mark () const noexcept {
-    return stack_.find_if (
+    return stack_->find_if (
         [] (element const &v) { return std::holds_alternative<mark> (v); });
   }
-  details::stack<element, std::vector<element>> stack_{initial_container ()};
+  static constexpr size_t stack_size = 1024;
+  using stack_type = details::stack<element, arrayvec<element, stack_size>>;
+  std::unique_ptr<stack_type> stack_= std::make_unique<stack_type> ();
 };
 
 constexpr bool operator== (dom::element const &lhs, dom::element const &rhs) {
@@ -168,5 +190,12 @@ constexpr bool operator!= (dom::element const &lhs, dom::element const &rhs) {
 }
 
 }  // end namespace peejay
+
+namespace std {
+
+template <>
+struct is_error_code_enum<peejay::dom_error_code> : std::true_type {};
+
+}  // end namespace std
 
 #endif  // PEEJAY_TREE_DOM_HPP

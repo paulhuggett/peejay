@@ -89,6 +89,7 @@ set_target_properties (gtest gmock gmock_main gtest_main
              CXX_STANDARD_REQUIRED Yes
 )
 add_library (json-parser STATIC
+    include/json/arrayvec.hpp
     include/json/dom.hpp
     include/json/json.hpp
     include/json/json_error.hpp

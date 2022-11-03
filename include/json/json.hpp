@@ -176,22 +176,27 @@ struct coord {
   _Pragma ("GCC diagnostic pop")
 #else
   constexpr bool operator== (coord const &rhs) const noexcept {
-    return std::make_pair (row, column) == std::make_pair (rhs.row, rhs.column);
+    return std::make_pair (line, column) ==
+           std::make_pair (rhs.line, rhs.column);
   }
   constexpr bool operator!= (coord const &rhs) const noexcept {
     return !operator== (rhs);
   }
   constexpr bool operator<(coord const &rhs) const noexcept {
-    return std::make_pair (row, column) < std::make_pair (rhs.row, rhs.column);
+    return std::make_pair (line, column) <
+           std::make_pair (rhs.line, rhs.column);
   }
   constexpr bool operator<= (coord const &rhs) const noexcept {
-    return std::make_pair (row, column) <= std::make_pair (rhs.row, rhs.column);
+    return std::make_pair (line, column) <=
+           std::make_pair (rhs.line, rhs.column);
   }
   constexpr bool operator> (coord const &rhs) const noexcept {
-    return std::make_pair (row, column) > std::make_pair (rhs.row, rhs.column);
+    return std::make_pair (line, column) >
+           std::make_pair (rhs.line, rhs.column);
   }
   constexpr bool operator>= (coord const &rhs) const noexcept {
-    return std::make_pair (row, column) >= std::make_pair (rhs.row, rhs.column);
+    return std::make_pair (line, column) >=
+           std::make_pair (rhs.line, rhs.column);
   }
 #endif  // __cplusplus >= 202002L
 

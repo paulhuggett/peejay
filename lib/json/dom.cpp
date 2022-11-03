@@ -15,52 +15,101 @@
 //===----------------------------------------------------------------------===//
 #include "json/dom.hpp"
 
+// ******************
+// * error category *
+// ******************
+char const* peejay::dom_error_category::name () const noexcept {
+  return "peejay DOM category";
+}
+
+std::string peejay::dom_error_category::message (int const error) const {
+  switch (static_cast<dom_error_code> (error)) {
+  case dom_error_code::none:
+    return "none";
+  case dom_error_code::nesting_too_deep:
+    return "object or array contains too many members";
+  }
+  assert (false);
+  return "";
+}
+
+std::error_category const& peejay::get_dom_error_category () noexcept {
+  static peejay::dom_error_category const cat;
+  return cat;
+}
+
+
+// *********
+// * D O M *
+// *********
+
 // string
 // ~~~~~~
 std::error_code peejay::dom::string_value (std::string_view const& s) {
-  stack_.emplace (std::string{s});
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (std::string{s});
   return {};
 }
 
 // int64
 // ~~~~~
 std::error_code peejay::dom::int64_value (int64_t v) {
-  stack_.emplace (v);
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (v);
   return {};
 }
 
 // uint64
 // ~~~~~~
 std::error_code peejay::dom::uint64_value (uint64_t v) {
-  stack_.emplace (v);
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (v);
   return {};
 }
 
 // double
 // ~~~~~~
 std::error_code peejay::dom::double_value (double v) {
-  stack_.emplace (v);
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (v);
   return {};
 }
 
 // boolean
 // ~~~~~~~
 std::error_code peejay::dom::boolean_value (bool v) {
-  stack_.emplace (v);
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (v);
   return {};
 }
 
 // null
 // ~~~~
 std::error_code peejay::dom::null_value () {
-  stack_.emplace (null{});
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (null{});
   return {};
 }
 
 // begin array
 // ~~~~~~~~~~~
 std::error_code peejay::dom::begin_array () {
-  stack_.emplace (mark{});
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error_code::nesting_too_deep);
+  }
+  stack_->emplace (mark{});
   return {};
 }
 
@@ -71,17 +120,17 @@ std::error_code peejay::dom::end_array () {
   size_t const size = this->elements_until_mark ();
   arr.reserve (size);
   for (;;) {
-    auto& top = stack_.top ();
+    auto& top = stack_->top ();
     if (std::holds_alternative<mark> (top)) {
-      stack_.pop ();
+      stack_->pop ();
       break;
     }
     arr.emplace_back (std::move (top));
-    stack_.pop ();
+    stack_->pop ();
   }
   assert (arr.size () == size);
   std::reverse (std::begin (arr), std::end (arr));
-  stack_.emplace (std::move (arr));
+  stack_->emplace (std::move (arr));
   return {};
 }
 
@@ -92,19 +141,19 @@ std::error_code peejay::dom::end_object () {
   object::size_type const size = this->elements_until_mark () / 2U;
   object obj{size};
   for (;;) {
-    element value = std::move (stack_.top ());
-    stack_.pop ();
+    element value = std::move (stack_->top ());
+    stack_->pop ();
     if (std::holds_alternative<mark> (value)) {
       break;
     }
-    auto& key = stack_.top ();
+    auto& key = stack_->top ();
     assert (std::holds_alternative<std::string> (key));
     obj.try_emplace (std::move (std::get<std::string> (key)), std::move (value));
-    stack_.pop ();
+    stack_->pop ();
   }
   // The presence of duplicate keys can mean that we end up with fewer entries
   // in the map than there were key/value pairs on the stack.
   assert (obj.size () <= size);
-  stack_.emplace (std::move (obj));
+  stack_->emplace (std::move (obj));
   return {};
 }

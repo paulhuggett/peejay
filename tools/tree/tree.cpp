@@ -135,6 +135,13 @@ std::variant<std::error_code, std::optional<peejay::dom::element>> slurp_file (
 }
 #endif  // _WIN32
 
+template <typename N>
+void report_error (peejay::parser<N>& p, std::string_view const& file_name) {
+  auto const& pos = p.pos ();
+  std::cout << file_name << ':' << pos.line << ':' << pos.column << ':'
+            << " error: " << p.last_error ().message () << '\n';
+}
+
 }  // end anonymous namespace
 
 int main (int argc, char const* argv[]) {
@@ -143,8 +150,7 @@ int main (int argc, char const* argv[]) {
     auto p = peejay::make_parser (peejay::dom{});
     auto const res = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
     if (std::holds_alternative<std::error_code> (res)) {
-      std::cerr << "Error: " << std::get<std::error_code> (res).message ()
-                << '\n';
+      report_error(p, argc < 2 ? "<stdin" : argv[1]);
       exit_code = EXIT_FAILURE;
     } else {
       emit (std::cout, std::get<1> (res));
