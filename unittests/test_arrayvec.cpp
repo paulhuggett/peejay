@@ -68,9 +68,6 @@ public:
   bool operator== (no_copy_or_assign const &rhs) const noexcept {
     return v_ == rhs.v_;
   }
-  bool operator!= (no_copy_or_assign const &rhs) const noexcept {
-    return !operator== (rhs);
-  }
 
 private:
   int v_ = 0;
