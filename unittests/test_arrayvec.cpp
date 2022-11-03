@@ -13,7 +13,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-// self include
 #include "json/arrayvec.hpp"
 
 // standard library

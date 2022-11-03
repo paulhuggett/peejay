@@ -27,8 +27,7 @@
 #include <unistd.h>
 #endif  // !_WIN32
 
-// Local includes
-#include "emit.hpp"
+#include "json/emit.hpp"
 
 namespace {
 

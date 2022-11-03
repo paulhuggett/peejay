@@ -13,6 +13,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
-add_executable (json-tree tree.cpp emit.cpp emit.hpp)
+add_executable (json-tree tree.cpp)
 target_link_libraries (json-tree PUBLIC json-parser)
 setup_target (json-tree)
