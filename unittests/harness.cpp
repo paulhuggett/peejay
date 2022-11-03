@@ -36,8 +36,8 @@ bool loud_mode_enabled (int argc, char **argv) {
   if (argc < 2) {
     return false;
   }
-  return std::any_of (&argv[1], argv + argc, [] (char const *argc) {
-    return std::strcmp (argc, "--loud") == 0;
+  return std::any_of (&argv[1], argv + argc, [] (char const *a) {
+    return std::strcmp (a, "--loud") == 0;
   });
 }
 
