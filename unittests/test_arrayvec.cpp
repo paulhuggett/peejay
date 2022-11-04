@@ -167,16 +167,15 @@ TEST (ArrayVec, IteratorNonConst) {
   // I populate the arrayvec manually here to ensure coverage of basic iterator
   // operations, but use std::iota() elsewhere to keep the tests simple.
   int value = 42;
-  for (decltype (avec)::iterator it = avec.begin (), end = avec.end ();
-       it != end; ++it) {
+  decltype (avec)::const_iterator end = end = avec.end ();
+  for (decltype (avec)::iterator it = avec.begin (); it != end; ++it) {
     *it = value++;
   }
 
   // Manually copy the contents of the arrayvec to a new vector.
   std::vector<int> actual;
-  for (decltype (avec)::const_iterator it = avec.begin (), end = avec.end ();
-       it != end; ++it) {
-    actual.push_back (*it);
+  for (int x : avec) {
+    actual.push_back (x);
   }
   EXPECT_THAT (actual, ElementsAre (42, 43, 44, 45));
 }
