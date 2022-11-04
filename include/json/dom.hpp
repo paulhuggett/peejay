@@ -131,8 +131,6 @@ public:
 
   struct element : variant {
     using variant::variant;
-    friend constexpr bool operator== (element const &lhs, element const &rhs);
-    friend constexpr bool operator!= (element const &lhs, element const &rhs);
   };
 
   using object = std::unordered_map<std::string, element>;
@@ -185,9 +183,11 @@ constexpr bool operator== (dom::element const &lhs, dom::element const &rhs) {
   return static_cast<dom::variant const &> (lhs) ==
          static_cast<dom::variant const &> (rhs);
 }
+#if !PEEJAY_CXX20
 constexpr bool operator!= (dom::element const &lhs, dom::element const &rhs) {
   return !operator== (lhs, rhs);
 }
+#endif  // !PEEJAY_CXX20
 
 }  // end namespace peejay
 
