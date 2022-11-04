@@ -113,7 +113,7 @@ TEST (Dom, ObjectInsideArray1) {
   std::optional<dom::element> const root =
       make_parser (dom{}).input (R"([{"a":1,"b":2},3])"sv).eof ();
   ASSERT_TRUE (root);
-  auto const arr = std::get<dom::array> (*root);
+  auto const &arr = std::get<dom::array> (*root);
   ASSERT_EQ (arr.size (), 2U);
   EXPECT_THAT (
       std::get<dom::object> (arr[0]),
@@ -126,7 +126,7 @@ TEST (Dom, ObjectInsideArray2) {
   std::optional<dom::element> const root =
       make_parser (dom{}).input (R"([1,{"a":2,"b":3}])"sv).eof ();
   ASSERT_TRUE (root);
-  auto const arr = std::get<dom::array> (*root);
+  auto const &arr = std::get<dom::array> (*root);
   ASSERT_EQ (arr.size (), 2U);
   EXPECT_THAT (arr[0], dom::element{uint64_t{1}});
   EXPECT_THAT (
@@ -139,7 +139,7 @@ TEST (Dom, ArrayInsideObject) {
   std::optional<dom::element> const root =
       make_parser (dom{}).input (R"({"a":[1,2],"b":3})"sv).eof ();
   ASSERT_TRUE (root);
-  auto const obj = std::get<dom::object> (*root);
+  auto const &obj = std::get<dom::object> (*root);
   ASSERT_EQ (obj.size (), 2U);
   EXPECT_THAT (
       std::get<dom::array> (obj.at ("a")),
