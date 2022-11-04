@@ -115,15 +115,15 @@ public:
   struct element;
   struct null {
     bool operator== (null) const noexcept { return true; }
-#if __cplusplus < 202002L
+#if !PEEJAY_CXX20
     bool operator!= (null) const noexcept { return false; }
-#endif  // __cplusplus < 202002L
+#endif  // !PEEJAY_CXX20
   };
   struct mark {
     bool operator== (mark) const noexcept { return true; }
-#if __cplusplus < 202002L
+#if !PEEJAY_CXX20
     bool operator!= (mark) const noexcept { return false; }
-#endif  // __cplusplus < 202002L
+#endif  // !PEEJAY_CXX20
   };
   using variant = std::variant<int64_t, uint64_t, double, bool, null,
                                std::string, std::vector<element>,

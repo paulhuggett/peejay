@@ -32,7 +32,7 @@
 namespace {
 
 template <typename T>
-CXX20REQUIRES (std::is_integral_v<T>)
+PEEJAY_CXX20REQUIRES (std::is_integral_v<T>)
 constexpr auto as_unsigned (T v) {
   return static_cast<std::make_unsigned_t<T>> (std::max (T{0}, v));
 }
@@ -47,11 +47,11 @@ std::variant<std::error_code, std::optional<peejay::dom::element>> slurp (
     auto* const data = buffer.data ();
     in.read (data, buffer.size ());
     auto const available = as_unsigned (in.gcount ());
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
     p.input (std::span<char>{data, available});
 #else
     p.input (data, data + available);
-#endif  // __cplusplus >= 202002L
+#endif  // PEEJAY_CXX20
     if (auto const err = p.last_error ()) {
       return {err};
     }

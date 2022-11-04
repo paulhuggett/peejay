@@ -48,6 +48,7 @@ function (setup_target target)
   set (msvc_options
     -W4
     -wd4324 # 4324: structure was padded due to alignment specifier
+    -wd4068 # 4068: unknown pragma
   )
 
   if (WERROR)
@@ -95,6 +96,7 @@ add_library (json-parser STATIC
   include/json/json.hpp
   include/json/json_error.hpp
   include/json/null.hpp
+  include/json/portab.hpp
   include/json/utf.hpp
   include/json/utility.hpp
   lib/json/dom.cpp

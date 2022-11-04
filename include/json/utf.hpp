@@ -17,7 +17,9 @@
 #define PEEJAY_UTF_HPP
 
 #include <cassert>
-#if __cplusplus >= 202002L
+
+#include "json/portab.hpp"
+#if PEEJAY_CXX20
 #include <concepts>
 #endif
 #include <cstdint>
@@ -29,19 +31,13 @@
 #include <type_traits>
 #include <vector>
 
-#if __cplusplus >= 202002L
-#define CXX20REQUIRES(x) requires x
-#else
-#define CXX20REQUIRES(x)
-#endif  // __cplusplus >= 202002L
-
 namespace peejay {
 
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
 using utf8_string = std::basic_string<char8_t>;
 #else
 using utf8_string = std::basic_string<std::uint8_t>;
-#endif  // __cplusplus >= 202002L
+#endif  // PEEJAY_CXX20
 using utf16_string = std::basic_string<char16_t>;
 using utf32_string = std::basic_string<char32_t>;
 
@@ -75,7 +71,7 @@ private:
 extern char32_t const replacement_char_code_point;
 
 template <typename CharType = char, typename OutputIt>
-CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
+PEEJAY_CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
 OutputIt replacement_char (OutputIt out) {
   *(out++) = static_cast<CharType> (0xEF);
   *(out++) = static_cast<CharType> (0xBF);
@@ -86,7 +82,7 @@ OutputIt replacement_char (OutputIt out) {
 // code point to utf8
 // ~~~~~~~~~~~~~~~~~~
 template <typename CharType = char, typename OutputIt>
-CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
+PEEJAY_CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
 OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
   if (c < 0x80) {
     *(out++) = static_cast<CharType> (c);
@@ -123,10 +119,11 @@ constexpr bool is_utf16_low_surrogate (char16_t code_unit) {
 // ~~~~~~~~~~~~~~~~~~~
 /// \tparam InputIterator  An input iterator which must produce (possible const/volatile qualified) char16_t.
 template <typename InputIterator>
-CXX20REQUIRES ((std::input_iterator<InputIterator> &&
-                std::is_same_v<std::remove_cv_t<typename std::iterator_traits<
-                                   InputIterator>::value_type>,
-                               char16_t>))
+PEEJAY_CXX20REQUIRES (
+    (std::input_iterator<InputIterator> &&
+     std::is_same_v<std::remove_cv_t<typename std::iterator_traits<
+                        InputIterator>::value_type>,
+                    char16_t>))
 std::pair<InputIterator, char32_t> utf16_to_code_point (InputIterator first,
                                                         InputIterator last) {
   if (first == last) {

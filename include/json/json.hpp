@@ -16,6 +16,10 @@
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
+#include "json/json_error.hpp"
+#include "json/portab.hpp"
+#include "json/utf.hpp"
+
 // Standard library
 #include <array>
 #include <cctype>
@@ -30,13 +34,10 @@
 #include <variant>
 
 // C++20 standard library
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
 #include <concepts>
 #include <span>
 #endif
-
-#include "json/json_error.hpp"
-#include "json/utf.hpp"
 
 namespace peejay {
 
@@ -67,7 +68,7 @@ inline auto operator>>= (std::optional<T> const &t, Function f)
   return std::optional<typename decltype (f (*t))::value_type>{};
 }
 
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
 template <typename T>
 concept notifications = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
@@ -104,13 +105,13 @@ concept notifications = requires (T &&v) {
   /// always follow an earlier call to begin_object().
   { v.end_object () } -> std::convertible_to<std::error_code>;
 };
-#endif  // __cplusplus >= 202002L
+#endif  // PEEJAY_CXX20
 
 /// \brief JSON parser implementation details.
 namespace details {
 
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 class matcher;
 
 template <typename Callbacks>
@@ -168,7 +169,7 @@ struct coord {
   constexpr coord (struct line y, struct column x) noexcept
       : line{y}, column{x} {}
 
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
   // https://github.com/llvm/llvm-project/issues/55919
   _Pragma ("GCC diagnostic push")
   _Pragma ("GCC diagnostic ignored \"-Wzero-as-null-pointer-constant\"")
@@ -198,7 +199,7 @@ struct coord {
     return std::make_pair (line, column) >=
            std::make_pair (rhs.line, rhs.column);
   }
-#endif  // __cplusplus >= 202002L
+#endif  // PEEJAY_CXX20
 
       unsigned line = 1U;
   unsigned column = 1U;
@@ -226,7 +227,7 @@ constexpr extensions operator| (extensions a, extensions b) noexcept {
 //-MARK:parser
 /// \tparam Callbacks A type meeting the notifications<> requirements.
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 class parser {
   friend class details::matcher<Callbacks>;
   friend class details::root_matcher<Callbacks>;
@@ -236,7 +237,7 @@ public:
   explicit parser (extensions extensions = extensions::none)
       : parser (Callbacks{}, extensions) {}
   template <typename OtherCallbacks>
-  CXX20REQUIRES (notifications<OtherCallbacks>)
+  PEEJAY_CXX20REQUIRES (notifications<OtherCallbacks>)
   explicit parser (OtherCallbacks &&callbacks,
                    extensions extensions = extensions::none);
   parser (parser const &) = delete;
@@ -260,7 +261,7 @@ public:
   parser &input (std::string_view const &src) {
     return this->input (std::begin (src), std::end (src));
   }
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
   parser &input (std::span<char, Extent> const &span) {
@@ -271,11 +272,11 @@ public:
   parser &input (std::span<char const, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
-#endif  // __cplusplus >= 202002L
+#endif  // PEEJAY_CXX20
   /// \param first The element in the half-open range of UTF-8 code-units to be parsed.
   /// \param last The end of the range of UTF-8 code-units to be parsed.
   template <typename InputIterator>
-  CXX20REQUIRES (std::input_iterator<InputIterator>)
+  PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
   parser &input (InputIterator first, InputIterator last);
   ///@}
 
@@ -365,8 +366,12 @@ private:
   pointer make_whitespace_matcher ();
 
   template <typename Matcher, typename... Args>
-  CXX20REQUIRES ((std::derived_from<Matcher, matcher>))
-  pointer make_terminal_matcher (Args &&...args);
+  PEEJAY_CXX20REQUIRES ((std::derived_from<Matcher, matcher>))
+  pointer make_terminal_matcher (Args &&...args) {
+    Matcher &m = singletons_.terminals_.template emplace<Matcher> (
+        std::forward<Args> (args)...);
+    return pointer{&m, details::deleter<matcher>{false}};
+  }
 
   /// Preallocated storage for "terminal" matchers. These are the matchers,
   /// such as numbers or strings which can't have child objects.
@@ -396,11 +401,10 @@ private:
 template <typename Callbacks>
 parser(Callbacks) -> parser<Callbacks>;
 
-
 template <typename Callbacks>
-CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
-inline parser<std::remove_reference_t<Callbacks>>
-make_parser (Callbacks &&callbacks, extensions const extensions = extensions::none) {
+PEEJAY_CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
+inline parser<std::remove_reference_t<Callbacks>> make_parser (
+    Callbacks &&callbacks, extensions const extensions = extensions::none) {
   return parser<std::remove_reference_t<Callbacks>>{std::forward<Callbacks> (callbacks), extensions};
 }
 
@@ -424,7 +428,7 @@ constexpr bool isspace (char const c) noexcept {
 /// the various productions of the JSON grammar.
 //-MARK:matcher
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 class matcher {
 public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
@@ -506,8 +510,8 @@ private:
 /// \tparam Callbacks  The parser callback structure.
 //-MARK:token matcher
 template <typename Callbacks, typename DoneFunction>
-CXX20REQUIRES ((notifications<Callbacks> &&
-                std::invocable<DoneFunction, parser<Callbacks> &>))
+PEEJAY_CXX20REQUIRES ((notifications<Callbacks> &&
+                       std::invocable<DoneFunction, parser<Callbacks> &>))
 class token_matcher : public matcher<Callbacks> {
 public:
   /// \param text  The string to be matched.
@@ -540,8 +544,8 @@ private:
 };
 
 template <typename Callbacks, typename DoneFunction>
-CXX20REQUIRES ((notifications<Callbacks> &&
-                std::invocable<DoneFunction, parser<Callbacks> &>))
+PEEJAY_CXX20REQUIRES ((notifications<Callbacks> &&
+                       std::invocable<DoneFunction, parser<Callbacks> &>))
 std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
                                        std::optional<char> ch) {
@@ -1895,9 +1899,9 @@ struct singleton_storage {
 // (ctor)
 // ~~~~~~
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 template <typename OtherCallbacks>
-CXX20REQUIRES (notifications<OtherCallbacks>)
+PEEJAY_CXX20REQUIRES (notifications<OtherCallbacks>)
 parser<Callbacks>::parser (OtherCallbacks &&callbacks,
                            extensions const extensions)
     : extensions_{extensions},
@@ -1919,7 +1923,7 @@ parser<Callbacks>::parser (OtherCallbacks &&callbacks,
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
   using root_matcher = details::root_matcher<Callbacks>;
   return pointer (new (&singletons_.root) root_matcher (object_key),
@@ -1929,30 +1933,18 @@ auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Callbacks>;
   return this->make_terminal_matcher<whitespace_matcher> ();
 }
 
-// make terminal matcher
-// ~~~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
-template <typename Matcher, typename... Args>
-CXX20REQUIRES ((std::derived_from<Matcher, details::matcher<Callbacks>>))
-auto parser<Callbacks>::make_terminal_matcher (Args &&...args) -> pointer {
-  Matcher &m = singletons_.terminals_.template emplace<Matcher> (
-      std::forward<Args> (args)...);
-  return pointer{&m, details::deleter<matcher>{false}};
-}
-
 // input
 // ~~~~~
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 template <typename InputIterator>
-CXX20REQUIRES (std::input_iterator<InputIterator>)
+PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
 auto parser<Callbacks>::input (InputIterator first, InputIterator last)
     -> parser & {
   static_assert (
@@ -2004,7 +1996,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
 // eof
 // ~~~
 template <typename Callbacks>
-CXX20REQUIRES (notifications<Callbacks>)
+PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 decltype (auto) parser<Callbacks>::eof () {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();

@@ -23,9 +23,11 @@
 #include <memory>
 #include <type_traits>
 
+#include "json/portab.hpp"
+
 namespace peejay {
 
-#if __cplusplus >= 202002L
+#if PEEJAY_CXX20
 using std::construct_at;
 #else
 /// Creates a T object initialized with arguments args... at given address p.
@@ -188,7 +190,8 @@ public:
   template <typename... Args>
   void emplace_back (Args &&...args) {
     assert (size_ < Size);
-    construct_at (&element (size_), std::forward<Args> (args)...);
+    T *const el = &element (size_);
+    construct_at (el, std::forward<Args> (args)...);
     ++size_;
   }
 
