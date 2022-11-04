@@ -167,7 +167,7 @@ TEST (ArrayVec, IteratorNonConst) {
   // I populate the arrayvec manually here to ensure coverage of basic iterator
   // operations, but use std::iota() elsewhere to keep the tests simple.
   int value = 42;
-  decltype (avec)::const_iterator end = end = avec.end ();
+  decltype (avec)::const_iterator end = avec.end ();
   for (decltype (avec)::iterator it = avec.begin (); it != end; ++it) {
     *it = value++;
   }
