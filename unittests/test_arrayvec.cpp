@@ -174,7 +174,7 @@ TEST (ArrayVec, IteratorNonConst) {
 
   // Manually copy the contents of the arrayvec to a new vector.
   std::vector<int> actual;
-  for (decltype (avec)::iterator it = avec.begin (), end = avec.end ();
+  for (decltype (avec)::const_iterator it = avec.begin (), end = avec.end ();
        it != end; ++it) {
     actual.push_back (*it);
   }
