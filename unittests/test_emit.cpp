@@ -17,11 +17,13 @@
 
 // standard library
 #include <sstream>
+#include <string>
 
 // 3rd party
 #include <gmock/gmock.h>
 
 using namespace peejay;
+using namespace std::string_literals;
 
 TEST (Emit, Null) {
   std::stringstream os;
@@ -75,4 +77,62 @@ TEST (Emit, StringBackslashT) {
   std::stringstream os;
   emit (os, dom::element{"abc\tdef"});
   EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
+}
+
+TEST (Emit, EmptyArray) {
+  std::stringstream os;
+  emit (os, dom::element{dom::array{}});
+  EXPECT_EQ (os.str (), "[]\n");
+}
+
+TEST (Emit, ArrayOneMember) {
+  std::stringstream os;
+  emit (os, dom::element{dom::array{dom::element{uint64_t{1}}}});
+  EXPECT_EQ (os.str (), R"([
+  1
+]
+)");
+}
+
+TEST (Emit, ArrayTwoMembers) {
+  std::stringstream os;
+  emit (os, dom::element{dom::array{dom::element{uint64_t{1}},
+                                    dom::element{uint64_t{2}}}});
+  EXPECT_EQ (os.str (), R"([
+  1,
+  2
+]
+)");
+}
+
+TEST (Emit, EmptyObject) {
+  std::stringstream os;
+  emit (os, dom::element{dom::object{}});
+  EXPECT_EQ (os.str (), "{}\n");
+}
+
+TEST (Emit, ObjectOneMember) {
+  std::stringstream os;
+  dom::object obj;
+  obj["key"] = dom::element{"value"s};
+  emit (os, dom::element{std::move (obj)});
+  EXPECT_EQ (os.str (), R"({
+  "key": "value"
+}
+)");
+}
+
+TEST (Emit, ObjectArrayMember) {
+  std::stringstream os;
+  dom::object obj;
+  obj["key1"] = dom::element{
+      dom::array{dom::element{uint64_t{1}}, dom::element{uint64_t{2}}}};
+  emit (os, dom::element{std::move (obj)});
+  EXPECT_EQ (os.str (), R"({
+  "key1": [
+    1,
+    2
+  ]
+}
+)");
 }
