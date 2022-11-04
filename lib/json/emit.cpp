@@ -19,6 +19,15 @@
 
 namespace {
 
+#if PEEJAY_CXX20
+using std::to_address;
+#else
+template <typename T>
+constexpr T* to_address (T* const p) noexcept {
+  return p;
+}
+#endif  // PEEJAY_CXX20
+
 class indent {
 public:
   constexpr indent () noexcept = default;
@@ -54,7 +63,7 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
             return c < ' ' || c == '"' || c == '\\';
           })) != last) {
     assert (pos >= first);
-    os.write (&*first, std::distance (first, pos));
+    os.write (to_address (first), std::distance (first, pos));
     os << '\\';
     switch (*pos) {
     case '"': os << '"'; break;    // quotation mark  U+0022
@@ -75,7 +84,7 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
   }
   if (first != last) {
     assert (last > first);
-    os.write (&*first, std::distance (first, last));
+    os.write (to_address (first), std::distance (first, last));
   }
   os << '"';
 }
