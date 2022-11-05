@@ -23,10 +23,9 @@ char const* peejay::dom_error_category::name () const noexcept {
 }
 
 std::string peejay::dom_error_category::message (int const error) const {
-  switch (static_cast<dom_error_code> (error)) {
-  case dom_error_code::none:
-    return "none";
-  case dom_error_code::nesting_too_deep:
+  switch (static_cast<dom_error> (error)) {
+  case dom_error::none: return "none";
+  case dom_error::nesting_too_deep:
     return "object or array contains too many members";
   }
   assert (false);
@@ -47,7 +46,7 @@ std::error_category const& peejay::get_dom_error_category () noexcept {
 // ~~~~~~
 std::error_code peejay::dom::string_value (std::string_view const& s) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return make_error_code (dom_error::nesting_too_deep);
   }
   stack_->emplace (std::string{s});
   return {};
@@ -57,7 +56,7 @@ std::error_code peejay::dom::string_value (std::string_view const& s) {
 // ~~~~~
 std::error_code peejay::dom::int64_value (int64_t v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return make_error_code (dom_error::nesting_too_deep);
   }
   stack_->emplace (v);
   return {};
@@ -67,7 +66,7 @@ std::error_code peejay::dom::int64_value (int64_t v) {
 // ~~~~~~
 std::error_code peejay::dom::uint64_value (uint64_t v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return make_error_code (dom_error::nesting_too_deep);
   }
   stack_->emplace (v);
   return {};
@@ -77,7 +76,7 @@ std::error_code peejay::dom::uint64_value (uint64_t v) {
 // ~~~~~~
 std::error_code peejay::dom::double_value (double v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return make_error_code (dom_error::nesting_too_deep);
   }
   stack_->emplace (v);
   return {};
@@ -87,7 +86,7 @@ std::error_code peejay::dom::double_value (double v) {
 // ~~~~~~~
 std::error_code peejay::dom::boolean_value (bool v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return make_error_code (dom_error::nesting_too_deep);
   }
   stack_->emplace (v);
   return {};
@@ -97,7 +96,7 @@ std::error_code peejay::dom::boolean_value (bool v) {
 // ~~~~
 std::error_code peejay::dom::null_value () {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return make_error_code (dom_error::nesting_too_deep);
   }
   stack_->emplace (null{});
   return {};
@@ -107,7 +106,7 @@ std::error_code peejay::dom::null_value () {
 // ~~~~~~~~~~~
 std::error_code peejay::dom::begin_array () {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error_code::nesting_too_deep);
+    return dom_error::nesting_too_deep;
   }
   stack_->emplace (mark{});
   return {};

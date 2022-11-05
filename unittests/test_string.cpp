@@ -58,8 +58,7 @@ TEST_F (JsonString, Simple) {
 TEST_F (JsonString, Unterminated) {
   auto p = make_parser (proxy_);
   p.input (R"("hello)"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::expected_close_quote));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
@@ -78,8 +77,7 @@ TEST_F (JsonString, EscapeN) {
 TEST_F (JsonString, BadEscape1) {
   auto p = make_parser (proxy_);
   p.input (R"("a\qb")"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::invalid_escape_char));
+  EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
@@ -87,8 +85,7 @@ TEST_F (JsonString, BadEscape1) {
 TEST_F (JsonString, BadEscape2) {
   auto p = make_parser (proxy_);
   p.input ("\"\\\xC3\xBF\""sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::invalid_escape_char));
+  EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
@@ -96,8 +93,7 @@ TEST_F (JsonString, BadEscape2) {
 TEST_F (JsonString, BackslashQuoteUnterminated) {
   auto p = make_parser (proxy_);
   p.input (R"("a\")"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::expected_close_quote));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{5U}, line{1U}}));
 }
@@ -105,8 +101,7 @@ TEST_F (JsonString, BackslashQuoteUnterminated) {
 TEST_F (JsonString, TrailingBackslashUnterminated) {
   auto p = make_parser (proxy_);
   p.input (R"("a\)"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::expected_close_quote));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
@@ -182,8 +177,7 @@ TEST_F (JsonString, Utf16HighWithNoLowSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (R"("\uD834\u30A1")"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::bad_unicode_code_point));
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{13U}, line{1U}}));
 }
@@ -192,8 +186,7 @@ TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (R"("\uD834!")"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::bad_unicode_code_point));
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
@@ -203,8 +196,7 @@ TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
   // surrogate pair.
   auto p = make_parser (proxy_);
   p.input (R"("\uDD1E\u30A1")"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::bad_unicode_code_point));
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
@@ -212,8 +204,7 @@ TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
 TEST_F (JsonString, ControlCharacter) {
   auto p = make_parser (proxy_);
   p.input ("\"\t\""sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::bad_unicode_code_point));
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{2U}, line{1U}}));
 }
@@ -233,8 +224,7 @@ TEST_F (JsonString, Utf16LowWithNoHighSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (R"("\uD834")"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::bad_unicode_code_point));
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
@@ -242,7 +232,7 @@ TEST_F (JsonString, Utf16LowWithNoHighSurrogate) {
 TEST_F (JsonString, SlashBadHexChar) {
   auto p = make_parser (proxy_);
   p.input ("\"\\u00xF\""sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::invalid_hex_char));
+  EXPECT_EQ (p.last_error (), make_error_code (error::invalid_hex_char));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }
@@ -250,8 +240,7 @@ TEST_F (JsonString, SlashBadHexChar) {
 TEST_F (JsonString, PartialHexChar) {
   auto p = make_parser (proxy_);
   p.input (R"("\u00)"sv).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::expected_close_quote));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }

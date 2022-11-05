@@ -88,7 +88,7 @@ private:
 
 }  // end namespace details
 
-enum class dom_error_code : int {
+enum class dom_error : int {
   none,
   nesting_too_deep,
 };
@@ -105,10 +105,9 @@ public:
 
 std::error_category const& get_dom_error_category () noexcept;
 
-inline std::error_code make_error_code (dom_error_code const e) noexcept {
+inline std::error_code make_error_code (dom_error const e) noexcept {
   return {static_cast<int> (e), get_dom_error_category ()};
 }
-
 
 class dom {
 public:
@@ -161,9 +160,7 @@ public:
   std::error_code begin_array ();
   std::error_code end_array ();
 
-  std::error_code begin_object () {
-    return this->begin_array ();
-  }
+  std::error_code begin_object () { return this->begin_array (); }
   std::error_code key (std::string_view const &s) {
     return this->string_value (s);
   }
@@ -194,7 +191,7 @@ constexpr bool operator!= (dom::element const &lhs, dom::element const &rhs) {
 namespace std {
 
 template <>
-struct is_error_code_enum<peejay::dom_error_code> : std::true_type {};
+struct is_error_code_enum<peejay::dom_error> : std::true_type {};
 
 }  // end namespace std
 

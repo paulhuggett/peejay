@@ -355,7 +355,7 @@ private:
   /// parse; all subsequent text is ignored.
   ///
   /// \param err  The json error code to be stored in the parser.
-  bool set_error (std::error_code const err) noexcept {
+  bool set_error (std::error_code const &err) noexcept {
     assert (!error_ || err);
     error_ = err;
     return this->has_error ();
@@ -553,7 +553,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
   switch (this->get_state ()) {
   case start_state:
     if (!ch || *ch != *text_) {
-      this->set_error (parser, error_code::unrecognized_token);
+      this->set_error (parser, error::unrecognized_token);
     } else {
       ++text_;
       if (*text_ == '\0') {
@@ -566,7 +566,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
   case last_state:
     if (ch) {
       if (std::isalnum (*ch) != 0) {
-        this->set_error (parser, error_code::unrecognized_token);
+        this->set_error (parser, error::unrecognized_token);
         return {nullptr, true};
       }
       match = false;
@@ -758,7 +758,7 @@ bool number_matcher<Callbacks>::do_leading_minus_state (
     match = do_integer_initial_digit_state (parser, c);
   } else {
     // minus MUST be followed by the 'int' production.
-    this->set_error (parser, error_code::number_out_of_range);
+    this->set_error (parser, error::number_out_of_range);
   }
   return match;
 }
@@ -776,7 +776,7 @@ bool number_matcher<Callbacks>::do_frac_state (parser<Callbacks> &parser,
   } else if (c >= '0' && c <= '9') {
     // digits are definitely not part of the next token so we can issue an error
     // right here.
-    this->set_error (parser, error_code::number_out_of_range);
+    this->set_error (parser, error::number_out_of_range);
   } else {
     // the 'frac' production is optional.
     match = false;
@@ -797,7 +797,7 @@ bool number_matcher<Callbacks>::do_frac_digit_state (parser<Callbacks> &parser,
   if (c == 'e' || c == 'E') {
     this->number_is_float ();
     if (this->get_state () == frac_initial_digit_state) {
-      this->set_error (parser, error_code::unrecognized_token);
+      this->set_error (parser, error::unrecognized_token);
     } else {
       this->set_state (exponent_sign_state);
     }
@@ -809,7 +809,7 @@ bool number_matcher<Callbacks>::do_frac_digit_state (parser<Callbacks> &parser,
     this->set_state (frac_digit_state);
   } else {
     if (this->get_state () == frac_initial_digit_state) {
-      this->set_error (parser, error_code::unrecognized_token);
+      this->set_error (parser, error::unrecognized_token);
     } else {
       match = false;
       this->complete (parser);
@@ -857,7 +857,7 @@ bool number_matcher<Callbacks>::do_exponent_digit_state (
     this->set_state (exponent_digit_state);
   } else {
     if (this->get_state () == exponent_initial_digit_state) {
-      this->set_error (parser, error_code::unrecognized_token);
+      this->set_error (parser, error::unrecognized_token);
     } else {
       match = false;
       this->complete (parser);
@@ -880,7 +880,7 @@ bool number_matcher<Callbacks>::do_integer_initial_digit_state (
     int_acc_ = static_cast<unsigned> (c - '0');
     this->set_state (integer_digit_state);
   } else {
-    this->set_error (parser, error_code::unrecognized_token);
+    this->set_error (parser, error::unrecognized_token);
   }
   return true;
 }
@@ -904,7 +904,7 @@ bool number_matcher<Callbacks>::do_integer_digit_state (
     std::uint64_t const new_acc =
         int_acc_ * 10U + static_cast<unsigned> (c - '0');
     if (new_acc < int_acc_) {  // Did this overflow?
-      this->set_error (parser, error_code::number_out_of_range);
+      this->set_error (parser, error::number_out_of_range);
     } else {
       int_acc_ = new_acc;
     }
@@ -950,7 +950,7 @@ number_matcher<Callbacks>::consume (parser<Callbacks> &parser,
   } else {
     assert (!parser.has_error ());
     if (!this->in_terminal_state ()) {
-      this->set_error (parser, error_code::expected_digits);
+      this->set_error (parser, error::expected_digits);
     }
     this->complete (parser);
   }
@@ -972,7 +972,7 @@ void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
 
     if (is_neg_) {
       if (int_acc_ > umin) {
-        this->set_error (parser, error_code::number_out_of_range);
+        this->set_error (parser, error::number_out_of_range);
         return;
       }
 
@@ -990,7 +990,7 @@ void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
   auto xf = (fp_acc_.whole_part + fp_acc_.frac_part / fp_acc_.frac_scale);
   auto exp = std::pow (10, fp_acc_.exponent);
   if (std::isinf (exp)) {
-    this->set_error (parser, error_code::number_out_of_range);
+    this->set_error (parser, error::number_out_of_range);
     return;
   }
   if (fp_acc_.exp_is_negative) {
@@ -1003,7 +1003,7 @@ void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
   }
 
   if (std::isinf (xf) || std::isnan (xf)) {
-    this->set_error (parser, error_code::number_out_of_range);
+    this->set_error (parser, error::number_out_of_range);
     return;
   }
   this->set_error (parser, parser.callbacks ().double_value (xf));
@@ -1069,8 +1069,8 @@ private:
   static std::optional<std::tuple<unsigned, state>> consume_hex_state (
       unsigned hex, enum state state, char32_t code_point);
 
-  static std::tuple<state, error_code> consume_escape_state (
-      char32_t code_point, appender &app);
+  static std::tuple<state, error> consume_escape_state (char32_t code_point,
+                                                        appender &app);
   bool is_object_key_;
   utf8_decoder decoder_;
   appender app_;
@@ -1136,7 +1136,7 @@ auto string_matcher<Callbacks>::consume_normal_state (parser<Callbacks> &parser,
 
   if (code_point == '"') {
     if (app.has_high_surrogate ()) {
-      error = error_code::bad_unicode_code_point;
+      error = error::bad_unicode_code_point;
     } else {
       // Consume the closing quote character.
       if (is_object_key_) {
@@ -1150,10 +1150,10 @@ auto string_matcher<Callbacks>::consume_normal_state (parser<Callbacks> &parser,
     next_state = escape_state;
   } else if (code_point <= 0x1F) {
     // Control characters U+0000 through U+001F MUST be escaped.
-    error = error_code::bad_unicode_code_point;
+    error = error::bad_unicode_code_point;
   } else {
     if (!app.append32 (code_point)) {
-      error = error_code::bad_unicode_code_point;
+      error = error::bad_unicode_code_point;
     }
   }
 
@@ -1213,7 +1213,7 @@ auto string_matcher<Callbacks>::consume_hex_state (unsigned const hex,
 template <typename Callbacks>
 auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
                                                       appender &app)
-    -> std::tuple<state, error_code> {
+    -> std::tuple<state, error> {
   auto decode = [] (char32_t cp) {
     state next_state = normal_char_state;
     switch (cp) {
@@ -1241,9 +1241,8 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
   };
 
   std::optional<state> const x = decode (code_point) >>= append;
-  return x ? std::make_tuple (*x, error_code::none)
-           : std::make_tuple (normal_char_state,
-                              error_code::invalid_escape_char);
+  return x ? std::make_tuple (*x, error::none)
+           : std::make_tuple (normal_char_state, error::invalid_escape_char);
 }
 
 // consume
@@ -1253,7 +1252,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool>
 string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                     std::optional<char> ch) {
   if (!ch) {
-    this->set_error (parser, error_code::expected_close_quote);
+    this->set_error (parser, error::expected_close_quote);
     return {nullptr, true};
   }
 
@@ -1266,7 +1265,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
         assert (!app_.has_high_surrogate ());
         this->set_state (normal_char_state);
       } else {
-        this->set_error (parser, error_code::expected_token);
+        this->set_error (parser, error::expected_token);
       }
       break;
     case normal_char_state: {
@@ -1291,7 +1290,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
           string_matcher::consume_hex_state (
               hex_, static_cast<state> (this->get_state ()), *code_point);
       if (!hex_resl) {
-        this->set_error (parser, error_code::invalid_hex_char);
+        this->set_error (parser, error::invalid_hex_char);
         break;
       }
       hex_ = std::get<0> (*hex_resl);
@@ -1302,7 +1301,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       // (in hex_) to the string.
       if (next_state == normal_char_state &&
           !app_.append16 (static_cast<char16_t> (hex_))) {
-        this->set_error (parser, error_code::bad_unicode_code_point);
+        this->set_error (parser, error::bad_unicode_code_point);
       }
     } break;
 
@@ -1346,7 +1345,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool>
 array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                    std::optional<char> ch) {
   if (!ch) {
-    this->set_error (parser, error_code::expected_array_member);
+    this->set_error (parser, error::expected_array_member);
     return {nullptr, true};
   }
   char const c = *ch;
@@ -1384,7 +1383,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
               : object_state);
       return {this->make_whitespace_matcher (parser), true};
     case ']': this->end_array (parser); break;
-    default: this->set_error (parser, error_code::expected_array_member); break;
+    default: this->set_error (parser, error::expected_array_member); break;
     }
     break;
   case done_state:
@@ -1440,7 +1439,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     return {nullptr, true};
   }
   if (!ch) {
-    this->set_error (parser, error_code::expected_object_member);
+    this->set_error (parser, error::expected_object_member);
     return {nullptr, true};
   }
   char const c = *ch;
@@ -1471,7 +1470,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     if (c == ':') {
       this->set_state (value_state);
     } else {
-      this->set_error (parser, error_code::expected_colon);
+      this->set_error (parser, error::expected_colon);
     }
     break;
   case value_state:
@@ -1497,7 +1496,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     if (c == '}') {
       this->end_object (parser);
     } else {
-      this->set_error (parser, error_code::expected_object_member);
+      this->set_error (parser, error::expected_object_member);
     }
     break;
   case done_state:
@@ -1700,7 +1699,7 @@ whitespace_matcher<Callbacks>::consume_comment_start (parser<Callbacks> &parser,
              parser.extension_enabled (extensions::multi_line_comments)) {
     this->set_state (multi_line_comment_body_state);
   } else {
-    this->set_error (parser, error_code::expected_token);
+    this->set_error (parser, error::expected_token);
   }
   return {nullptr, true};  // Consume this character.
 }
@@ -1759,7 +1758,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool>
 eof_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                  std::optional<char> const ch) {
   if (ch) {
-    this->set_error (parser, error_code::unexpected_extra_input);
+    this->set_error (parser, error::unexpected_extra_input);
   } else {
     this->set_state (done_state);
   }
@@ -1797,7 +1796,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool>
 root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                   std::optional<char> ch) {
   if (!ch) {
-    this->set_error (parser, error_code::expected_token);
+    this->set_error (parser, error::expected_token);
     return {nullptr, true};
   }
 
@@ -1808,7 +1807,7 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 
   case new_token_state: {
     if (object_key_ && *ch != '"') {
-      this->set_error (parser, error_code::expected_string);
+      this->set_error (parser, error::expected_string);
       // Don't return here in order to allow the switch default to produce a
       // different error code for a bad token.
     }
@@ -1857,7 +1856,7 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
               false};
 
     default:
-      this->set_error (parser, error_code::expected_token);
+      this->set_error (parser, error::expected_token);
       return {nullptr, true};
     }
   } break;
@@ -1972,7 +1971,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
         // We've already hit the maximum allowed parse stack depth. Reject this
         // new matcher.
         assert (!error_);
-        error_ = make_error_code (error_code::nesting_too_deep);
+        error_ = error::nesting_too_deep;
         break;
       }
 

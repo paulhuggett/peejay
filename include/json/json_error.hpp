@@ -21,7 +21,7 @@
 
 namespace peejay {
 
-enum class error_code : int {
+enum class error : int {
   none,
   expected_array_member,
   expected_close_quote,
@@ -51,7 +51,7 @@ public:
 
 std::error_category const& get_error_category () noexcept;
 
-inline std::error_code make_error_code (error_code const e) noexcept {
+inline std::error_code make_error_code (error const e) noexcept {
   return {static_cast<int> (e), get_error_category ()};
 }
 
@@ -60,7 +60,7 @@ inline std::error_code make_error_code (error_code const e) noexcept {
 namespace std {
 
 template <>
-struct is_error_code_enum<::peejay::error_code> : std::true_type {};
+struct is_error_code_enum<peejay::error> : std::true_type {};
 
 }  // end namespace std
 

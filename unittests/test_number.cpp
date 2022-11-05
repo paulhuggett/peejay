@@ -59,7 +59,7 @@ TEST_F (JsonNumber, LeadingZero) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("01"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, MinusOne) {
@@ -73,20 +73,19 @@ TEST_F (JsonNumber, MinusOneLeadingZero) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("-01"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, MinusOnly) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("-"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::expected_digits));
+  EXPECT_EQ (p.last_error (), make_error_code (peejay::error::expected_digits));
 }
 TEST_F (JsonNumber, MinusMinus) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("--"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::unrecognized_token));
+             make_error_code (peejay::error::unrecognized_token));
 }
 
 TEST_F (JsonNumber, AllDigits) {
@@ -227,60 +226,60 @@ TEST_F (JsonNumber, IntegerPositiveOverflow) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input (std::string{uint64_overflow}).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, IntegerNegativeOverflow1) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("-123123123123123123123123123123"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, IntegerNegativeOverflow2) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input (std::string{int64_overflow}).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, RealPositiveOverflow) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("123123e100000"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, RealPositiveOverflow2) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("9999E999"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, RealUnderflow) {
   peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
   p.input ("123e-10000000"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::number_out_of_range));
+             make_error_code (peejay::error::number_out_of_range));
 }
 
 TEST_F (JsonNumber, BadExponentDigit) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("1Ex"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::unrecognized_token));
+             make_error_code (peejay::error::unrecognized_token));
 }
 
 TEST_F (JsonNumber, BadFractionDigit) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("1.."s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::unrecognized_token));
+             make_error_code (peejay::error::unrecognized_token));
 }
 TEST_F (JsonNumber, BadExponentAfterPoint) {
   peejay::parser<decltype (proxy_)> p{proxy_};
   p.input ("1.E"s).eof ();
   EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error_code::unrecognized_token));
+             make_error_code (peejay::error::unrecognized_token));
 }

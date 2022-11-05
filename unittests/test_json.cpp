@@ -29,12 +29,12 @@ namespace {
 
 class Json : public ::testing::Test {
 protected:
-  static void check_error (std::string const& src, error_code err) {
-    ASSERT_NE (err, error_code::none);
+  static void check_error (std::string const& src, error err) {
+    ASSERT_NE (err, error::none);
     parser p{json_out_callbacks{}};
     std::string const res = p.input (src).eof ();
     EXPECT_EQ (res, "");
-    EXPECT_NE (p.last_error (), make_error_code (error_code::none));
+    EXPECT_NE (p.last_error (), make_error_code (error::none));
   }
 
   static inline auto const cr = "\r"s;
@@ -50,7 +50,7 @@ protected:
 TEST_F (Json, Empty) {
   parser p{json_out_callbacks{}};
   p.input (std::string{}).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{line{1U}, column{1U}}));
 }
 
@@ -163,15 +163,14 @@ TEST_F (Json, Move) {
 TEST_F (Json, TwoKeywords) {
   parser p{json_out_callbacks{}};
   p.input (" true false "s);
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::unexpected_extra_input));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unexpected_extra_input));
   EXPECT_EQ (p.pos (), (coord{column{7U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
 
 TEST_F (Json, BadKeyword) {
-  check_error ("nu", error_code::expected_token);
-  check_error ("bad", error_code::expected_token);
-  check_error ("fal", error_code::expected_token);
-  check_error ("falsehood", error_code::unexpected_extra_input);
+  check_error ("nu", error::expected_token);
+  check_error ("bad", error::expected_token);
+  check_error ("fal", error::expected_token);
+  check_error ("falsehood", error::unexpected_extra_input);
 }

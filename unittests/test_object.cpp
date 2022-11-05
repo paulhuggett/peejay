@@ -13,6 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+#include <cerrno>
+
 #include "callbacks.hpp"
 #include "json/json.hpp"
 #include "json/null.hpp"
@@ -64,8 +66,7 @@ TEST_F (JsonObject, SingleKvp) {
 }
 
 TEST_F (JsonObject, SingleKvpBadEndObject) {
-  std::error_code const end_object_error =
-      make_error_code (std::errc::io_error);
+  std::error_code const end_object_error{EDOM, std::generic_category ()};
 
   using testing::_;
   using testing::Return;
@@ -132,22 +133,21 @@ TEST_F (JsonObject, MisplacedCommaBeforeCloseBrace) {
   // An object with a trailing comma but with the extension disabled.
   parser p{null{}};
   p.input (R"({"a":1,})"s).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, NoCommaBeforeProperty) {
   parser p{null{}};
   p.input (R"({"a":1 "b":1})"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (error_code::expected_object_member));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member));
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, TwoCommasBeforeProperty) {
   parser p{null{}};
   p.input (R"({"a":1,,"b":1})"s).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
@@ -170,14 +170,14 @@ TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
 TEST_F (JsonObject, KeyIsNotString) {
   parser p{null{}};
   p.input ("{{}:{}}"s).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_string));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string));
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonObject, BadNestedObject) {
   parser p{null{}};
   p.input (std::string{"{\"a\":nu}"}).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::unrecognized_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
 TEST_F (JsonObject, TooDeeplyNested) {
@@ -188,5 +188,5 @@ TEST_F (JsonObject, TooDeeplyNested) {
     input += "{\"a\":";
   }
   p.input (input).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::nesting_too_deep));
+  EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep));
 }

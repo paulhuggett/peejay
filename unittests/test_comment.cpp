@@ -85,7 +85,7 @@ TEST_F (Comment, SingleLineDisabled) {
   auto p = make_parser (proxy_);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 
 TEST_F (Comment, SingleLineSingleLeading) {
@@ -157,7 +157,7 @@ TEST_F (Comment, MultiLineDisabled) {
   auto p = make_parser (proxy_);
   p.input ("// comment\nnull"s).eof ();
   EXPECT_TRUE (p.has_error ());
-  EXPECT_EQ (p.last_error (), make_error_code (error_code::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 
 TEST_F (Comment, MultiLineSingleLeading) {
