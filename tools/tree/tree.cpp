@@ -38,7 +38,7 @@ constexpr auto as_unsigned (T v) {
 }
 
 template <typename Notifications, typename IStream>
-std::variant<std::error_code, std::optional<peejay::dom::element>> slurp (
+std::variant<std::error_code, std::optional<peejay::element>> slurp (
     peejay::parser<Notifications>& p, IStream&& in) {
   std::array<char, 256> buffer{{0}};
 
@@ -56,7 +56,7 @@ std::variant<std::error_code, std::optional<peejay::dom::element>> slurp (
       return {err};
     }
   }
-  std::optional<peejay::dom::element> result = p.eof ();
+  std::optional<peejay::element> result = p.eof ();
   if (std::error_code const erc = p.last_error ()) {
     return {erc};
   }
@@ -66,7 +66,7 @@ std::variant<std::error_code, std::optional<peejay::dom::element>> slurp (
 #ifdef _WIN32
 
 template <typename Notifications>
-std::variant<std::error_code, std::optional<peejay::dom::element>> slurp_file (
+std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
     peejay::parser<Notifications>& p, char const* file) {
   return slurp (p, std::ifstream{file});
 }
@@ -109,7 +109,7 @@ private:
 };
 
 template <typename Notifications>
-std::variant<std::error_code, std::optional<peejay::dom::element>> slurp_file (
+std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
     peejay::parser<Notifications>& p, char const* file) {
   closer fd{::open (file, O_RDONLY)};
   if (fd.get () == -1) {
@@ -125,7 +125,7 @@ std::variant<std::error_code, std::optional<peejay::dom::element>> slurp_file (
     return make_error_code (static_cast<std::errc> (errno));
   }
   unmapper<char const> ptr{mapped, as_unsigned (sb.st_size)};
-  std::optional<peejay::dom::element> result =
+  std::optional<peejay::element> result =
       p.input (std::begin (ptr), std::end (ptr)).eof ();
   if (std::error_code const erc = p.last_error ()) {
     return {erc};

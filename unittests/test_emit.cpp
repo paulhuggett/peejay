@@ -27,67 +27,67 @@ using namespace std::string_literals;
 
 TEST (Emit, Null) {
   std::stringstream os;
-  emit (os, dom::element{dom::null{}});
+  emit (os, element{null{}});
   EXPECT_EQ (os.str (), "null\n");
 }
 
 TEST (Emit, True) {
   std::stringstream os;
-  emit (os, dom::element{true});
+  emit (os, element{true});
   EXPECT_EQ (os.str (), "true\n");
 }
 
 TEST (Emit, False) {
   std::stringstream os;
-  emit (os, dom::element{false});
+  emit (os, element{false});
   EXPECT_EQ (os.str (), "false\n");
 }
 
 TEST (Emit, Zero) {
   std::stringstream os;
-  emit (os, dom::element{uint64_t{0}});
+  emit (os, element{uint64_t{0}});
   EXPECT_EQ (os.str (), "0\n");
 }
 
 TEST (Emit, One) {
   std::stringstream os;
-  emit (os, dom::element{uint64_t{1}});
+  emit (os, element{uint64_t{1}});
   EXPECT_EQ (os.str (), "1\n");
 }
 
 TEST (Emit, MinusOne) {
   std::stringstream os;
-  emit (os, dom::element{int64_t{-1}});
+  emit (os, element{int64_t{-1}});
   EXPECT_EQ (os.str (), "-1\n");
 }
 
 TEST (Emit, Float) {
   std::stringstream os;
-  emit (os, dom::element{2.2});
+  emit (os, element{2.2});
   EXPECT_EQ (os.str (), "2.2\n");
 }
 
 TEST (Emit, StringNoEscapes) {
   std::stringstream os;
-  emit (os, dom::element{"string"});
+  emit (os, element{"string"});
   EXPECT_EQ (os.str (), "\"string\"\n");
 }
 
 TEST (Emit, StringBackslashT) {
   std::stringstream os;
-  emit (os, dom::element{"abc\tdef"});
+  emit (os, element{"abc\tdef"});
   EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
 }
 
 TEST (Emit, EmptyArray) {
   std::stringstream os;
-  emit (os, dom::element{dom::array{}});
+  emit (os, element{array{}});
   EXPECT_EQ (os.str (), "[]\n");
 }
 
 TEST (Emit, ArrayOneMember) {
   std::stringstream os;
-  emit (os, dom::element{dom::array{dom::element{uint64_t{1}}}});
+  emit (os, element{array{element{uint64_t{1}}}});
   EXPECT_EQ (os.str (), R"([
   1
 ]
@@ -96,8 +96,7 @@ TEST (Emit, ArrayOneMember) {
 
 TEST (Emit, ArrayTwoMembers) {
   std::stringstream os;
-  emit (os, dom::element{dom::array{dom::element{uint64_t{1}},
-                                    dom::element{uint64_t{2}}}});
+  emit (os, element{array{element{uint64_t{1}}, element{uint64_t{2}}}});
   EXPECT_EQ (os.str (), R"([
   1,
   2
@@ -107,15 +106,15 @@ TEST (Emit, ArrayTwoMembers) {
 
 TEST (Emit, EmptyObject) {
   std::stringstream os;
-  emit (os, dom::element{dom::object{}});
+  emit (os, element{object{}});
   EXPECT_EQ (os.str (), "{}\n");
 }
 
 TEST (Emit, ObjectOneMember) {
   std::stringstream os;
-  dom::object obj;
-  obj["key"] = dom::element{"value"s};
-  emit (os, dom::element{std::move (obj)});
+  object obj;
+  obj["key"] = element{"value"s};
+  emit (os, element{std::move (obj)});
   EXPECT_EQ (os.str (), R"({
   "key": "value"
 }
@@ -124,10 +123,9 @@ TEST (Emit, ObjectOneMember) {
 
 TEST (Emit, ObjectArrayMember) {
   std::stringstream os;
-  dom::object obj;
-  obj["key1"] = dom::element{
-      dom::array{dom::element{uint64_t{1}}, dom::element{uint64_t{2}}}};
-  emit (os, dom::element{std::move (obj)});
+  object obj;
+  obj["key1"] = element{array{element{uint64_t{1}}, element{uint64_t{2}}}};
+  emit (os, element{std::move (obj)});
   EXPECT_EQ (os.str (), R"({
   "key1": [
     1,

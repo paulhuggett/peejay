@@ -99,41 +99,56 @@ enum class dom_error : int {
 class dom_error_category final : public std::error_category {
 public:
   dom_error_category () noexcept = default;
-  char const* name () const noexcept override;
+  char const *name () const noexcept override;
   std::string message (int error) const override;
 };
 
-std::error_category const& get_dom_error_category () noexcept;
+std::error_category const &get_dom_error_category () noexcept;
 
 inline std::error_code make_error_code (dom_error const e) noexcept {
   return {static_cast<int> (e), get_dom_error_category ()};
 }
 
+}  // end namespace peejay
+
+namespace std {
+
+template <>
+struct is_error_code_enum<peejay::dom_error> : std::true_type {};
+
+}  // end namespace std
+
+namespace peejay {
+
+struct element;
+struct null {
+  bool operator== (null) const noexcept { return true; }
+#if !PEEJAY_CXX20
+  bool operator!= (null) const noexcept { return false; }
+#endif  // !PEEJAY_CXX20
+};
+
+struct mark {
+  bool operator== (mark) const noexcept { return true; }
+#if !PEEJAY_CXX20
+  bool operator!= (mark) const noexcept { return false; }
+#endif  // !PEEJAY_CXX20
+};
+using variant = std::variant<int64_t, uint64_t, double, bool, null, std::string,
+                             std::vector<element>,
+                             std::unordered_map<std::string, element>, mark>;
+
+struct element : variant {
+  using variant::variant;
+};
+
+using object = std::unordered_map<std::string, element>;
+using array = std::vector<element>;
+
+template <size_t StackSize>
 class dom {
 public:
-  struct element;
-  struct null {
-    bool operator== (null) const noexcept { return true; }
-#if !PEEJAY_CXX20
-    bool operator!= (null) const noexcept { return false; }
-#endif  // !PEEJAY_CXX20
-  };
-  struct mark {
-    bool operator== (mark) const noexcept { return true; }
-#if !PEEJAY_CXX20
-    bool operator!= (mark) const noexcept { return false; }
-#endif  // !PEEJAY_CXX20
-  };
-  using variant = std::variant<int64_t, uint64_t, double, bool, null,
-                               std::string, std::vector<element>,
-                               std::unordered_map<std::string, element>, mark>;
-
-  struct element : variant {
-    using variant::variant;
-  };
-
-  using object = std::unordered_map<std::string, element>;
-  using array = std::vector<element>;
+  static constexpr size_t stack_size = StackSize;
 
   dom () = default;
   dom (dom const &) = delete;
@@ -171,28 +186,152 @@ private:
     return stack_->find_if (
         [] (element const &v) { return std::holds_alternative<mark> (v); });
   }
-  static constexpr size_t stack_size = 1024;
   using stack_type = details::stack<element, arrayvec<element, stack_size>>;
-  std::unique_ptr<stack_type> stack_= std::make_unique<stack_type> ();
+  std::unique_ptr<stack_type> stack_ = std::make_unique<stack_type> ();
 };
 
-constexpr bool operator== (dom::element const &lhs, dom::element const &rhs) {
-  return static_cast<dom::variant const &> (lhs) ==
-         static_cast<dom::variant const &> (rhs);
+template <size_t StackSize = 1024>
+dom () -> dom<StackSize>;
+
+// string
+// ~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::string_value (std::string_view const &s) {
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error::nesting_too_deep);
+  }
+  stack_->emplace (std::string{s});
+  return {};
+}
+
+// int64
+// ~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::int64_value (int64_t v) {
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error::nesting_too_deep);
+  }
+  stack_->emplace (v);
+  return {};
+}
+
+// uint64
+// ~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::uint64_value (uint64_t v) {
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error::nesting_too_deep);
+  }
+  stack_->emplace (v);
+  return {};
+}
+
+// double
+// ~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::double_value (double v) {
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error::nesting_too_deep);
+  }
+  stack_->emplace (v);
+  return {};
+}
+
+// boolean
+// ~~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::boolean_value (bool v) {
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error::nesting_too_deep);
+  }
+  stack_->emplace (v);
+  return {};
+}
+
+// null
+// ~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::null_value () {
+  if (stack_->size () >= stack_size) {
+    return make_error_code (dom_error::nesting_too_deep);
+  }
+  stack_->emplace (null{});
+  return {};
+}
+
+// begin array
+// ~~~~~~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::begin_array () {
+  if (stack_->size () >= stack_size) {
+    return dom_error::nesting_too_deep;
+  }
+  stack_->emplace (mark{});
+  return {};
+}
+
+// end array
+// ~~~~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::end_array () {
+  array arr;
+  size_t const size = this->elements_until_mark ();
+  arr.reserve (size);
+  for (;;) {
+    auto &top = stack_->top ();
+    if (std::holds_alternative<mark> (top)) {
+      stack_->pop ();
+      break;
+    }
+    arr.emplace_back (std::move (top));
+    stack_->pop ();
+  }
+  assert (arr.size () == size);
+  std::reverse (std::begin (arr), std::end (arr));
+  stack_->emplace (std::move (arr));
+  return {};
+}
+
+// end object
+// ~~~~~~~~~~
+template <size_t StackSize>
+std::error_code dom<StackSize>::end_object () {
+  assert (this->elements_until_mark () % 2U == 0U);
+  typename object::size_type const size = this->elements_until_mark () / 2U;
+  object obj{size};
+  for (;;) {
+    element value = std::move (stack_->top ());
+    stack_->pop ();
+    if (std::holds_alternative<mark> (value)) {
+      break;
+    }
+    auto &key = stack_->top ();
+    assert (std::holds_alternative<std::string> (key));
+    obj.try_emplace (std::move (std::get<std::string> (key)),
+                     std::move (value));
+    stack_->pop ();
+  }
+  // The presence of duplicate keys can mean that we end up with fewer entries
+  // in the map than there were key/value pairs on the stack.
+  assert (obj.size () <= size);
+  stack_->emplace (std::move (obj));
+  return {};
+}
+
+template <size_t Size1, size_t Size2>
+constexpr bool operator== (typename dom<Size1>::element const &lhs,
+                           typename dom<Size2>::element const &rhs) {
+  return static_cast<typename dom<Size1>::variant const &> (lhs) ==
+         static_cast<typename dom<Size2>::variant const &> (rhs);
 }
 #if !PEEJAY_CXX20
-constexpr bool operator!= (dom::element const &lhs, dom::element const &rhs) {
+template <size_t Size1, size_t Size2>
+constexpr bool operator!= (typename dom<Size1>::element const &lhs,
+                           typename dom<Size2>::element const &rhs) {
   return !operator== (lhs, rhs);
 }
 #endif  // !PEEJAY_CXX20
 
 }  // end namespace peejay
-
-namespace std {
-
-template <>
-struct is_error_code_enum<peejay::dom_error> : std::true_type {};
-
-}  // end namespace std
 
 #endif  // PEEJAY_TREE_DOM_HPP
