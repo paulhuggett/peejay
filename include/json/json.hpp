@@ -220,8 +220,10 @@ enum class extensions : unsigned {
 };
 
 constexpr extensions operator| (extensions a, extensions b) noexcept {
-  return static_cast<extensions> (static_cast<unsigned> (a) |
-                                  static_cast<unsigned> (b));
+  using ut = std::underlying_type_t<extensions>;
+  static_assert (std::is_unsigned_v<ut>,
+                 "The extensions type must be unsigned");
+  return static_cast<extensions> (static_cast<ut> (a) | static_cast<ut> (b));
 }
 
 //-MARK:parser
