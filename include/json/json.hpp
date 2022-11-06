@@ -138,17 +138,24 @@ struct singleton_storage;
 template <typename T>
 class deleter {
 public:
-  /// \param d True if the managed object should be deleted; false, if it only the
-  /// detructor should be called.
-  constexpr explicit deleter (bool const d = true) noexcept : delete_{d} {}
+  enum mode : char { do_delete, do_dtor, do_nothing };
+
+  /// \param m One of the three modes: delete the object, call the destructor, or do nothing.
+  constexpr explicit deleter (mode const m) noexcept : mode_{m} {}
   void operator() (T *const p) const noexcept {
-    if (delete_) {
-      delete p;
+    switch (mode_) {
+    case mode::do_delete: delete p; break;
+    case mode::do_dtor:
+      if (p != nullptr) {
+        p->~T ();
+      }
+      break;
+    case mode::do_nothing: break;
     }
   }
 
 private:
-  bool delete_;
+  mode mode_;
 };
 
 }  // end namespace details
@@ -329,6 +336,11 @@ private:
   using matcher = details::matcher<Callbacks>;
   using pointer = std::unique_ptr<matcher, details::deleter<matcher>>;
 
+  static constexpr auto null_pointer () {
+    using deleter = typename pointer::deleter_type;
+    return pointer{nullptr, deleter{deleter::mode::do_nothing}};
+  }
+
   ///@{
   /// \brief Managing the column and row number (the "coordinate").
 
@@ -372,7 +384,8 @@ private:
   pointer make_terminal_matcher (Args &&...args) {
     Matcher &m = singletons_.terminals_.template emplace<Matcher> (
         std::forward<Args> (args)...);
-    return pointer{&m, details::deleter<matcher>{false}};
+    using deleter = typename pointer::deleter_type;
+    return pointer{&m, deleter{deleter::mode::do_nothing}};
   }
 
   /// Preallocated storage for "terminal" matchers. These are the matchers,
@@ -494,6 +507,10 @@ protected:
         std::forward<Args> (args)...);
   }
 
+  static constexpr auto null_pointer () {
+    return parser<Callbacks>::null_pointer ();
+  }
+
   /// The value to be used for the "done" state in the each of the matcher state
   /// machines.
   static constexpr auto done = 1;
@@ -569,7 +586,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     if (ch) {
       if (std::isalnum (*ch) != 0) {
         this->set_error (parser, error::unrecognized_token);
-        return {nullptr, true};
+        return {matcher<Callbacks>::null_pointer (), true};
       }
       match = false;
     }
@@ -579,7 +596,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
   case done_state:
   default: assert (false); break;
   }
-  return {nullptr, match};
+  return {matcher<Callbacks>::null_pointer (), match};
 }
 
 //*   __      _           _       _             *
@@ -956,7 +973,7 @@ number_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     }
     this->complete (parser);
   }
-  return {nullptr, match};
+  return {matcher<Callbacks>::null_pointer (), match};
 }
 
 // make result
@@ -1255,7 +1272,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                     std::optional<char> ch) {
   if (!ch) {
     this->set_error (parser, error::expected_close_quote);
-    return {nullptr, true};
+    return {matcher<Callbacks>::null_pointer (), true};
   }
 
   if (std::optional<char32_t> const code_point =
@@ -1311,7 +1328,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     default: assert (false); break;
     }
   }
-  return {nullptr, true};
+  return {matcher<Callbacks>::null_pointer (), true};
 }
 
 //*                          *
@@ -1344,54 +1361,53 @@ private:
 // ~~~~~~~
 template <typename Callbacks>
 std::pair<typename matcher<Callbacks>::pointer, bool>
-array_matcher<Callbacks>::consume (parser<Callbacks> &parser,
+array_matcher<Callbacks>::consume (parser<Callbacks> &p,
                                    std::optional<char> ch) {
   if (!ch) {
-    this->set_error (parser, error::expected_array_member);
-    return {nullptr, true};
+    this->set_error (p, error::expected_array_member);
+    return {matcher<Callbacks>::null_pointer (), true};
   }
   char const c = *ch;
   switch (this->get_state ()) {
   case start_state:
     assert (c == '[');
-    if (this->set_error (parser, parser.callbacks ().begin_array ())) {
+    if (this->set_error (p, p.callbacks ().begin_array ())) {
       break;
     }
     this->set_state (first_object_state);
     // Match this character and consume whitespace before the object (or close
     // bracket).
-    return {this->make_whitespace_matcher (parser), true};
+    return {this->make_whitespace_matcher (p), true};
 
   case first_object_state:
     if (c == ']') {
-      this->end_array (parser);
+      this->end_array (p);
       break;
     }
     [[fallthrough]];
   case object_state:
     this->set_state (comma_state);
-    return {this->make_root_matcher (parser), false};
+    return {this->make_root_matcher (p), false};
     break;
   case comma_state:
     if (isspace (c)) {
       // just consume whitespace before a comma.
-      return {this->make_whitespace_matcher (parser), false};
+      return {this->make_whitespace_matcher (p), false};
     }
     switch (c) {
     case ',':
-      this->set_state (
-          (parser.extension_enabled (extensions::array_trailing_comma))
-              ? first_object_state
-              : object_state);
-      return {this->make_whitespace_matcher (parser), true};
-    case ']': this->end_array (parser); break;
-    default: this->set_error (parser, error::expected_array_member); break;
+      this->set_state ((p.extension_enabled (extensions::array_trailing_comma))
+                           ? first_object_state
+                           : object_state);
+      return {this->make_whitespace_matcher (p), true};
+    case ']': this->end_array (p); break;
+    default: this->set_error (p, error::expected_array_member); break;
     }
     break;
   case done_state:
   default: assert (false); break;
   }
-  return {nullptr, true};
+  return {matcher<Callbacks>::null_pointer (), true};
 }
 
 // end array
@@ -1438,11 +1454,11 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                     std::optional<char> ch) {
   if (this->get_state () == done_state) {
     assert (parser.last_error ());
-    return {nullptr, true};
+    return {matcher<Callbacks>::null_pointer (), true};
   }
   if (!ch) {
     this->set_error (parser, error::expected_object_member);
-    return {nullptr, true};
+    return {matcher<Callbacks>::null_pointer (), true};
   }
   char const c = *ch;
   switch (this->get_state ()) {
@@ -1505,7 +1521,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
   default: assert (false); break;
   }
   // No change of matcher. Consume the input character.
-  return {nullptr, true};
+  return {matcher<Callbacks>::null_pointer (), true};
 }
 
 // end object
@@ -1629,7 +1645,7 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
         // This character marks a bash/single-line comment end. Go back to
         // normal whitespace handling. Retry with the same character.
         this->set_state (body_state);
-        return {nullptr, false};
+        return {matcher<Callbacks>::null_pointer (), false};
       }
       // Just consume the character.
       break;
@@ -1638,7 +1654,7 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     default: assert (false); break;
     }
   }
-  return {nullptr, true};
+  return {matcher<Callbacks>::null_pointer (), true};
 }
 
 // consume body
@@ -1650,8 +1666,7 @@ whitespace_matcher<Callbacks>::consume_body (parser<Callbacks> &parser,
   auto const stop_retry = [this] () {
     // Stop, pop this matcher, and retry with the same character.
     this->set_state (done_state);
-    return std::pair<typename matcher<Callbacks>::pointer, bool>{nullptr,
-                                                                 false};
+    return std::pair{matcher<Callbacks>::null_pointer (), false};
   };
 
   using details::char_set;
@@ -1677,7 +1692,8 @@ whitespace_matcher<Callbacks>::consume_body (parser<Callbacks> &parser,
     break;
   default: return stop_retry ();
   }
-  return {nullptr, true};  // Consume this character.
+  return {matcher<Callbacks>::null_pointer (),
+          true};  // Consume this character.
 }
 
 // consume comment start
@@ -1703,7 +1719,8 @@ whitespace_matcher<Callbacks>::consume_comment_start (parser<Callbacks> &parser,
   } else {
     this->set_error (parser, error::expected_token);
   }
-  return {nullptr, true};  // Consume this character.
+  return {matcher<Callbacks>::null_pointer (),
+          true};  // Consume this character.
 }
 
 // multi line comment body
@@ -1729,7 +1746,8 @@ whitespace_matcher<Callbacks>::multi_line_comment_body (
   case char_set::tab: break;  // TODO: tab expansion.
   default: break;             // Just consume.
   }
-  return {nullptr, true};  // Consume this character.
+  return {matcher<Callbacks>::null_pointer (),
+          true};  // Consume this character.
 }
 
 //*           __  *
@@ -1764,7 +1782,7 @@ eof_matcher<Callbacks>::consume (parser<Callbacks> &parser,
   } else {
     this->set_state (done_state);
   }
-  return {nullptr, true};
+  return {matcher<Callbacks>::null_pointer (), true};
 }
 
 //*               _                _      _             *
@@ -1799,9 +1817,11 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                   std::optional<char> ch) {
   if (!ch) {
     this->set_error (parser, error::expected_token);
-    return {nullptr, true};
+    return {matcher<Callbacks>::null_pointer (), true};
   }
 
+  using pointer = typename matcher<Callbacks>::pointer;
+  using deleter = typename pointer::deleter_type;
   switch (this->get_state ()) {
   case start_state:
     this->set_state (new_token_state);
@@ -1849,24 +1869,23 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
               parser),
           false};
     case '[':
-      return {typename matcher<Callbacks>::pointer (
-                  new array_matcher<Callbacks> ()),
+      return {pointer{new array_matcher<Callbacks> (),
+                      deleter{deleter::mode::do_delete}},
               false};
     case '{':
-      return {typename matcher<Callbacks>::pointer (
-                  new object_matcher<Callbacks> ()),
+      return {pointer{new object_matcher<Callbacks> (),
+                      deleter{deleter::mode::do_delete}},
               false};
-
     default:
       this->set_error (parser, error::expected_token);
-      return {nullptr, true};
+      return {matcher<Callbacks>::null_pointer (), true};
     }
   } break;
   case done_state:
   default: assert (false); break;
   }
   assert (false);  // unreachable.
-  return {nullptr, true};
+  return {matcher<Callbacks>::null_pointer (), true};
 }
 
 //*     _           _     _                 _                          *
@@ -1913,11 +1932,11 @@ parser<Callbacks>::parser (OtherCallbacks &&callbacks,
   // input JSON ends after a single top-level object.
   stack_.push (mpointer (new (&singletons_.eof)
                              details::eof_matcher<Callbacks>{},
-                         deleter{false}));
+                         deleter{deleter::mode::do_dtor}));
   // We permit whitespace after the top-level object.
   stack_.push (mpointer (new (&singletons_.trailing_ws)
                              details::whitespace_matcher<Callbacks>{},
-                         deleter{false}));
+                         deleter{deleter::mode::do_dtor}));
   stack_.push (this->make_root_matcher ());
 }
 
@@ -1927,8 +1946,9 @@ template <typename Callbacks>
 PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
 auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
   using root_matcher = details::root_matcher<Callbacks>;
+  using deleter = typename pointer::deleter_type;
   return pointer (new (&singletons_.root) root_matcher (object_key),
-                  typename pointer::deleter_type{false});
+                  deleter{deleter::mode::do_dtor});
 }
 
 // make whitespace matcher
