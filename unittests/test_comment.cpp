@@ -240,3 +240,19 @@ TEST_F (Comment, MultiLineUnclosed) {
   EXPECT_EQ (p.pos (), (coord{line{1U}, column{5U}}));
   EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{15U}}));
 }
+
+TEST_F (Comment, Mixed) {
+  EXPECT_CALL (callbacks_, null_value ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::bash_comments |
+                                    extensions::single_line_comments |
+                                    extensions::multi_line_comments);
+  p.input (R"(# comment 1
+// comment 2
+/* comment 3 */
+null
+)"sv)
+      .eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
