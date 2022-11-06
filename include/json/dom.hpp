@@ -90,7 +90,6 @@ private:
 
 enum class dom_error : int {
   none,
-  nesting_too_deep,
 };
 
 // ******************
@@ -198,10 +197,10 @@ dom () -> dom<StackSize>;
 template <size_t StackSize>
 std::error_code dom<StackSize>::string_value (std::string_view const &s) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error::nesting_too_deep);
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (std::string{s});
-  return {};
+  return error::none;
 }
 
 // int64
@@ -209,10 +208,10 @@ std::error_code dom<StackSize>::string_value (std::string_view const &s) {
 template <size_t StackSize>
 std::error_code dom<StackSize>::int64_value (int64_t v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error::nesting_too_deep);
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (v);
-  return {};
+  return error::none;
 }
 
 // uint64
@@ -220,10 +219,10 @@ std::error_code dom<StackSize>::int64_value (int64_t v) {
 template <size_t StackSize>
 std::error_code dom<StackSize>::uint64_value (uint64_t v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error::nesting_too_deep);
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (v);
-  return {};
+  return error::none;
 }
 
 // double
@@ -231,10 +230,10 @@ std::error_code dom<StackSize>::uint64_value (uint64_t v) {
 template <size_t StackSize>
 std::error_code dom<StackSize>::double_value (double v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error::nesting_too_deep);
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (v);
-  return {};
+  return error::none;
 }
 
 // boolean
@@ -242,10 +241,10 @@ std::error_code dom<StackSize>::double_value (double v) {
 template <size_t StackSize>
 std::error_code dom<StackSize>::boolean_value (bool v) {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error::nesting_too_deep);
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (v);
-  return {};
+  return error::none;
 }
 
 // null
@@ -253,10 +252,10 @@ std::error_code dom<StackSize>::boolean_value (bool v) {
 template <size_t StackSize>
 std::error_code dom<StackSize>::null_value () {
   if (stack_->size () >= stack_size) {
-    return make_error_code (dom_error::nesting_too_deep);
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (null{});
-  return {};
+  return error::none;
 }
 
 // begin array
@@ -264,10 +263,10 @@ std::error_code dom<StackSize>::null_value () {
 template <size_t StackSize>
 std::error_code dom<StackSize>::begin_array () {
   if (stack_->size () >= stack_size) {
-    return dom_error::nesting_too_deep;
+    return error::dom_nesting_too_deep;
   }
   stack_->emplace (mark{});
-  return {};
+  return error::none;
 }
 
 // end array
@@ -289,7 +288,7 @@ std::error_code dom<StackSize>::end_array () {
   assert (arr.size () == size);
   std::reverse (std::begin (arr), std::end (arr));
   stack_->emplace (std::move (arr));
-  return {};
+  return error::none;
 }
 
 // end object
@@ -315,7 +314,7 @@ std::error_code dom<StackSize>::end_object () {
   // in the map than there were key/value pairs on the stack.
   assert (obj.size () <= size);
   stack_->emplace (std::move (obj));
-  return {};
+  return error::none;
 }
 
 template <size_t Size1, size_t Size2>

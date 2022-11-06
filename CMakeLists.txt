@@ -99,7 +99,6 @@ add_library (json-parser STATIC
   include/json/portab.hpp
   include/json/utf.hpp
   include/json/utility.hpp
-  lib/json/dom.cpp
   lib/json/json_error.cpp
   lib/json/utf.cpp
   lib/json/utility.cpp

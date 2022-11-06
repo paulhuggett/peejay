@@ -21,31 +21,31 @@
 peejay::error_category::error_category () noexcept = default;
 
 char const* peejay::error_category::name () const noexcept {
-  return "peejay json parser category";
+  return "PJ JSON parser category";
 }
 
 std::string peejay::error_category::message (int const err) const {
-  auto* result = "unknown peejay::error_category error";
   switch (static_cast<error> (err)) {
-  case error::none: result = "none"; break;
-  case error::bad_unicode_code_point: result = "bad UNICODE code point"; break;
-  case error::expected_array_member: result = "expected array member"; break;
-  case error::expected_close_quote: result = "expected close quote"; break;
-  case error::expected_colon: result = "expected colon"; break;
-  case error::expected_digits: result = "expected digits"; break;
-  case error::expected_object_member: result = "expected object member"; break;
-  case error::expected_string: result = "expected string"; break;
-  case error::expected_token: result = "expected token"; break;
-  case error::invalid_escape_char: result = "invalid escape character"; break;
-  case error::invalid_hex_char:
-    result = "invalid hexadecimal escape character";
-    break;
-  case error::number_out_of_range: result = "number out of range"; break;
-  case error::unexpected_extra_input: result = "unexpected extra input"; break;
-  case error::unrecognized_token: result = "unrecognized token"; break;
-  case error::nesting_too_deep: result = "objects are too deeply nested"; break;
+  case error::none: return "none";
+  case error::bad_unicode_code_point: return "bad UNICODE code point";
+  case error::dom_nesting_too_deep:
+    return "(DOM) object or array contains too many members";
+  case error::expected_array_member: return "expected array member";
+  case error::expected_close_quote: return "expected close quote";
+  case error::expected_colon: return "expected colon";
+  case error::expected_digits: return "expected digits";
+  case error::expected_object_member: return "expected object member";
+  case error::expected_string: return "expected string";
+  case error::expected_token: return "expected token";
+  case error::invalid_escape_char: return "invalid escape character";
+  case error::invalid_hex_char: return "invalid hexadecimal escape character";
+  case error::number_out_of_range: return "number out of range";
+  case error::unexpected_extra_input: return "unexpected extra input";
+  case error::unrecognized_token: return "unrecognized token";
+  case error::nesting_too_deep: return "objects are too deeply nested";
   }
-  return result;
+  assert (false && "bad error code");
+  return "unknown PJ error_category error";
 }
 
 std::error_category const& peejay::get_error_category () noexcept {

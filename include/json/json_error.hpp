@@ -23,20 +23,21 @@ namespace peejay {
 
 enum class error : int {
   none,
+  bad_unicode_code_point,
+  dom_nesting_too_deep,
   expected_array_member,
   expected_close_quote,
   expected_colon,
   expected_digits,
-  expected_string,
-  number_out_of_range,
   expected_object_member,
+  expected_string,
   expected_token,
   invalid_escape_char,
   invalid_hex_char,
-  unrecognized_token,
-  unexpected_extra_input,
-  bad_unicode_code_point,
   nesting_too_deep,
+  number_out_of_range,
+  unexpected_extra_input,
+  unrecognized_token,
 };
 
 // ******************

@@ -155,10 +155,10 @@ TEST (Dom, DuplicateKeys) {
 
 TEST (Dom, ArrayStack) {
   dom<size_t{2}> d;
-  EXPECT_EQ (d.begin_array (), std::error_code{});
-  EXPECT_EQ (d.begin_array (), std::error_code{});
+  EXPECT_FALSE (static_cast<bool> (d.begin_array ()));
+  EXPECT_FALSE (static_cast<bool> (d.begin_array ()));
 
-  auto const err = make_error_code (dom_error::nesting_too_deep);
+  auto const err = make_error_code (error::dom_nesting_too_deep);
   EXPECT_EQ (d.string_value ("string"sv), err);
   EXPECT_EQ (d.int64_value (int64_t{37}), err);
   EXPECT_EQ (d.uint64_value (uint64_t{37}), err);

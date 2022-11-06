@@ -113,16 +113,16 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
     peejay::parser<Notifications>& p, char const* file) {
   closer fd{::open (file, O_RDONLY)};
   if (fd.get () == -1) {
-    return make_error_code (static_cast<std::errc> (errno));
+    return std::error_code{errno, std::generic_category ()};
   }
   struct stat sb;
   if (::fstat (fd.get (), &sb) == -1) {
-    return make_error_code (static_cast<std::errc> (errno));
+    return std::error_code{errno, std::generic_category ()};
   }
   void* const mapped = ::mmap (nullptr, as_unsigned (sb.st_size), PROT_READ,
                                MAP_SHARED, fd.get (), off_t{0});
   if (mapped == MAP_FAILED) {
-    return make_error_code (static_cast<std::errc> (errno));
+    return std::error_code{errno, std::generic_category ()};
   }
   unmapper<char const> ptr{mapped, as_unsigned (sb.st_size)};
   std::optional<peejay::element> result =
