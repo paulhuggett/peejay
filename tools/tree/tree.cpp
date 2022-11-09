@@ -137,7 +137,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
 template <typename N>
 void report_error (peejay::parser<N>& p, std::string_view const& file_name) {
   auto const& pos = p.pos ();
-  std::cout << file_name << ':' << pos.line << ':' << pos.column << ':'
+  std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n';
 }
 

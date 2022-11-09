@@ -24,7 +24,7 @@ template <typename N>
 void report_error (peejay::parser<N>& p, std::string_view const& file_name,
                    std::string_view const& line) {
   auto const& pos = p.pos ();
-  std::cout << file_name << ':' << pos.line << ':' << pos.column << ':'
+  std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n'
             << line << '\n'
             << std::string (pos.column - 1U, ' ') << "^\n";
