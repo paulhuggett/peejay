@@ -39,6 +39,19 @@
 #include <span>
 #endif
 
+#ifdef _MSC_VER
+#define PEEJAY_UNREACHABLE \
+  do {                     \
+    assert (false);        \
+  } while (0)
+#else
+#define PEEJAY_UNREACHABLE    \
+  do {                        \
+    assert (false);           \
+    __builtin_unreachable (); \
+  } while (0)
+#endif  // _MSC_VER
+
 namespace peejay {
 
 template <typename T>
@@ -138,7 +151,7 @@ struct singleton_storage;
 template <typename T>
 class deleter {
 public:
-  enum mode : char { do_delete, do_dtor, do_nothing };
+  enum class mode : char { do_delete, do_dtor, do_nothing };
 
   /// \param m One of the three modes: delete the object, call the destructor, or do nothing.
   constexpr explicit deleter (mode const m) noexcept : mode_{m} {}
@@ -594,7 +607,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     this->set_state (done_state);
     break;
   case done_state:
-  default: assert (false); break;
+  default: PEEJAY_UNREACHABLE; break;
   }
   return {matcher<Callbacks>::null_pointer (), match};
 }
@@ -776,6 +789,7 @@ bool number_matcher<Callbacks>::do_leading_minus_state (
     this->set_state (integer_initial_digit_state);
     match = do_integer_initial_digit_state (parser, c);
   } else {
+    PEEJAY_UNREACHABLE;
     // minus MUST be followed by the 'int' production.
     this->set_error (parser, error::number_out_of_range);
   }
@@ -964,7 +978,7 @@ number_matcher<Callbacks>::consume (parser<Callbacks> &parser,
       match = this->do_exponent_digit_state (parser, c);
       break;
     case done_state:
-    default: assert (false); break;
+    default: PEEJAY_UNREACHABLE; break;
     }
   } else {
     assert (!parser.has_error ());
@@ -1080,7 +1094,7 @@ private:
     char16_t high_surrogate_ = 0;
   };
 
-  std::tuple<state, std::error_code> consume_normal_state (
+  std::variant<state, std::error_code> consume_normal_state (
       parser<Callbacks> &parser, char32_t code_point, appender &app);
 
   static std::optional<unsigned> hex_value (char32_t c, unsigned value);
@@ -1088,8 +1102,8 @@ private:
   static std::optional<std::tuple<unsigned, state>> consume_hex_state (
       unsigned hex, enum state state, char32_t code_point);
 
-  static std::tuple<state, error> consume_escape_state (char32_t code_point,
-                                                        appender &app);
+  static std::variant<state, error> consume_escape_state (char32_t code_point,
+                                                          appender &app);
   bool is_object_key_;
   utf8_decoder decoder_;
   appender app_;
@@ -1149,34 +1163,33 @@ template <typename Callbacks>
 auto string_matcher<Callbacks>::consume_normal_state (parser<Callbacks> &parser,
                                                       char32_t code_point,
                                                       appender &app)
-    -> std::tuple<state, std::error_code> {
-  state next_state = normal_char_state;
-  std::error_code error;
-
+    -> std::variant<state, std::error_code> {
   if (code_point == '"') {
     if (app.has_high_surrogate ()) {
-      error = error::bad_unicode_code_point;
-    } else {
-      // Consume the closing quote character.
-      if (is_object_key_) {
-        error = parser.callbacks ().key (*app.result ());
-      } else {
-        error = parser.callbacks ().string_value (*app.result ());
-      }
+      return error::bad_unicode_code_point;
     }
-    next_state = done_state;
-  } else if (code_point == '\\') {
-    next_state = escape_state;
-  } else if (code_point <= 0x1F) {
+    // Consume the closing quote character.
+    auto &n = parser.callbacks ();
+    std::string_view const &result = *app.result ();
+    if (std::error_code const error =
+            is_object_key_ ? n.key (result) : n.string_value (result)) {
+      return error;
+    }
+    return done_state;
+  }
+  if (code_point == '\\') {
+    return escape_state;
+  }
+  if (code_point <= 0x1F) {
     // Control characters U+0000 through U+001F MUST be escaped.
-    error = error::bad_unicode_code_point;
-  } else {
-    if (!app.append32 (code_point)) {
-      error = error::bad_unicode_code_point;
-    }
+    return error::bad_unicode_code_point;
   }
 
-  return std::make_tuple (next_state, error);
+  // Remember this character.
+  if (!app.append32 (code_point)) {
+    return error::bad_unicode_code_point;
+  }
+  return normal_char_state;
 }
 
 // hex value [static]
@@ -1232,37 +1245,28 @@ auto string_matcher<Callbacks>::consume_hex_state (unsigned const hex,
 template <typename Callbacks>
 auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
                                                       appender &app)
-    -> std::tuple<state, error> {
-  auto decode = [] (char32_t cp) {
-    state next_state = normal_char_state;
-    switch (cp) {
-    case '"': cp = '"'; break;
-    case '\\': cp = '\\'; break;
-    case '/': cp = '/'; break;
-    case 'b': cp = '\b'; break;
-    case 'f': cp = '\f'; break;
-    case 'n': cp = '\n'; break;
-    case 'r': cp = '\r'; break;
-    case 't': cp = '\t'; break;
-    case 'u': next_state = hex1_state; break;
-    default: return nothing<std::tuple<char32_t, state>> ();
-    }
-    return just (std::make_tuple (cp, next_state));
-  };
-
-  auto append = [&app] (std::tuple<char32_t, state> const &s) {
-    auto const [cp, next_state] = s;
-    assert (next_state == normal_char_state || next_state == hex1_state);
-    if (next_state == normal_char_state && !app.append32 (cp)) {
-      return std::optional<state>{std::nullopt};
-    }
-    return just (next_state);
-  };
-
-  std::optional<state> const x = decode (code_point) >>= append;
-  return x ? std::make_tuple (*x, error::none)
-           : std::make_tuple (normal_char_state, error::invalid_escape_char);
+    -> std::variant<state, error> {
+  state next_state = normal_char_state;
+  switch (code_point) {
+  case '"': code_point = '"'; break;
+  case '\\': code_point = '\\'; break;
+  case '/': code_point = '/'; break;
+  case 'b': code_point = '\b'; break;
+  case 'f': code_point = '\f'; break;
+  case 'n': code_point = '\n'; break;
+  case 'r': code_point = '\r'; break;
+  case 't': code_point = '\t'; break;
+  case 'u': next_state = hex1_state; break;
+  default: return {error::invalid_escape_char};
+  }
+  if (next_state == normal_char_state && !app.append32 (code_point)) {
+    return {error::invalid_escape_char};
+  }
+  return {next_state};
 }
+
+template <typename... T>
+constexpr bool always_false = false;
 
 // consume
 // ~~~~~~~
@@ -1287,19 +1291,35 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
         this->set_error (parser, error::expected_token);
       }
       break;
-    case normal_char_state: {
-      auto const normal_resl =
-          string_matcher::consume_normal_state (parser, *code_point, app_);
-      this->set_state (std::get<0> (normal_resl));
-      this->set_error (parser, std::get<std::error_code> (normal_resl));
-    } break;
+    case normal_char_state:
+      std::visit (
+          [this, &parser] (auto &&arg) {
+            using T = std::decay_t<decltype (arg)>;
+            if constexpr (std::is_same_v<T, std::error_code>) {
+              this->set_error (parser, arg);
+            } else if constexpr (std::is_same_v<T, state>) {
+              this->set_state (arg);
+            } else {
+              static_assert (always_false<T>, "non-exhaustive visitor");
+            }
+          },
+          string_matcher::consume_normal_state (parser, *code_point, app_));
+      break;
 
-    case escape_state: {
-      auto const escape_resl =
-          string_matcher::consume_escape_state (*code_point, app_);
-      this->set_state (std::get<0> (escape_resl));
-      this->set_error (parser, std::get<1> (escape_resl));
-    } break;
+    case escape_state:
+      std::visit (
+          [this, &parser] (auto &&arg) {
+            using T = std::decay_t<decltype (arg)>;
+            if constexpr (std::is_same_v<T, error>) {
+              this->set_error (parser, arg);
+            } else if constexpr (std::is_same_v<T, state>) {
+              this->set_state (arg);
+            } else {
+              static_assert (always_false<T>, "non-exhaustive visitor");
+            }
+          },
+          string_matcher::consume_escape_state (*code_point, app_));
+      break;
 
     case hex1_state: hex_ = 0; [[fallthrough]];
     case hex2_state:
