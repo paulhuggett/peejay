@@ -54,33 +54,6 @@
 
 namespace peejay {
 
-template <typename T>
-constexpr std::optional<
-    typename std::remove_const_t<typename std::remove_reference_t<T>>>
-just (T &&t) {
-  return {std::forward<T> (t)};
-}
-template <typename T>
-constexpr std::optional<T> nothing () {
-  return {std::nullopt};
-}
-
-/// The monadic "bind" operator for std::optional<T>. If \p t has no value then
-/// returns an empty optional<> where the type of the return is derived from the
-/// return type of \p f.  If \p t has a value then returns the result of calling
-/// \p f.
-///
-/// \tparam T  The input type wrapped by a std::optional<>.
-/// \tparam Function  A callable object whose signature is of the form `std::optional<U> f(T t)`.
-template <typename T, typename Function>
-inline auto operator>>= (std::optional<T> const &t, Function f)
-    -> decltype (f (*t)) {
-  if (t) {
-    return f (*t);
-  }
-  return std::optional<typename decltype (f (*t))::value_type>{};
-}
-
 #if PEEJAY_CXX20
 template <typename T>
 concept notifications = requires (T &&v) {
@@ -321,12 +294,8 @@ public:
   }
 
   ///@{
-  constexpr Callbacks &callbacks () noexcept {
-    return callbacks_;
-  }
-  constexpr Callbacks const &callbacks () const noexcept {
-    return callbacks_;
-  }
+  constexpr Callbacks &callbacks () noexcept { return callbacks_; }
+  constexpr Callbacks const &callbacks () const noexcept { return callbacks_; }
   ///@}
 
   /// \param flag  A selection of bits from the parser_extensions enum.
@@ -337,13 +306,9 @@ public:
   }
 
   /// Returns the parser's position in the input text.
-  constexpr coord input_pos () const noexcept {
-    return pos_;
-  }
+  constexpr coord input_pos () const noexcept { return pos_; }
   /// Returns the position of the most recent token in the input text.
-  constexpr coord pos () const noexcept {
-    return matcher_pos_;
-  }
+  constexpr coord pos () const noexcept { return matcher_pos_; }
 
 private:
   using matcher = details::matcher<Callbacks>;
@@ -358,9 +323,7 @@ private:
   /// \brief Managing the column and row number (the "coordinate").
 
   /// Increments the column number.
-  void advance_column () noexcept {
-    ++pos_.column;
-  }
+  void advance_column () noexcept { ++pos_.column; }
 
   /// Increments the row number and resets the column.
   void advance_row () noexcept {
@@ -372,9 +335,7 @@ private:
   }
 
   /// Resets the column count but does not affect the row number.
-  void reset_column () noexcept {
-    pos_.column = 0U;
-  }
+  void reset_column () noexcept { pos_.column = 0U; }
   ///@}
 
   /// Records an error for this parse. The parse will stop as soon as a non-zero
@@ -427,13 +388,14 @@ private:
 };
 
 template <typename Callbacks>
-parser(Callbacks) -> parser<Callbacks>;
+parser (Callbacks) -> parser<Callbacks>;
 
 template <typename Callbacks>
 PEEJAY_CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
 inline parser<std::remove_reference_t<Callbacks>> make_parser (
     Callbacks &&callbacks, extensions const extensions = extensions::none) {
-  return parser<std::remove_reference_t<Callbacks>>{std::forward<Callbacks> (callbacks), extensions};
+  return parser<std::remove_reference_t<Callbacks>>{
+      std::forward<Callbacks> (callbacks), extensions};
 }
 
 namespace details {
@@ -468,13 +430,13 @@ public:
   /// Called for each character as it is consumed from the input.
   ///
   /// \param parser The owning parser instance.
-  /// \param ch If true, the character to be consumed. A value of nothing indicates
-  /// end-of-file.
+  /// \param ch If true, the character to be consumed. An empty value value indicates
+  ///   end-of-file.
   /// \returns A pair consisting of a matcher pointer and a boolean. If non-null, the
-  /// matcher is pushed onto the parse stack; if null the same matcher object is
-  /// used to process the next character. The boolean value is false if the same
-  /// character must be passed to the next consume() call; true indicates that
-  /// the character was correctly matched by this consume() call.
+  ///   matcher is pushed onto the parse stack; if null the same matcher object is
+  ///   used to process the next character. The boolean value is false if the same
+  ///   character must be passed to the next consume() call; true indicates that
+  ///   the character was correctly matched by this consume() call.
   virtual std::pair<pointer, bool> consume (parser<Callbacks> &parser,
                                             std::optional<char> ch) = 0;
 
@@ -1099,11 +1061,18 @@ private:
 
   static std::optional<unsigned> hex_value (char32_t c, unsigned value);
 
-  static std::optional<std::tuple<unsigned, state>> consume_hex_state (
-      unsigned hex, enum state state, char32_t code_point);
+  static std::variant<error, std::tuple<unsigned, enum state>>
+  consume_hex_state (unsigned hex, enum state state, char32_t code_point,
+                     appender &app);
 
   static std::variant<state, error> consume_escape_state (char32_t code_point,
                                                           appender &app);
+
+  static constexpr bool is_hex_state (enum state const state) noexcept {
+    return state == hex1_state || state == hex2_state || state == hex3_state ||
+           state == hex4_state;
+  }
+
   bool is_object_key_;
   utf8_decoder decoder_;
   appender app_;
@@ -1201,13 +1170,13 @@ std::optional<unsigned> string_matcher<Callbacks>::hex_value (
   if (c >= '0' && c <= '9') {
     digit = static_cast<unsigned> (c) - '0';
   } else if (c >= 'a' && c <= 'f') {
-    digit = static_cast<unsigned> (c) - 'a' + 10;
+    digit = static_cast<unsigned> (c) - 'a' + 10U;
   } else if (c >= 'A' && c <= 'F') {
-    digit = static_cast<unsigned> (c) - 'A' + 10;
+    digit = static_cast<unsigned> (c) - 'A' + 10U;
   } else {
     return {std::nullopt};
   }
-  return just (16 * value + digit);
+  return {16U * value + digit};
 }
 
 // consume hex state [static]
@@ -1215,30 +1184,39 @@ std::optional<unsigned> string_matcher<Callbacks>::hex_value (
 template <typename Callbacks>
 auto string_matcher<Callbacks>::consume_hex_state (unsigned const hex,
                                                    enum state const state,
-                                                   char32_t const code_point)
-    -> std::optional<std::tuple<unsigned, enum state>> {
+                                                   char32_t const code_point,
+                                                   appender & app)
+    -> std::variant<error, std::tuple<unsigned, enum state>> {
+  assert (is_hex_state (state));
+  auto const opt_value = hex_value (code_point, hex);
+  if (!opt_value) {
+    return error::invalid_hex_char;
+  }
+  switch (state) {
+  case hex1_state:
+  case hex2_state:
+  case hex3_state:
+    assert (is_hex_state (static_cast<enum state> (state + 1)));
+    return std::make_tuple (*opt_value, static_cast<enum state> (state + 1));
 
-      return hex_value (code_point, hex) >>=
-             [state] (unsigned value) {
-               assert (value <= std::numeric_limits<std::uint16_t>::max ());
-               auto next_state = state;
-               switch (state) {
-               case hex1_state: next_state = hex2_state; break;
-               case hex2_state: next_state = hex3_state; break;
-               case hex3_state: next_state = hex4_state; break;
-               case hex4_state: next_state = normal_char_state; break;
-
-               case start_state:
-               case normal_char_state:
-               case escape_state:
-               case done_state:
-                 assert (false);
-                 return nothing<std::tuple<unsigned, enum state>> ();
-               }
-
-               return just (std::make_tuple (value, next_state));
-             };
+  case hex4_state:
+    // We're done with the hex characters and are switching back to the
+    // 'normal' state. The means that we can add the accumulated code-point.
+    if (!app.append16 (static_cast<char16_t> (*opt_value))) {
+      return error::bad_unicode_code_point;
     }
+    return std::make_tuple (0U, normal_char_state);
+
+  case done_state:
+  case start_state:
+  case normal_char_state:
+  case escape_state:
+    break;
+  }
+
+  PEEJAY_UNREACHABLE;
+  return error::invalid_hex_char;
+}
 
 // consume escape state [static]
 // ~~~~~~~~~~~~~~~~~~~~
@@ -1321,27 +1299,26 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
           string_matcher::consume_escape_state (*code_point, app_));
       break;
 
-    case hex1_state: hex_ = 0; [[fallthrough]];
+    case hex1_state: assert (hex_ == 0U); [[fallthrough]];
     case hex2_state:
     case hex3_state:
     case hex4_state: {
-      std::optional<std::tuple<unsigned, state>> const hex_resl =
+      std::visit (
+          [this, &parser] (auto &&arg) {
+            using T = std::decay_t<decltype (arg)>;
+            if constexpr (std::is_same_v<T, error>) {
+              this->set_error (parser, arg);
+            } else if constexpr (std::is_same_v<T,
+                                                std::tuple<unsigned, state>>) {
+              hex_ = std::get<unsigned> (arg);
+              this->set_state (std::get<state> (arg));
+            } else {
+              static_assert (always_false<T>, "non-exhaustive visitor");
+            }
+          },
           string_matcher::consume_hex_state (
-              hex_, static_cast<state> (this->get_state ()), *code_point);
-      if (!hex_resl) {
-        this->set_error (parser, error::invalid_hex_char);
-        break;
-      }
-      hex_ = std::get<0> (*hex_resl);
-      state const next_state = std::get<1> (*hex_resl);
-      this->set_state (next_state);
-      // We're done with the hex characters and are switching back to the
-      // "normal" state. The means that we can add the accumulated code-point
-      // (in hex_) to the string.
-      if (next_state == normal_char_state &&
-          !app_.append16 (static_cast<char16_t> (hex_))) {
-        this->set_error (parser, error::bad_unicode_code_point);
-      }
+              hex_, static_cast<state> (this->get_state ()), *code_point,
+              app_));
     } break;
 
     case done_state:
@@ -1934,7 +1911,7 @@ struct singleton_storage {
       terminals_;
 };
 
-}  // end namespace details
+}  // namespace peejay
 
 // (ctor)
 // ~~~~~~
@@ -1999,7 +1976,7 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
   while (first != last) {
     assert (!stack_.empty ());
     auto &handler = stack_.top ();
-    auto res = handler->consume (*this, just (*first));
+    auto res = handler->consume (*this, *first);
     if (handler->is_done ()) {
       if (error_) {
         break;
