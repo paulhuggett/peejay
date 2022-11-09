@@ -15,18 +15,21 @@
 //===----------------------------------------------------------------------===//
 #include <gtest/gtest.h>
 
+#include <string_view>
+
 #include "callbacks.hpp"
 #include "json/json.hpp"
 #include "json/null.hpp"
 
 using namespace std::string_literals;
+using namespace peejay;
 
 using testing::DoubleEq;
 using testing::StrictMock;
 
 namespace {
 
-class JsonNumber : public ::testing::Test {
+class Number : public ::testing::Test {
 protected:
   StrictMock<mock_json_callbacks> callbacks_;
   callbacks_proxy<mock_json_callbacks> proxy_{callbacks_};
@@ -34,150 +37,147 @@ protected:
 
 }  // end of anonymous namespace
 
-TEST_F (JsonNumber, Zero) {
+TEST_F (Number, Zero) {
   EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("0"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, NegativeZero) {
+TEST_F (Number, NegativeZero) {
   EXPECT_CALL (callbacks_, int64_value (0)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("-0"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, One) {
+TEST_F (Number, One) {
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input (" 1 "s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, LeadingZero) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, LeadingZero) {
+  parser p{proxy_};
   p.input ("01"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, MinusOne) {
+TEST_F (Number, MinusOne) {
   EXPECT_CALL (callbacks_, int64_value (-1)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("-1"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, MinusOneLeadingZero) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, MinusOneLeadingZero) {
+  parser p{proxy_};
   p.input ("-01"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, MinusOnly) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, MinusOnly) {
+  parser p{proxy_};
   p.input ("-"s).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (peejay::error::expected_digits));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits));
 }
-TEST_F (JsonNumber, MinusMinus) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, MinusMinus) {
+  parser p{proxy_};
   p.input ("--"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::unrecognized_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
-TEST_F (JsonNumber, AllDigits) {
+TEST_F (Number, AllDigits) {
   EXPECT_CALL (callbacks_, uint64_value (1234567890UL)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("1234567890"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, PositivePi) {
+TEST_F (Number, PositivePi) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (3.1415))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("3.1415"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, NegativePi) {
+TEST_F (Number, NegativePi) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (-3.1415))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("-3.1415"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, PositiveZeroPoint45) {
+TEST_F (Number, PositiveZeroPoint45) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.45))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("0.45"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, NegativeZeroPoint45) {
+TEST_F (Number, NegativeZeroPoint45) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (-0.45))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("-0.45"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, ZeroExp2) {
+TEST_F (Number, ZeroExp2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("0e2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, OneExp2) {
+TEST_F (Number, OneExp2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (100.0))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("1e2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, OneExpPlus2) {
+TEST_F (Number, OneExpPlus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (100.0))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("1e+2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, ZeroPointZeroOne) {
+TEST_F (Number, ZeroPointZeroOne) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("0.01"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, OneExpMinus2) {
+TEST_F (Number, OneExpMinus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("1e-2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, OneCapitalExpMinus2) {
+TEST_F (Number, OneCapitalExpMinus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("1E-2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, OneExpMinusZero2) {
+TEST_F (Number, OneExpMinusZero2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input ("1E-02"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, IntegerMax) {
+TEST_F (Number, IntegerMax) {
   constexpr auto long_max = std::numeric_limits<std::int64_t>::max ();
   auto const str_max = std::to_string (long_max);
 
   EXPECT_CALL (callbacks_, uint64_value (long_max)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
+  parser p{proxy_};
   p.input (str_max).eof ();
   EXPECT_FALSE (p.has_error ());
 }
@@ -204,82 +204,73 @@ constexpr auto int64_overflow = "-9223372036854775809";  // int64_min minus 1.
 
 }  // end anonymous namespace
 
-TEST_F (JsonNumber, Uint64Max) {
+TEST_F (Number, Uint64Max) {
   assert (uint64_max_str == std::to_string (uint64_max) &&
           "The hard-wired unsigned 64-bit max string seems to be incorrect");
   EXPECT_CALL (callbacks_, uint64_value (uint64_max)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
-  p.input (std::string{uint64_max_str}).eof ();
+  parser p{proxy_};
+  p.input (std::string_view{uint64_max_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, Int64Min) {
+TEST_F (Number, Int64Min) {
   assert (int64_min_str == std::to_string (int64_min) &&
           "The hard-wired signed 64-bit min string seems to be incorrect");
   EXPECT_CALL (callbacks_, int64_value (int64_min)).Times (1);
-  peejay::parser<decltype (proxy_)> p{proxy_};
-  p.input (std::string{int64_min_str}).eof ();
+  parser p{proxy_};
+  p.input (std::string_view{int64_min_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
-TEST_F (JsonNumber, IntegerPositiveOverflow) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
-  p.input (std::string{uint64_overflow}).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+TEST_F (Number, IntegerPositiveOverflow) {
+  parser p{proxy_};
+  p.input (std::string_view{uint64_overflow}).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, IntegerNegativeOverflow1) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, IntegerNegativeOverflow1) {
+  parser p{proxy_};
   p.input ("-123123123123123123123123123123"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, IntegerNegativeOverflow2) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
-  p.input (std::string{int64_overflow}).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+TEST_F (Number, IntegerNegativeOverflow2) {
+  parser p{proxy_};
+  p.input (std::string_view{int64_overflow}).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, RealPositiveOverflow) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, RealPositiveOverflow) {
+  parser p{proxy_};
   p.input ("123123e100000"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, RealPositiveOverflow2) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, RealPositiveOverflow2) {
+  parser p{proxy_};
   p.input ("9999E999"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, RealUnderflow) {
-  peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
+TEST_F (Number, RealUnderflow) {
+  parser p = make_parser (proxy_);
   p.input ("123e-10000000"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::number_out_of_range));
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
-TEST_F (JsonNumber, BadExponentDigit) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, BadExponentDigit) {
+  parser p{proxy_};
   p.input ("1Ex"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::unrecognized_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
-TEST_F (JsonNumber, BadFractionDigit) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, BadFractionDigit) {
+  parser p{proxy_};
   p.input ("1.."s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::unrecognized_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
-TEST_F (JsonNumber, BadExponentAfterPoint) {
-  peejay::parser<decltype (proxy_)> p{proxy_};
+TEST_F (Number, BadExponentAfterPoint) {
+  parser p{proxy_};
   p.input ("1.E"s).eof ();
-  EXPECT_EQ (p.last_error (),
-             make_error_code (peejay::error::unrecognized_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
