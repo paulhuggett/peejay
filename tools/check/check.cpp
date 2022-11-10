@@ -23,8 +23,8 @@
 using namespace peejay;
 using parser = lexer<null>;
 
-void report_error (parser& p, std::string_view const& file_name,
-                   std::string_view const& line) {
+static void report_error (parser& p, std::string_view const& file_name,
+                          std::string_view const& line) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n'
@@ -33,7 +33,7 @@ void report_error (parser& p, std::string_view const& file_name,
 }
 
 template <typename IStream>
-bool slurp (IStream&& in, char const* file_name) {
+static bool slurp (IStream&& in, char const* file_name) {
   parser p = make_parser (null{});
   std::string line;
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
