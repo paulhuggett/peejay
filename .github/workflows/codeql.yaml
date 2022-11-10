@@ -54,12 +54,15 @@ jobs:
         # Details on CodeQL's query packs refer to : https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
+    - name: Create Build Environment
+      run: cmake -E make_directory "${{ runner.workspace }}/build"
+
     - name: Configure
       run: |
-        cmake -S .                                 \
-              -B build                             \
-              -D CMAKE_BUILD_TYPE=Release          \
-              -D CMAKE_C_COMPILER=clang-12         \
+        cmake -S "$GITHUB_WORKSPACE"             \
+              -B "${{ runner.workspace }}/build" \
+              -D CMAKE_BUILD_TYPE=Release        \
+              -D CMAKE_C_COMPILER=clang-12       \
               -D CMAKE_CXX_COMPILER=clang++-12
 
     - name: Build
