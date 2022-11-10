@@ -29,7 +29,11 @@
 
 #include "peejay/emit.hpp"
 
+using namespace peejay;
+
 namespace {
+
+using parser = lexer<decltype (dom{})>;
 
 template <typename T>
 PEEJAY_CXX20REQUIRES (std::is_integral_v<T>)
@@ -37,9 +41,9 @@ constexpr auto as_unsigned (T v) {
   return static_cast<std::make_unsigned_t<T>> (std::max (T{0}, v));
 }
 
-template <typename Notifications, typename IStream>
-std::variant<std::error_code, std::optional<peejay::element>> slurp (
-    peejay::parser<Notifications>& p, IStream&& in) {
+template <typename IStream>
+std::variant<std::error_code, std::optional<element>> slurp (parser& p,
+                                                             IStream&& in) {
   std::array<char, 256> buffer{{0}};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
@@ -56,7 +60,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
       return {err};
     }
   }
-  std::optional<peejay::element> result = p.eof ();
+  std::optional<element> result = p.eof ();
   if (std::error_code const erc = p.last_error ()) {
     return {erc};
   }
@@ -65,9 +69,8 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
 
 #ifdef _WIN32
 
-template <typename Notifications>
-std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
-    peejay::parser<Notifications>& p, char const* file) {
+std::variant<std::error_code, std::optional<element>> slurp_file (
+    parser& p, char const* file) {
   return slurp (p, std::ifstream{file});
 }
 
@@ -108,9 +111,8 @@ private:
   std::pair<void*, size_t> span_;
 };
 
-template <typename Notifications>
-std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
-    peejay::parser<Notifications>& p, char const* file) {
+std::variant<std::error_code, std::optional<element>> slurp_file (
+    parser& p, char const* file) {
   closer fd{::open (file, O_RDONLY)};
   if (fd.get () == -1) {
     return std::error_code{errno, std::generic_category ()};
@@ -125,7 +127,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
     return std::error_code{errno, std::generic_category ()};
   }
   unmapper<char const> ptr{mapped, as_unsigned (sb.st_size)};
-  std::optional<peejay::element> result =
+  std::optional<element> result =
       p.input (std::begin (ptr), std::end (ptr)).eof ();
   if (std::error_code const erc = p.last_error ()) {
     return {erc};
@@ -134,8 +136,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
 }
 #endif  // _WIN32
 
-template <typename N>
-void report_error (peejay::parser<N>& p, std::string_view const& file_name) {
+void report_error (parser& p, std::string_view const& file_name) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n';
@@ -146,7 +147,7 @@ void report_error (peejay::parser<N>& p, std::string_view const& file_name) {
 int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
-    auto p = peejay::make_parser (peejay::dom{});
+    parser p = make_parser (dom{});
     auto const res = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
     if (std::holds_alternative<std::error_code> (res)) {
       report_error(p, argc < 2 ? "<stdin" : argv[1]);

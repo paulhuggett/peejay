@@ -20,8 +20,10 @@
 #include "peejay/json.hpp"
 #include "peejay/null.hpp"
 
-template <typename N>
-void report_error (peejay::parser<N>& p, std::string_view const& file_name,
+using namespace peejay;
+using parser = lexer<null>;
+
+void report_error (parser& p, std::string_view const& file_name,
                    std::string_view const& line) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
@@ -32,7 +34,7 @@ void report_error (peejay::parser<N>& p, std::string_view const& file_name,
 
 template <typename IStream>
 bool slurp (IStream&& in, char const* file_name) {
-  auto p = make_parser (peejay::null{});
+  parser p = make_parser (null{});
   std::string line;
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {

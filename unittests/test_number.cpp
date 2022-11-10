@@ -39,135 +39,135 @@ protected:
 
 TEST_F (Number, Zero) {
   EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("0"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, NegativeZero) {
   EXPECT_CALL (callbacks_, int64_value (0)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-0"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, One) {
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input (" 1 "s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, LeadingZero) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("01"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, MinusOne) {
   EXPECT_CALL (callbacks_, int64_value (-1)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-1"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, MinusOneLeadingZero) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-01"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, MinusOnly) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits));
 }
 TEST_F (Number, MinusMinus) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("--"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
 TEST_F (Number, AllDigits) {
   EXPECT_CALL (callbacks_, uint64_value (1234567890UL)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1234567890"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, PositivePi) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (3.1415))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("3.1415"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, NegativePi) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (-3.1415))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-3.1415"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, PositiveZeroPoint45) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.45))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("0.45"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, NegativeZeroPoint45) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (-0.45))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-0.45"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, ZeroExp2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("0e2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, OneExp2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (100.0))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1e2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, OneExpPlus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (100.0))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1e+2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, ZeroPointZeroOne) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("0.01"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, OneExpMinus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1e-2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, OneCapitalExpMinus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1E-2"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, OneExpMinusZero2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1E-02"s).eof ();
   EXPECT_FALSE (p.has_error ());
 }
@@ -177,7 +177,7 @@ TEST_F (Number, IntegerMax) {
   auto const str_max = std::to_string (long_max);
 
   EXPECT_CALL (callbacks_, uint64_value (long_max)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input (str_max).eof ();
   EXPECT_FALSE (p.has_error ());
 }
@@ -208,7 +208,7 @@ TEST_F (Number, Uint64Max) {
   assert (uint64_max_str == std::to_string (uint64_max) &&
           "The hard-wired unsigned 64-bit max string seems to be incorrect");
   EXPECT_CALL (callbacks_, uint64_value (uint64_max)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input (std::string_view{uint64_max_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
@@ -217,60 +217,60 @@ TEST_F (Number, Int64Min) {
   assert (int64_min_str == std::to_string (int64_min) &&
           "The hard-wired signed 64-bit min string seems to be incorrect");
   EXPECT_CALL (callbacks_, int64_value (int64_min)).Times (1);
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input (std::string_view{int64_min_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (Number, IntegerPositiveOverflow) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input (std::string_view{uint64_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, IntegerNegativeOverflow1) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("-123123123123123123123123123123"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, IntegerNegativeOverflow2) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input (std::string_view{int64_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, RealPositiveOverflow) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("123123e100000"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, RealPositiveOverflow2) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("9999E999"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, RealUnderflow) {
-  parser p = make_parser (proxy_);
+  lexer p = make_parser (proxy_);
   p.input ("123e-10000000"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 TEST_F (Number, BadExponentDigit) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1Ex"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
 TEST_F (Number, BadFractionDigit) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1.."s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 TEST_F (Number, BadExponentAfterPoint) {
-  parser p{proxy_};
+  lexer p{proxy_};
   p.input ("1.E"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }

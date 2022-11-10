@@ -137,22 +137,22 @@ TEST_F (JsonArray, TwoElements) {
 }
 
 TEST_F (JsonArray, MisplacedComma1) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[,"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 TEST_F (JsonArray, MisplacedComma2) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[,1"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 TEST_F (JsonArray, MisplacedComma3) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[1,,2]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 TEST_F (JsonArray, MisplacedComma4) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[1 true]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member));
 }
@@ -178,21 +178,21 @@ TEST_F (JsonArray, EmptyTrailingCommaEnabled) {
 }
 
 TEST_F (JsonArray, TrailingCommaDisabled1) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[,]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonArray, TrailingCommaDisabled2) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[1,]"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonArray, NestedError1) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input ("[[no"s).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
@@ -230,7 +230,7 @@ TEST_F (JsonArray, Nested2) {
 }
 
 TEST_F (JsonArray, TooDeeplyNested) {
-  parser p{json_out_callbacks{}};
+  lexer p{json_out_callbacks{}};
   p.input (std::string (std::string::size_type{200}, '[')).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep));
 }

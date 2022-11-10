@@ -61,7 +61,7 @@ constexpr bool always_false = false;
 template <typename T>
 concept backend = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
-  /// function is called by parser<>::eof() which will return its result.
+  /// function is called by lexer<>::eof() which will return its result.
   {v.result ()};
 
   /// Called when a JSON string has been parsed.
@@ -221,52 +221,51 @@ constexpr extensions operator| (extensions a, extensions b) noexcept {
   return static_cast<extensions> (static_cast<ut> (a) | static_cast<ut> (b));
 }
 
-//-MARK:parser
-/// \tparam Backend A type meeting the notifications<> requirements.
+/// \tparam Backend A type meeting the backend<> requirements.
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-class parser {
+class lexer {
   friend class details::matcher<Backend>;
   friend class details::root_matcher<Backend>;
   friend class details::whitespace_matcher<Backend>;
 
 public:
-  explicit parser (extensions extensions = extensions::none)
-      : parser (Backend{}, extensions) {}
+  explicit lexer (extensions extensions = extensions::none)
+      : lexer (Backend{}, extensions) {}
   template <typename OtherBackend>
   PEEJAY_CXX20REQUIRES (backend<OtherBackend>)
-  explicit parser (OtherBackend &&backend,
-                   extensions extensions = extensions::none);
-  parser (parser const &) = delete;
-  parser (parser &&) noexcept (std::is_nothrow_constructible_v<Backend>) =
+  explicit lexer (OtherBackend &&backend,
+                  extensions extensions = extensions::none);
+  lexer (lexer const &) = delete;
+  lexer (lexer &&) noexcept (std::is_nothrow_constructible_v<Backend>) =
       default;
 
-  parser &operator= (parser const &) = delete;
-  parser &operator= (parser &&) noexcept (
+  lexer &operator= (lexer const &) = delete;
+  lexer &operator= (lexer &&) noexcept (
       std::is_nothrow_move_assignable_v<Backend>) = default;
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
   /// portions of the source data (for example, as the data is received from an
   /// external source). Once all of the data has been received, call the
-  /// parser::eof() method.
+  /// lexer::eof() method.
 
   /// \param src The data to be parsed.
-  parser &input (std::string const &src) {
+  lexer &input (std::string const &src) {
     return this->input (std::begin (src), std::end (src));
   }
-  parser &input (std::string_view const &src) {
+  lexer &input (std::string_view const &src) {
     return this->input (std::begin (src), std::end (src));
   }
 #if PEEJAY_CXX20
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
-  parser &input (std::span<char, Extent> const &span) {
+  lexer &input (std::span<char, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
-  parser &input (std::span<char const, Extent> const &span) {
+  lexer &input (std::span<char const, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
 #endif  // PEEJAY_CXX20
@@ -274,23 +273,23 @@ public:
   /// \param last The end of the range of UTF-8 code-units to be parsed.
   template <typename InputIterator>
   PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
-  parser &input (InputIterator first, InputIterator last);
+  lexer &input (InputIterator first, InputIterator last);
   ///@}
 
-  /// Informs the parser that the complete input stream has been passed by calls
-  /// to parser<>::input().
+  /// Informs the lexer that the complete input stream has been passed by calls
+  /// to lexer<>::input().
   ///
   /// \returns If the parse completes successfully, Backend::result()
-  /// is called and its result returned.
+  ///   is called and its result returned.
   decltype (auto) eof ();
 
   ///@{
 
-  /// \returns True if the parser has signalled an error.
+  /// \returns True if the lexer has signalled an error.
   constexpr bool has_error () const noexcept {
     return static_cast<bool> (error_);
   }
-  /// \returns The error code held by the parser.
+  /// \returns The error code held by the lexer.
   constexpr std::error_code const &last_error () const noexcept {
     return error_;
   }
@@ -301,13 +300,13 @@ public:
   ///@}
 
   /// \param flag  A selection of bits from the parser_extensions enum.
-  /// \returns True if any of the extensions given by \p flag are enabled by the parser.
+  /// \returns True if any of the extensions given by \p flag are enabled by the lexer.
   constexpr bool extension_enabled (extensions const flag) const noexcept {
     using ut = std::underlying_type_t<extensions>;
     return (static_cast<ut> (extensions_) & static_cast<ut> (flag)) != 0U;
   }
 
-  /// Returns the parser's position in the input text.
+  /// Returns the lexer's position in the input text.
   constexpr coord input_pos () const noexcept { return pos_; }
   /// Returns the position of the most recent token in the input text.
   constexpr coord pos () const noexcept { return matcher_pos_; }
@@ -344,7 +343,7 @@ private:
   /// error code is recorded. An error may be reported at any time during the
   /// parse; all subsequent text is ignored.
   ///
-  /// \param err  The json error code to be stored in the parser.
+  /// \param err  The json error code to be stored in the lexer.
   bool set_error (std::error_code const &err) noexcept {
     assert (!error_ || err);
     error_ = err;
@@ -370,7 +369,7 @@ private:
 
   /// The maximum depth to which we allow the parse stack to grow. This value
   /// should be sufficient for any reasonable input: its intention is to prevent
-  /// bogus (attack) inputs from causing the parser's memory consumption to grow
+  /// bogus (attack) inputs from causing the lexer's memory consumption to grow
   /// uncontrollably.
   static constexpr std::size_t max_stack_depth_ = 200;
   /// The parse stack.
@@ -390,13 +389,13 @@ private:
 };
 
 template <typename Backend>
-parser (Backend) -> parser<Backend>;
+lexer (Backend) -> lexer<Backend>;
 
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
-inline parser<std::remove_reference_t<Backend>> make_parser (
+inline lexer<std::remove_reference_t<Backend>> make_parser (
     Backend &&backend, extensions const extensions = extensions::none) {
-  return parser<std::remove_reference_t<Backend>>{
+  return lexer<std::remove_reference_t<Backend>>{
       std::forward<Backend> (backend), extensions};
 }
 
@@ -431,19 +430,19 @@ public:
 
   /// Called for each character as it is consumed from the input.
   ///
-  /// \param parser The owning parser instance.
+  /// \param lexer The owning lexer instance.
   /// \param ch If true, the character to be consumed. An empty value value indicates
   ///   end-of-file.
   /// \returns A pair consisting of a matcher pointer and a boolean. If non-null, the
-  ///   matcher is pushed onto the parse stack; if null the same matcher object is
-  ///   used to process the next character. The boolean value is false if the same
-  ///   character must be passed to the next consume() call; true indicates that
-  ///   the character was correctly matched by this consume() call.
-  virtual std::pair<pointer, bool> consume (parser<Backend> &parser,
+  ///   matcher is pushed onto the parse stack; if null the same matcher object
+  ///   is used to process the next character. The boolean value is false if the
+  ///   same character must be passed to the next consume() call; true indicates
+  ///   that the character was correctly matched by this consume() call.
+  virtual std::pair<pointer, bool> consume (lexer<Backend> &lexer,
                                             std::optional<char> ch) = 0;
 
   /// \returns True if this matcher has completed (and reached it's "done" state). The
-  /// parser will pop this instance from the parse stack before continuing.
+  /// lexer will pop this instance from the parse stack before continuing.
   bool is_done () const noexcept { return state_ == done; }
 
 protected:
@@ -459,10 +458,9 @@ protected:
   ///@{
   /// \brief Errors
 
-  /// \returns True if the parser is in an error state.
-  bool set_error (parser<Backend> &parser,
-                  std::error_code const &err) noexcept {
-    bool const has_error = parser.set_error (err);
+  /// \returns True if the lexer is in an error state.
+  bool set_error (lexer<Backend> &lexer, std::error_code const &err) noexcept {
+    bool const has_error = lexer.set_error (err);
     if (has_error) {
       set_state (done);
     }
@@ -470,21 +468,21 @@ protected:
   }
   ///@}
 
-  pointer make_root_matcher (parser<Backend> &parser, bool object_key = false) {
-    return parser.make_root_matcher (object_key);
+  pointer make_root_matcher (lexer<Backend> &lexer, bool object_key = false) {
+    return lexer.make_root_matcher (object_key);
   }
-  pointer make_whitespace_matcher (parser<Backend> &parser) {
-    return parser.make_whitespace_matcher ();
+  pointer make_whitespace_matcher (lexer<Backend> &lexer) {
+    return lexer.make_whitespace_matcher ();
   }
 
   template <typename Matcher, typename... Args>
-  pointer make_terminal_matcher (parser<Backend> &parser, Args &&...args) {
-    return parser.template make_terminal_matcher<Matcher, Args...> (
+  pointer make_terminal_matcher (lexer<Backend> &lexer, Args &&...args) {
+    return lexer.template make_terminal_matcher<Matcher, Args...> (
         std::forward<Args> (args)...);
   }
 
   static constexpr auto null_pointer () {
-    return parser<Backend>::null_pointer ();
+    return lexer<Backend>::null_pointer ();
   }
 
   /// The value to be used for the "done" state in the each of the matcher state
@@ -502,11 +500,11 @@ private:
 //*                        *
 /// A matcher which checks for a specific keyword such as "true", "false", or
 /// "null".
-/// \tparam Backend  The parser callback structure.
+/// \tparam Backend  The lexer callback structure.
 //-MARK:token matcher
 template <typename Backend, typename DoneFunction>
 PEEJAY_CXX20REQUIRES ((backend<Backend> &&
-                       std::invocable<DoneFunction, parser<Backend> &>))
+                       std::invocable<DoneFunction, lexer<Backend> &>))
 class token_matcher : public matcher<Backend> {
 public:
   /// \param text  The string to be matched.
@@ -520,7 +518,7 @@ public:
   token_matcher &operator= (token_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   enum state {
@@ -540,15 +538,15 @@ private:
 
 template <typename Backend, typename DoneFunction>
 PEEJAY_CXX20REQUIRES ((backend<Backend> &&
-                       std::invocable<DoneFunction, parser<Backend> &>))
+                       std::invocable<DoneFunction, lexer<Backend> &>))
 std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
-    Backend, DoneFunction>::consume (parser<Backend> &parser,
+    Backend, DoneFunction>::consume (lexer<Backend> &lexer,
                                      std::optional<char> ch) {
   bool match = true;
   switch (this->get_state ()) {
   case start_state:
     if (!ch || *ch != *text_) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error (lexer, error::unrecognized_token);
     } else {
       ++text_;
       if (*text_ == '\0') {
@@ -561,12 +559,12 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
   case last_state:
     if (ch) {
       if (std::isalnum (*ch) != 0) {
-        this->set_error (parser, error::unrecognized_token);
+        this->set_error (lexer, error::unrecognized_token);
         return {matcher<Backend>::null_pointer (), true};
       }
       match = false;
     }
-    this->set_error (parser, done_ (parser));
+    this->set_error (lexer, done_ (lexer));
     this->set_state (done_state);
     break;
   default: PEEJAY_UNREACHABLE; break;
@@ -583,7 +581,7 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
 //-MARK:false token
 template <typename Backend>
 struct false_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (lexer<Backend> &p) const {
     return p.backend ().boolean_value (false);
   }
 };
@@ -605,7 +603,7 @@ public:
 //-MARK:true token
 template <typename Backend>
 struct true_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (lexer<Backend> &p) const {
     return p.backend ().boolean_value (true);
   }
 };
@@ -627,7 +625,7 @@ public:
 //-MARK:null token
 template <typename Backend>
 struct null_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (lexer<Backend> &p) const {
     return p.backend ().null_value ();
   }
 };
@@ -668,24 +666,24 @@ public:
   number_matcher &operator= (number_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   bool in_terminal_state () const;
 
-  bool do_leading_minus_state (parser<Backend> &parser, char c);
+  bool do_leading_minus_state (lexer<Backend> &lexer, char c);
   /// Implements the first character of the 'int' production.
-  bool do_integer_initial_digit_state (parser<Backend> &parser, char c);
-  bool do_integer_digit_state (parser<Backend> &parser, char c);
-  bool do_frac_state (parser<Backend> &parser, char c);
-  bool do_frac_digit_state (parser<Backend> &parser, char c);
-  bool do_exponent_sign_state (parser<Backend> &parser, char c);
-  bool do_exponent_digit_state (parser<Backend> &parser, char c);
+  bool do_integer_initial_digit_state (lexer<Backend> &lexer, char c);
+  bool do_integer_digit_state (lexer<Backend> &lexer, char c);
+  bool do_frac_state (lexer<Backend> &lexer, char c);
+  bool do_frac_digit_state (lexer<Backend> &lexer, char c);
+  bool do_exponent_sign_state (lexer<Backend> &lexer, char c);
+  bool do_exponent_digit_state (lexer<Backend> &lexer, char c);
 
-  void complete (parser<Backend> &parser);
+  void complete (lexer<Backend> &lexer);
   void number_is_float ();
 
-  void make_result (parser<Backend> &parser);
+  void make_result (lexer<Backend> &lexer);
 
   enum state {
     done_state = matcher<Backend>::done,
@@ -741,7 +739,7 @@ bool number_matcher<Backend>::in_terminal_state () const {
 // leading minus state
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
-bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_leading_minus_state (lexer<Backend> &lexer,
                                                       char c) {
   bool match = true;
   if (c == '-') {
@@ -749,11 +747,11 @@ bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
     is_neg_ = true;
   } else if (c >= '0' && c <= '9') {
     this->set_state (integer_initial_digit_state);
-    match = do_integer_initial_digit_state (parser, c);
+    match = do_integer_initial_digit_state (lexer, c);
   } else {
     PEEJAY_UNREACHABLE;
     // minus MUST be followed by the 'int' production.
-    this->set_error (parser, error::number_out_of_range);
+    this->set_error (lexer, error::number_out_of_range);
   }
   return match;
 }
@@ -761,7 +759,7 @@ bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
 // frac state
 // ~~~~~~~~~~
 template <typename Backend>
-bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_frac_state (lexer<Backend> &lexer,
                                              char const c) {
   bool match = true;
   if (c == '.') {
@@ -771,11 +769,11 @@ bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
   } else if (c >= '0' && c <= '9') {
     // digits are definitely not part of the next token so we can issue an error
     // right here.
-    this->set_error (parser, error::number_out_of_range);
+    this->set_error (lexer, error::number_out_of_range);
   } else {
     // the 'frac' production is optional.
     match = false;
-    this->complete (parser);
+    this->complete (lexer);
   }
   return match;
 }
@@ -783,7 +781,7 @@ bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
 // frac digit
 // ~~~~~~~~~~
 template <typename Backend>
-bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_frac_digit_state (lexer<Backend> &lexer,
                                                    char const c) {
   assert (this->get_state () == frac_initial_digit_state ||
           this->get_state () == frac_digit_state);
@@ -792,7 +790,7 @@ bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
   if (c == 'e' || c == 'E') {
     this->number_is_float ();
     if (this->get_state () == frac_initial_digit_state) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error (lexer, error::unrecognized_token);
     } else {
       this->set_state (exponent_sign_state);
     }
@@ -804,10 +802,10 @@ bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
     this->set_state (frac_digit_state);
   } else {
     if (this->get_state () == frac_initial_digit_state) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error (lexer, error::unrecognized_token);
     } else {
       match = false;
-      this->complete (parser);
+      this->complete (lexer);
     }
   }
   return match;
@@ -816,7 +814,7 @@ bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
 // exponent sign state
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
-bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_exponent_sign_state (lexer<Backend> &lexer,
                                                       char c) {
   bool match = true;
   this->number_is_float ();
@@ -824,7 +822,7 @@ bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
   switch (c) {
   case '+': fp_acc_.exp_is_negative = false; break;
   case '-': fp_acc_.exp_is_negative = true; break;
-  default: match = this->do_exponent_digit_state (parser, c); break;
+  default: match = this->do_exponent_digit_state (lexer, c); break;
   }
   return match;
 }
@@ -832,15 +830,15 @@ bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
 // complete
 // ~~~~~~~~
 template <typename Backend>
-void number_matcher<Backend>::complete (parser<Backend> &parser) {
+void number_matcher<Backend>::complete (lexer<Backend> &lexer) {
   this->set_state (done_state);
-  this->make_result (parser);
+  this->make_result (lexer);
 }
 
 // exponent digit
 // ~~~~~~~~~~~~~~
 template <typename Backend>
-bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_exponent_digit_state (lexer<Backend> &lexer,
                                                        char const c) {
   assert (this->get_state () == exponent_digit_state ||
           this->get_state () == exponent_initial_digit_state);
@@ -852,10 +850,10 @@ bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
     this->set_state (exponent_digit_state);
   } else {
     if (this->get_state () == exponent_initial_digit_state) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error (lexer, error::unrecognized_token);
     } else {
       match = false;
-      this->complete (parser);
+      this->complete (lexer);
     }
   }
   return match;
@@ -865,7 +863,7 @@ bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
 bool number_matcher<Backend>::do_integer_initial_digit_state (
-    parser<Backend> &parser, char const c) {
+    lexer<Backend> &lexer, char const c) {
   assert (this->get_state () == integer_initial_digit_state);
   assert (is_integer_);
   if (c == '0') {
@@ -875,7 +873,7 @@ bool number_matcher<Backend>::do_integer_initial_digit_state (
     int_acc_ = static_cast<unsigned> (c - '0');
     this->set_state (integer_digit_state);
   } else {
-    this->set_error (parser, error::unrecognized_token);
+    this->set_error (lexer, error::unrecognized_token);
   }
   return true;
 }
@@ -883,7 +881,7 @@ bool number_matcher<Backend>::do_integer_initial_digit_state (
 // do integer digit state
 // ~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
-bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_integer_digit_state (lexer<Backend> &lexer,
                                                       char const c) {
   assert (this->get_state () == integer_digit_state);
   assert (is_integer_);
@@ -899,13 +897,13 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
     std::uint64_t const new_acc =
         int_acc_ * 10U + static_cast<unsigned> (c - '0');
     if (new_acc < int_acc_) {  // Did this overflow?
-      this->set_error (parser, error::number_out_of_range);
+      this->set_error (lexer, error::number_out_of_range);
     } else {
       int_acc_ = new_acc;
     }
   } else {
     match = false;
-    this->complete (parser);
+    this->complete (lexer);
   }
   return match;
 }
@@ -914,40 +912,40 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-number_matcher<Backend>::consume (parser<Backend> &parser,
+number_matcher<Backend>::consume (lexer<Backend> &lexer,
                                   std::optional<char> ch) {
   bool match = true;
   if (ch) {
     char const c = *ch;
     switch (this->get_state ()) {
     case leading_minus_state:
-      match = this->do_leading_minus_state (parser, c);
+      match = this->do_leading_minus_state (lexer, c);
       break;
     case integer_initial_digit_state:
-      match = this->do_integer_initial_digit_state (parser, c);
+      match = this->do_integer_initial_digit_state (lexer, c);
       break;
     case integer_digit_state:
-      match = this->do_integer_digit_state (parser, c);
+      match = this->do_integer_digit_state (lexer, c);
       break;
-    case frac_state: match = this->do_frac_state (parser, c); break;
+    case frac_state: match = this->do_frac_state (lexer, c); break;
     case frac_initial_digit_state:
-    case frac_digit_state: match = this->do_frac_digit_state (parser, c); break;
+    case frac_digit_state: match = this->do_frac_digit_state (lexer, c); break;
     case exponent_sign_state:
-      match = this->do_exponent_sign_state (parser, c);
+      match = this->do_exponent_sign_state (lexer, c);
       break;
     case exponent_initial_digit_state:
     case exponent_digit_state:
-      match = this->do_exponent_digit_state (parser, c);
+      match = this->do_exponent_digit_state (lexer, c);
       break;
     case done_state:
     default: PEEJAY_UNREACHABLE; break;
     }
   } else {
-    assert (!parser.has_error ());
+    assert (!lexer.has_error ());
     if (!this->in_terminal_state ()) {
-      this->set_error (parser, error::expected_digits);
+      this->set_error (lexer, error::expected_digits);
     }
-    this->complete (parser);
+    this->complete (lexer);
   }
   return {matcher<Backend>::null_pointer (), match};
 }
@@ -955,8 +953,8 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
 // make result
 // ~~~~~~~~~~~
 template <typename Backend>
-void number_matcher<Backend>::make_result (parser<Backend> &parser) {
-  if (parser.has_error ()) {
+void number_matcher<Backend>::make_result (lexer<Backend> &lexer) {
+  if (lexer.has_error ()) {
     return;
   }
   assert (this->in_terminal_state ());
@@ -967,25 +965,24 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
 
     if (is_neg_) {
       if (int_acc_ > umin) {
-        this->set_error (parser, error::number_out_of_range);
+        this->set_error (lexer, error::number_out_of_range);
         return;
       }
 
-      this->set_error (
-          parser,
-          parser.backend ().int64_value (
-              (int_acc_ == umin) ? min
-                                 : -static_cast<std::int64_t> (int_acc_)));
+      this->set_error (lexer, lexer.backend ().int64_value (
+                                  (int_acc_ == umin)
+                                      ? min
+                                      : -static_cast<std::int64_t> (int_acc_)));
       return;
     }
-    this->set_error (parser, parser.backend ().uint64_value (int_acc_));
+    this->set_error (lexer, lexer.backend ().uint64_value (int_acc_));
     return;
   }
 
   auto xf = (fp_acc_.whole_part + fp_acc_.frac_part / fp_acc_.frac_scale);
   auto exp = std::pow (10, fp_acc_.exponent);
   if (std::isinf (exp)) {
-    this->set_error (parser, error::number_out_of_range);
+    this->set_error (lexer, error::number_out_of_range);
     return;
   }
   if (fp_acc_.exp_is_negative) {
@@ -998,10 +995,10 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
   }
 
   if (std::isinf (xf) || std::isnan (xf)) {
-    this->set_error (parser, error::number_out_of_range);
+    this->set_error (lexer, error::number_out_of_range);
     return;
   }
-  this->set_error (parser, parser.backend ().double_value (xf));
+  this->set_error (lexer, lexer.backend ().double_value (xf));
 }
 
 //*     _       _            *
@@ -1025,7 +1022,7 @@ public:
   string_matcher &operator= (string_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   using matcher<Backend>::null_pointer;
@@ -1057,7 +1054,7 @@ private:
   };
 
   static std::variant<state, std::error_code> consume_normal (
-      parser<Backend> &p, bool is_object_key, char32_t code_point,
+      lexer<Backend> &p, bool is_object_key, char32_t code_point,
       appender &app);
 
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
@@ -1065,9 +1062,9 @@ private:
   /// real work but this wrapper performs any necessary mutations of the state
   /// machine.
   ///
-  /// \param p  The parent parser instance.
+  /// \param p  The parent lexer instance.
   /// \param code_point  The Unicode character being processed.
-  void normal (parser<Backend> &p, char32_t code_point);
+  void normal (lexer<Backend> &p, char32_t code_point);
 
   /// Adds a single hexadecimal character to \p value.
   ///
@@ -1080,11 +1077,11 @@ private:
 
   static std::variant<error, std::tuple<unsigned, enum state>> consume_hex (
       unsigned hex, enum state state, char32_t code_point, appender &app);
-  void hex (parser<Backend> &p, char32_t code_point);
+  void hex (lexer<Backend> &p, char32_t code_point);
 
   static std::variant<state, error> consume_escape_state (char32_t code_point,
                                                           appender &app);
-  void escape (parser<Backend> &p, char32_t code_point);
+  void escape (lexer<Backend> &p, char32_t code_point);
 
   static constexpr bool is_hex_state (enum state const state) noexcept {
     return state == hex1_state || state == hex2_state || state == hex3_state ||
@@ -1147,7 +1144,7 @@ bool string_matcher<Backend>::appender::append16 (char16_t const cu) {
 // consume normal [static]
 // ~~~~~~~~~~~~~~
 template <typename Backend>
-auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
+auto string_matcher<Backend>::consume_normal (lexer<Backend> &p,
                                               bool is_object_key,
                                               char32_t code_point,
                                               appender &app)
@@ -1183,7 +1180,7 @@ auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
 // normal
 // ~~~~~~
 template <typename Backend>
-void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
+void string_matcher<Backend>::normal (lexer<Backend> &p, char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1257,7 +1254,7 @@ auto string_matcher<Backend>::consume_hex (unsigned const hex,
 }
 
 template <typename Backend>
-void string_matcher<Backend>::hex (parser<Backend> &p, char32_t code_point) {
+void string_matcher<Backend>::hex (lexer<Backend> &p, char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1302,7 +1299,7 @@ auto string_matcher<Backend>::consume_escape_state (char32_t code_point,
 // escape
 // ~~~~~~
 template <typename Backend>
-void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
+void string_matcher<Backend>::escape (lexer<Backend> &p, char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1321,10 +1318,10 @@ void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-string_matcher<Backend>::consume (parser<Backend> &parser,
+string_matcher<Backend>::consume (lexer<Backend> &lexer,
                                   std::optional<char> ch) {
   if (!ch) {
-    this->set_error (parser, error::expected_close_quote);
+    this->set_error (lexer, error::expected_close_quote);
     return {null_pointer (), true};
   }
 
@@ -1337,16 +1334,16 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
         assert (!app_.has_high_surrogate ());
         this->set_state (normal_char_state);
       } else {
-        this->set_error (parser, error::expected_token);
+        this->set_error (lexer, error::expected_token);
       }
       break;
-    case normal_char_state: this->normal (parser, *code_point); break;
-    case escape_state: this->escape (parser, *code_point); break;
+    case normal_char_state: this->normal (lexer, *code_point); break;
+    case escape_state: this->escape (lexer, *code_point); break;
 
     case hex1_state: assert (hex_ == 0U); [[fallthrough]];
     case hex2_state:
     case hex3_state:
-    case hex4_state: this->hex (parser, *code_point); break;
+    case hex4_state: this->hex (lexer, *code_point); break;
 
     case done_state:
     default: assert (false); break;
@@ -1367,7 +1364,7 @@ public:
   array_matcher () noexcept : matcher<Backend> (start_state) {}
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   using matcher<Backend>::null_pointer;
@@ -1380,14 +1377,14 @@ private:
     comma_state,
   };
 
-  void end_array (parser<Backend> &parser);
+  void end_array (lexer<Backend> &lexer);
 };
 
 // consume
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-array_matcher<Backend>::consume (parser<Backend> &p, std::optional<char> ch) {
+array_matcher<Backend>::consume (lexer<Backend> &p, std::optional<char> ch) {
   if (!ch) {
     this->set_error (p, error::expected_array_member);
     return {null_pointer (), true};
@@ -1438,8 +1435,8 @@ array_matcher<Backend>::consume (parser<Backend> &p, std::optional<char> ch) {
 // end array
 // ~~~~~~~~~
 template <typename Backend>
-void array_matcher<Backend>::end_array (parser<Backend> &parser) {
-  this->set_error (parser, parser.backend ().end_array ());
+void array_matcher<Backend>::end_array (lexer<Backend> &lexer) {
+  this->set_error (lexer, lexer.backend ().end_array ());
   this->set_state (done_state);
 }
 
@@ -1455,7 +1452,7 @@ public:
   object_matcher () noexcept : matcher<Backend> (start_state) {}
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   using matcher<Backend>::null_pointer;
@@ -1470,21 +1467,21 @@ private:
     comma_state,
   };
 
-  void end_object (parser<Backend> &parser);
+  void end_object (lexer<Backend> &lexer);
 };
 
 // consume
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-object_matcher<Backend>::consume (parser<Backend> &parser,
+object_matcher<Backend>::consume (lexer<Backend> &lexer,
                                   std::optional<char> ch) {
   if (this->get_state () == done_state) {
-    assert (parser.last_error ());
+    assert (lexer.last_error ());
     return {null_pointer (), true};
   }
   if (!ch) {
-    this->set_error (parser, error::expected_object_member);
+    this->set_error (lexer, error::expected_object_member);
     return {null_pointer (), true};
   }
   char const c = *ch;
@@ -1492,56 +1489,56 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
   case start_state:
     assert (c == '{');
     this->set_state (first_key_state);
-    if (this->set_error (parser, parser.backend ().begin_object ())) {
+    if (this->set_error (lexer, lexer.backend ().begin_object ())) {
       break;
     }
-    return {this->make_whitespace_matcher (parser), true};
+    return {this->make_whitespace_matcher (lexer), true};
   case first_key_state:
     // We allow either a closing brace (to end the object) or a property name.
     if (c == '}') {
-      this->end_object (parser);
+      this->end_object (lexer);
       break;
     }
     [[fallthrough]];
   case key_state:
     // Match a property name then expect a colon.
     this->set_state (colon_state);
-    return {this->make_root_matcher (parser, true /*object key?*/), false};
+    return {this->make_root_matcher (lexer, true /*object key?*/), false};
   case colon_state:
     if (isspace (c)) {
       // just consume whitespace before the colon.
-      return {this->make_whitespace_matcher (parser), false};
+      return {this->make_whitespace_matcher (lexer), false};
     }
     if (c == ':') {
       this->set_state (value_state);
     } else {
-      this->set_error (parser, error::expected_colon);
+      this->set_error (lexer, error::expected_colon);
     }
     break;
   case value_state:
     this->set_state (comma_state);
-    return {this->make_root_matcher (parser), false};
+    return {this->make_root_matcher (lexer), false};
   case comma_state:
     if (isspace (c)) {
       // just consume whitespace before the comma.
-      return {this->make_whitespace_matcher (parser), false};
+      return {this->make_whitespace_matcher (lexer), false};
     }
     if (c == ',') {
       // Strictly conforming JSON requires a property name following a comma but
       // we have an extension to allow an trailing comma which may be followed
       // by the object's closing brace.
       this->set_state (
-          (parser.extension_enabled (extensions::object_trailing_comma))
+          (lexer.extension_enabled (extensions::object_trailing_comma))
               ? first_key_state
               : key_state);
       // Consume the comma and any whitespace before the close brace or property
       // name.
-      return {this->make_whitespace_matcher (parser), true};
+      return {this->make_whitespace_matcher (lexer), true};
     }
     if (c == '}') {
-      this->end_object (parser);
+      this->end_object (lexer);
     } else {
-      this->set_error (parser, error::expected_object_member);
+      this->set_error (lexer, error::expected_object_member);
     }
     break;
   case done_state:
@@ -1554,8 +1551,8 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
 // end object
 // ~~~~~~~~~~~
 template <typename Backend>
-void object_matcher<Backend>::end_object (parser<Backend> &parser) {
-  this->set_error (parser, parser.backend ().end_object ());
+void object_matcher<Backend>::end_object (lexer<Backend> &lexer) {
+  this->set_error (lexer, lexer.backend ().end_object ());
   this->set_state (done_state);
 }
 
@@ -1579,7 +1576,7 @@ public:
   whitespace_matcher &operator= (whitespace_matcher &&) noexcept = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   using matcher<Backend>::null_pointer;
@@ -1603,29 +1600,29 @@ private:
   };
 
   std::pair<typename matcher<Backend>::pointer, bool> consume_body (
-      parser<Backend> &parser, char c);
+      lexer<Backend> &lexer, char c);
 
   std::pair<typename matcher<Backend>::pointer, bool> consume_comment_start (
-      parser<Backend> &parser, char c);
+      lexer<Backend> &lexer, char c);
 
   std::pair<typename matcher<Backend>::pointer, bool> multi_line_comment_body (
-      parser<Backend> &parser, char c);
+      lexer<Backend> &lexer, char c);
 
-  void cr (parser<Backend> &parser, state next) {
+  void cr (lexer<Backend> &lexer, state next) {
     assert (this->get_state () == multi_line_comment_body_state ||
             this->get_state () == body_state);
-    parser.advance_row ();
+    lexer.advance_row ();
     this->set_state (next);
   }
-  void lf (parser<Backend> &parser) { parser.advance_row (); }
+  void lf (lexer<Backend> &lexer) { lexer.advance_row (); }
 
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
   /// if the character shoud be treated as whitespace.
-  bool crlf (parser<Backend> &parser, char c) {
+  bool crlf (lexer<Backend> &lexer, char c) {
     if (c != details::char_set::lf) {
       return false;
     }
-    parser.reset_column ();
+    lexer.reset_column ();
     return true;
   }
 };
@@ -1634,7 +1631,7 @@ private:
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::consume (parser<Backend> &parser,
+whitespace_matcher<Backend>::consume (lexer<Backend> &lexer,
                                       std::optional<char> ch) {
   if (!ch) {
     this->set_state (done_state);
@@ -1644,15 +1641,15 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
     // Handles the LF part of a Windows-style CR/LF pair.
     case crlf_state:
       this->set_state (body_state);
-      if (crlf (parser, c)) {
+      if (crlf (lexer, c)) {
         break;
       }
       [[fallthrough]];
-    case body_state: return this->consume_body (parser, c);
-    case comment_start_state: return this->consume_comment_start (parser, c);
+    case body_state: return this->consume_body (lexer, c);
+    case comment_start_state: return this->consume_comment_start (lexer, c);
 
     case multi_line_comment_ending_state:
-      assert (parser.extension_enabled (extensions::multi_line_comments));
+      assert (lexer.extension_enabled (extensions::multi_line_comments));
       this->set_state (c == details::char_set::slash
                            ? body_state
                            : multi_line_comment_body_state);
@@ -1660,16 +1657,16 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
 
     case multi_line_comment_crlf_state:
       this->set_state (multi_line_comment_body_state);
-      if (crlf (parser, c)) {
+      if (crlf (lexer, c)) {
         break;
       }
       [[fallthrough]];
     case multi_line_comment_body_state:
-      return this->multi_line_comment_body (parser, c);
+      return this->multi_line_comment_body (lexer, c);
     case single_line_comment_state:
-      assert (parser.extension_enabled (extensions::bash_comments) ||
-              parser.extension_enabled (extensions::single_line_comments) ||
-              parser.extension_enabled (extensions::multi_line_comments));
+      assert (lexer.extension_enabled (extensions::bash_comments) ||
+              lexer.extension_enabled (extensions::single_line_comments) ||
+              lexer.extension_enabled (extensions::multi_line_comments));
       if (c == details::char_set::cr || c == details::char_set::lf) {
         // This character marks a bash/single-line comment end. Go back to
         // normal whitespace handling. Retry with the same character.
@@ -1689,7 +1686,7 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
 // ~~~~~~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::consume_body (parser<Backend> &parser, char c) {
+whitespace_matcher<Backend>::consume_body (lexer<Backend> &lexer, char c) {
   auto const stop_retry = [this] () {
     // Stop, pop this matcher, and retry with the same character.
     this->set_state (done_state);
@@ -1702,17 +1699,17 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser, char c) {
   case char_set::tab:
     // TODO: tab expansion.
     break;
-  case char_set::cr: this->cr (parser, crlf_state); break;
-  case char_set::lf: this->lf (parser); break;
+  case char_set::cr: this->cr (lexer, crlf_state); break;
+  case char_set::lf: this->lf (lexer); break;
   case char_set::hash:
-    if (!parser.extension_enabled (extensions::bash_comments)) {
+    if (!lexer.extension_enabled (extensions::bash_comments)) {
       return stop_retry ();
     }
     this->set_state (single_line_comment_state);
     break;
   case char_set::slash:
-    if (!parser.extension_enabled (extensions::single_line_comments) &&
-        !parser.extension_enabled (extensions::multi_line_comments)) {
+    if (!lexer.extension_enabled (extensions::single_line_comments) &&
+        !lexer.extension_enabled (extensions::multi_line_comments)) {
       return stop_retry ();
     }
     this->set_state (comment_start_state);
@@ -1733,17 +1730,17 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser, char c) {
 /// which of the three it is.
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::consume_comment_start (parser<Backend> &parser,
+whitespace_matcher<Backend>::consume_comment_start (lexer<Backend> &lexer,
                                                     char c) {
   using details::char_set;
   if (c == char_set::slash &&
-      parser.extension_enabled (extensions::single_line_comments)) {
+      lexer.extension_enabled (extensions::single_line_comments)) {
     this->set_state (single_line_comment_state);
   } else if (c == char_set::star &&
-             parser.extension_enabled (extensions::multi_line_comments)) {
+             lexer.extension_enabled (extensions::multi_line_comments)) {
     this->set_state (multi_line_comment_body_state);
   } else {
-    this->set_error (parser, error::expected_token);
+    this->set_error (lexer, error::expected_token);
   }
   return {null_pointer (), true};  // Consume this character.
 }
@@ -1755,10 +1752,10 @@ whitespace_matcher<Backend>::consume_comment_start (parser<Backend> &parser,
 /// indicate the end of the multi-line comment.
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
+whitespace_matcher<Backend>::multi_line_comment_body (lexer<Backend> &lexer,
                                                       char c) {
   using details::char_set;
-  assert (parser.extension_enabled (extensions::multi_line_comments));
+  assert (lexer.extension_enabled (extensions::multi_line_comments));
   assert (this->get_state () == multi_line_comment_body_state);
   switch (c) {
   case char_set::star:
@@ -1766,8 +1763,8 @@ whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
     // to end the multi-line comment.
     this->set_state (multi_line_comment_ending_state);
     break;
-  case char_set::cr: this->cr (parser, multi_line_comment_crlf_state); break;
-  case char_set::lf: this->lf (parser); break;
+  case char_set::cr: this->cr (lexer, multi_line_comment_crlf_state); break;
+  case char_set::lf: this->lf (lexer); break;
   case char_set::tab: break;  // TODO: tab expansion.
   default: break;             // Just consume.
   }
@@ -1786,7 +1783,7 @@ public:
   eof_matcher () noexcept : matcher<Backend> (start_state) {}
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   enum state {
@@ -1799,10 +1796,10 @@ private:
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-eof_matcher<Backend>::consume (parser<Backend> &parser,
+eof_matcher<Backend>::consume (lexer<Backend> &lexer,
                                std::optional<char> const ch) {
   if (ch) {
-    this->set_error (parser, error::unexpected_extra_input);
+    this->set_error (lexer, error::unexpected_extra_input);
   } else {
     this->set_state (done_state);
   }
@@ -1822,7 +1819,7 @@ public:
       : matcher<Backend> (start_state), object_key_{is_object_key} {}
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char> ch) override;
+      lexer<Backend> &lexer, std::optional<char> ch) override;
 
 private:
   using matcher<Backend>::null_pointer;
@@ -1839,10 +1836,9 @@ private:
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
-root_matcher<Backend>::consume (parser<Backend> &parser,
-                                std::optional<char> ch) {
+root_matcher<Backend>::consume (lexer<Backend> &lexer, std::optional<char> ch) {
   if (!ch) {
-    this->set_error (parser, error::expected_token);
+    this->set_error (lexer, error::expected_token);
     return {null_pointer (), true};
   }
 
@@ -1851,11 +1847,11 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
   switch (this->get_state ()) {
   case start_state:
     this->set_state (new_token_state);
-    return {this->make_whitespace_matcher (parser), false};
+    return {this->make_whitespace_matcher (lexer), false};
 
   case new_token_state: {
     if (object_key_ && *ch != '"') {
-      this->set_error (parser, error::expected_string);
+      this->set_error (lexer, error::expected_string);
       // Don't return here in order to allow the switch default to produce a
       // different error code for a bad token.
     }
@@ -1872,27 +1868,27 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     case '7':
     case '8':
     case '9':
-      return {this->template make_terminal_matcher<number_matcher<Backend>> (
-                  parser),
-              false};
+      return {
+          this->template make_terminal_matcher<number_matcher<Backend>> (lexer),
+          false};
     case '"':
       return {this->template make_terminal_matcher<string_matcher<Backend>> (
-                  parser, &parser.string_, object_key_),
+                  lexer, &lexer.string_, object_key_),
               false};
     case 't':
       return {
           this->template make_terminal_matcher<true_token_matcher<Backend>> (
-              parser),
+              lexer),
           false};
     case 'f':
       return {
           this->template make_terminal_matcher<false_token_matcher<Backend>> (
-              parser),
+              lexer),
           false};
     case 'n':
       return {
           this->template make_terminal_matcher<null_token_matcher<Backend>> (
-              parser),
+              lexer),
           false};
     case '[':
       return {pointer{new array_matcher<Backend> (),
@@ -1903,7 +1899,7 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
                       deleter{deleter::mode::do_delete}},
               false};
     default:
-      this->set_error (parser, error::expected_token);
+      this->set_error (lexer, error::expected_token);
       return {null_pointer (), true};
     }
   } break;
@@ -1947,7 +1943,7 @@ template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 template <typename OtherBackend>
 PEEJAY_CXX20REQUIRES (backend<OtherBackend>)
-parser<Backend>::parser (OtherBackend &&backend, extensions const extensions)
+lexer<Backend>::lexer (OtherBackend &&backend, extensions const extensions)
     : extensions_{extensions}, backend_{std::forward<OtherBackend> (backend)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
@@ -1966,7 +1962,7 @@ parser<Backend>::parser (OtherBackend &&backend, extensions const extensions)
 // ~~~~~~~~~~~~~~~~~
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_root_matcher (bool object_key) -> pointer {
+auto lexer<Backend>::make_root_matcher (bool object_key) -> pointer {
   using root_matcher = details::root_matcher<Backend>;
   using deleter = typename pointer::deleter_type;
   return pointer (new (&singletons_.root) root_matcher (object_key),
@@ -1977,7 +1973,7 @@ auto parser<Backend>::make_root_matcher (bool object_key) -> pointer {
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_whitespace_matcher () -> pointer {
+auto lexer<Backend>::make_whitespace_matcher () -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Backend>;
   return this->make_terminal_matcher<whitespace_matcher> ();
 }
@@ -1988,8 +1984,8 @@ template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
-auto parser<Backend>::input (InputIterator first, InputIterator last)
-    -> parser & {
+auto lexer<Backend>::input (InputIterator first, InputIterator last)
+    -> lexer & {
   static_assert (
       std::is_same_v<typename std::remove_cv_t<typename std::iterator_traits<
                          InputIterator>::value_type>,
@@ -2040,7 +2036,7 @@ auto parser<Backend>::input (InputIterator first, InputIterator last)
 // ~~~
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-decltype (auto) parser<Backend>::eof () {
+decltype (auto) lexer<Backend>::eof () {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
     auto res = handler->consume (*this, std::optional<char>{std::nullopt});
