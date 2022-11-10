@@ -98,10 +98,8 @@ add_library (json-parser STATIC
   include/json/null.hpp
   include/json/portab.hpp
   include/json/utf.hpp
-  include/json/utility.hpp
   lib/json/json_error.cpp
   lib/json/utf.cpp
-  lib/json/utility.cpp
   lib/json/emit.cpp
 )
 target_include_directories (json-parser PUBLIC include)
