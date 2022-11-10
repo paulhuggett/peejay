@@ -59,7 +59,7 @@ constexpr bool always_false = false;
 
 #if PEEJAY_CXX20
 template <typename T>
-concept notifications = requires (T &&v) {
+concept backend = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
   {v.result ()};
@@ -79,14 +79,13 @@ concept notifications = requires (T &&v) {
   /// Called when a null value has been parsed.
   { v.null_value () } -> std::convertible_to<std::error_code>;
   /// Called to notify the start of an array. Subsequent event notifications are
-  /// for members of this array until a matching call to Callbacks::end_array().
+  /// for members of this array until a matching call to end_array().
   { v.begin_array () } -> std::convertible_to<std::error_code>;
   /// Called indicate that an array has been completely parsed. This will always
   /// follow an earlier call to begin_array().
   { v.end_array () } -> std::convertible_to<std::error_code>;
   /// Called to notify the start of an object. Subsequent event notifications
-  /// are for members of this object until a matching call to
-  /// Callbacks::end_object().
+  /// are for members of this object until a matching call to end_object().
   { v.begin_object () } -> std::convertible_to<std::error_code>;
   /// Called when an object key string has been parsed.
   { v.key (std::string_view{}) } -> std::convertible_to<std::error_code>;
@@ -99,26 +98,26 @@ concept notifications = requires (T &&v) {
 /// \brief JSON parser implementation details.
 namespace details {
 
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher;
 
-template <typename Callbacks>
+template <typename Backend>
 class false_token_matcher;
-template <typename Callbacks>
+template <typename Backend>
 class null_token_matcher;
-template <typename Callbacks>
+template <typename Backend>
 class number_matcher;
-template <typename Callbacks>
+template <typename Backend>
 class root_matcher;
-template <typename Callbacks>
+template <typename Backend>
 class string_matcher;
-template <typename Callbacks>
+template <typename Backend>
 class true_token_matcher;
-template <typename Callbacks>
+template <typename Backend>
 class whitespace_matcher;
 
-template <typename Callbacks>
+template <typename Backend>
 struct singleton_storage;
 
 /// deleter is intended for use as a unique_ptr<> Deleter. It enables
@@ -223,28 +222,28 @@ constexpr extensions operator| (extensions a, extensions b) noexcept {
 }
 
 //-MARK:parser
-/// \tparam Callbacks A type meeting the notifications<> requirements.
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
+/// \tparam Backend A type meeting the notifications<> requirements.
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
 class parser {
-  friend class details::matcher<Callbacks>;
-  friend class details::root_matcher<Callbacks>;
-  friend class details::whitespace_matcher<Callbacks>;
+  friend class details::matcher<Backend>;
+  friend class details::root_matcher<Backend>;
+  friend class details::whitespace_matcher<Backend>;
 
 public:
   explicit parser (extensions extensions = extensions::none)
-      : parser (Callbacks{}, extensions) {}
-  template <typename OtherCallbacks>
-  PEEJAY_CXX20REQUIRES (notifications<OtherCallbacks>)
-  explicit parser (OtherCallbacks &&callbacks,
+      : parser (Backend{}, extensions) {}
+  template <typename OtherBackend>
+  PEEJAY_CXX20REQUIRES (backend<OtherBackend>)
+  explicit parser (OtherBackend &&backend,
                    extensions extensions = extensions::none);
   parser (parser const &) = delete;
-  parser (parser &&) noexcept (std::is_nothrow_constructible_v<Callbacks>) =
+  parser (parser &&) noexcept (std::is_nothrow_constructible_v<Backend>) =
       default;
 
   parser &operator= (parser const &) = delete;
   parser &operator= (parser &&) noexcept (
-      std::is_nothrow_move_assignable_v<Callbacks>) = default;
+      std::is_nothrow_move_assignable_v<Backend>) = default;
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
@@ -281,7 +280,7 @@ public:
   /// Informs the parser that the complete input stream has been passed by calls
   /// to parser<>::input().
   ///
-  /// \returns If the parse completes successfully, Callbacks::result()
+  /// \returns If the parse completes successfully, Backend::result()
   /// is called and its result returned.
   decltype (auto) eof ();
 
@@ -297,8 +296,8 @@ public:
   }
 
   ///@{
-  constexpr Callbacks &callbacks () noexcept { return callbacks_; }
-  constexpr Callbacks const &callbacks () const noexcept { return callbacks_; }
+  constexpr Backend &backend () noexcept { return backend_; }
+  constexpr Backend const &backend () const noexcept { return backend_; }
   ///@}
 
   /// \param flag  A selection of bits from the parser_extensions enum.
@@ -314,7 +313,7 @@ public:
   constexpr coord pos () const noexcept { return matcher_pos_; }
 
 private:
-  using matcher = details::matcher<Callbacks>;
+  using matcher = details::matcher<Backend>;
   using pointer = std::unique_ptr<matcher, details::deleter<matcher>>;
 
   static constexpr auto null_pointer () {
@@ -367,7 +366,7 @@ private:
 
   /// Preallocated storage for "terminal" matchers. These are the matchers,
   /// such as numbers or strings which can't have child objects.
-  details::singleton_storage<Callbacks> singletons_;
+  details::singleton_storage<Backend> singletons_;
 
   /// The maximum depth to which we allow the parse stack to grow. This value
   /// should be sufficient for any reasonable input: its intention is to prevent
@@ -387,18 +386,18 @@ private:
   coord pos_;
   coord matcher_pos_;
   extensions extensions_;
-  [[no_unique_address]] Callbacks callbacks_;
+  [[no_unique_address]] Backend backend_;
 };
 
-template <typename Callbacks>
-parser (Callbacks) -> parser<Callbacks>;
+template <typename Backend>
+parser (Backend) -> parser<Backend>;
 
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<std::remove_reference_t<Callbacks>>)
-inline parser<std::remove_reference_t<Callbacks>> make_parser (
-    Callbacks &&callbacks, extensions const extensions = extensions::none) {
-  return parser<std::remove_reference_t<Callbacks>>{
-      std::forward<Callbacks> (callbacks), extensions};
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
+inline parser<std::remove_reference_t<Backend>> make_parser (
+    Backend &&backend, extensions const extensions = extensions::none) {
+  return parser<std::remove_reference_t<Backend>>{
+      std::forward<Backend> (backend), extensions};
 }
 
 namespace details {
@@ -420,8 +419,8 @@ constexpr bool isspace (char const c) noexcept {
 /// The base class for the various state machines ("matchers") which implement
 /// the various productions of the JSON grammar.
 //-MARK:matcher
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher {
 public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
@@ -440,7 +439,7 @@ public:
   ///   used to process the next character. The boolean value is false if the same
   ///   character must be passed to the next consume() call; true indicates that
   ///   the character was correctly matched by this consume() call.
-  virtual std::pair<pointer, bool> consume (parser<Callbacks> &parser,
+  virtual std::pair<pointer, bool> consume (parser<Backend> &parser,
                                             std::optional<char> ch) = 0;
 
   /// \returns True if this matcher has completed (and reached it's "done" state). The
@@ -461,7 +460,7 @@ protected:
   /// \brief Errors
 
   /// \returns True if the parser is in an error state.
-  bool set_error (parser<Callbacks> &parser,
+  bool set_error (parser<Backend> &parser,
                   std::error_code const &err) noexcept {
     bool const has_error = parser.set_error (err);
     if (has_error) {
@@ -471,22 +470,21 @@ protected:
   }
   ///@}
 
-  pointer make_root_matcher (parser<Callbacks> &parser,
-                             bool object_key = false) {
+  pointer make_root_matcher (parser<Backend> &parser, bool object_key = false) {
     return parser.make_root_matcher (object_key);
   }
-  pointer make_whitespace_matcher (parser<Callbacks> &parser) {
+  pointer make_whitespace_matcher (parser<Backend> &parser) {
     return parser.make_whitespace_matcher ();
   }
 
   template <typename Matcher, typename... Args>
-  pointer make_terminal_matcher (parser<Callbacks> &parser, Args &&...args) {
+  pointer make_terminal_matcher (parser<Backend> &parser, Args &&...args) {
     return parser.template make_terminal_matcher<Matcher, Args...> (
         std::forward<Args> (args)...);
   }
 
   static constexpr auto null_pointer () {
-    return parser<Callbacks>::null_pointer ();
+    return parser<Backend>::null_pointer ();
   }
 
   /// The value to be used for the "done" state in the each of the matcher state
@@ -504,29 +502,29 @@ private:
 //*                        *
 /// A matcher which checks for a specific keyword such as "true", "false", or
 /// "null".
-/// \tparam Callbacks  The parser callback structure.
+/// \tparam Backend  The parser callback structure.
 //-MARK:token matcher
-template <typename Callbacks, typename DoneFunction>
-PEEJAY_CXX20REQUIRES ((notifications<Callbacks> &&
-                       std::invocable<DoneFunction, parser<Callbacks> &>))
-class token_matcher : public matcher<Callbacks> {
+template <typename Backend, typename DoneFunction>
+PEEJAY_CXX20REQUIRES ((backend<Backend> &&
+                       std::invocable<DoneFunction, parser<Backend> &>))
+class token_matcher : public matcher<Backend> {
 public:
   /// \param text  The string to be matched.
   /// \param done  The function called when the source string is matched.
   explicit token_matcher (char const *text, DoneFunction done) noexcept
-      : matcher<Callbacks> (start_state), text_{text}, done_{done} {}
+      : matcher<Backend> (start_state), text_{text}, done_{done} {}
   token_matcher (token_matcher const &) = delete;
   token_matcher (token_matcher &&) noexcept = default;
 
   token_matcher &operator= (token_matcher const &) = delete;
   token_matcher &operator= (token_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     start_state,
     last_state,
   };
@@ -540,12 +538,12 @@ private:
   [[no_unique_address]] DoneFunction const done_;
 };
 
-template <typename Callbacks, typename DoneFunction>
-PEEJAY_CXX20REQUIRES ((notifications<Callbacks> &&
-                       std::invocable<DoneFunction, parser<Callbacks> &>))
-std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
-    Callbacks, DoneFunction>::consume (parser<Callbacks> &parser,
-                                       std::optional<char> ch) {
+template <typename Backend, typename DoneFunction>
+PEEJAY_CXX20REQUIRES ((backend<Backend> &&
+                       std::invocable<DoneFunction, parser<Backend> &>))
+std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
+    Backend, DoneFunction>::consume (parser<Backend> &parser,
+                                     std::optional<char> ch) {
   bool match = true;
   switch (this->get_state ()) {
   case start_state:
@@ -564,7 +562,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     if (ch) {
       if (std::isalnum (*ch) != 0) {
         this->set_error (parser, error::unrecognized_token);
-        return {matcher<Callbacks>::null_pointer (), true};
+        return {matcher<Backend>::null_pointer (), true};
       }
       match = false;
     }
@@ -573,7 +571,7 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     break;
   default: PEEJAY_UNREACHABLE; break;
   }
-  return {matcher<Callbacks>::null_pointer (), match};
+  return {matcher<Backend>::null_pointer (), match};
 }
 
 //*   __      _           _       _             *
@@ -583,19 +581,19 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
 //*                                             *
 
 //-MARK:false token
-template <typename Callbacks>
+template <typename Backend>
 struct false_complete {
-  std::error_code operator() (parser<Callbacks> &p) const {
-    return p.callbacks ().boolean_value (false);
+  std::error_code operator() (parser<Backend> &p) const {
+    return p.backend ().boolean_value (false);
   }
 };
 
-template <typename Callbacks>
+template <typename Backend>
 class false_token_matcher
-    : public token_matcher<Callbacks, false_complete<Callbacks>> {
+    : public token_matcher<Backend, false_complete<Backend>> {
 public:
   false_token_matcher ()
-      : token_matcher<Callbacks, false_complete<Callbacks>> ("false", {}) {}
+      : token_matcher<Backend, false_complete<Backend>> ("false", {}) {}
 };
 
 //*  _                  _       _             *
@@ -605,19 +603,19 @@ public:
 //*                                           *
 
 //-MARK:true token
-template <typename Callbacks>
+template <typename Backend>
 struct true_complete {
-  std::error_code operator() (parser<Callbacks> &p) const {
-    return p.callbacks ().boolean_value (true);
+  std::error_code operator() (parser<Backend> &p) const {
+    return p.backend ().boolean_value (true);
   }
 };
 
-template <typename Callbacks>
+template <typename Backend>
 class true_token_matcher
-    : public token_matcher<Callbacks, true_complete<Callbacks>> {
+    : public token_matcher<Backend, true_complete<Backend>> {
 public:
   true_token_matcher ()
-      : token_matcher<Callbacks, true_complete<Callbacks>> ("true", {}) {}
+      : token_matcher<Backend, true_complete<Backend>> ("true", {}) {}
 };
 
 //*           _ _   _       _             *
@@ -627,19 +625,19 @@ public:
 //*                                       *
 
 //-MARK:null token
-template <typename Callbacks>
+template <typename Backend>
 struct null_complete {
-  std::error_code operator() (parser<Callbacks> &p) const {
-    return p.callbacks ().null_value ();
+  std::error_code operator() (parser<Backend> &p) const {
+    return p.backend ().null_value ();
   }
 };
 
-template <typename Callbacks>
+template <typename Backend>
 class null_token_matcher
-    : public token_matcher<Callbacks, null_complete<Callbacks>> {
+    : public token_matcher<Backend, null_complete<Backend>> {
 public:
   null_token_matcher ()
-      : token_matcher<Callbacks, null_complete<Callbacks>> ("null", {}) {}
+      : token_matcher<Backend, null_complete<Backend>> ("null", {}) {}
 };
 
 //*                 _              *
@@ -659,38 +657,38 @@ public:
 //     plus = %x2B                ; +
 //     zero = %x30                ; 0
 //-MARK:number
-template <typename Callbacks>
-class number_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class number_matcher final : public matcher<Backend> {
 public:
-  number_matcher () noexcept : matcher<Callbacks> (leading_minus_state) {}
+  number_matcher () noexcept : matcher<Backend> (leading_minus_state) {}
   number_matcher (number_matcher const &) = delete;
   number_matcher (number_matcher &&) noexcept = default;
 
   number_matcher &operator= (number_matcher const &) = delete;
   number_matcher &operator= (number_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
   bool in_terminal_state () const;
 
-  bool do_leading_minus_state (parser<Callbacks> &parser, char c);
+  bool do_leading_minus_state (parser<Backend> &parser, char c);
   /// Implements the first character of the 'int' production.
-  bool do_integer_initial_digit_state (parser<Callbacks> &parser, char c);
-  bool do_integer_digit_state (parser<Callbacks> &parser, char c);
-  bool do_frac_state (parser<Callbacks> &parser, char c);
-  bool do_frac_digit_state (parser<Callbacks> &parser, char c);
-  bool do_exponent_sign_state (parser<Callbacks> &parser, char c);
-  bool do_exponent_digit_state (parser<Callbacks> &parser, char c);
+  bool do_integer_initial_digit_state (parser<Backend> &parser, char c);
+  bool do_integer_digit_state (parser<Backend> &parser, char c);
+  bool do_frac_state (parser<Backend> &parser, char c);
+  bool do_frac_digit_state (parser<Backend> &parser, char c);
+  bool do_exponent_sign_state (parser<Backend> &parser, char c);
+  bool do_exponent_digit_state (parser<Backend> &parser, char c);
 
-  void complete (parser<Callbacks> &parser);
+  void complete (parser<Backend> &parser);
   void number_is_float ();
 
-  void make_result (parser<Callbacks> &parser);
+  void make_result (parser<Backend> &parser);
 
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     leading_minus_state,
     integer_initial_digit_state,
     integer_digit_state,
@@ -718,8 +716,8 @@ private:
 
 // number is float
 // ~~~~~~~~~~~~~~~
-template <typename Callbacks>
-void number_matcher<Callbacks>::number_is_float () {
+template <typename Backend>
+void number_matcher<Backend>::number_is_float () {
   if (is_integer_) {
     fp_acc_.whole_part = static_cast<double> (int_acc_);
     is_integer_ = false;
@@ -728,8 +726,8 @@ void number_matcher<Callbacks>::number_is_float () {
 
 // in terminal state
 // ~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::in_terminal_state () const {
+template <typename Backend>
+bool number_matcher<Backend>::in_terminal_state () const {
   switch (this->get_state ()) {
   case integer_digit_state:
   case frac_state:
@@ -742,9 +740,9 @@ bool number_matcher<Callbacks>::in_terminal_state () const {
 
 // leading minus state
 // ~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_leading_minus_state (
-    parser<Callbacks> &parser, char c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
+                                                      char c) {
   bool match = true;
   if (c == '-') {
     this->set_state (integer_initial_digit_state);
@@ -762,9 +760,9 @@ bool number_matcher<Callbacks>::do_leading_minus_state (
 
 // frac state
 // ~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_frac_state (parser<Callbacks> &parser,
-                                               char const c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
+                                             char const c) {
   bool match = true;
   if (c == '.') {
     this->set_state (frac_initial_digit_state);
@@ -784,9 +782,9 @@ bool number_matcher<Callbacks>::do_frac_state (parser<Callbacks> &parser,
 
 // frac digit
 // ~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_frac_digit_state (parser<Callbacks> &parser,
-                                                     char const c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
+                                                   char const c) {
   assert (this->get_state () == frac_initial_digit_state ||
           this->get_state () == frac_digit_state);
 
@@ -817,9 +815,9 @@ bool number_matcher<Callbacks>::do_frac_digit_state (parser<Callbacks> &parser,
 
 // exponent sign state
 // ~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_exponent_sign_state (
-    parser<Callbacks> &parser, char c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
+                                                      char c) {
   bool match = true;
   this->number_is_float ();
   this->set_state (exponent_initial_digit_state);
@@ -833,17 +831,17 @@ bool number_matcher<Callbacks>::do_exponent_sign_state (
 
 // complete
 // ~~~~~~~~
-template <typename Callbacks>
-void number_matcher<Callbacks>::complete (parser<Callbacks> &parser) {
+template <typename Backend>
+void number_matcher<Backend>::complete (parser<Backend> &parser) {
   this->set_state (done_state);
   this->make_result (parser);
 }
 
 // exponent digit
 // ~~~~~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_exponent_digit_state (
-    parser<Callbacks> &parser, char const c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
+                                                       char const c) {
   assert (this->get_state () == exponent_digit_state ||
           this->get_state () == exponent_initial_digit_state);
   assert (!is_integer_);
@@ -865,9 +863,9 @@ bool number_matcher<Callbacks>::do_exponent_digit_state (
 
 // do integer initial digit state
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_integer_initial_digit_state (
-    parser<Callbacks> &parser, char const c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_integer_initial_digit_state (
+    parser<Backend> &parser, char const c) {
   assert (this->get_state () == integer_initial_digit_state);
   assert (is_integer_);
   if (c == '0') {
@@ -884,9 +882,9 @@ bool number_matcher<Callbacks>::do_integer_initial_digit_state (
 
 // do integer digit state
 // ~~~~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-bool number_matcher<Callbacks>::do_integer_digit_state (
-    parser<Callbacks> &parser, char const c) {
+template <typename Backend>
+bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
+                                                      char const c) {
   assert (this->get_state () == integer_digit_state);
   assert (is_integer_);
 
@@ -914,10 +912,10 @@ bool number_matcher<Callbacks>::do_integer_digit_state (
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-number_matcher<Callbacks>::consume (parser<Callbacks> &parser,
-                                    std::optional<char> ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+number_matcher<Backend>::consume (parser<Backend> &parser,
+                                  std::optional<char> ch) {
   bool match = true;
   if (ch) {
     char const c = *ch;
@@ -951,13 +949,13 @@ number_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     }
     this->complete (parser);
   }
-  return {matcher<Callbacks>::null_pointer (), match};
+  return {matcher<Backend>::null_pointer (), match};
 }
 
 // make result
 // ~~~~~~~~~~~
-template <typename Callbacks>
-void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
+template <typename Backend>
+void number_matcher<Backend>::make_result (parser<Backend> &parser) {
   if (parser.has_error ()) {
     return;
   }
@@ -975,12 +973,12 @@ void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
 
       this->set_error (
           parser,
-          parser.callbacks ().int64_value (
+          parser.backend ().int64_value (
               (int_acc_ == umin) ? min
                                  : -static_cast<std::int64_t> (int_acc_)));
       return;
     }
-    this->set_error (parser, parser.callbacks ().uint64_value (int_acc_));
+    this->set_error (parser, parser.backend ().uint64_value (int_acc_));
     return;
   }
 
@@ -1003,7 +1001,7 @@ void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
     this->set_error (parser, error::number_out_of_range);
     return;
   }
-  this->set_error (parser, parser.callbacks ().double_value (xf));
+  this->set_error (parser, parser.backend ().double_value (xf));
 }
 
 //*     _       _            *
@@ -1012,13 +1010,11 @@ void number_matcher<Callbacks>::make_result (parser<Callbacks> &parser) {
 //* /__/\__|_| |_|_||_\__, | *
 //*                   |___/  *
 //-MARK:string
-template <typename Callbacks>
-class string_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class string_matcher final : public matcher<Backend> {
 public:
   explicit string_matcher (std::string *const str, bool object_key) noexcept
-      : matcher<Callbacks> (start_state),
-        is_object_key_{object_key},
-        app_{str} {
+      : matcher<Backend> (start_state), is_object_key_{object_key}, app_{str} {
     assert (str != nullptr);
     str->clear ();
   }
@@ -1028,14 +1024,14 @@ public:
   string_matcher &operator= (string_matcher const &) = delete;
   string_matcher &operator= (string_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
-  using matcher<Callbacks>::null_pointer;
+  using matcher<Backend>::null_pointer;
 
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     start_state,
     normal_char_state,
     escape_state,
@@ -1061,7 +1057,7 @@ private:
   };
 
   static std::variant<state, std::error_code> consume_normal (
-      parser<Callbacks> &p, bool is_object_key, char32_t code_point,
+      parser<Backend> &p, bool is_object_key, char32_t code_point,
       appender &app);
 
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
@@ -1071,7 +1067,7 @@ private:
   ///
   /// \param p  The parent parser instance.
   /// \param code_point  The Unicode character being processed.
-  void normal (parser<Callbacks> &p, char32_t code_point);
+  void normal (parser<Backend> &p, char32_t code_point);
 
   /// Adds a single hexadecimal character to \p value.
   ///
@@ -1084,11 +1080,11 @@ private:
 
   static std::variant<error, std::tuple<unsigned, enum state>> consume_hex (
       unsigned hex, enum state state, char32_t code_point, appender &app);
-  void hex (parser<Callbacks> &p, char32_t code_point);
+  void hex (parser<Backend> &p, char32_t code_point);
 
   static std::variant<state, error> consume_escape_state (char32_t code_point,
                                                           appender &app);
-  void escape (parser<Callbacks> &p, char32_t code_point);
+  void escape (parser<Backend> &p, char32_t code_point);
 
   static constexpr bool is_hex_state (enum state const state) noexcept {
     return state == hex1_state || state == hex2_state || state == hex3_state ||
@@ -1103,8 +1099,8 @@ private:
 
 // append32
 // ~~~~~~~~
-template <typename Callbacks>
-bool string_matcher<Callbacks>::appender::append32 (char32_t const code_point) {
+template <typename Backend>
+bool string_matcher<Backend>::appender::append32 (char32_t const code_point) {
   if (this->has_high_surrogate ()) {
     // A high surrogate followed by something other than a low surrogate.
     return false;
@@ -1115,8 +1111,8 @@ bool string_matcher<Callbacks>::appender::append32 (char32_t const code_point) {
 
 // append16
 // ~~~~~~~~
-template <typename Callbacks>
-bool string_matcher<Callbacks>::appender::append16 (char16_t const cu) {
+template <typename Backend>
+bool string_matcher<Backend>::appender::append16 (char16_t const cu) {
   bool ok = true;
   if (is_utf16_high_surrogate (cu)) {
     if (!this->has_high_surrogate ()) {
@@ -1150,19 +1146,18 @@ bool string_matcher<Callbacks>::appender::append16 (char16_t const cu) {
 
 // consume normal [static]
 // ~~~~~~~~~~~~~~
-template <typename Callbacks>
-auto string_matcher<Callbacks>::consume_normal (parser<Callbacks> &p,
-                                                bool is_object_key,
-                                                char32_t code_point,
-                                                appender &app)
+template <typename Backend>
+auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
+                                              bool is_object_key,
+                                              char32_t code_point,
+                                              appender &app)
     -> std::variant<state, std::error_code> {
-
   if (code_point == '"') {
     if (app.has_high_surrogate ()) {
       return error::bad_unicode_code_point;
     }
     // Consume the closing quote character.
-    auto &n = p.callbacks ();
+    auto &n = p.backend ();
     std::string_view const &result = *app.result ();
     if (std::error_code const error =
             is_object_key ? n.key (result) : n.string_value (result)) {
@@ -1187,9 +1182,8 @@ auto string_matcher<Callbacks>::consume_normal (parser<Callbacks> &p,
 
 // normal
 // ~~~~~~
-template <typename Callbacks>
-void string_matcher<Callbacks>::normal (parser<Callbacks> &p,
-                                        char32_t code_point) {
+template <typename Backend>
+void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1206,9 +1200,9 @@ void string_matcher<Callbacks>::normal (parser<Callbacks> &p,
 
 // hex value [static]
 // ~~~~~~~~~
-template <typename Callbacks>
-std::optional<unsigned>
-string_matcher<Callbacks>::hex_value (char32_t const c, unsigned const value) {
+template <typename Backend>
+std::optional<unsigned> string_matcher<Backend>::hex_value (
+    char32_t const c, unsigned const value) {
   auto digit = 0U;
   if (c >= '0' && c <= '9') {
     digit = static_cast<unsigned> (c) - '0';
@@ -1224,8 +1218,8 @@ string_matcher<Callbacks>::hex_value (char32_t const c, unsigned const value) {
 
 // consume hex [static]
 // ~~~~~~~~~~~
-template <typename Callbacks>
-auto string_matcher<Callbacks>::consume_hex (unsigned const hex,
+template <typename Backend>
+auto string_matcher<Backend>::consume_hex (unsigned const hex,
                                              enum state const state,
                                              char32_t const code_point,
                                              appender & app)
@@ -1262,9 +1256,8 @@ auto string_matcher<Callbacks>::consume_hex (unsigned const hex,
   return error::invalid_hex_char;
 }
 
-template <typename Callbacks>
-void string_matcher<Callbacks>::hex (parser<Callbacks> &p,
-                                     char32_t code_point) {
+template <typename Backend>
+void string_matcher<Backend>::hex (parser<Backend> &p, char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1283,11 +1276,10 @@ void string_matcher<Callbacks>::hex (parser<Callbacks> &p,
 
 // consume escape state [static]
 // ~~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
-                                                      appender &app)
+template <typename Backend>
+auto string_matcher<Backend>::consume_escape_state (char32_t code_point,
+                                                    appender &app)
     -> std::variant<state, error> {
-
   state next_state = normal_char_state;
   switch (code_point) {
   case '"': code_point = '"'; break;
@@ -1309,9 +1301,8 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
 
 // escape
 // ~~~~~~
-template <typename Callbacks>
-void string_matcher<Callbacks>::escape (parser<Callbacks> &p,
-                                        char32_t code_point) {
+template <typename Backend>
+void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1328,10 +1319,10 @@ void string_matcher<Callbacks>::escape (parser<Callbacks> &p,
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
-                                    std::optional<char> ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+string_matcher<Backend>::consume (parser<Backend> &parser,
+                                  std::optional<char> ch) {
   if (!ch) {
     this->set_error (parser, error::expected_close_quote);
     return {null_pointer (), true};
@@ -1370,34 +1361,33 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 //* \__,_|_| |_| \__,_|\_, | *
 //*                    |__/  *
 //-MARK:array
-template <typename Callbacks>
-class array_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class array_matcher final : public matcher<Backend> {
 public:
-  array_matcher () noexcept : matcher<Callbacks> (start_state) {}
+  array_matcher () noexcept : matcher<Backend> (start_state) {}
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
-  using matcher<Callbacks>::null_pointer;
+  using matcher<Backend>::null_pointer;
 
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     start_state,
     first_object_state,
     object_state,
     comma_state,
   };
 
-  void end_array (parser<Callbacks> &parser);
+  void end_array (parser<Backend> &parser);
 };
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-array_matcher<Callbacks>::consume (parser<Callbacks> &p,
-                                   std::optional<char> ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+array_matcher<Backend>::consume (parser<Backend> &p, std::optional<char> ch) {
   if (!ch) {
     this->set_error (p, error::expected_array_member);
     return {null_pointer (), true};
@@ -1406,7 +1396,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &p,
   switch (this->get_state ()) {
   case start_state:
     assert (c == '[');
-    if (this->set_error (p, p.callbacks ().begin_array ())) {
+    if (this->set_error (p, p.backend ().begin_array ())) {
       break;
     }
     this->set_state (first_object_state);
@@ -1447,9 +1437,9 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &p,
 
 // end array
 // ~~~~~~~~~
-template <typename Callbacks>
-void array_matcher<Callbacks>::end_array (parser<Callbacks> &parser) {
-  this->set_error (parser, parser.callbacks ().end_array ());
+template <typename Backend>
+void array_matcher<Backend>::end_array (parser<Backend> &parser) {
+  this->set_error (parser, parser.backend ().end_array ());
   this->set_state (done_state);
 }
 
@@ -1459,19 +1449,19 @@ void array_matcher<Callbacks>::end_array (parser<Callbacks> &parser) {
 //* \___/_.__// \___\__|\__| *
 //*         |__/             *
 //-MARK:object
-template <typename Callbacks>
-class object_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class object_matcher final : public matcher<Backend> {
 public:
-  object_matcher () noexcept : matcher<Callbacks> (start_state) {}
+  object_matcher () noexcept : matcher<Backend> (start_state) {}
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
-  using matcher<Callbacks>::null_pointer;
+  using matcher<Backend>::null_pointer;
 
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     start_state,
     first_key_state,
     key_state,
@@ -1480,15 +1470,15 @@ private:
     comma_state,
   };
 
-  void end_object (parser<Callbacks> &parser);
+  void end_object (parser<Backend> &parser);
 };
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
-                                    std::optional<char> ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+object_matcher<Backend>::consume (parser<Backend> &parser,
+                                  std::optional<char> ch) {
   if (this->get_state () == done_state) {
     assert (parser.last_error ());
     return {null_pointer (), true};
@@ -1502,7 +1492,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
   case start_state:
     assert (c == '{');
     this->set_state (first_key_state);
-    if (this->set_error (parser, parser.callbacks ().begin_object ())) {
+    if (this->set_error (parser, parser.backend ().begin_object ())) {
       break;
     }
     return {this->make_whitespace_matcher (parser), true};
@@ -1563,9 +1553,9 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 
 // end object
 // ~~~~~~~~~~~
-template <typename Callbacks>
-void object_matcher<Callbacks>::end_object (parser<Callbacks> &parser) {
-  this->set_error (parser, parser.callbacks ().end_object ());
+template <typename Backend>
+void object_matcher<Backend>::end_object (parser<Backend> &parser) {
+  this->set_error (parser, parser.backend ().end_object ());
   this->set_state (done_state);
 }
 
@@ -1578,24 +1568,24 @@ void object_matcher<Callbacks>::end_object (parser<Callbacks> &parser) {
 /// the various combinations of CR and LF. Supports #, //, and /* style comments
 /// as an extension.
 //-MARK:whitespace
-template <typename Callbacks>
-class whitespace_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class whitespace_matcher final : public matcher<Backend> {
 public:
-  whitespace_matcher () noexcept : matcher<Callbacks> (body_state) {}
+  whitespace_matcher () noexcept : matcher<Backend> (body_state) {}
   whitespace_matcher (whitespace_matcher const &) = delete;
   whitespace_matcher (whitespace_matcher &&) noexcept = default;
 
   whitespace_matcher &operator= (whitespace_matcher const &) = delete;
   whitespace_matcher &operator= (whitespace_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
-  using matcher<Callbacks>::null_pointer;
+  using matcher<Backend>::null_pointer;
 
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     /// Normal whitespace scanning. The "body" is the whitespace being consumed.
     body_state,
     /// Handles the LF part of a Windows-style CR/LF pair.
@@ -1612,26 +1602,26 @@ private:
     multi_line_comment_crlf_state,
   };
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume_body (
-      parser<Callbacks> &parser, char c);
+  std::pair<typename matcher<Backend>::pointer, bool> consume_body (
+      parser<Backend> &parser, char c);
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume_comment_start (
-      parser<Callbacks> &parser, char c);
+  std::pair<typename matcher<Backend>::pointer, bool> consume_comment_start (
+      parser<Backend> &parser, char c);
 
-  std::pair<typename matcher<Callbacks>::pointer, bool>
-  multi_line_comment_body (parser<Callbacks> &parser, char c);
+  std::pair<typename matcher<Backend>::pointer, bool> multi_line_comment_body (
+      parser<Backend> &parser, char c);
 
-  void cr (parser<Callbacks> &parser, state next) {
+  void cr (parser<Backend> &parser, state next) {
     assert (this->get_state () == multi_line_comment_body_state ||
             this->get_state () == body_state);
     parser.advance_row ();
     this->set_state (next);
   }
-  void lf (parser<Callbacks> &parser) { parser.advance_row (); }
+  void lf (parser<Backend> &parser) { parser.advance_row (); }
 
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
   /// if the character shoud be treated as whitespace.
-  bool crlf (parser<Callbacks> &parser, char c) {
+  bool crlf (parser<Backend> &parser, char c) {
     if (c != details::char_set::lf) {
       return false;
     }
@@ -1642,10 +1632,10 @@ private:
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
-                                        std::optional<char> ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+whitespace_matcher<Backend>::consume (parser<Backend> &parser,
+                                      std::optional<char> ch) {
   if (!ch) {
     this->set_state (done_state);
   } else {
@@ -1697,10 +1687,9 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 
 // consume body
 // ~~~~~~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-whitespace_matcher<Callbacks>::consume_body (parser<Callbacks> &parser,
-                                             char c) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+whitespace_matcher<Backend>::consume_body (parser<Backend> &parser, char c) {
   auto const stop_retry = [this] () {
     // Stop, pop this matcher, and retry with the same character.
     this->set_state (done_state);
@@ -1742,10 +1731,10 @@ whitespace_matcher<Callbacks>::consume_body (parser<Callbacks> &parser,
 ///   - just a random / character.
 /// This function handles the character after that initial slash to determine
 /// which of the three it is.
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-whitespace_matcher<Callbacks>::consume_comment_start (parser<Callbacks> &parser,
-                                                      char c) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+whitespace_matcher<Backend>::consume_comment_start (parser<Backend> &parser,
+                                                    char c) {
   using details::char_set;
   if (c == char_set::slash &&
       parser.extension_enabled (extensions::single_line_comments)) {
@@ -1764,10 +1753,10 @@ whitespace_matcher<Callbacks>::consume_comment_start (parser<Callbacks> &parser,
 /// Similar to consume_body() except that the commented characters are consumed
 /// as well as whitespace. We're looking to see a star ('*') character which may
 /// indicate the end of the multi-line comment.
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-whitespace_matcher<Callbacks>::multi_line_comment_body (
-    parser<Callbacks> &parser, char c) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
+                                                      char c) {
   using details::char_set;
   assert (parser.extension_enabled (extensions::multi_line_comments));
   assert (this->get_state () == multi_line_comment_body_state);
@@ -1791,33 +1780,33 @@ whitespace_matcher<Callbacks>::multi_line_comment_body (
 //* \___\___/_|   *
 //*               *
 //-MARK:eof
-template <typename Callbacks>
-class eof_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class eof_matcher final : public matcher<Backend> {
 public:
-  eof_matcher () noexcept : matcher<Callbacks> (start_state) {}
+  eof_matcher () noexcept : matcher<Backend> (start_state) {}
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     start_state,
   };
 };
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-eof_matcher<Callbacks>::consume (parser<Callbacks> &parser,
-                                 std::optional<char> const ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+eof_matcher<Backend>::consume (parser<Backend> &parser,
+                               std::optional<char> const ch) {
   if (ch) {
     this->set_error (parser, error::unexpected_extra_input);
   } else {
     this->set_state (done_state);
   }
-  return {matcher<Callbacks>::null_pointer (), true};
+  return {matcher<Backend>::null_pointer (), true};
 }
 
 //*               _                _      _             *
@@ -1826,20 +1815,20 @@ eof_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 //* |_| \___/\___/\__| |_|_|_\__,_|\__\__|_||_\___|_|   *
 //*                                                     *
 //-MARK:root
-template <typename Callbacks>
-class root_matcher final : public matcher<Callbacks> {
+template <typename Backend>
+class root_matcher final : public matcher<Backend> {
 public:
   explicit constexpr root_matcher (bool const is_object_key = false) noexcept
-      : matcher<Callbacks> (start_state), object_key_{is_object_key} {}
+      : matcher<Backend> (start_state), object_key_{is_object_key} {}
 
-  std::pair<typename matcher<Callbacks>::pointer, bool> consume (
-      parser<Callbacks> &parser, std::optional<char> ch) override;
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char> ch) override;
 
 private:
-  using matcher<Callbacks>::null_pointer;
+  using matcher<Backend>::null_pointer;
 
   enum state {
-    done_state = matcher<Callbacks>::done,
+    done_state = matcher<Backend>::done,
     start_state,
     new_token_state,
   };
@@ -1848,16 +1837,16 @@ private:
 
 // consume
 // ~~~~~~~
-template <typename Callbacks>
-std::pair<typename matcher<Callbacks>::pointer, bool>
-root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
-                                  std::optional<char> ch) {
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+root_matcher<Backend>::consume (parser<Backend> &parser,
+                                std::optional<char> ch) {
   if (!ch) {
     this->set_error (parser, error::expected_token);
     return {null_pointer (), true};
   }
 
-  using pointer = typename matcher<Callbacks>::pointer;
+  using pointer = typename matcher<Backend>::pointer;
   using deleter = typename pointer::deleter_type;
   switch (this->get_state ()) {
   case start_state:
@@ -1883,34 +1872,34 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
     case '7':
     case '8':
     case '9':
-      return {this->template make_terminal_matcher<number_matcher<Callbacks>> (
+      return {this->template make_terminal_matcher<number_matcher<Backend>> (
                   parser),
               false};
     case '"':
-      return {this->template make_terminal_matcher<string_matcher<Callbacks>> (
+      return {this->template make_terminal_matcher<string_matcher<Backend>> (
                   parser, &parser.string_, object_key_),
               false};
     case 't':
       return {
-          this->template make_terminal_matcher<true_token_matcher<Callbacks>> (
+          this->template make_terminal_matcher<true_token_matcher<Backend>> (
               parser),
           false};
     case 'f':
       return {
-          this->template make_terminal_matcher<false_token_matcher<Callbacks>> (
+          this->template make_terminal_matcher<false_token_matcher<Backend>> (
               parser),
           false};
     case 'n':
       return {
-          this->template make_terminal_matcher<null_token_matcher<Callbacks>> (
+          this->template make_terminal_matcher<null_token_matcher<Backend>> (
               parser),
           false};
     case '[':
-      return {pointer{new array_matcher<Callbacks> (),
+      return {pointer{new array_matcher<Backend> (),
                       deleter{deleter::mode::do_delete}},
               false};
     case '{':
-      return {pointer{new object_matcher<Callbacks> (),
+      return {pointer{new object_matcher<Backend> (),
                       deleter{deleter::mode::do_delete}},
               false};
     default:
@@ -1930,23 +1919,23 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
 //* /__/_|_||_\__, |_\___|\__\___/_||_| /__/\__\___/_| \__,_\__, \___| *
 //*           |___/                                         |___/      *
 //-MARK:singleton storage
-template <typename Callbacks>
+template <typename Backend>
 struct singleton_storage {
   template <typename T>
   struct storage {
     using type = typename std::aligned_storage_t<sizeof (T), alignof (T)>;
   };
 
-  typename storage<eof_matcher<Callbacks>>::type eof;
-  typename storage<whitespace_matcher<Callbacks>>::type trailing_ws;
-  typename storage<root_matcher<Callbacks>>::type root;
+  typename storage<eof_matcher<Backend>>::type eof;
+  typename storage<whitespace_matcher<Backend>>::type trailing_ws;
+  typename storage<root_matcher<Backend>>::type root;
 
-  std::variant<details::number_matcher<Callbacks>,
-               details::string_matcher<Callbacks>,
-               details::true_token_matcher<Callbacks>,
-               details::false_token_matcher<Callbacks>,
-               details::null_token_matcher<Callbacks>,
-               details::whitespace_matcher<Callbacks>>
+  std::variant<details::number_matcher<Backend>,
+               details::string_matcher<Backend>,
+               details::true_token_matcher<Backend>,
+               details::false_token_matcher<Backend>,
+               details::null_token_matcher<Backend>,
+               details::whitespace_matcher<Backend>>
       terminals_;
 };
 
@@ -1954,34 +1943,31 @@ struct singleton_storage {
 
 // (ctor)
 // ~~~~~~
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
-template <typename OtherCallbacks>
-PEEJAY_CXX20REQUIRES (notifications<OtherCallbacks>)
-parser<Callbacks>::parser (OtherCallbacks &&callbacks,
-                           extensions const extensions)
-    : extensions_{extensions},
-      callbacks_{std::forward<OtherCallbacks> (callbacks)} {
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+template <typename OtherBackend>
+PEEJAY_CXX20REQUIRES (backend<OtherBackend>)
+parser<Backend>::parser (OtherBackend &&backend, extensions const extensions)
+    : extensions_{extensions}, backend_{std::forward<OtherBackend> (backend)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
   // input JSON ends after a single top-level object.
-  stack_.push (mpointer (new (&singletons_.eof)
-                             details::eof_matcher<Callbacks>{},
+  stack_.push (mpointer (new (&singletons_.eof) details::eof_matcher<Backend>{},
                          deleter{deleter::mode::do_dtor}));
   // We permit whitespace after the top-level object.
   stack_.push (mpointer (new (&singletons_.trailing_ws)
-                             details::whitespace_matcher<Callbacks>{},
+                             details::whitespace_matcher<Backend>{},
                          deleter{deleter::mode::do_dtor}));
   stack_.push (this->make_root_matcher ());
 }
 
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
-auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
-  using root_matcher = details::root_matcher<Callbacks>;
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+auto parser<Backend>::make_root_matcher (bool object_key) -> pointer {
+  using root_matcher = details::root_matcher<Backend>;
   using deleter = typename pointer::deleter_type;
   return pointer (new (&singletons_.root) root_matcher (object_key),
                   deleter{deleter::mode::do_dtor});
@@ -1989,20 +1975,20 @@ auto parser<Callbacks>::make_root_matcher (bool object_key) -> pointer {
 
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
-auto parser<Callbacks>::make_whitespace_matcher () -> pointer {
-  using whitespace_matcher = details::whitespace_matcher<Callbacks>;
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+auto parser<Backend>::make_whitespace_matcher () -> pointer {
+  using whitespace_matcher = details::whitespace_matcher<Backend>;
   return this->make_terminal_matcher<whitespace_matcher> ();
 }
 
 // input
 // ~~~~~
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
-auto parser<Callbacks>::input (InputIterator first, InputIterator last)
+auto parser<Backend>::input (InputIterator first, InputIterator last)
     -> parser & {
   static_assert (
       std::is_same_v<typename std::remove_cv_t<typename std::iterator_traits<
@@ -2052,9 +2038,9 @@ auto parser<Callbacks>::input (InputIterator first, InputIterator last)
 
 // eof
 // ~~~
-template <typename Callbacks>
-PEEJAY_CXX20REQUIRES (notifications<Callbacks>)
-decltype (auto) parser<Callbacks>::eof () {
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+decltype (auto) parser<Backend>::eof () {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
     auto res = handler->consume (*this, std::optional<char>{std::nullopt});
@@ -2062,7 +2048,7 @@ decltype (auto) parser<Callbacks>::eof () {
     assert (res.second);
     stack_.pop ();  // release the topmost matcher object.
   }
-  return this->callbacks ().result ();
+  return this->backend ().result ();
 }
 
 }  // namespace peejay
