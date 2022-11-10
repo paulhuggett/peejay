@@ -18,7 +18,7 @@
 
 #include <iosfwd>
 
-#include "json/dom.hpp"
+#include "peejay/dom.hpp"
 
 namespace peejay {
 

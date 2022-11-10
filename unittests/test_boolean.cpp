@@ -13,7 +13,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#include "json/json.hpp"
+#include "peejay/json.hpp"
 
 // Standard library
 #include <string>

@@ -27,7 +27,7 @@
 #include <unistd.h>
 #endif  // !_WIN32
 
-#include "json/emit.hpp"
+#include "peejay/emit.hpp"
 
 namespace {
 

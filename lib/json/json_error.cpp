@@ -13,7 +13,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#include "json/json_error.hpp"
+#include "peejay/json_error.hpp"
 
 #include <cassert>
 

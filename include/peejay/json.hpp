@@ -16,9 +16,9 @@
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
-#include "json/json_error.hpp"
-#include "json/portab.hpp"
-#include "json/utf.hpp"
+#include "peejay/json_error.hpp"
+#include "peejay/portab.hpp"
+#include "peejay/utf.hpp"
 
 // Standard library
 #include <array>

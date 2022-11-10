@@ -16,8 +16,8 @@
 #include <cerrno>
 
 #include "callbacks.hpp"
-#include "json/json.hpp"
-#include "json/null.hpp"
+#include "peejay/json.hpp"
+#include "peejay/null.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

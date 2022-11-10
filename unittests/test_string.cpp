@@ -14,7 +14,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "callbacks.hpp"
-#include "json/json.hpp"
+#include "peejay/json.hpp"
 
 using namespace std::string_view_literals;
 

@@ -13,12 +13,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#include "json/json.hpp"
+#include "peejay/json.hpp"
 // standard library
 #include <stack>
 
 #include "callbacks.hpp"
-#include "json/null.hpp"
+#include "peejay/null.hpp"
 
 using namespace std::string_literals;
 using testing::DoubleEq;

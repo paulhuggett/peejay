@@ -25,8 +25,8 @@
 #include <variant>
 #include <vector>
 
-#include "json/arrayvec.hpp"
-#include "json/json.hpp"
+#include "peejay/arrayvec.hpp"
+#include "peejay/json.hpp"
 
 namespace peejay {
 

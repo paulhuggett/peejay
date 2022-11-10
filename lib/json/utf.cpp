@@ -38,7 +38,7 @@
 //
 // For more information, see <http://bjoern.hoehrmann.de/utf-8/decoder/dfa/>
 
-#include "json/utf.hpp"
+#include "peejay/utf.hpp"
 
 #include <cctype>
 

@@ -18,8 +18,8 @@
 #include <fstream>
 #include <iostream>
 
-#include "json/json.hpp"
-#include "json/utf.hpp"
+#include "peejay/json.hpp"
+#include "peejay/utf.hpp"
 
 namespace {
 

@@ -17,8 +17,8 @@
 #include <iostream>
 #include <string>
 
-#include "json/json.hpp"
-#include "json/null.hpp"
+#include "peejay/json.hpp"
+#include "peejay/null.hpp"
 
 template <typename N>
 void report_error (peejay::parser<N>& p, std::string_view const& file_name,

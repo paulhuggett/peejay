@@ -20,7 +20,7 @@
 #include "klee/klee.h"
 #endif
 
-#include "json/json.hpp"
+#include "peejay/json.hpp"
 int main () {
 #ifdef KLEE
   static constexpr std::size_t const size = 10;
