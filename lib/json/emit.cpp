@@ -16,6 +16,7 @@
 #include "json/emit.hpp"
 
 #include <array>
+#include <cstddef>
 #include <span>
 
 using namespace peejay;
@@ -80,9 +81,9 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
       auto const c = static_cast<std::byte> (*pos);
       auto const high_nibble = ((c & std::byte{0xF0}) >> 4);
       auto const low_nibble = c & std::byte{0x0F};
-      std::array<char, 5> hex{{'u', '0', '0',
-                               to_hex (to_integer<unsigned> (high_nibble)),
-                               to_hex (to_integer<unsigned> (low_nibble))}};
+      std::array<char, 5> hex{
+          {'u', '0', '0', to_hex (std::to_integer<unsigned> (high_nibble)),
+           to_hex (std::to_integer<unsigned> (low_nibble))}};
       os.write (hex.data (), hex.size ());
     } break;
     }
