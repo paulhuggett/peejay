@@ -54,6 +54,9 @@
 
 namespace peejay {
 
+template <typename... T>
+constexpr bool always_false = false;
+
 #if PEEJAY_CXX20
 template <typename T>
 concept notifications = requires (T &&v) {
@@ -194,7 +197,7 @@ struct coord {
   }
 #endif  // PEEJAY_CXX20
 
-      unsigned line = 1U;
+  unsigned line = 1U;
   unsigned column = 1U;
 };
 
@@ -568,7 +571,6 @@ std::pair<typename matcher<Callbacks>::pointer, bool> token_matcher<
     this->set_error (parser, done_ (parser));
     this->set_state (done_state);
     break;
-  case done_state:
   default: PEEJAY_UNREACHABLE; break;
   }
   return {matcher<Callbacks>::null_pointer (), match};
@@ -1030,6 +1032,8 @@ public:
       parser<Callbacks> &parser, std::optional<char> ch) override;
 
 private:
+  using matcher<Callbacks>::null_pointer;
+
   enum state {
     done_state = matcher<Callbacks>::done,
     start_state,
@@ -1056,17 +1060,35 @@ private:
     char16_t high_surrogate_ = 0;
   };
 
-  std::variant<state, std::error_code> consume_normal_state (
-      parser<Callbacks> &parser, char32_t code_point, appender &app);
+  static std::variant<state, std::error_code> consume_normal (
+      parser<Callbacks> &p, bool is_object_key, char32_t code_point,
+      appender &app);
 
+  /// Process a single "normal" (i.e. not part of an escape or hex sequence)
+  /// character. This function wraps consume_normal(). That function does the
+  /// real work but this wrapper performs any necessary mutations of the state
+  /// machine.
+  ///
+  /// \param p  The parent parser instance.
+  /// \param code_point  The Unicode character being processed.
+  void normal (parser<Callbacks> &p, char32_t code_point);
+
+  /// Adds a single hexadecimal character to \p value.
+  ///
+  /// \param c  The Unicode code point of the character to be added.
+  /// \param value  The initial value.
+  /// \returns  If \p c represents a valid hexadecimal character (0..9,A-F,a-f)
+  ///   returns \p value * 16 plus the decoded value of \p c. Returns an
+  ///   optional with no value if \p c is not a valid hexadecimal character.
   static std::optional<unsigned> hex_value (char32_t c, unsigned value);
 
-  static std::variant<error, std::tuple<unsigned, enum state>>
-  consume_hex_state (unsigned hex, enum state state, char32_t code_point,
-                     appender &app);
+  static std::variant<error, std::tuple<unsigned, enum state>> consume_hex (
+      unsigned hex, enum state state, char32_t code_point, appender &app);
+  void hex (parser<Callbacks> &p, char32_t code_point);
 
   static std::variant<state, error> consume_escape_state (char32_t code_point,
                                                           appender &app);
+  void escape (parser<Callbacks> &p, char32_t code_point);
 
   static constexpr bool is_hex_state (enum state const state) noexcept {
     return state == hex1_state || state == hex2_state || state == hex3_state ||
@@ -1126,22 +1148,24 @@ bool string_matcher<Callbacks>::appender::append16 (char16_t const cu) {
   return ok;
 }
 
-// consume normal state
-// ~~~~~~~~~~~~~~~~~~~~
+// consume normal [static]
+// ~~~~~~~~~~~~~~
 template <typename Callbacks>
-auto string_matcher<Callbacks>::consume_normal_state (parser<Callbacks> &parser,
-                                                      char32_t code_point,
-                                                      appender &app)
+auto string_matcher<Callbacks>::consume_normal (parser<Callbacks> &p,
+                                                bool is_object_key,
+                                                char32_t code_point,
+                                                appender &app)
     -> std::variant<state, std::error_code> {
+
   if (code_point == '"') {
     if (app.has_high_surrogate ()) {
       return error::bad_unicode_code_point;
     }
     // Consume the closing quote character.
-    auto &n = parser.callbacks ();
+    auto &n = p.callbacks ();
     std::string_view const &result = *app.result ();
     if (std::error_code const error =
-            is_object_key_ ? n.key (result) : n.string_value (result)) {
+            is_object_key ? n.key (result) : n.string_value (result)) {
       return error;
     }
     return done_state;
@@ -1161,11 +1185,30 @@ auto string_matcher<Callbacks>::consume_normal_state (parser<Callbacks> &parser,
   return normal_char_state;
 }
 
+// normal
+// ~~~~~~
+template <typename Callbacks>
+void string_matcher<Callbacks>::normal (parser<Callbacks> &p,
+                                        char32_t code_point) {
+  std::visit (
+      [this, &p] (auto &&arg) {
+        using T = std::decay_t<decltype (arg)>;
+        if constexpr (std::is_same_v<T, std::error_code>) {
+          this->set_error (p, arg);
+        } else if constexpr (std::is_same_v<T, state>) {
+          this->set_state (arg);
+        } else {
+          static_assert (always_false<T>, "non-exhaustive visitor");
+        }
+      },
+      string_matcher::consume_normal (p, is_object_key_, code_point, app_));
+}
+
 // hex value [static]
 // ~~~~~~~~~
 template <typename Callbacks>
-std::optional<unsigned> string_matcher<Callbacks>::hex_value (
-    char32_t const c, unsigned const value) {
+std::optional<unsigned>
+string_matcher<Callbacks>::hex_value (char32_t const c, unsigned const value) {
   auto digit = 0U;
   if (c >= '0' && c <= '9') {
     digit = static_cast<unsigned> (c) - '0';
@@ -1179,14 +1222,15 @@ std::optional<unsigned> string_matcher<Callbacks>::hex_value (
   return {16U * value + digit};
 }
 
-// consume hex state [static]
-// ~~~~~~~~~~~~~~~~~
+// consume hex [static]
+// ~~~~~~~~~~~
 template <typename Callbacks>
-auto string_matcher<Callbacks>::consume_hex_state (unsigned const hex,
-                                                   enum state const state,
-                                                   char32_t const code_point,
-                                                   appender & app)
+auto string_matcher<Callbacks>::consume_hex (unsigned const hex,
+                                             enum state const state,
+                                             char32_t const code_point,
+                                             appender & app)
     -> std::variant<error, std::tuple<unsigned, enum state>> {
+
   assert (is_hex_state (state));
   auto const opt_value = hex_value (code_point, hex);
   if (!opt_value) {
@@ -1218,12 +1262,32 @@ auto string_matcher<Callbacks>::consume_hex_state (unsigned const hex,
   return error::invalid_hex_char;
 }
 
+template <typename Callbacks>
+void string_matcher<Callbacks>::hex (parser<Callbacks> &p,
+                                     char32_t code_point) {
+  std::visit (
+      [this, &p] (auto &&arg) {
+        using T = std::decay_t<decltype (arg)>;
+        if constexpr (std::is_same_v<T, error>) {
+          this->set_error (p, arg);
+        } else if constexpr (std::is_same_v<T, std::tuple<unsigned, state>>) {
+          hex_ = std::get<unsigned> (arg);
+          this->set_state (std::get<state> (arg));
+        } else {
+          static_assert (always_false<T>, "non-exhaustive visitor");
+        }
+      },
+      string_matcher::consume_hex (
+          hex_, static_cast<state> (this->get_state ()), code_point, app_));
+}
+
 // consume escape state [static]
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Callbacks>
 auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
                                                       appender &app)
     -> std::variant<state, error> {
+
   state next_state = normal_char_state;
   switch (code_point) {
   case '"': code_point = '"'; break;
@@ -1243,8 +1307,24 @@ auto string_matcher<Callbacks>::consume_escape_state (char32_t code_point,
   return {next_state};
 }
 
-template <typename... T>
-constexpr bool always_false = false;
+// escape
+// ~~~~~~
+template <typename Callbacks>
+void string_matcher<Callbacks>::escape (parser<Callbacks> &p,
+                                        char32_t code_point) {
+  std::visit (
+      [this, &p] (auto &&arg) {
+        using T = std::decay_t<decltype (arg)>;
+        if constexpr (std::is_same_v<T, error>) {
+          this->set_error (p, arg);
+        } else if constexpr (std::is_same_v<T, state>) {
+          this->set_state (arg);
+        } else {
+          static_assert (always_false<T>, "non-exhaustive visitor");
+        }
+      },
+      string_matcher::consume_escape_state (code_point, app_));
+}
 
 // consume
 // ~~~~~~~
@@ -1254,7 +1334,7 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                     std::optional<char> ch) {
   if (!ch) {
     this->set_error (parser, error::expected_close_quote);
-    return {matcher<Callbacks>::null_pointer (), true};
+    return {null_pointer (), true};
   }
 
   if (std::optional<char32_t> const code_point =
@@ -1269,63 +1349,19 @@ string_matcher<Callbacks>::consume (parser<Callbacks> &parser,
         this->set_error (parser, error::expected_token);
       }
       break;
-    case normal_char_state:
-      std::visit (
-          [this, &parser] (auto &&arg) {
-            using T = std::decay_t<decltype (arg)>;
-            if constexpr (std::is_same_v<T, std::error_code>) {
-              this->set_error (parser, arg);
-            } else if constexpr (std::is_same_v<T, state>) {
-              this->set_state (arg);
-            } else {
-              static_assert (always_false<T>, "non-exhaustive visitor");
-            }
-          },
-          string_matcher::consume_normal_state (parser, *code_point, app_));
-      break;
-
-    case escape_state:
-      std::visit (
-          [this, &parser] (auto &&arg) {
-            using T = std::decay_t<decltype (arg)>;
-            if constexpr (std::is_same_v<T, error>) {
-              this->set_error (parser, arg);
-            } else if constexpr (std::is_same_v<T, state>) {
-              this->set_state (arg);
-            } else {
-              static_assert (always_false<T>, "non-exhaustive visitor");
-            }
-          },
-          string_matcher::consume_escape_state (*code_point, app_));
-      break;
+    case normal_char_state: this->normal (parser, *code_point); break;
+    case escape_state: this->escape (parser, *code_point); break;
 
     case hex1_state: assert (hex_ == 0U); [[fallthrough]];
     case hex2_state:
     case hex3_state:
-    case hex4_state: {
-      std::visit (
-          [this, &parser] (auto &&arg) {
-            using T = std::decay_t<decltype (arg)>;
-            if constexpr (std::is_same_v<T, error>) {
-              this->set_error (parser, arg);
-            } else if constexpr (std::is_same_v<T,
-                                                std::tuple<unsigned, state>>) {
-              hex_ = std::get<unsigned> (arg);
-              this->set_state (std::get<state> (arg));
-            } else {
-              static_assert (always_false<T>, "non-exhaustive visitor");
-            }
-          },
-          string_matcher::consume_hex_state (
-              hex_, static_cast<state> (this->get_state ()), *code_point,
-              app_));
-    } break;
+    case hex4_state: this->hex (parser, *code_point); break;
 
     case done_state:
     default: assert (false); break;
     }
   }
-  return {matcher<Callbacks>::null_pointer (), true};
+  return {null_pointer (), true};
 }
 
 //*                          *
@@ -1343,6 +1379,8 @@ public:
       parser<Callbacks> &parser, std::optional<char> ch) override;
 
 private:
+  using matcher<Callbacks>::null_pointer;
+
   enum state {
     done_state = matcher<Callbacks>::done,
     start_state,
@@ -1362,7 +1400,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &p,
                                    std::optional<char> ch) {
   if (!ch) {
     this->set_error (p, error::expected_array_member);
-    return {matcher<Callbacks>::null_pointer (), true};
+    return {null_pointer (), true};
   }
   char const c = *ch;
   switch (this->get_state ()) {
@@ -1404,7 +1442,7 @@ array_matcher<Callbacks>::consume (parser<Callbacks> &p,
   case done_state:
   default: assert (false); break;
   }
-  return {matcher<Callbacks>::null_pointer (), true};
+  return {null_pointer (), true};
 }
 
 // end array
@@ -1430,6 +1468,8 @@ public:
       parser<Callbacks> &parser, std::optional<char> ch) override;
 
 private:
+  using matcher<Callbacks>::null_pointer;
+
   enum state {
     done_state = matcher<Callbacks>::done,
     start_state,
@@ -1451,11 +1491,11 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                     std::optional<char> ch) {
   if (this->get_state () == done_state) {
     assert (parser.last_error ());
-    return {matcher<Callbacks>::null_pointer (), true};
+    return {null_pointer (), true};
   }
   if (!ch) {
     this->set_error (parser, error::expected_object_member);
-    return {matcher<Callbacks>::null_pointer (), true};
+    return {null_pointer (), true};
   }
   char const c = *ch;
   switch (this->get_state ()) {
@@ -1518,7 +1558,7 @@ object_matcher<Callbacks>::consume (parser<Callbacks> &parser,
   default: assert (false); break;
   }
   // No change of matcher. Consume the input character.
-  return {matcher<Callbacks>::null_pointer (), true};
+  return {null_pointer (), true};
 }
 
 // end object
@@ -1552,6 +1592,8 @@ public:
       parser<Callbacks> &parser, std::optional<char> ch) override;
 
 private:
+  using matcher<Callbacks>::null_pointer;
+
   enum state {
     done_state = matcher<Callbacks>::done,
     /// Normal whitespace scanning. The "body" is the whitespace being consumed.
@@ -1642,16 +1684,15 @@ whitespace_matcher<Callbacks>::consume (parser<Callbacks> &parser,
         // This character marks a bash/single-line comment end. Go back to
         // normal whitespace handling. Retry with the same character.
         this->set_state (body_state);
-        return {matcher<Callbacks>::null_pointer (), false};
+        return {null_pointer (), false};
       }
       // Just consume the character.
       break;
 
-    case done_state:
     default: assert (false); break;
     }
   }
-  return {matcher<Callbacks>::null_pointer (), true};
+  return {null_pointer (), true};
 }
 
 // consume body
@@ -1663,7 +1704,7 @@ whitespace_matcher<Callbacks>::consume_body (parser<Callbacks> &parser,
   auto const stop_retry = [this] () {
     // Stop, pop this matcher, and retry with the same character.
     this->set_state (done_state);
-    return std::pair{matcher<Callbacks>::null_pointer (), false};
+    return std::pair{null_pointer (), false};
   };
 
   using details::char_set;
@@ -1689,8 +1730,7 @@ whitespace_matcher<Callbacks>::consume_body (parser<Callbacks> &parser,
     break;
   default: return stop_retry ();
   }
-  return {matcher<Callbacks>::null_pointer (),
-          true};  // Consume this character.
+  return {null_pointer (), true};  // Consume this character.
 }
 
 // consume comment start
@@ -1716,8 +1756,7 @@ whitespace_matcher<Callbacks>::consume_comment_start (parser<Callbacks> &parser,
   } else {
     this->set_error (parser, error::expected_token);
   }
-  return {matcher<Callbacks>::null_pointer (),
-          true};  // Consume this character.
+  return {null_pointer (), true};  // Consume this character.
 }
 
 // multi line comment body
@@ -1743,8 +1782,7 @@ whitespace_matcher<Callbacks>::multi_line_comment_body (
   case char_set::tab: break;  // TODO: tab expansion.
   default: break;             // Just consume.
   }
-  return {matcher<Callbacks>::null_pointer (),
-          true};  // Consume this character.
+  return {null_pointer (), true};  // Consume this character.
 }
 
 //*           __  *
@@ -1798,6 +1836,8 @@ public:
       parser<Callbacks> &parser, std::optional<char> ch) override;
 
 private:
+  using matcher<Callbacks>::null_pointer;
+
   enum state {
     done_state = matcher<Callbacks>::done,
     start_state,
@@ -1814,7 +1854,7 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
                                   std::optional<char> ch) {
   if (!ch) {
     this->set_error (parser, error::expected_token);
-    return {matcher<Callbacks>::null_pointer (), true};
+    return {null_pointer (), true};
   }
 
   using pointer = typename matcher<Callbacks>::pointer;
@@ -1875,14 +1915,13 @@ root_matcher<Callbacks>::consume (parser<Callbacks> &parser,
               false};
     default:
       this->set_error (parser, error::expected_token);
-      return {matcher<Callbacks>::null_pointer (), true};
+      return {null_pointer (), true};
     }
   } break;
-  case done_state:
-  default: assert (false); break;
+  default: PEEJAY_UNREACHABLE; break;
   }
   assert (false);  // unreachable.
-  return {matcher<Callbacks>::null_pointer (), true};
+  return {null_pointer (), true};
 }
 
 //*     _           _     _                 _                          *
