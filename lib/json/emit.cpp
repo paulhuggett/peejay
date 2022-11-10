@@ -76,9 +76,11 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
     case 0x0D: os << 'r'; break;   // carriage return U+000D
     case 0x09: os << 't'; break;   // tab             U+0009
     default: {
-      auto const c = static_cast<uint8_t> (*pos);
-      char hex[5] = {'u', '0', '0', to_hex ((c & 0xF0) >> 4),
-                     to_hex (c & 0x0F)};
+      auto const c = static_cast<std::byte> (*pos);
+      auto const high_nibble = ((c & std::byte{0xF0}) >> 4);
+      auto const low_nibble = c & std::byte{0x0F};
+      char hex[5] = {'u', '0', '0', to_hex (to_integer<unsigned> (high_nibble)),
+                     to_hex (to_integer<unsigned> (low_nibble))};
       os.write (hex, 5);
     } break;
     }
