@@ -63,7 +63,7 @@ jobs:
               -D CMAKE_CXX_COMPILER=clang++-12
 
     - name: Build
-      run: cmake --build "${{ runner.workspace }}/build" --config ${{ matrix.build_type }}
+      run: cmake --build "${{ runner.workspace }}/build" --config Release
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, Go, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
