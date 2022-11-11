@@ -14,5 +14,5 @@
 #
 #===----------------------------------------------------------------------===//
 add_executable (pj-check check.cpp)
-target_link_libraries (pj-check PUBLIC json-parser)
+target_link_libraries (pj-check PUBLIC peejay)
 setup_target (pj-check)

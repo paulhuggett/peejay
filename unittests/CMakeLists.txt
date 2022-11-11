@@ -13,7 +13,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
-add_executable (json-tests
+add_executable (pj-unittests
   harness.cpp
   callbacks.cpp
   callbacks.hpp
@@ -30,8 +30,8 @@ add_executable (json-tests
   test_number.cpp
   test_string.cpp
 )
-setup_target (json-tests)
-target_link_libraries (json-tests PRIVATE json-parser gtest gmock)
+setup_target (pj-unittests)
+target_link_libraries (pj-unittests PRIVATE peejay gtest gmock)
 
 set (clang_options
   -Wno-global-constructors
@@ -41,7 +41,7 @@ set (gcc_options
 )
 set (msvc_options
 )
-target_compile_options (json-tests PRIVATE
+target_compile_options (pj-unittests PRIVATE
   $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
   $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
   $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>

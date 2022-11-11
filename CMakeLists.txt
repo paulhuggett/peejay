@@ -89,43 +89,28 @@ set_target_properties (gtest gmock gmock_main gtest_main
   PROPERTIES CXX_STANDARD ${STANDARD}
              CXX_STANDARD_REQUIRED Yes
 )
-add_library (json-parser STATIC
-  include/peejay/arrayvec.hpp
-  include/peejay/dom.hpp
-  include/peejay/emit.hpp
-  include/peejay/json.hpp
-  include/peejay/json_error.hpp
-  include/peejay/null.hpp
-  include/peejay/portab.hpp
-  include/peejay/utf.hpp
-  lib/json/json_error.cpp
-  lib/json/utf.cpp
-  lib/json/emit.cpp
-)
-target_include_directories (json-parser PUBLIC include)
-setup_target (json-parser)
 
 
-
+add_subdirectory (lib)
 add_subdirectory (unittests)
 
 
 add_executable (json-main main.cpp)
-target_link_libraries (json-main PUBLIC json-parser)
+target_link_libraries (json-main PUBLIC peejay)
 setup_target (json-main)
 
 add_custom_command (TARGET json-main
     PRE_LINK
-    COMMAND json-tests "--gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/output.xml"
+    COMMAND pj-unittests "--gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/output.xml"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Running json unit tests"
+    COMMENT "Running PJ unit tests"
     VERBATIM
 )
 
 
 
 add_executable (main-klee main_klee.cpp)
-target_link_libraries (main-klee PUBLIC json-parser)
+target_link_libraries (main-klee PUBLIC peejay)
 setup_target (main-klee)
 
 add_subdirectory (tools)
