@@ -212,6 +212,7 @@ enum class extensions : unsigned {
   array_trailing_comma = 1U << 3U,
   object_trailing_comma = 1U << 4U,
   single_quote_string = 1U << 5U,
+  leading_plus = 1U << 6U,
   all = ~none,
 };
 
@@ -748,6 +749,9 @@ bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
   if (c == '-') {
     this->set_state (integer_initial_digit_state);
     is_neg_ = true;
+  } else if (c == '+') {
+    assert (parser.extension_enabled (extensions::leading_plus));
+    this->set_state (integer_initial_digit_state);
   } else if (c >= '0' && c <= '9') {
     this->set_state (integer_initial_digit_state);
     match = do_integer_initial_digit_state (parser, c);
@@ -1865,6 +1869,13 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     }
     this->set_state (done_state);
     switch (*ch) {
+    case '+':
+      if (!parser.extension_enabled (extensions::leading_plus)) {
+        this->set_error (parser, error::expected_token);
+        return {null_pointer (), true};
+      }
+      [[fallthrough]];
+
     case '-':
     case '0':
     case '1':

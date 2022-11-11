@@ -22,6 +22,7 @@
 #include "peejay/null.hpp"
 
 using namespace std::string_literals;
+using namespace std::string_view_literals;
 using namespace peejay;
 
 using testing::DoubleEq;
@@ -69,6 +70,20 @@ TEST_F (Number, MinusOne) {
   parser p{proxy_};
   p.input ("-1"s).eof ();
   EXPECT_FALSE (p.has_error ());
+}
+
+TEST_F (Number, OneWithLeadingPlus) {
+  EXPECT_CALL (callbacks_, uint64_value (1U)).Times (1);
+  auto p = make_parser (proxy_, extensions::leading_plus);
+  p.input ("+1"sv).eof ();
+  EXPECT_FALSE (p.has_error ());
+}
+
+TEST_F (Number, LeadingPlusExtensionDisabled) {
+  parser p{proxy_};
+  p.input ("+1"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 
 TEST_F (Number, MinusOneLeadingZero) {
