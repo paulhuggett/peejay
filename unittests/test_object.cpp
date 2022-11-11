@@ -77,6 +77,21 @@ TEST_F (JsonObject, SingleKvp) {
   EXPECT_EQ (p.input_pos (), (coord{line{3U}, column{2U}}));
 }
 
+TEST_F (JsonObject, BadBeginObject) {
+  std::error_code const error{EDOM, std::generic_category ()};
+
+  using testing::_;
+  using testing::Return;
+  EXPECT_CALL (callbacks_, begin_object ()).WillOnce (Return (error));
+
+  auto p = make_parser (proxy_);
+  p.input (R"({ "a":1 })"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), error)
+      << "Expected the error to be propagated from the begin_object() callback";
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+}
+
 TEST_F (JsonObject, SingleKvpBadEndObject) {
   std::error_code const end_object_error{EDOM, std::generic_category ()};
 
