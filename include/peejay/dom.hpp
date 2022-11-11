@@ -88,37 +88,6 @@ private:
 
 }  // end namespace details
 
-enum class dom_error : int {
-  none,
-};
-
-// ******************
-// * error category *
-// ******************
-class dom_error_category final : public std::error_category {
-public:
-  dom_error_category () noexcept = default;
-  char const *name () const noexcept override;
-  std::string message (int error) const override;
-};
-
-std::error_category const &get_dom_error_category () noexcept;
-
-inline std::error_code make_error_code (dom_error const e) noexcept {
-  return {static_cast<int> (e), get_dom_error_category ()};
-}
-
-}  // end namespace peejay
-
-namespace std {
-
-template <>
-struct is_error_code_enum<peejay::dom_error> : std::true_type {};
-
-}  // end namespace std
-
-namespace peejay {
-
 struct element;
 struct null {
   bool operator== (null) const noexcept { return true; }
