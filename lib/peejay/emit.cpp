@@ -151,10 +151,9 @@ void emit (std::ostream& os, indent const i, element const& el) {
 namespace peejay {
 
 void emit (std::ostream& os, std::optional<element> const& root) {
-  if (!root) {
-    return;
+  if (root) {
+    emit (os, indent{}, *root);
   }
-  emit (os, indent{}, *root);
   os << '\n';
 }
 

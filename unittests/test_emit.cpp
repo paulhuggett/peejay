@@ -25,6 +25,12 @@
 using namespace peejay;
 using namespace std::string_literals;
 
+TEST (Emit, Nothing) {
+  std::stringstream os;
+  emit (os, std::nullopt);
+  EXPECT_EQ (os.str (), "\n");
+}
+
 TEST (Emit, Null) {
   std::stringstream os;
   emit (os, element{null{}});
