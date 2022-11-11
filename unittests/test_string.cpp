@@ -131,6 +131,17 @@ TEST_F (JsonString, SlashUnicodeUpper) {
   EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
 }
 
+TEST_F (JsonString, SlashUnicodeLower) {
+  EXPECT_CALL (callbacks_, string_value ("\xAF"sv)).Times (1);
+
+  auto p = make_parser (proxy_);
+  p.input (R"("\u00af")"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
+  EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
+}
+
 TEST_F (JsonString, FourFs) {
   // Note that there is no unicode code-point at U+FFFF.
   EXPECT_CALL (callbacks_, string_value (std::string_view{"\xEF\xBF\xBF"}))
