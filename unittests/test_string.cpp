@@ -132,7 +132,7 @@ TEST_F (JsonString, SlashUnicodeUpper) {
 }
 
 TEST_F (JsonString, SlashUnicodeLower) {
-  EXPECT_CALL (callbacks_, string_value ("\xAF"sv)).Times (1);
+  EXPECT_CALL (callbacks_, string_value ("\xC2\xAF"sv)).Times (1);
 
   auto p = make_parser (proxy_);
   p.input (R"("\u00af")"sv).eof ();
