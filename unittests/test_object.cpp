@@ -50,6 +50,18 @@ TEST_F (JsonObject, Empty) {
   EXPECT_EQ (p.input_pos (), (coord{column{1U}, line{3U}}));
 }
 
+TEST_F (JsonObject, OpeningBraceOnly) {
+  testing::InSequence _;
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  auto p = make_parser (proxy_);
+  p.input ("{"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{2U}, line{1U}}));
+}
+
 TEST_F (JsonObject, SingleKvp) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);

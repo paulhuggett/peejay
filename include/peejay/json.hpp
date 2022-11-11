@@ -1479,10 +1479,6 @@ template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
 object_matcher<Backend>::consume (parser<Backend> &parser,
                                   std::optional<char> ch) {
-  if (this->get_state () == done_state) {
-    assert (parser.last_error ());
-    return {null_pointer (), true};
-  }
   if (!ch) {
     this->set_error (parser, error::expected_object_member);
     return {null_pointer (), true};
