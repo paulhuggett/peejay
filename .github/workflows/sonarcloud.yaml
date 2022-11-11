@@ -74,7 +74,7 @@ jobs:
 
       - name: Collect the coverage
         run: |
-           llvm-cov-${{ env.CLANG_VERSION }} show --instr-profile build/merged.profdata build/unittests/json-tests > coverage.txt
+           llvm-cov-${{ env.CLANG_VERSION }} show --instr-profile build/merged.profdata build/unittests/pj-unittests > coverage.txt
 
       - name: Run sonar-scanner
         env:
