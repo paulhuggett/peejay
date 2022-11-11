@@ -33,7 +33,7 @@ protected:
 
 }  // end anonymous namespace
 
-TEST_F (JsonString, Empty) {
+TEST_F (JsonString, EmptyDoubleQuote) {
   EXPECT_CALL (callbacks_, string_value (std::string_view{""})).Times (1);
 
   auto p = make_parser (proxy_);
@@ -44,8 +44,28 @@ TEST_F (JsonString, Empty) {
   EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
 }
 
-TEST_F (JsonString, Simple) {
-  EXPECT_CALL (callbacks_, string_value (std::string_view{"hello"})).Times (1);
+TEST_F (JsonString, EmptySingleQuote) {
+  EXPECT_CALL (callbacks_, string_value (std::string_view{""})).Times (1);
+
+  auto p = make_parser (proxy_, extensions::single_quote_string);
+  p.input (R"('')"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
+}
+
+TEST_F (JsonString, EmptySingleQuoteExtensionDisabled) {
+  auto p = make_parser (proxy_);
+  p.input (R"('')"sv).eof ();
+  EXPECT_TRUE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{1U}, line{1U}}));
+}
+
+TEST_F (JsonString, SimpleDoubleQuote) {
+  EXPECT_CALL (callbacks_, string_value ("hello"sv)).Times (1);
 
   auto p = make_parser (proxy_);
   p.input (R"("hello")"sv).eof ();
@@ -55,9 +75,28 @@ TEST_F (JsonString, Simple) {
   EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
 
-TEST_F (JsonString, Unterminated) {
+TEST_F (JsonString, SimpleSingleQuote) {
+  EXPECT_CALL (callbacks_, string_value ("hello"sv)).Times (1);
+
+  auto p = make_parser (proxy_, extensions::single_quote_string);
+  p.input (R"('hello')"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
+  EXPECT_EQ (p.pos (), (coord{column{7U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
+}
+
+TEST_F (JsonString, UnterminatedDoubleQuote) {
   auto p = make_parser (proxy_);
   p.input (R"("hello)"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
+}
+
+TEST_F (JsonString, UnterminatedSingleQuote) {
+  auto p = make_parser (proxy_, extensions::single_quote_string);
+  p.input (R"('hello)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));

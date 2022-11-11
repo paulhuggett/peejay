@@ -211,6 +211,7 @@ enum class extensions : unsigned {
   multi_line_comments = 1U << 2U,
   array_trailing_comma = 1U << 3U,
   object_trailing_comma = 1U << 4U,
+  single_quote_string = 1U << 5U,
   all = ~none,
 };
 
@@ -1013,8 +1014,12 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
 template <typename Backend>
 class string_matcher final : public matcher<Backend> {
 public:
-  explicit string_matcher (std::string *const str, bool object_key) noexcept
-      : matcher<Backend> (start_state), is_object_key_{object_key}, app_{str} {
+  explicit string_matcher (std::string *const str, bool object_key,
+                           char32_t enclosing_char) noexcept
+      : matcher<Backend> (start_state),
+        is_object_key_{object_key},
+        enclosing_char_{enclosing_char},
+        app_{str} {
     assert (str != nullptr);
     str->clear ();
   }
@@ -1057,8 +1062,8 @@ private:
   };
 
   static std::variant<state, std::error_code> consume_normal (
-      parser<Backend> &p, bool is_object_key, char32_t code_point,
-      appender &app);
+      parser<Backend> &p, bool is_object_key, char32_t enclosing_char,
+      char32_t code_point, appender &app);
 
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
   /// character. This function wraps consume_normal(). That function does the
@@ -1092,6 +1097,7 @@ private:
   }
 
   bool is_object_key_;
+  char32_t enclosing_char_;
   utf8_decoder decoder_;
   appender app_;
   unsigned hex_ = 0U;
@@ -1149,10 +1155,11 @@ bool string_matcher<Backend>::appender::append16 (char16_t const cu) {
 template <typename Backend>
 auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
                                               bool is_object_key,
+                                              char32_t enclosing_char,
                                               char32_t code_point,
                                               appender &app)
     -> std::variant<state, std::error_code> {
-  if (code_point == '"') {
+  if (code_point == enclosing_char) {
     if (app.has_high_surrogate ()) {
       return error::bad_unicode_code_point;
     }
@@ -1195,7 +1202,8 @@ void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
       },
-      string_matcher::consume_normal (p, is_object_key_, code_point, app_));
+      string_matcher::consume_normal (p, is_object_key_, enclosing_char_,
+                                      code_point, app_));
 }
 
 // hex value [static]
@@ -1333,7 +1341,7 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
     switch (this->get_state ()) {
     // Matches the opening quote.
     case start_state:
-      if (*code_point == '"') {
+      if (*code_point == enclosing_char_) {
         assert (!app_.has_high_surrogate ());
         this->set_state (normal_char_state);
       } else {
@@ -1850,7 +1858,7 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     return {this->make_whitespace_matcher (parser), false};
 
   case new_token_state: {
-    if (object_key_ && *ch != '"') {
+    if (object_key_ && *ch != '"' && *ch != '\'') {
       this->set_error (parser, error::expected_string);
       // Don't return here in order to allow the switch default to produce a
       // different error code for a bad token.
@@ -1871,9 +1879,15 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
       return {this->template make_terminal_matcher<number_matcher<Backend>> (
                   parser),
               false};
+    case '\'':
+      if (!parser.extension_enabled (extensions::single_quote_string)) {
+        this->set_error (parser, error::expected_token);
+        return {null_pointer (), true};
+      }
+      [[fallthrough]];
     case '"':
       return {this->template make_terminal_matcher<string_matcher<Backend>> (
-                  parser, &parser.string_, object_key_),
+                  parser, &parser.string_, object_key_, *ch),
               false};
     case 't':
       return {
