@@ -21,9 +21,9 @@
 #include "peejay/null.hpp"
 
 using namespace peejay;
-using parser = lexer<null>;
+using null_parser = parser<null>;
 
-static void report_error (parser& p, std::string_view const& file_name,
+static void report_error (null_parser& p, std::string_view const& file_name,
                           std::string_view const& line) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
@@ -34,7 +34,7 @@ static void report_error (parser& p, std::string_view const& file_name,
 
 template <typename IStream>
 static bool slurp (IStream&& in, char const* file_name) {
-  parser p = make_parser (null{});
+  null_parser p = make_parser (null{});
   std::string line;
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {

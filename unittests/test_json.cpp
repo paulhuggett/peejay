@@ -31,7 +31,7 @@ class Json : public ::testing::Test {
 protected:
   static void check_error (std::string const& src, error err) {
     ASSERT_NE (err, error::none);
-    lexer p{json_out_callbacks{}};
+    parser p{json_out_callbacks{}};
     std::string const res = p.input (src).eof ();
     EXPECT_EQ (res, "");
     EXPECT_NE (p.last_error (), make_error_code (error::none));
@@ -48,14 +48,14 @@ protected:
 }  // end anonymous namespace
 
 TEST_F (Json, Empty) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   p.input (std::string{}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{line{1U}, column{1U}}));
 }
 
 TEST_F (Json, StringInput) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   std::string const res = p.input (keyword).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (res, keyword);
@@ -64,7 +64,7 @@ TEST_F (Json, StringInput) {
 }
 
 TEST_F (Json, IteratorInput) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   std::string const res =
       p.input (std::begin (keyword), std::end (keyword)).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -77,7 +77,7 @@ TEST_F (Json, IteratorInput) {
 }
 
 TEST_F (Json, LeadingWhitespace) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   std::string const res = p.input ("   \t    null"s).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (res, "null");
@@ -86,7 +86,7 @@ TEST_F (Json, LeadingWhitespace) {
 }
 
 TEST_F (Json, POSIXLeadingLineEndings) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   p.input (lf + lf + keyword);
   std::string const res = p.eof ();
   EXPECT_FALSE (p.has_error ());
@@ -96,7 +96,7 @@ TEST_F (Json, POSIXLeadingLineEndings) {
 }
 
 TEST_F (Json, ClassicMacLeadingLineEndings) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   p.input (cr + cr + keyword);  // MacOS Classic line endings
   std::string const res = p.eof ();
   EXPECT_FALSE (p.has_error ());
@@ -106,7 +106,7 @@ TEST_F (Json, ClassicMacLeadingLineEndings) {
 }
 
 TEST_F (Json, CrLfLeadingLineEndings) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   p.input (crlf + crlf + keyword);  // Windows-style CRLF
   std::string const res = p.eof ();
   EXPECT_FALSE (p.has_error ());
@@ -116,7 +116,7 @@ TEST_F (Json, CrLfLeadingLineEndings) {
 }
 
 TEST_F (Json, BadLeadingLineEndings) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   // Nobody's line-endings. Each counts as a new line. Note that the middle
   // cr+lf pair will match a single Windows crlf.
   std::string const res = p.input (lf + cr + lf + cr + keyword).eof ();
@@ -127,7 +127,7 @@ TEST_F (Json, BadLeadingLineEndings) {
 }
 
 TEST_F (Json, MixedLeadingLineEndings) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   // A groovy mixture of line-ending characters.
   p.input (lf + lf + crlf + cr + keyword);
   std::string const res = p.eof ();
@@ -142,7 +142,7 @@ TEST_F (Json, Null) {
   callbacks_proxy proxy{callbacks};
   EXPECT_CALL (callbacks, null_value ()).Times (1);
 
-  lexer p{proxy};
+  parser p{proxy};
   p.input (" null "s).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (p.pos (), (coord{column{6U}, line{1U}}));
@@ -152,7 +152,7 @@ TEST_F (Json, Null) {
 TEST_F (Json, Move) {
   // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
   // usable.
-  auto p1 = lexer<null>{};
+  auto p1 = parser<null>{};
   auto p2 = std::move (p1);
   p2.input ("null"s).eof ();
   EXPECT_FALSE (p2.has_error ());
@@ -161,7 +161,7 @@ TEST_F (Json, Move) {
 }
 
 TEST_F (Json, TwoKeywords) {
-  lexer p{json_out_callbacks{}};
+  parser p{json_out_callbacks{}};
   p.input (" true false "s);
   EXPECT_EQ (p.last_error (), make_error_code (error::unexpected_extra_input));
   EXPECT_EQ (p.pos (), (coord{column{7U}, line{1U}}));
