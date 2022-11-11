@@ -192,13 +192,19 @@ TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
 }
 
 TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
-  // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as a UTF-16
-  // surrogate pair.
   auto p = make_parser (proxy_);
   p.input (R"("\uDD1E\u30A1")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
+}
+
+TEST_F (JsonString, Utf16HighSurrogateFollowedByHighSurrogate) {
+  auto p = make_parser (proxy_);
+  p.input (R"("\uD800\uD800")"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{13U}, line{1U}}));
 }
 
 TEST_F (JsonString, ControlCharacter) {
