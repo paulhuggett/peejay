@@ -33,6 +33,7 @@ function (setup_target target)
   set (clang_options
     -Weverything
     -Wno-c++14-extensions
+    -Wno-c++20-compat
     -Wno-c++98-compat
     -Wno-c++98-compat-pedantic
     -Wno-c99-extensions

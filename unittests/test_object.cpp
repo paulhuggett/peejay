@@ -43,7 +43,7 @@ TEST_F (JsonObject, Empty) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("{\r\n}\n"s);
+  p.input (u8"{\r\n}\n"sv);
   p.eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
@@ -55,7 +55,7 @@ TEST_F (JsonObject, OpeningBraceOnly) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("{"sv).eof ();
+  p.input (u8"{"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
@@ -65,12 +65,12 @@ TEST_F (JsonObject, OpeningBraceOnly) {
 TEST_F (JsonObject, SingleKvp) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"{\n\"a\" : 1\n}"});
+  p.input (u8"{\n\"a\" : 1\n}"sv);
   p.eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (p.pos (), (coord{line{3U}, column{1U}}));
@@ -85,7 +85,7 @@ TEST_F (JsonObject, BadBeginObject) {
   EXPECT_CALL (callbacks_, begin_object ()).WillOnce (Return (error));
 
   auto p = make_parser (proxy_);
-  p.input (R"({ "a":1 })"sv).eof ();
+  p.input (u8R"({ "a":1 })"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), error)
       << "Expected the error to be propagated from the begin_object() callback";
@@ -103,7 +103,7 @@ TEST_F (JsonObject, SingleKvpBadEndObject) {
   EXPECT_CALL (callbacks_, end_object ()).WillOnce (Return (end_object_error));
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"{\n\"a\" : 1\n}"});
+  p.input (u8"{\n\"a\" : 1\n}"sv);
   p.eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), end_object_error)
@@ -114,36 +114,35 @@ TEST_F (JsonObject, SingleKvpBadEndObject) {
 TEST_F (JsonObject, TwoKvps) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"b"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"b"sv)).Times (1);
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"{\"a\":1, \"b\" : true }"});
-  p.eof ();
+  p.input (u8R"({"a":1, "b" : true })"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (JsonObject, DuplicateKeys) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (R"({"a":1, "a":true})"sv).eof ();
+  p.input (u8R"({"a":1, "a":true})"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (JsonObject, ArrayValue) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (2)).Times (1);
@@ -151,7 +150,7 @@ TEST_F (JsonObject, ArrayValue) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"{\"a\": [1,2]}"});
+  p.input (u8"{\"a\": [1,2]}"sv);
   p.eof ();
   EXPECT_FALSE (p.has_error ());
 }
@@ -159,21 +158,21 @@ TEST_F (JsonObject, ArrayValue) {
 TEST_F (JsonObject, MisplacedCommaBeforeCloseBrace) {
   // An object with a trailing comma but with the extension disabled.
   parser p{null{}};
-  p.input (R"({"a":1,})"s).eof ();
+  p.input (u8R"({"a":1,})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, NoCommaBeforeProperty) {
   parser p{null{}};
-  p.input (R"({"a":1 "b":1})"s).eof ();
+  p.input (u8R"({"a":1 "b":1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member));
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
 TEST_F (JsonObject, TwoCommasBeforeProperty) {
   parser p{null{}};
-  p.input (R"({"a":1,,"b":1})"s).eof ();
+  p.input (u8R"({"a":1,,"b":1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
@@ -181,38 +180,38 @@ TEST_F (JsonObject, TwoCommasBeforeProperty) {
 TEST_F (JsonObject, TrailingCommaExtensionEnabled) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (16)).Times (1);
-  EXPECT_CALL (callbacks_, key (std::string_view{"b"})).Times (1);
-  EXPECT_CALL (callbacks_, string_value (std::string_view{"c"})).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"b"sv)).Times (1);
+  EXPECT_CALL (callbacks_, string_value (u8"c"sv)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   // An object with a trailing comma but with the extension _enabled_. Note that
   // there is deliberate whitespace around the final comma.
   auto p = make_parser (proxy_, extensions::object_trailing_comma);
-  p.input (R"({ "a":16, "b":"c" , })"s).eof ();
+  p.input (u8R"({ "a":16, "b":"c" , })"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (JsonObject, KeyIsNotString) {
   parser p{null{}};
-  p.input ("{{}:{}}"s).eof ();
+  p.input (u8"{{}:{}}"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_string));
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonObject, BadNestedObject) {
   parser p{null{}};
-  p.input (std::string{"{\"a\":nu}"}).eof ();
+  p.input (u8"{\"a\":nu}"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
 TEST_F (JsonObject, TooDeeplyNested) {
   parser p{null{}};
 
-  std::string input;
+  u8string input;
   for (auto ctr = 0U; ctr < 200U; ++ctr) {
-    input += "{\"a\":";
+    input += u8"{\"a\":";
   }
   p.input (input).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep));

@@ -75,13 +75,13 @@ TEST (Emit, Float) {
 
 TEST (Emit, StringNoEscapes) {
   std::stringstream os;
-  emit (os, element{"string"});
+  emit (os, element{u8"string"});
   EXPECT_EQ (os.str (), "\"string\"\n");
 }
 
 TEST (Emit, StringBackslashT) {
   std::stringstream os;
-  emit (os, element{"abc\tdef"});
+  emit (os, element{u8"abc\tdef"});
   EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
 }
 
@@ -119,7 +119,7 @@ TEST (Emit, EmptyObject) {
 TEST (Emit, ObjectOneMember) {
   std::stringstream os;
   object obj;
-  obj["key"] = element{"value"s};
+  obj[u8"key"] = element{u8"value"s};
   emit (os, element{std::move (obj)});
   EXPECT_EQ (os.str (), R"({
   "key": "value"
@@ -130,7 +130,7 @@ TEST (Emit, ObjectOneMember) {
 TEST (Emit, ObjectArrayMember) {
   std::stringstream os;
   object obj;
-  obj["key1"] = element{array{element{uint64_t{1}}, element{uint64_t{2}}}};
+  obj[u8"key1"] = element{array{element{uint64_t{1}}, element{uint64_t{2}}}};
   emit (os, element{std::move (obj)});
   EXPECT_EQ (os.str (), R"({
   "key1": [

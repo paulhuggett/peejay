@@ -102,15 +102,15 @@ struct mark {
   bool operator!= (mark) const noexcept { return false; }
 #endif  // !PEEJAY_CXX20
 };
-using variant = std::variant<int64_t, uint64_t, double, bool, null, std::string,
+using variant = std::variant<int64_t, uint64_t, double, bool, null, u8string,
                              std::vector<element>,
-                             std::unordered_map<std::string, element>, mark>;
+                             std::unordered_map<u8string, element>, mark>;
 
 struct element : variant {
   using variant::variant;
 };
 
-using object = std::unordered_map<std::string, element>;
+using object = std::unordered_map<u8string, element>;
 using array = std::vector<element>;
 
 template <size_t StackSize>
@@ -133,7 +133,7 @@ public:
     return {std::move (stack_->top ())};
   }
 
-  std::error_code string_value (std::string_view const &s);
+  std::error_code string_value (u8string_view const &s);
   std::error_code int64_value (int64_t v);
   std::error_code uint64_value (uint64_t v);
   std::error_code double_value (double v);
@@ -144,7 +144,7 @@ public:
   std::error_code end_array ();
 
   std::error_code begin_object () { return this->begin_array (); }
-  std::error_code key (std::string_view const &s) {
+  std::error_code key (u8string_view const &s) {
     return this->string_value (s);
   }
   std::error_code end_object ();
@@ -164,11 +164,11 @@ dom () -> dom<StackSize>;
 // string
 // ~~~~~~
 template <size_t StackSize>
-std::error_code dom<StackSize>::string_value (std::string_view const &s) {
+std::error_code dom<StackSize>::string_value (u8string_view const &s) {
   if (stack_->size () >= stack_size) {
     return error::dom_nesting_too_deep;
   }
-  stack_->emplace (std::string{s});
+  stack_->emplace (u8string{s});
   return error::none;
 }
 
@@ -274,9 +274,8 @@ std::error_code dom<StackSize>::end_object () {
       break;
     }
     auto &key = stack_->top ();
-    assert (std::holds_alternative<std::string> (key));
-    obj.try_emplace (std::move (std::get<std::string> (key)),
-                     std::move (value));
+    assert (std::holds_alternative<u8string> (key));
+    obj.try_emplace (std::move (std::get<u8string> (key)), std::move (value));
     stack_->pop ();
   }
   // The presence of duplicate keys can mean that we end up with fewer entries

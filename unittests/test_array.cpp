@@ -38,7 +38,7 @@ TEST_F (JsonArray, Empty) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("[\n]\n"sv);
+  p.input (u8"[\n]\n"sv);
   p.eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse to succeed";
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
@@ -51,14 +51,14 @@ TEST_F (JsonArray, BeginArrayReturnsError) {
   EXPECT_CALL (callbacks_, begin_array ()).WillOnce (Return (error));
 
   auto p = make_parser (proxy_);
-  p.input ("[\n]\n"s);
+  p.input (u8"[\n]\n"sv);
   EXPECT_EQ (p.last_error (), error);
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
 }
 
 TEST_F (JsonArray, ArrayNoCloseBracket) {
   auto p = make_parser (json_out_callbacks{});
-  p.input ("["s).eof ();
+  p.input (u8"["sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member));
 }
 
@@ -69,7 +69,7 @@ TEST_F (JsonArray, SingleElement) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  std::string const input = "[ 1 ]";
+  auto const input = u8"[ 1 ]"sv;
   p.input (input).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{5}, line{1U}}));
@@ -81,11 +81,11 @@ TEST_F (JsonArray, SingleElement) {
 TEST_F (JsonArray, SingleStringElement) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, string_value (std::string_view{"a"})).Times (1);
+  EXPECT_CALL (callbacks_, string_value (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (std::string{"[\"a\"]"});
+  p.input (u8"[\"a\"]"sv);
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
 }
 
@@ -96,7 +96,7 @@ TEST_F (JsonArray, ZeroExpPlus1) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("[0e+1]"s);
+  p.input (u8"[0e+1]"sv);
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
 }
 
@@ -107,7 +107,7 @@ TEST_F (JsonArray, SimpleFloat) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("[1.234]"s).eof ();
+  p.input (u8"[1.234]"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
 }
 
@@ -118,7 +118,7 @@ TEST_F (JsonArray, MinusZero) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("[-0]"s);
+  p.input (u8"[-0]"sv);
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
 }
 
@@ -126,11 +126,11 @@ TEST_F (JsonArray, TwoElements) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-  EXPECT_CALL (callbacks_, string_value (std::string_view{"hello"})).Times (1);
+  EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input ("[ 1 ,\n \"hello\" ]"sv);
+  p.input (u8"[ 1 ,\n \"hello\" ]"sv);
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.input_pos (), (coord{column{11U}, line{2U}}));
   EXPECT_EQ (p.pos (), (coord{column{10U}, line{2U}}));
@@ -138,22 +138,22 @@ TEST_F (JsonArray, TwoElements) {
 
 TEST_F (JsonArray, MisplacedComma1) {
   parser p{json_out_callbacks{}};
-  p.input ("[,"s).eof ();
+  p.input (u8"[,"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 TEST_F (JsonArray, MisplacedComma2) {
   parser p{json_out_callbacks{}};
-  p.input ("[,1"s).eof ();
+  p.input (u8"[,1"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 TEST_F (JsonArray, MisplacedComma3) {
   parser p{json_out_callbacks{}};
-  p.input ("[1,,2]"s).eof ();
+  p.input (u8"[1,,2]"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 TEST_F (JsonArray, MisplacedComma4) {
   parser p{json_out_callbacks{}};
-  p.input ("[1 true]"s).eof ();
+  p.input (u8"[1 true]"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member));
 }
 
@@ -164,7 +164,7 @@ TEST_F (JsonArray, TrailingCommaEnabled) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::array_trailing_comma);
-  p.input ("[1 , ]"s).eof ();
+  p.input (u8"[1 , ]"sv).eof ();
   EXPECT_FALSE (p.last_error ());
 }
 
@@ -172,34 +172,34 @@ TEST_F (JsonArray, EmptyTrailingCommaEnabled) {
   // The contents of an array must not consist of a comma alone, even with the
   // trailing-comma extension enabled.
   auto p = make_parser (json_out_callbacks{}, extensions::array_trailing_comma);
-  p.input ("[,]"s).eof ();
+  p.input (u8"[,]"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonArray, TrailingCommaDisabled1) {
   parser p{json_out_callbacks{}};
-  p.input ("[,]"s).eof ();
+  p.input (u8"[,]"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
 
 TEST_F (JsonArray, TrailingCommaDisabled2) {
   parser p{json_out_callbacks{}};
-  p.input ("[1,]"s).eof ();
+  p.input (u8"[1,]"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{4U}, line{1U}}));
 }
 
 TEST_F (JsonArray, NestedError1) {
   parser p{json_out_callbacks{}};
-  p.input ("[[no"s).eof ();
+  p.input (u8"[[no"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
 TEST_F (JsonArray, NestedError2) {
   auto p = make_parser (json_out_callbacks{});
-  p.input ("[[null"s).eof ();
+  p.input (u8"[[null"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member));
 }
 
@@ -210,7 +210,7 @@ TEST_F (JsonArray, Nested) {
   EXPECT_CALL (callbacks_, end_array ()).Times (2);
 
   auto p = make_parser (proxy_);
-  p.input ("[[null]]"s).eof ();
+  p.input (u8"[[null]]"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -224,13 +224,12 @@ TEST_F (JsonArray, Nested2) {
   EXPECT_CALL (callbacks_, end_array ()).Times (2);
 
   auto p = make_parser (proxy_);
-  p.input ("[[null], [1]]"s);
-  p.eof ();
+  p.input (u8"[[null], [1]]"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 TEST_F (JsonArray, TooDeeplyNested) {
   parser p{json_out_callbacks{}};
-  p.input (std::string (std::string::size_type{200}, '[')).eof ();
+  p.input (u8string (std::string::size_type{200}, '[')).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep));
 }

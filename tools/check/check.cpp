@@ -13,6 +13,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -36,10 +37,16 @@ template <typename IStream>
 static bool slurp (IStream&& in, char const* file_name) {
   null_parser p = make_parser (null{});
   std::string line;
+  u8string u8line;
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
     std::getline (in, line);
-    p.input (line);
+    // TODO: need to convert encoding from host to UTF-8 here?
+    u8line.reserve (line.size ());
+    std::transform (std::begin (line), std::end (line),
+                    std::back_inserter (u8line),
+                    [] (char c) { return static_cast<char8> (c); });
+    p.input (u8line);
     if (auto const err = p.last_error ()) {
       report_error (p, file_name, line);
       return false;

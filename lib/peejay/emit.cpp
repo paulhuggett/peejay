@@ -58,7 +58,7 @@ constexpr char to_hex (unsigned v) noexcept {
   return static_cast<char> (v + ((v < 10) ? '0' : 'A' - 10));
 }
 
-void emit_string_view (std::ostream& os, std::string_view const& str) {
+std::ostream& emit_string_view (std::ostream& os, u8string_view const& str) {
   os << '"';
   auto first = std::begin (str);
   auto const last = std::end (str);
@@ -67,7 +67,8 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
             return c < ' ' || c == '"' || c == '\\';
           })) != last) {
     assert (pos >= first);
-    os.write (to_address (first), std::distance (first, pos));
+    os.write (reinterpret_cast<char const*> (to_address (first)),
+              std::distance (first, pos));
     os << '\\';
     switch (*pos) {
     case '"': os << '"'; break;    // quotation mark  U+0022
@@ -91,21 +92,31 @@ void emit_string_view (std::ostream& os, std::string_view const& str) {
   }
   if (first != last) {
     assert (last > first);
-    os.write (to_address (first), std::distance (first, last));
+    os.write (reinterpret_cast<char const*> (to_address (first)),
+              std::distance (first, last));
   }
   os << '"';
+  return os;
 }
 
-// helper type for the visitor
+// Helper type for the visitor
 template <typename... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
 };
-// explicit deduction guide (not needed as of C++20)
+// Explicit deduction guide
 template <typename... Ts>
 overloaded (Ts...) -> overloaded<Ts...>;
 
-void emit (std::ostream& os, indent const i, element const& el) {
+std::string convu8 (u8string const& str) {
+  std::string result;
+  result.reserve (str.size ());
+  std::transform (std::begin (str), std::end (str), std::back_inserter (result),
+                  [] (char8 c) { return static_cast<char> (c); });
+  return result;
+}
+
+std::ostream& emit (std::ostream& os, indent const i, element const& el) {
   auto const emit_object = [&os, i] (object const& obj) {
     if (obj.empty ()) {
       os << "{}";
@@ -115,7 +126,7 @@ void emit (std::ostream& os, indent const i, element const& el) {
     auto const* separator = "";
     indent const next_indent = i.next ();
     for (auto const& [key, value] : obj) {
-      os << separator << next_indent << '"' << key << "\": ";
+      os << separator << next_indent << '"' << convu8 (key) << "\": ";
       emit (os, next_indent, value);
       separator = ",\n";
     }
@@ -137,24 +148,26 @@ void emit (std::ostream& os, indent const i, element const& el) {
     os << '\n' << i << "]";
   };
   std::visit (
-      overloaded{[&os] (std::string const& s) { emit_string_view (os, s); },
+      overloaded{[&os] (u8string const& s) { emit_string_view (os, s); },
                  [&os] (int64_t v) { os << v; },
                  [&os] (uint64_t v) { os << v; }, [&os] (double v) { os << v; },
                  [&os] (bool b) { os << (b ? "true" : "false"); },
                  [&os] (null) { os << "null"; }, emit_array, emit_object,
                  [] (mark) { assert (false); }},
       el);
+  return os;
 }
 
 }  // end anonymous namespace
 
 namespace peejay {
 
-void emit (std::ostream& os, std::optional<element> const& root) {
+std::ostream& emit (std::ostream& os, std::optional<element> const& root) {
   if (root) {
     emit (os, indent{}, *root);
   }
   os << '\n';
+  return os;
 }
 
 }  // end namespace peejay

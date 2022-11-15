@@ -34,14 +34,14 @@
 namespace peejay {
 
 #if PEEJAY_CXX20
-using utf8_string = std::basic_string<char8_t>;
+using char8 = char8_t;
+using u8string = std::u8string;
+using u8string_view = std::u8string_view;
 #else
-using utf8_string = std::basic_string<std::uint8_t>;
-#endif  // PEEJAY_CXX20
-using utf16_string = std::basic_string<char16_t>;
-using utf32_string = std::basic_string<char32_t>;
-
-std::ostream& operator<< (std::ostream& os, utf8_string const& s);
+using char8 = char;
+using u8string = std::basic_string<char8>;
+using u8string_view = std::basic_string_view<char8>;
+#endif
 
 /// If the top two bits are 0b10, then this is a UTF-8 continuation byte
 /// and is skipped; other patterns in these top two bits represent the
@@ -53,18 +53,18 @@ constexpr bool is_utf_char_start (CharType c) noexcept {
 
 class utf8_decoder {
 public:
-  std::optional<char32_t> get (std::uint8_t c) noexcept;
+  std::optional<char32_t> get (char8 c) noexcept;
   bool is_well_formed () const { return well_formed_; }
 
 private:
   enum state { accept, reject };
 
-  static std::uint8_t decode (std::uint8_t* const state, char32_t* const codep,
-                              std::uint32_t const byte);
+  static uint8_t decode (uint8_t* const state, char32_t* const codep,
+                         uint32_t const byte);
 
-  static std::uint8_t const utf8d_[];
+  static uint8_t const utf8d_[];
   char32_t codepoint_ = 0;
-  std::uint8_t state_ = accept;
+  uint8_t state_ = accept;
   bool well_formed_ = true;
 };
 
@@ -81,28 +81,28 @@ OutputIt replacement_char (OutputIt out) {
 
 // code point to utf8
 // ~~~~~~~~~~~~~~~~~~
-template <typename CharType = char, typename OutputIt>
+template <typename OutputIt>
 PEEJAY_CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
 OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
   if (c < 0x80) {
-    *(out++) = static_cast<CharType> (c);
+    *(out++) = static_cast<char8> (c);
   } else {
     if (c < 0x800) {
-      *(out++) = static_cast<CharType> (c / 64 + 0xC0);
-      *(out++) = static_cast<CharType> (c % 64 + 0x80);
+      *(out++) = static_cast<char8> (c / 64 + 0xC0);
+      *(out++) = static_cast<char8> (c % 64 + 0x80);
     } else if (c >= 0xD800 && c < 0xE000) {
-      out = replacement_char<CharType> (out);
+      out = replacement_char<char8> (out);
     } else if (c < 0x10000) {
-      *(out++) = static_cast<CharType> ((c / 0x1000) | 0xE0);
-      *(out++) = static_cast<CharType> ((c / 64 % 64) | 0x80);
-      *(out++) = static_cast<CharType> ((c % 64) | 0x80);
+      *(out++) = static_cast<char8> ((c / 0x1000) | 0xE0);
+      *(out++) = static_cast<char8> ((c / 64 % 64) | 0x80);
+      *(out++) = static_cast<char8> ((c % 64) | 0x80);
     } else if (c < 0x110000) {
-      *(out++) = static_cast<CharType> ((c / 0x40000) | 0xF0);
-      *(out++) = static_cast<CharType> ((c / 0x1000 % 64) | 0x80);
-      *(out++) = static_cast<CharType> ((c / 64 % 64) | 0x80);
-      *(out++) = static_cast<CharType> ((c % 64) | 0x80);
+      *(out++) = static_cast<char8> ((c / 0x40000) | 0xF0);
+      *(out++) = static_cast<char8> ((c / 0x1000 % 64) | 0x80);
+      *(out++) = static_cast<char8> ((c / 64 % 64) | 0x80);
+      *(out++) = static_cast<char8> ((c % 64) | 0x80);
     } else {
-      out = replacement_char<CharType> (out);
+      out = replacement_char<char8> (out);
     }
   }
   return out;

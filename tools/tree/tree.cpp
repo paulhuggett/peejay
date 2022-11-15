@@ -29,6 +29,9 @@
 
 #include "peejay/emit.hpp"
 
+using pjparser = peejay::parser<peejay::dom<1024>>;
+using namespace peejay;
+
 namespace {
 
 template <typename T>
@@ -37,18 +40,19 @@ constexpr auto as_unsigned (T v) {
   return static_cast<std::make_unsigned_t<T>> (std::max (T{0}, v));
 }
 
-template <typename Notifications, typename IStream>
-std::variant<std::error_code, std::optional<peejay::element>> slurp (
-    peejay::parser<Notifications>& p, IStream&& in) {
-  std::array<char, 256> buffer{{0}};
+template <typename IStream>
+std::variant<std::error_code, std::optional<element>> slurp (pjparser& p,
+                                                             IStream&& in) {
+  std::array<char, 256> buffer;
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
     auto* const data = buffer.data ();
     in.read (data, buffer.size ());
     auto const available = as_unsigned (in.gcount ());
+    // TODO: I just assume that the IStream yields UTF-8.
 #if PEEJAY_CXX20
-    p.input (std::span<char>{data, available});
+    p.input (std::span{reinterpret_cast<char8 const*> (data), available});
 #else
     p.input (data, data + available);
 #endif  // PEEJAY_CXX20
@@ -56,7 +60,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
       return {err};
     }
   }
-  std::optional<peejay::element> result = p.eof ();
+  std::optional<element> result = p.eof ();
   if (std::error_code const erc = p.last_error ()) {
     return {erc};
   }
@@ -65,13 +69,13 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
 
 #ifdef _WIN32
 
-template <typename Notifications>
-std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
-    peejay::parser<Notifications>& p, char const* file) {
+std::variant<std::error_code, std::optional<element>> slurp_file (
+    pjparser& p, char const* file) {
   return slurp (p, std::ifstream{file});
 }
 
 #else
+
 class closer {
 public:
   explicit constexpr closer (int const fd) noexcept : fd_{fd} {}
@@ -94,8 +98,10 @@ public:
   explicit constexpr unmapper (void* ptr, size_t size) noexcept
       : span_{ptr, size} {}
   unmapper (unmapper const&) = delete;
-  unmapper& operator= (unmapper const&) = delete;
   ~unmapper () noexcept { ::munmap (span_.first, span_.second); }
+
+  unmapper& operator= (unmapper const&) = delete;
+
   constexpr T const* begin () const noexcept {
     return reinterpret_cast<T const*> (span_.first);
   }
@@ -108,9 +114,8 @@ private:
   std::pair<void*, size_t> span_;
 };
 
-template <typename Notifications>
-std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
-    peejay::parser<Notifications>& p, char const* file) {
+std::variant<std::error_code, std::optional<element>> slurp_file (
+    pjparser& p, char const* file) {
   closer fd{::open (file, O_RDONLY)};
   if (fd.get () == -1) {
     return std::error_code{errno, std::generic_category ()};
@@ -124,18 +129,18 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
   if (mapped == MAP_FAILED) {
     return std::error_code{errno, std::generic_category ()};
   }
-  unmapper<char const> ptr{mapped, as_unsigned (sb.st_size)};
-  std::optional<peejay::element> result =
+  unmapper<char8 const> ptr{mapped, as_unsigned (sb.st_size)};
+  std::optional<element> result =
       p.input (std::begin (ptr), std::end (ptr)).eof ();
   if (std::error_code const erc = p.last_error ()) {
     return {erc};
   }
   return {std::move (result)};
 }
+
 #endif  // _WIN32
 
-template <typename N>
-void report_error (peejay::parser<N>& p, std::string_view const& file_name) {
+void report_error (pjparser const& p, std::string_view const& file_name) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n';
@@ -146,10 +151,10 @@ void report_error (peejay::parser<N>& p, std::string_view const& file_name) {
 int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
-    auto p = peejay::make_parser (peejay::dom{});
+    pjparser p = make_parser (dom{});
     auto const res = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
     if (std::holds_alternative<std::error_code> (res)) {
-      report_error(p, argc < 2 ? "<stdin" : argv[1]);
+      report_error (p, argc < 2 ? "<stdin>" : argv[1]);
       exit_code = EXIT_FAILURE;
     } else {
       emit (std::cout, std::get<1> (res));

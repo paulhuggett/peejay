@@ -22,7 +22,7 @@
 
 namespace peejay {
 
-void emit (std::ostream& os, std::optional<element> const& root);
+std::ostream& emit (std::ostream& os, std::optional<element> const& root);
 
 }  // end namespace peejay
 

@@ -29,7 +29,7 @@ public:
     // The null output produces no result at all.
   }
 
-  std::error_code string_value (std::string_view const &) const noexcept {
+  std::error_code string_value (u8string_view const &) const noexcept {
     return {};
   }
   std::error_code int64_value (std::int64_t) const noexcept { return {}; }
@@ -42,7 +42,7 @@ public:
   std::error_code end_array () const noexcept { return {}; }
 
   std::error_code begin_object () const noexcept { return {}; }
-  std::error_code key (std::string_view const &) const noexcept { return {}; }
+  std::error_code key (u8string_view const &) const noexcept { return {}; }
   std::error_code end_object () const noexcept { return {}; }
 };
 

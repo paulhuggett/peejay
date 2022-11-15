@@ -37,120 +37,125 @@ TEST (Dom, NullObjectsAllEqual) {
 
 TEST (Dom, Null) {
   std::optional<element> const root =
-      make_parser (dom{}).input ("null"sv).eof ();
+      make_parser (dom{}).input (u8"null"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_EQ (std::get<null> (*root), null{});
 }
 
 TEST (Dom, One) {
-  std::optional<element> const root = make_parser (dom{}).input ("1"sv).eof ();
+  std::optional<element> const root =
+      make_parser (dom{}).input (u8"1"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_EQ (std::get<uint64_t> (*root), 1U);
 }
 
 TEST (Dom, NegativeOne) {
-  std::optional<element> const root = make_parser (dom{}).input ("-1"sv).eof ();
+  std::optional<element> const root =
+      make_parser (dom{}).input (u8"-1"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_EQ (std::get<int64_t> (*root), -1);
 }
 
 TEST (Dom, String) {
   std::optional<element> const root =
-      make_parser (dom{}).input (R"("string")"sv).eof ();
-  EXPECT_EQ (std::get<std::string> (*root), "string");
+      make_parser (dom{}).input (u8R"("string")"sv).eof ();
+  EXPECT_EQ (std::get<u8string> (*root), u8"string");
 }
 
 TEST (Dom, Double) {
   std::optional<element> const root =
-      make_parser (dom{}).input ("3.14"sv).eof ();
+      make_parser (dom{}).input (u8"3.14"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_DOUBLE_EQ (std::get<double> (*root), 3.14);
 }
 
 TEST (Dom, BooleanTrue) {
   std::optional<element> const root =
-      make_parser (dom{}).input ("true"sv).eof ();
+      make_parser (dom{}).input (u8"true"sv).eof ();
   EXPECT_TRUE (std::get<bool> (*root));
 }
 
 TEST (Dom, BooleanFalse) {
   std::optional<element> const root =
-      make_parser (dom{}).input ("false"sv).eof ();
+      make_parser (dom{}).input (u8"false"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_FALSE (std::get<bool> (*root));
 }
 
 TEST (Dom, Array) {
   std::optional<element> const root =
-      make_parser (dom{}).input ("[1,2]"sv).eof ();
+      make_parser (dom{}).input (u8"[1,2]"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_THAT (std::get<array> (*root),
                ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
 }
 
 TEST (Dom, Array2) {
-  auto const src = R"(["\uFFFF"])"sv;
+  auto const src = u8R"(["\uFFFF"])"sv;
   auto p = make_parser (dom{});
   std::optional<element> const root = p.input (src).eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
   ASSERT_TRUE (root);
 }
 
 TEST (Dom, Object) {
   std::optional<element> const root =
-      make_parser (dom{}).input (R"({"a":1,"b":2})"sv).eof ();
+      make_parser (dom{}).input (u8R"({"a":1,"b":2})"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_THAT (
       std::get<object> (*root),
-      UnorderedElementsAre (std::make_pair ("a"s, element{uint64_t{1}}),
-                            std::make_pair ("b"s, element{uint64_t{2}})));
+      UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{1}}),
+                            std::make_pair (u8"b"s, element{uint64_t{2}})));
 }
 
 TEST (Dom, ObjectInsideArray1) {
   std::optional<element> const root =
-      make_parser (dom{}).input (R"([{"a":1,"b":2},3])"sv).eof ();
+      make_parser (dom{}).input (u8R"([{"a":1,"b":2},3])"sv).eof ();
   ASSERT_TRUE (root);
   auto const &arr = std::get<array> (*root);
   ASSERT_EQ (arr.size (), 2U);
   EXPECT_THAT (
       std::get<object> (arr[0]),
-      UnorderedElementsAre (std::make_pair ("a"s, element{uint64_t{1}}),
-                            std::make_pair ("b"s, element{uint64_t{2}})));
+      UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{1}}),
+                            std::make_pair (u8"b"s, element{uint64_t{2}})));
   EXPECT_THAT (arr[1], element{uint64_t{3}});
 }
 
 TEST (Dom, ObjectInsideArray2) {
   std::optional<element> const root =
-      make_parser (dom{}).input (R"([1,{"a":2,"b":3}])"sv).eof ();
+      make_parser (dom{}).input (u8R"([1,{"a":2,"b":3}])"sv).eof ();
   ASSERT_TRUE (root);
   auto const &arr = std::get<array> (*root);
   ASSERT_EQ (arr.size (), 2U);
   EXPECT_THAT (arr[0], element{uint64_t{1}});
   EXPECT_THAT (
       std::get<object> (arr[1]),
-      UnorderedElementsAre (std::make_pair ("a"s, element{uint64_t{2}}),
-                            std::make_pair ("b"s, element{uint64_t{3}})));
+      UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{2}}),
+                            std::make_pair (u8"b"s, element{uint64_t{3}})));
 }
 
 TEST (Dom, ArrayInsideObject) {
   std::optional<element> const root =
-      make_parser (dom{}).input (R"({"a":[1,2],"b":3})"sv).eof ();
+      make_parser (dom{}).input (u8R"({"a":[1,2],"b":3})"sv).eof ();
   ASSERT_TRUE (root);
   auto const &obj = std::get<object> (*root);
   ASSERT_EQ (obj.size (), 2U);
-  EXPECT_THAT (std::get<array> (obj.at ("a")),
+  EXPECT_THAT (std::get<array> (obj.at (u8"a")),
                ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
-  EXPECT_EQ (obj.at ("b"), element{uint64_t{3}});
+  EXPECT_EQ (obj.at (u8"b"), element{uint64_t{3}});
 }
 
 TEST (Dom, DuplicateKeys) {
   auto p = make_parser (dom{});
-  p.input (R"({"a":"b","a":"c"})"sv);
-  EXPECT_FALSE (p.has_error ());
+  p.input (u8R"({"a":"b","a":"c"})"sv);
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
   std::optional<element> const root = p.eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_THAT (std::get<object> (*root),
-               UnorderedElementsAre (std::make_pair ("a"s, element{"c"s})));
+               UnorderedElementsAre (std::make_pair (u8"a"s, element{u8"c"s})));
 }
 
 TEST (Dom, ArrayStack) {
@@ -159,7 +164,7 @@ TEST (Dom, ArrayStack) {
   EXPECT_FALSE (static_cast<bool> (d.begin_array ()));
 
   auto const err = make_error_code (error::dom_nesting_too_deep);
-  EXPECT_EQ (d.string_value ("string"sv), err);
+  EXPECT_EQ (d.string_value (u8"string"sv), err);
   EXPECT_EQ (d.int64_value (int64_t{37}), err);
   EXPECT_EQ (d.uint64_value (uint64_t{37}), err);
   EXPECT_EQ (d.double_value (37.9), err);
@@ -168,5 +173,5 @@ TEST (Dom, ArrayStack) {
 
   EXPECT_EQ (d.begin_array (), err);
   EXPECT_EQ (d.begin_object (), err);
-  EXPECT_EQ (d.key ("key"sv), err);
+  EXPECT_EQ (d.key (u8"key"sv), err);
 }

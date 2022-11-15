@@ -44,7 +44,7 @@
 
 char32_t const peejay::replacement_char_code_point = 0xFFFD;
 
-std::uint8_t const peejay::utf8_decoder::utf8d_[] = {
+uint8_t const peejay::utf8_decoder::utf8d_[] = {
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  // 00..1f
@@ -86,9 +86,9 @@ std::uint8_t const peejay::utf8_decoder::utf8d_[] = {
     1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  // s7..s8
 };
 
-std::uint8_t peejay::utf8_decoder::decode (std::uint8_t* const state,
-                                           char32_t* const codep,
-                                           std::uint32_t const byte) {
+uint8_t peejay::utf8_decoder::decode (uint8_t* const state,
+                                      char32_t* const codep,
+                                      uint32_t const byte) {
   auto const type = utf8d_[byte];
   *codep = (*state != state::accept) ? (byte & 0x3F) | (*codep << 6)
                                      : (0xFF >> type) & byte;
@@ -96,9 +96,14 @@ std::uint8_t peejay::utf8_decoder::decode (std::uint8_t* const state,
   return *state;
 }
 
-std::optional<char32_t> peejay::utf8_decoder::get (
-    std::uint8_t const byte) noexcept {
-  if (decode (&state_, &codepoint_, byte) != 0U) {
+std::optional<char32_t> peejay::utf8_decoder::get (char8 const byte) noexcept {
+#if PPEJAY_CXX20
+  static_assert (std::is_unsigned_v<decltype (byte)>);
+  auto const index = static_cast<uint32_t> (byte);
+#else
+  auto const index = static_cast<uint32_t> (static_cast<uint8_t> (byte));
+#endif
+  if (decode (&state_, &codepoint_, index) != 0U) {
     well_formed_ = false;
     return {};
   }

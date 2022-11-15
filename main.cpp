@@ -21,6 +21,8 @@
 #include "peejay/json.hpp"
 #include "peejay/utf.hpp"
 
+using namespace peejay;
+
 namespace {
 
 class json_writer {
@@ -32,7 +34,7 @@ public:
     // side-effects of writing to os_.
   }
 
-  std::error_code string_value (std::string_view const& s) {
+  std::error_code string_value (u8string_view const& s) {
     os_ << '"';
     std::ostream_iterator<char> out{os_};
     // TODO: not yet supported by Xcode 14.0.1
@@ -54,7 +56,7 @@ public:
   std::error_code end_array () { return write (']'); }
 
   std::error_code begin_object () { return write ('{'); }
-  std::error_code key (std::string_view const& s) {
+  std::error_code key (u8string_view const& s) {
     this->string_value (s);
     return write (": ");
   }
@@ -71,9 +73,9 @@ private:
 
 template <typename IStream>
 std::error_code slurp (IStream&& in) {
-  auto p = peejay::make_parser (json_writer{std::cout});
+  auto p = make_parser (json_writer{std::cout});
 
-  std::array<char, 256> buffer{{0}};
+  std::array<typename std::decay_t<IStream>::char_type, 256> buffer{{0}};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
@@ -82,7 +84,7 @@ std::error_code slurp (IStream&& in) {
     auto const available = static_cast<std::make_unsigned_t<std::streamsize>> (
         std::max (in.gcount (), std::streamsize{0}));
 #if PEEJAY_CXX20
-    p.input (std::span<char>{data, available});
+    p.input (std::span{reinterpret_cast<char8 const*> (data), available});
 #else
     p.input (data, data + available);
 #endif  // PEEJAY_CXX20
