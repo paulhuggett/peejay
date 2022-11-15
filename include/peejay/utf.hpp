@@ -68,21 +68,12 @@ private:
   bool well_formed_ = true;
 };
 
-extern char32_t const replacement_char_code_point;
-
-template <typename CharType = char, typename OutputIt>
-PEEJAY_CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
-OutputIt replacement_char (OutputIt out) {
-  *(out++) = static_cast<CharType> (0xEF);
-  *(out++) = static_cast<CharType> (0xBF);
-  *(out++) = static_cast<CharType> (0xBD);
-  return out;
-}
+inline constexpr char32_t replacement_char_code_point = 0xFFFD;
 
 // code point to utf8
 // ~~~~~~~~~~~~~~~~~~
 template <typename OutputIt>
-PEEJAY_CXX20REQUIRES ((std::output_iterator<OutputIt, CharType>))
+PEEJAY_CXX20REQUIRES ((std::output_iterator<OutputIt, char8_t>))
 OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
   if (c < 0x80) {
     *(out++) = static_cast<char8> (c);
@@ -91,7 +82,7 @@ OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
       *(out++) = static_cast<char8> (c / 64 + 0xC0);
       *(out++) = static_cast<char8> (c % 64 + 0x80);
     } else if (c >= 0xD800 && c < 0xE000) {
-      out = replacement_char<char8> (out);
+      out = code_point_to_utf8 (replacement_char_code_point, out);
     } else if (c < 0x10000) {
       *(out++) = static_cast<char8> ((c / 0x1000) | 0xE0);
       *(out++) = static_cast<char8> ((c / 64 % 64) | 0x80);
@@ -102,15 +93,20 @@ OutputIt code_point_to_utf8 (char32_t c, OutputIt out) {
       *(out++) = static_cast<char8> ((c / 64 % 64) | 0x80);
       *(out++) = static_cast<char8> ((c % 64) | 0x80);
     } else {
-      out = replacement_char<char8> (out);
+      out = code_point_to_utf8 (replacement_char_code_point, out);
     }
   }
   return out;
 }
 
+// is utf16 high surrogate
+// ~~~~~~~~~~~~~~~~~~~~~~~
 constexpr bool is_utf16_high_surrogate (char16_t code_unit) {
   return code_unit >= 0xD800 && code_unit <= 0xDBFF;
 }
+
+// is utf16 low surrogate
+// ~~~~~~~~~~~~~~~~~~~~~~
 constexpr bool is_utf16_low_surrogate (char16_t code_unit) {
   return code_unit >= 0xDC00 && code_unit <= 0xDFFF;
 }

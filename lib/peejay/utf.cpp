@@ -42,8 +42,6 @@
 
 #include <cctype>
 
-char32_t const peejay::replacement_char_code_point = 0xFFFD;
-
 uint8_t const peejay::utf8_decoder::utf8d_[] = {
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
