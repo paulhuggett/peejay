@@ -45,7 +45,7 @@ jobs:
         run: |
           clang-tidy-12 -p=build/compile_commands.json \
                         ./*.?pp                        \
-                        > "${{ env.CLANG_TIDY_OUT }}"
+                        | tee "${{ env.CLANG_TIDY_OUT }}"
 
       # Convert the clang-tidy output to a format that the Codacy API accepts
       - name: Run codacy-clang-tidy
