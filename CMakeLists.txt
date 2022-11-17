@@ -87,10 +87,18 @@ endfunction (setup_target)
 # library" on Windows.
 set (gtest_force_shared_crt ON CACHE BOOL "Always use msvcrt.dll")
 add_subdirectory (googletest)
-set_target_properties (gtest gmock gmock_main gtest_main
-  PROPERTIES CXX_STANDARD ${STANDARD}
-             CXX_STANDARD_REQUIRED Yes
-)
+foreach (target gtest gmock gmock_main gtest_main)
+  set_target_properties (${target} PROPERTIES
+    CXX_STANDARD ${STANDARD}
+    CXX_STANDARD_REQUIRED Yes
+  )
+  target_compile_options (${target} PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
+  )
+  target_link_options (${target} PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
+  )
+endforeach()
 
 
 add_subdirectory (lib)
