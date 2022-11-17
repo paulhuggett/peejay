@@ -21,6 +21,7 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 option (WERROR "Compiler warnings are errors")
 option (CXX17 "Use C++17 (rather than the default C++20")
+option (LIBCXX "Use libc++ rather than libstdc++ (clang only)")
 option (COVERAGE "Generate LLVM Source-based Coverage")
 
 if (CXX17)
@@ -40,7 +41,6 @@ function (setup_target target)
     -Wno-exit-time-destructors
     -Wno-padded
     -Wno-undef
-    -stdlib=libc++
   )
   set (gcc_options
     -Wall
@@ -61,6 +61,9 @@ function (setup_target target)
 
   if (COVERAGE)
     list (APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
+  endif ()
+  if (LIBCXX)
+    list (APPEND clang_options -stdlib=libc++)
   endif ()
 
   set_target_properties (${target} PROPERTIES
@@ -92,12 +95,14 @@ foreach (target gtest gmock gmock_main gtest_main)
     CXX_STANDARD ${STANDARD}
     CXX_STANDARD_REQUIRED Yes
   )
-  target_compile_options (${target} PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
-  )
-  target_link_options (${target} PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
-  )
+  if (LIBCXX)
+    target_compile_options (${target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
+    )
+    target_link_options (${target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
+    )
+  endif ()
 endforeach()
 
 

@@ -64,6 +64,7 @@ jobs:
                 -S .                                               \
                 -B build                                           \
                 -D COVERAGE=Yes                                    \
+                -D LIBCXX=Yes                                      \
                 -D CMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
                 -D CMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }}
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
