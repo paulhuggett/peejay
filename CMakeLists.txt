@@ -40,6 +40,7 @@ function (setup_target target)
     -Wno-exit-time-destructors
     -Wno-padded
     -Wno-undef
+    -stdlib=libc++
   )
   set (gcc_options
     -Wall
