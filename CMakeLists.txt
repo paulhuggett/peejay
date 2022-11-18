@@ -69,6 +69,7 @@ function (setup_target target)
   set_target_properties (${target} PROPERTIES
     CXX_STANDARD ${STANDARD}
     CXX_STANDARD_REQUIRED Yes
+    CXX_EXTENSIONS No
   )
 
   target_compile_options (${target} PRIVATE
@@ -94,6 +95,7 @@ foreach (target gtest gmock gmock_main gtest_main)
   set_target_properties (${target} PROPERTIES
     CXX_STANDARD ${STANDARD}
     CXX_STANDARD_REQUIRED Yes
+    CXX_EXTENSIONS No
   )
   if (LIBCXX)
     target_compile_options (${target} PRIVATE
