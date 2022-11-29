@@ -95,7 +95,7 @@ uint8_t peejay::utf8_decoder::decode (uint8_t* const state,
 }
 
 std::optional<char32_t> peejay::utf8_decoder::get (char8 const byte) noexcept {
-#if PPEJAY_CXX20
+#if PEEJAY_CXX20
   static_assert (std::is_unsigned_v<decltype (byte)>);
   auto const index = static_cast<uint32_t> (byte);
 #else
