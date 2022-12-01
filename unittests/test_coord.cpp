@@ -20,24 +20,28 @@
 
 using namespace peejay;
 
+// NOLINTNEXTLINE
 TEST (Coord, DefaultCtor) {
   coord c;
   EXPECT_EQ (c.line, 1U);
   EXPECT_EQ (c.column, 1U);
 }
 
+// NOLINTNEXTLINE
 TEST (Coord, RowThenColumnInit) {
   coord c{line{2U}, column{3U}};
   EXPECT_EQ (c.line, 2U);
   EXPECT_EQ (c.column, 3U);
 }
 
+// NOLINTNEXTLINE
 TEST (Coord, ColumnThenRowInit) {
   coord c{column{2U}, line{3U}};
   EXPECT_EQ (c.line, 3U);
   EXPECT_EQ (c.column, 2U);
 }
 
+// NOLINTNEXTLINE
 TEST (Coord, Eq) {
   coord lhs{column{2U}, line{3U}};
   coord rhs{line{3U}, column{2U}};
@@ -45,6 +49,7 @@ TEST (Coord, Eq) {
   EXPECT_FALSE (lhs != rhs);
 }
 
+// NOLINTNEXTLINE
 TEST (Coord, Neq) {
   coord lhs{column{2U}, line{3U}};
   coord rhs{line{5U}, column{7U}};
@@ -52,6 +57,7 @@ TEST (Coord, Neq) {
   EXPECT_FALSE (lhs == rhs);
 }
 
+// NOLINTNEXTLINE
 TEST (Coord, Lt) {
   EXPECT_TRUE ((coord{line{3U}, column{1U}} < coord{line{4U}, column{1U}}));
   EXPECT_TRUE ((coord{line{3U}, column{2U}} < coord{line{4U}, column{1U}}));
@@ -60,6 +66,7 @@ TEST (Coord, Lt) {
   EXPECT_FALSE (coord{} < coord{});
 }
 
+// NOLINTNEXTLINE
 TEST (Coord, LtEq) {
   EXPECT_TRUE ((coord{line{3U}, column{1U}} <= coord{line{4U}, column{1U}}));
   EXPECT_TRUE ((coord{line{3U}, column{2U}} <= coord{line{4U}, column{1U}}));

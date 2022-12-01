@@ -25,16 +25,19 @@ using namespace std::string_view_literals;
 using testing::ElementsAre;
 using testing::UnorderedElementsAre;
 
+// NOLINTNEXTLINE
 TEST (Dom, MarkObjectsAllEqual) {
   EXPECT_TRUE (mark{} == mark{});
   EXPECT_FALSE (mark{} != mark{});
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, NullObjectsAllEqual) {
   EXPECT_TRUE (null{} == null{});
   EXPECT_FALSE (null{} != null{});
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, Null) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"null"sv).eof ();
@@ -42,6 +45,7 @@ TEST (Dom, Null) {
   EXPECT_EQ (std::get<null> (*root), null{});
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, One) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"1"sv).eof ();
@@ -49,6 +53,7 @@ TEST (Dom, One) {
   EXPECT_EQ (std::get<uint64_t> (*root), 1U);
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, NegativeOne) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"-1"sv).eof ();
@@ -56,12 +61,14 @@ TEST (Dom, NegativeOne) {
   EXPECT_EQ (std::get<int64_t> (*root), -1);
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, String) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8R"("string")"sv).eof ();
   EXPECT_EQ (std::get<u8string> (*root), u8"string");
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, Double) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"3.14"sv).eof ();
@@ -69,12 +76,14 @@ TEST (Dom, Double) {
   EXPECT_DOUBLE_EQ (std::get<double> (*root), 3.14);
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, BooleanTrue) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"true"sv).eof ();
   EXPECT_TRUE (std::get<bool> (*root));
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, BooleanFalse) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"false"sv).eof ();
@@ -82,6 +91,7 @@ TEST (Dom, BooleanFalse) {
   EXPECT_FALSE (std::get<bool> (*root));
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, Array) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"[1,2]"sv).eof ();
@@ -90,6 +100,7 @@ TEST (Dom, Array) {
                ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, Array2) {
   auto const src = u8R"(["\uFFFF"])"sv;
   auto p = make_parser (dom{});
@@ -99,6 +110,7 @@ TEST (Dom, Array2) {
   ASSERT_TRUE (root);
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, Object) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8R"({"a":1,"b":2})"sv).eof ();
@@ -109,6 +121,7 @@ TEST (Dom, Object) {
                             std::make_pair (u8"b"s, element{uint64_t{2}})));
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, ObjectInsideArray1) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8R"([{"a":1,"b":2},3])"sv).eof ();
@@ -122,6 +135,7 @@ TEST (Dom, ObjectInsideArray1) {
   EXPECT_THAT (arr[1], element{uint64_t{3}});
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, ObjectInsideArray2) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8R"([1,{"a":2,"b":3}])"sv).eof ();
@@ -135,6 +149,7 @@ TEST (Dom, ObjectInsideArray2) {
                             std::make_pair (u8"b"s, element{uint64_t{3}})));
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, ArrayInsideObject) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8R"({"a":[1,2],"b":3})"sv).eof ();
@@ -146,6 +161,7 @@ TEST (Dom, ArrayInsideObject) {
   EXPECT_EQ (obj.at (u8"b"), element{uint64_t{3}});
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, DuplicateKeys) {
   auto p = make_parser (dom{});
   p.input (u8R"({"a":"b","a":"c"})"sv);
@@ -158,6 +174,7 @@ TEST (Dom, DuplicateKeys) {
                UnorderedElementsAre (std::make_pair (u8"a"s, element{u8"c"s})));
 }
 
+// NOLINTNEXTLINE
 TEST (Dom, ArrayStack) {
   dom<size_t{2}> d;
   EXPECT_FALSE (static_cast<bool> (d.begin_array ()));

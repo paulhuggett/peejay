@@ -78,6 +78,7 @@ std::ostream &operator<< (std::ostream &os, no_copy_or_assign const &x) {
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, MoveCtor) {
   arrayvec<no_copy_or_assign, 4> a;
   a.emplace_back (2);
@@ -90,6 +91,7 @@ TEST (ArrayVec, MoveCtor) {
   EXPECT_EQ (b[2], no_copy_or_assign{5});
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, MoveAssign) {
   arrayvec<no_copy_or_assign, 4> a;
   a.emplace_back (2);
@@ -104,6 +106,7 @@ TEST (ArrayVec, MoveAssign) {
   EXPECT_EQ (b[2], no_copy_or_assign{5});
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, MoveAssign2) {
   arrayvec<no_copy_or_assign, 2> a;
   a.emplace_back (2);
@@ -115,12 +118,14 @@ TEST (ArrayVec, MoveAssign2) {
   EXPECT_EQ (b[0], no_copy_or_assign{2});
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignInitializerList) {
   arrayvec<int, 3> b{1, 2, 3};
   b.assign ({4, 5, 6});
   EXPECT_THAT (b, ElementsAre (4, 5, 6));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignCopy) {
   arrayvec<int, 3> const b{5, 7};
   arrayvec<int, 3> c;
@@ -128,6 +133,7 @@ TEST (ArrayVec, AssignCopy) {
   EXPECT_THAT (c, ElementsAre (5, 7));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignCopy2) {
   arrayvec<int, 3> const b{5};
   arrayvec<int, 3> c{7, 9};
@@ -135,6 +141,7 @@ TEST (ArrayVec, AssignCopy2) {
   EXPECT_THAT (c, ElementsAre (5));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, SizeAfterResizeSmaller) {
   arrayvec<int, 8> b (std::size_t{8}, int{});
   b.resize (5);
@@ -144,6 +151,7 @@ TEST (ArrayVec, SizeAfterResizeSmaller) {
   EXPECT_FALSE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, SizeAfterResizeLarger) {
   arrayvec<int, 8> b (std::size_t{2}, int{});
   b.resize (5);
@@ -153,6 +161,7 @@ TEST (ArrayVec, SizeAfterResizeLarger) {
   EXPECT_FALSE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, SizeAfterResize0) {
   arrayvec<int, 8> b (std::size_t{8}, int{});
   b.resize (0);
@@ -161,6 +170,7 @@ TEST (ArrayVec, SizeAfterResize0) {
   EXPECT_TRUE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, IteratorNonConst) {
   arrayvec<int, 4> avec (size_t{4}, int{});
 
@@ -180,6 +190,7 @@ TEST (ArrayVec, IteratorNonConst) {
   EXPECT_THAT (actual, ElementsAre (42, 43, 44, 45));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, IteratorConstFromNonConstContainer) {
   arrayvec<int, 4> avec (std::size_t{4}, int{});
   std::iota (avec.begin (), avec.end (), 42);
@@ -194,6 +205,7 @@ TEST (ArrayVec, IteratorConstFromNonConstContainer) {
   EXPECT_THAT (actual, ElementsAre (42, 43, 44, 45));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, IteratorConstIteratorFromConstContainer) {
   arrayvec<int, 4> avec (std::size_t{4}, int{});
   std::iota (avec.begin (), avec.end (), 42);
@@ -203,6 +215,7 @@ TEST (ArrayVec, IteratorConstIteratorFromConstContainer) {
                ElementsAre (42, 43, 44, 45));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, IteratorNonConstReverse) {
   arrayvec<int, 4> avec (std::size_t{4}, int{});
   std::iota (avec.begin (), avec.end (), 42);
@@ -212,6 +225,7 @@ TEST (ArrayVec, IteratorNonConstReverse) {
                ElementsAre (45, 44, 43, 42));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, IteratorConstReverse) {
   arrayvec<int, 4> vec (std::size_t{4}, int{});
   std::iota (std::begin (vec), std::end (vec), 42);
@@ -220,6 +234,7 @@ TEST (ArrayVec, IteratorConstReverse) {
                ElementsAre (45, 44, 43, 42));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, ElementAccess) {
   arrayvec<int, 4> avec (std::size_t{4}, int{});
   int count = 42;
@@ -232,6 +247,7 @@ TEST (ArrayVec, ElementAccess) {
       std::equal (std::begin (avec), std::end (avec), std::begin (expected)));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, MoveSmallToLarge) {
   arrayvec<int, 4> a (std::size_t{1}, int{42});
   arrayvec<int, 4> b{73, 74, 75, 76};
@@ -239,6 +255,7 @@ TEST (ArrayVec, MoveSmallToLarge) {
   EXPECT_THAT (a, ElementsAre (73, 74, 75, 76));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, MoveLargeToSmall) {
   arrayvec<int, 3> a{3, 5, 7};
   arrayvec<int, 3> b{11};
@@ -246,6 +263,7 @@ TEST (ArrayVec, MoveLargeToSmall) {
   EXPECT_THAT (a, ElementsAre (3, 5, 7));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, Clear) {
   // The two containers start out with different sizes; one uses the small
   // buffer, the other, large.
@@ -255,6 +273,7 @@ TEST (ArrayVec, Clear) {
   EXPECT_EQ (0U, a.size ());
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, PushBack) {
   arrayvec<int, 4> a;
   a.push_back (1);
@@ -267,6 +286,7 @@ TEST (ArrayVec, PushBack) {
   EXPECT_THAT (a, ElementsAre (1, 2, 3, 4));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, AppendIteratorRange) {
   arrayvec<int, 8> a (std::size_t{4}, int{});
   std::iota (std::begin (a), std::end (a), 0);
@@ -294,12 +314,14 @@ private:
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, NoDefaultPushBack) {
   arrayvec<no_default_ctor, 2> sv;
   sv.push_back (no_default_ctor{7});
   EXPECT_THAT (sv, ElementsAre (no_default_ctor{7}));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, NoDefaultEmplace) {
   arrayvec<no_default_ctor, 2> sv;
   sv.emplace_back (7);

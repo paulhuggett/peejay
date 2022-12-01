@@ -25,72 +25,84 @@
 using namespace peejay;
 using namespace std::string_literals;
 
+// NOLINTNEXTLINE
 TEST (Emit, Nothing) {
   std::stringstream os;
   emit (os, std::nullopt);
   EXPECT_EQ (os.str (), "\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, Null) {
   std::stringstream os;
   emit (os, element{null{}});
   EXPECT_EQ (os.str (), "null\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, True) {
   std::stringstream os;
   emit (os, element{true});
   EXPECT_EQ (os.str (), "true\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, False) {
   std::stringstream os;
   emit (os, element{false});
   EXPECT_EQ (os.str (), "false\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, Zero) {
   std::stringstream os;
   emit (os, element{uint64_t{0}});
   EXPECT_EQ (os.str (), "0\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, One) {
   std::stringstream os;
   emit (os, element{uint64_t{1}});
   EXPECT_EQ (os.str (), "1\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, MinusOne) {
   std::stringstream os;
   emit (os, element{int64_t{-1}});
   EXPECT_EQ (os.str (), "-1\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, Float) {
   std::stringstream os;
   emit (os, element{2.2});
   EXPECT_EQ (os.str (), "2.2\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, StringNoEscapes) {
   std::stringstream os;
   emit (os, element{u8"string"});
   EXPECT_EQ (os.str (), "\"string\"\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, StringBackslashT) {
   std::stringstream os;
   emit (os, element{u8"abc\tdef"});
   EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, EmptyArray) {
   std::stringstream os;
   emit (os, element{array{}});
   EXPECT_EQ (os.str (), "[]\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, ArrayOneMember) {
   std::stringstream os;
   emit (os, element{array{element{uint64_t{1}}}});
@@ -100,6 +112,7 @@ TEST (Emit, ArrayOneMember) {
 )");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, ArrayTwoMembers) {
   std::stringstream os;
   emit (os, element{array{element{uint64_t{1}}, element{uint64_t{2}}}});
@@ -110,12 +123,14 @@ TEST (Emit, ArrayTwoMembers) {
 )");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, EmptyObject) {
   std::stringstream os;
   emit (os, element{object{}});
   EXPECT_EQ (os.str (), "{}\n");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, ObjectOneMember) {
   std::stringstream os;
   object obj;
@@ -127,6 +142,7 @@ TEST (Emit, ObjectOneMember) {
 )");
 }
 
+// NOLINTNEXTLINE
 TEST (Emit, ObjectArrayMember) {
   std::stringstream os;
   object obj;

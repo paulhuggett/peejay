@@ -38,6 +38,7 @@ ResultType code_point_to_utf8_container (char32_t c) {
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST (CuToUtf8, All) {
   using namespace peejay;
 
@@ -102,6 +103,7 @@ char32_t utf16_to_code_point (std::u16string const& src) {
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST (Utf16ToCodePoint, All) {
   EXPECT_EQ (utf16_to_code_point (std::u16string ({char16_t{'a'}})),
              97U /*'a'*/);
