@@ -43,8 +43,8 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          clang-tidy-12 -p=build/compile_commands.json \
-                        ./*.?pp                        \
+          clang-tidy-12 -p=build/compile_commands.json                  \
+                        $(find . -name "*.?pp" -not -path "./build*/*") \
                         | tee "${{ env.CLANG_TIDY_OUT }}"
 
       # Convert the clang-tidy output to a format that the Codacy API accepts
