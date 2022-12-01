@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       CCT_VERSION: 1.3.2
       CCT: codacy-clang-tidy-linux-1.3.2
@@ -32,18 +32,24 @@ jobs:
           curl -L "${{ env.CCT_DOWNLOAD_URL }}" -o "$HOME/cct/${{ env.CCT }}"
           chmod +x "$HOME/cct/${{ env.CCT }}"
 
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libc++-dev libc++abi-dev
+
       - name: Configure
         run: |
           cmake -S .                                 \
                 -B build                             \
                 -D CMAKE_EXPORT_COMPILE_COMMANDS=Yes \
                 -D CMAKE_BUILD_TYPE=Release          \
-                -D CMAKE_C_COMPILER=clang-12         \
-                -D CMAKE_CXX_COMPILER=clang++-12
+                -D CMAKE_C_COMPILER=clang-14         \
+                -D CMAKE_CXX_COMPILER=clang++-14     \
+                -D LIBCXX=Yes
 
       - name: Run clang-tidy
         run: |
-          clang-tidy-12 -p=build/compile_commands.json                  \
+          clang-tidy-14 -p=build/compile_commands.json                  \
                         $(find . -name "*.?pp" -not -path "./build*/*") \
                         | tee "${{ env.CLANG_TIDY_OUT }}"
 
