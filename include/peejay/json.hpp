@@ -1075,6 +1075,8 @@ public:
   string_matcher (string_matcher const &) = delete;
   string_matcher (string_matcher &&) noexcept = default;
 
+  ~string_matcher () noexcept override = default;
+
   string_matcher &operator= (string_matcher const &) = delete;
   string_matcher &operator= (string_matcher &&) noexcept = default;
 
@@ -1420,6 +1422,7 @@ template <typename Backend>
 class array_matcher final : public matcher<Backend> {
 public:
   array_matcher () noexcept : matcher<Backend> (start_state) {}
+  ~array_matcher () noexcept override = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
       parser<Backend> &parser, std::optional<char32_t> ch) override;
@@ -1509,6 +1512,7 @@ template <typename Backend>
 class object_matcher final : public matcher<Backend> {
 public:
   object_matcher () noexcept : matcher<Backend> (start_state) {}
+  ~object_matcher () noexcept override = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
       parser<Backend> &parser, std::optional<char32_t> ch) override;
@@ -1626,6 +1630,8 @@ public:
   whitespace_matcher () noexcept : matcher<Backend> (body_state) {}
   whitespace_matcher (whitespace_matcher const &) = delete;
   whitespace_matcher (whitespace_matcher &&) noexcept = default;
+
+  ~whitespace_matcher () noexcept override = default;
 
   whitespace_matcher &operator= (whitespace_matcher const &) = delete;
   whitespace_matcher &operator= (whitespace_matcher &&) noexcept = default;
@@ -1837,6 +1843,7 @@ template <typename Backend>
 class eof_matcher final : public matcher<Backend> {
 public:
   eof_matcher () noexcept : matcher<Backend> (start_state) {}
+  ~eof_matcher () noexcept override = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
       parser<Backend> &parser, std::optional<char32_t> ch) override;
@@ -1873,6 +1880,7 @@ class root_matcher final : public matcher<Backend> {
 public:
   explicit constexpr root_matcher (bool const is_object_key = false) noexcept
       : matcher<Backend> (start_state), object_key_{is_object_key} {}
+  ~root_matcher () noexcept override = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
       parser<Backend> &parser, std::optional<char32_t> ch) override;

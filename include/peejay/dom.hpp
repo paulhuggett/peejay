@@ -92,16 +92,16 @@ private:
 
 struct element;
 struct null {
-  bool operator== (null) const noexcept { return true; }
+  bool operator== (null /*unused*/) const noexcept { return true; }
 #if !PEEJAY_CXX20
-  bool operator!= (null) const noexcept { return false; }
+  bool operator!= (null /*unused*/) const noexcept { return false; }
 #endif  // !PEEJAY_CXX20
 };
 
 struct mark {
-  bool operator== (mark) const noexcept { return true; }
+  bool operator== (mark /*unused*/) const noexcept { return true; }
 #if !PEEJAY_CXX20
-  bool operator!= (mark) const noexcept { return false; }
+  bool operator!= (mark /*unused*/) const noexcept { return false; }
 #endif  // !PEEJAY_CXX20
 };
 using variant = std::variant<int64_t, uint64_t, double, bool, null, u8string,
