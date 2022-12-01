@@ -17,9 +17,8 @@
 
 #include <array>
 #include <cstddef>
+#include <iterator>
 #include <span>
-
-using namespace peejay;
 
 namespace {
 
@@ -43,7 +42,9 @@ public:
     }
     return os;
   }
-  constexpr indent next () const noexcept { return indent{depth_ + 1U}; }
+  [[nodiscard]] constexpr indent next () const noexcept {
+    return indent{depth_ + 1U};
+  }
 
 private:
   size_t depth_ = 0;
@@ -55,14 +56,29 @@ std::ostream& operator<< (std::ostream& os, indent const& i) {
 
 constexpr char to_hex (unsigned v) noexcept {
   assert (v < 0x10);
-  return static_cast<char> (v + ((v < 10) ? '0' : 'A' - 10));
+  constexpr auto letter_threshold = 10;
+  return static_cast<char> (
+      v + ((v < letter_threshold) ? '0' : 'A' - letter_threshold));
 }
 
-std::ostream& emit_string_view (std::ostream& os, u8string_view const& str) {
+enum {
+  quotation_mark = 0x0022,
+  reverse_solidus = 0x005c,
+  backspace = 0x0008,
+  form_feed = 0x000c,
+  line_feed = 0x000a,
+  carriage_return = 0x000d,
+  tab = 0x0009,
+};
+
+std::ostream& emit_string_view (std::ostream& os,
+                                peejay::u8string_view const& str) {
   os << '"';
-  auto first = std::begin (str);
-  auto const last = std::end (str);
-  auto pos = first;
+  auto first = std::begin (
+      str);  // NOLINT(llvm-qualified-auto,readability-qualified-auto)
+  auto const last =
+      std::end (str);  // NOLINT(llvm-qualified-auto,readability-qualified-auto)
+  peejay::u8string_view::const_iterator pos;
   while ((pos = std::find_if (first, last, [] (char const c) {
             return c < ' ' || c == '"' || c == '\\';
           })) != last) {
@@ -71,13 +87,13 @@ std::ostream& emit_string_view (std::ostream& os, u8string_view const& str) {
               std::distance (first, pos));
     os << '\\';
     switch (*pos) {
-    case '"': os << '"'; break;    // quotation mark  U+0022
-    case '\\': os << '\\'; break;  // reverse solidus U+005C
-    case 0x08: os << 'b'; break;   // backspace       U+0008
-    case 0x0C: os << 'f'; break;   // form feed       U+000C
-    case 0x0A: os << 'n'; break;   // line feed       U+000A
-    case 0x0D: os << 'r'; break;   // carriage return U+000D
-    case 0x09: os << 't'; break;   // tab             U+0009
+    case quotation_mark: os << '"'; break;
+    case reverse_solidus: os << '\\'; break;
+    case backspace: os << 'b'; break;
+    case form_feed: os << 'f'; break;
+    case line_feed: os << 'n'; break;
+    case carriage_return: os << 'r'; break;
+    case tab: os << 't'; break;
     default: {
       auto const c = static_cast<std::byte> (*pos);
       auto const high_nibble = ((c & std::byte{0xF0}) >> 4);
@@ -88,7 +104,8 @@ std::ostream& emit_string_view (std::ostream& os, u8string_view const& str) {
       os.write (hex.data (), hex.size ());
     } break;
     }
-    first = pos + 1;
+    first = pos;
+    std::advance (first, 1);
   }
   if (first != last) {
     assert (last > first);
@@ -108,16 +125,17 @@ struct overloaded : Ts... {
 template <typename... Ts>
 overloaded (Ts...) -> overloaded<Ts...>;
 
-std::string convu8 (u8string const& str) {
+std::string convu8 (peejay::u8string const& str) {
   std::string result;
   result.reserve (str.size ());
   std::transform (std::begin (str), std::end (str), std::back_inserter (result),
-                  [] (char8 c) { return static_cast<char> (c); });
+                  [] (peejay::char8 c) { return static_cast<char> (c); });
   return result;
 }
 
-std::ostream& emit (std::ostream& os, indent const i, element const& el) {
-  auto const emit_object = [&os, i] (object const& obj) {
+std::ostream& emit (std::ostream& os, indent const i,
+                    peejay::element const& el) {
+  auto const emit_object = [&os, i] (peejay::object const& obj) {
     if (obj.empty ()) {
       os << "{}";
       return;
@@ -132,7 +150,7 @@ std::ostream& emit (std::ostream& os, indent const i, element const& el) {
     }
     os << '\n' << i << "}";
   };
-  auto const emit_array = [&os, i] (array const& arr) {
+  auto const emit_array = [&os, i] (peejay::array const& arr) {
     if (arr.empty ()) {
       os << "[]";
       return;
@@ -148,12 +166,13 @@ std::ostream& emit (std::ostream& os, indent const i, element const& el) {
     os << '\n' << i << "]";
   };
   std::visit (
-      overloaded{[&os] (u8string const& s) { emit_string_view (os, s); },
-                 [&os] (int64_t v) { os << v; },
-                 [&os] (uint64_t v) { os << v; }, [&os] (double v) { os << v; },
-                 [&os] (bool b) { os << (b ? "true" : "false"); },
-                 [&os] (null) { os << "null"; }, emit_array, emit_object,
-                 [] (mark) { assert (false); }},
+      overloaded{
+          [&os] (peejay::u8string const& s) { emit_string_view (os, s); },
+          [&os] (int64_t v) { os << v; }, [&os] (uint64_t v) { os << v; },
+          [&os] (double v) { os << v; },
+          [&os] (bool b) { os << (b ? "true" : "false"); },
+          [&os] (peejay::null) { os << "null"; }, emit_array, emit_object,
+          [] (peejay::mark) { assert (false); }},
       el);
   return os;
 }

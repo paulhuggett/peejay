@@ -4,6 +4,7 @@ Checks:            |-
   -altera-*,
   -fuchsia-*,
   -llvmlibc-*,
+  -misc-no-recursion,
   -modernize-use-trailing-return-type,
   -readability-identifier-length
 WarningsAsErrors:  ''

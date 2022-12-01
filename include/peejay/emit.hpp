@@ -13,8 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_TREE_EMIT_HPP
-#define PEEJAY_TREE_EMIT_HPP
+#ifndef PEEJAY_EMIT_HPP
+#define PEEJAY_EMIT_HPP
 
 #include <iosfwd>
 
@@ -26,4 +26,4 @@ std::ostream& emit (std::ostream& os, std::optional<element> const& root);
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_TREE_EMIT_HPP
+#endif  // PEEJAY_EMIT_HPP

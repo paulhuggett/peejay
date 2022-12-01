@@ -13,8 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_TREE_DOM_HPP
-#define PEEJAY_TREE_DOM_HPP
+#ifndef PEEJAY_DOM_HPP
+#define PEEJAY_DOM_HPP
 
 #include <algorithm>
 #include <cstdint>
@@ -51,16 +51,18 @@ public:
       std::is_nothrow_move_constructible_v<Container>)
       : c_{std::move (cont)} {}
 
+  ~stack () noexcept = default;
+
   stack (stack const &) = default;
   stack (stack &&) noexcept = default;
 
   stack &operator= (stack const &) = default;
   stack &operator= (stack &&) noexcept = default;
 
-  bool empty () const { return c_.empty (); }
-  size_type size () const { return c_.size (); }
-  reference top () { return c_.back (); }
-  const_reference top () const { return c_.back (); }
+  [[nodiscard]] bool empty () const { return c_.empty (); }
+  [[nodiscard]] size_type size () const { return c_.size (); }
+  [[nodiscard]] reference top () { return c_.back (); }
+  [[nodiscard]] const_reference top () const { return c_.back (); }
 
   template <typename... Args>
   decltype (auto) emplace (Args &&...args) {
@@ -150,7 +152,7 @@ public:
   std::error_code end_object ();
 
 private:
-  size_t elements_until_mark () const noexcept {
+  [[nodiscard]] size_t elements_until_mark () const noexcept {
     return stack_->find_if (
         [] (element const &v) { return std::holds_alternative<mark> (v); });
   }
@@ -301,4 +303,4 @@ constexpr bool operator!= (typename dom<Size1>::element const &lhs,
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_TREE_DOM_HPP
+#endif  // PEEJAY_DOM_HPP

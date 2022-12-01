@@ -80,13 +80,18 @@ class closer {
 public:
   explicit constexpr closer (int const fd) noexcept : fd_{fd} {}
   closer (closer const&) = delete;
-  closer& operator= (closer const&) = delete;
+  closer (closer&&) noexcept = delete;
+
   ~closer () noexcept {
     if (fd_ != -1) {
       close (fd_);
     }
   }
-  constexpr int get () const noexcept { return fd_; }
+
+  closer& operator= (closer const&) = delete;
+  closer& operator= (closer&&) noexcept = delete;
+
+  [[nodiscard]] constexpr int get () const noexcept { return fd_; }
 
 private:
   int const fd_;
@@ -98,14 +103,17 @@ public:
   explicit constexpr unmapper (void* ptr, size_t size) noexcept
       : span_{ptr, size} {}
   unmapper (unmapper const&) = delete;
+  unmapper (unmapper&&) noexcept = delete;
+
   ~unmapper () noexcept { ::munmap (span_.first, span_.second); }
 
   unmapper& operator= (unmapper const&) = delete;
+  unmapper& operator= (unmapper&&) noexcept = delete;
 
-  constexpr T const* begin () const noexcept {
+  [[nodiscard]] constexpr T const* begin () const noexcept {
     return reinterpret_cast<T const*> (span_.first);
   }
-  constexpr T const* end () const noexcept {
+  [[nodiscard]] constexpr T const* end () const noexcept {
     return begin () + span_.second / sizeof (T);
   }
 

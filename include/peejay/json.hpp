@@ -241,6 +241,8 @@ public:
   parser (parser &&) noexcept (std::is_nothrow_constructible_v<Backend>) =
       default;
 
+  ~parser () noexcept = default;
+
   parser &operator= (parser const &) = delete;
   parser &operator= (parser &&) noexcept (
       std::is_nothrow_move_assignable_v<Backend>) = default;
@@ -291,30 +293,33 @@ public:
   ///@{
 
   /// \returns True if the parser has signalled an error.
-  constexpr bool has_error () const noexcept {
+  [[nodiscard]] constexpr bool has_error () const noexcept {
     return static_cast<bool> (error_);
   }
   /// \returns The error code held by the parser.
-  constexpr std::error_code const &last_error () const noexcept {
+  [[nodiscard]] constexpr std::error_code const &last_error () const noexcept {
     return error_;
   }
 
   ///@{
-  constexpr Backend &backend () noexcept { return backend_; }
-  constexpr Backend const &backend () const noexcept { return backend_; }
+  [[nodiscard]] constexpr Backend &backend () noexcept { return backend_; }
+  [[nodiscard]] constexpr Backend const &backend () const noexcept {
+    return backend_;
+  }
   ///@}
 
   /// \param flag  A selection of bits from the parser_extensions enum.
   /// \returns True if any of the extensions given by \p flag are enabled by the parser.
-  constexpr bool extension_enabled (extensions const flag) const noexcept {
+  [[nodiscard]] constexpr bool extension_enabled (
+      extensions const flag) const noexcept {
     using ut = std::underlying_type_t<extensions>;
     return (static_cast<ut> (extensions_) & static_cast<ut> (flag)) != 0U;
   }
 
   /// Returns the parser's position in the input text.
-  constexpr coord input_pos () const noexcept { return pos_; }
+  [[nodiscard]] constexpr coord input_pos () const noexcept { return pos_; }
   /// Returns the position of the most recent token in the input text.
-  constexpr coord pos () const noexcept { return matcher_pos_; }
+  [[nodiscard]] constexpr coord pos () const noexcept { return matcher_pos_; }
 
 private:
   using matcher = details::matcher<Backend>;
@@ -481,7 +486,7 @@ public:
 
   /// \returns True if this matcher has completed (and reached it's "done" state). The
   /// parser will pop this instance from the parse stack before continuing.
-  bool is_done () const noexcept { return state_ == done; }
+  [[nodiscard]] bool is_done () const noexcept { return state_ == done; }
 
 protected:
   explicit constexpr matcher (int const initial_state) noexcept
@@ -490,7 +495,7 @@ protected:
   matcher (matcher &&) noexcept = default;
   matcher &operator= (matcher &&) noexcept = default;
 
-  constexpr int get_state () const noexcept { return state_; }
+  [[nodiscard]] constexpr int get_state () const noexcept { return state_; }
   void set_state (int const s) noexcept { state_ = s; }
 
   ///@{
@@ -552,6 +557,8 @@ public:
       : matcher<Backend> (start_state), text_{text}, done_{done} {}
   token_matcher (token_matcher const &) = delete;
   token_matcher (token_matcher &&) noexcept = default;
+
+  ~token_matcher () noexcept override = default;
 
   token_matcher &operator= (token_matcher const &) = delete;
   token_matcher &operator= (token_matcher &&) noexcept = default;
@@ -702,6 +709,8 @@ public:
   number_matcher (number_matcher const &) = delete;
   number_matcher (number_matcher &&) noexcept = default;
 
+  ~number_matcher () noexcept override = default;
+
   number_matcher &operator= (number_matcher const &) = delete;
   number_matcher &operator= (number_matcher &&) noexcept = default;
 
@@ -709,7 +718,7 @@ public:
       parser<Backend> &parser, std::optional<char32_t> ch) override;
 
 private:
-  bool in_terminal_state () const;
+  [[nodiscard]] bool in_terminal_state () const;
 
   bool do_leading_minus_state (parser<Backend> &parser, char32_t c);
   /// Implements the first character of the 'int' production.

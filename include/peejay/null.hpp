@@ -21,29 +21,33 @@
 #include <string_view>
 #include <system_error>
 
+#include "peejay/utf.hpp"
+
 namespace peejay {
 
 class null {
 public:
-  constexpr void result () const noexcept {
+  static constexpr void result () noexcept {
     // The null output produces no result at all.
   }
 
-  std::error_code string_value (u8string_view const &) const noexcept {
+  static std::error_code string_value (u8string_view const &) noexcept {
     return {};
   }
-  std::error_code int64_value (std::int64_t) const noexcept { return {}; }
-  std::error_code uint64_value (std::uint64_t) const noexcept { return {}; }
-  std::error_code double_value (double) const noexcept { return {}; }
-  std::error_code boolean_value (bool) const noexcept { return {}; }
-  std::error_code null_value () const noexcept { return {}; }
+  static std::error_code int64_value (std::int64_t) noexcept { return {}; }
+  static std::error_code uint64_value (std::uint64_t) noexcept { return {}; }
+  static std::error_code double_value (double) noexcept { return {}; }
+  static std::error_code boolean_value (bool) noexcept { return {}; }
+  static std::error_code null_value () noexcept { return {}; }
 
-  std::error_code begin_array () const noexcept { return {}; }
-  std::error_code end_array () const noexcept { return {}; }
+  static std::error_code begin_array () noexcept { return {}; }
+  static std::error_code end_array () noexcept { return {}; }
 
-  std::error_code begin_object () const noexcept { return {}; }
-  std::error_code key (u8string_view const &) const noexcept { return {}; }
-  std::error_code end_object () const noexcept { return {}; }
+  static std::error_code begin_object () noexcept { return {}; }
+  static std::error_code key (peejay::u8string_view const &) noexcept {
+    return {};
+  }
+  static std::error_code end_object () noexcept { return {}; }
 };
 
 }  // end namespace peejay

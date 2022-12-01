@@ -87,7 +87,7 @@ public:
 
   /// Constructs the buffer with an initial size of 0.
   arrayvec () noexcept = default;
-  explicit arrayvec (std::initializer_list<T> init)
+  arrayvec (std::initializer_list<T> init)
       : arrayvec (std::begin (init), std::end (init)) {}
   template <typename ForwardIterator>
   arrayvec (ForwardIterator first, ForwardIterator last);
@@ -123,13 +123,13 @@ public:
   /// \name Capacity
   ///@{
   /// Returns the number of elements.
-  constexpr size_t size () const noexcept { return size_; }
+  [[nodiscard]] constexpr size_t size () const noexcept { return size_; }
 
   /// Checks whether the container is empty.
-  constexpr bool empty () const noexcept { return size_ == 0U; }
+  [[nodiscard]] constexpr bool empty () const noexcept { return size_ == 0U; }
 
   /// Returns the number of elements that can be held.
-  constexpr size_t capacity () const noexcept { return Size; }
+  [[nodiscard]] constexpr size_t capacity () const noexcept { return Size; }
 
   /// Resizes the container to contain \p count elements. If the current size is
   /// less than \p count, the container is reduced to its first \p count
@@ -144,8 +144,10 @@ public:
   /// \name Iterators
   ///@{
   /// Returns an iterator to the beginning of the container.
-  const_iterator begin () const noexcept { return &element (0); }
-  iterator begin () noexcept { return &element (0); }
+  [[nodiscard]] constexpr const_iterator begin () const noexcept {
+    return &element (0);
+  }
+  [[nodiscard]] constexpr iterator begin () noexcept { return &element (0); }
   const_iterator cbegin () noexcept { return &element (0); }
   /// Returns a reverse iterator to the first element of the reversed
   /// container. It corresponds to the last element of the non-reversed
