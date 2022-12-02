@@ -30,12 +30,14 @@ protected:
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST_F (Comment, BashDisabled) {
   auto p = make_parser (proxy_);
   p.input (u8"# comment\nnull"sv).eof ();
   EXPECT_TRUE (p.has_error ());
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, BashSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -45,6 +47,7 @@ TEST_F (Comment, BashSingleLeading) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, BashMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -54,6 +57,7 @@ TEST_F (Comment, BashMultipleLeading) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, BashTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -63,6 +67,7 @@ TEST_F (Comment, BashTrailing) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, BashInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -81,6 +86,7 @@ TEST_F (Comment, BashInsideArray) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, SingleLineDisabled) {
   auto p = make_parser (proxy_);
   p.input (u8"// comment\nnull"sv).eof ();
@@ -88,6 +94,7 @@ TEST_F (Comment, SingleLineDisabled) {
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, SingleLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -97,6 +104,7 @@ TEST_F (Comment, SingleLineSingleLeading) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, SingleLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -106,6 +114,7 @@ TEST_F (Comment, SingleLineMultipleLeading) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, SingleLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -115,6 +124,7 @@ TEST_F (Comment, SingleLineTrailing) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, SingleLineInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -133,6 +143,7 @@ TEST_F (Comment, SingleLineInsideArray) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, SingleLineRowCounting) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -155,6 +166,7 @@ TEST_F (Comment, SingleLineRowCounting) {
   EXPECT_EQ (p.input_pos (), (coord{line{6U}, column{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineDisabled) {
   auto p = make_parser (proxy_);
   p.input (u8"// comment\nnull"sv).eof ();
@@ -162,6 +174,7 @@ TEST_F (Comment, MultiLineDisabled) {
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -171,6 +184,7 @@ TEST_F (Comment, MultiLineSingleLeading) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -180,6 +194,7 @@ TEST_F (Comment, MultiLineMultipleLeading) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
@@ -189,6 +204,7 @@ TEST_F (Comment, MultiLineTrailing) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -207,6 +223,7 @@ TEST_F (Comment, MultiLineInsideArray) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineRowCounting) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -233,6 +250,7 @@ comment */
 
 // A missing multi-line comment close is currently ignored. It could reasonably
 // raise an error, but at this point I've chosen not to do so.
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineUnclosed) {
   using testing::_;
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
@@ -245,6 +263,7 @@ TEST_F (Comment, MultiLineUnclosed) {
   EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{15U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Comment, Mixed) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 

@@ -35,6 +35,7 @@ protected:
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST_F (JsonBoolean, True) {
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
 
@@ -43,6 +44,7 @@ TEST_F (JsonBoolean, True) {
   EXPECT_FALSE (p.has_error ());
 }
 
+// NOLINTNEXTLINE
 TEST_F (JsonBoolean, False) {
   EXPECT_CALL (callbacks_, boolean_value (false)).Times (1);
 

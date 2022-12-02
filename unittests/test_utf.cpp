@@ -143,6 +143,7 @@ private:
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, Good) {
   EXPECT_EQ (
       decode_good ({
@@ -161,6 +162,7 @@ TEST_F (Utf8Decode, Good) {
       std::u32string ({0x03BA, 0x03CC, 0x03C3, 0x03BC, 0x03B5}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, FirstPossibleSequenceOfACertainLength) {
   EXPECT_EQ (
       decode_good ({static_cast<char8> (0xC2), static_cast<char8> (0x80)}),
@@ -173,6 +175,7 @@ TEST_F (Utf8Decode, FirstPossibleSequenceOfACertainLength) {
                     static_cast<char8> (0x80), static_cast<char8> (0x80)}),
       std::u32string ({0x00010000}));
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, LastPossibleSequenceOfACertainLength) {
   EXPECT_EQ (decode_good ({0x7F}), std::u32string ({0x0000007F}));
   EXPECT_EQ (
@@ -182,6 +185,7 @@ TEST_F (Utf8Decode, LastPossibleSequenceOfACertainLength) {
                            static_cast<char8> (0xBF)}),
              std::u32string ({0x0000FFFF}));
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, OtherBoundaryConditions) {
   EXPECT_EQ (decode_good ({static_cast<char8> (0xED), static_cast<char8> (0x9F),
                            static_cast<char8> (0xBF)}),
@@ -197,6 +201,7 @@ TEST_F (Utf8Decode, OtherBoundaryConditions) {
                     static_cast<char8> (0xBF), static_cast<char8> (0xBF)}),
       std::u32string ({0x0010FFFF}));
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, UnexpectedContinuationBytes) {
   decode_bad ({static_cast<char8> (0x80)});  // first continuation byte
   decode_bad ({static_cast<char8> (0xbf)});  // last continuation byte
@@ -208,11 +213,13 @@ TEST_F (Utf8Decode, UnexpectedContinuationBytes) {
                static_cast<char8> (0x80),
                static_cast<char8> (0xbf)});  // 4 continuation bytes
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, AllPossibleContinuationBytes) {
   for (std::uint8_t v = 0x80; v <= 0xBF; ++v) {
     decode_bad ({static_cast<char8> (v)});  // first continuation byte
   }
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, LonelyStartCharacters) {
   // All 32 first bytes of 2-byte sequences (0xC0-0xDF), each followed by a
   // space character.
@@ -230,6 +237,7 @@ TEST_F (Utf8Decode, LonelyStartCharacters) {
     decode_bad ({static_cast<char8> (v), 0x20});
   }
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, SequencesWithLastContinuationByteMissing) {
   decode_bad ({static_cast<char8> (
       0xC0)});  // 2-byte sequence with last byte missing (U+0000)
@@ -257,12 +265,14 @@ TEST_F (Utf8Decode, SequencesWithLastContinuationByteMissing) {
                static_cast<char8> (0xBF), static_cast<char8> (0xF7),
                static_cast<char8> (0xBF), static_cast<char8> (0xBF)});
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, ImpossibleBytes) {
   decode_bad ({static_cast<char8> (0xFE)});
   decode_bad ({static_cast<char8> (0xFF)});
   decode_bad ({static_cast<char8> (0xFE), static_cast<char8> (0xFE),
                static_cast<char8> (0xFF), static_cast<char8> (0xFF)});
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, OverlongAscii) {
   decode_bad (
       {static_cast<char8> (0xC0), static_cast<char8> (0xAF)});  // U+002F
@@ -272,6 +282,7 @@ TEST_F (Utf8Decode, OverlongAscii) {
                static_cast<char8> (0x80),
                static_cast<char8> (0xAF)});  // U+002F
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, MaximumOverlongSequences) {
   decode_bad (
       {static_cast<char8> (0xC1), static_cast<char8> (0xBF)});  // U-0000007F
@@ -281,6 +292,7 @@ TEST_F (Utf8Decode, MaximumOverlongSequences) {
                static_cast<char8> (0xBF),
                static_cast<char8> (0xBF)});  // U-0000FFFF
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, OverlongNul) {
   decode_bad (
       {static_cast<char8> (0xC0), static_cast<char8> (0x80)});  // U+0000
@@ -290,6 +302,7 @@ TEST_F (Utf8Decode, OverlongNul) {
                static_cast<char8> (0x80),
                static_cast<char8> (0x80)});  // U+0000
 }
+// NOLINTNEXTLINE
 TEST_F (Utf8Decode, IllegalCodePositions) {
   // Single UTF-16 surrogates
   decode_bad ({static_cast<char8> (0xED), static_cast<char8> (0xA0),

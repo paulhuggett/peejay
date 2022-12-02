@@ -48,6 +48,7 @@ protected:
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST_F (Json, Empty) {
   parser p{json_out_callbacks{}};
   p.input (u8""sv).eof ();
@@ -55,6 +56,7 @@ TEST_F (Json, Empty) {
   EXPECT_EQ (p.pos (), (coord{line{1U}, column{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, StringInput) {
   parser p{json_out_callbacks{}};
   u8string const res = p.input (keyword).eof ();
@@ -64,6 +66,7 @@ TEST_F (Json, StringInput) {
   EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{5U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, IteratorInput) {
   parser p{json_out_callbacks{}};
   u8string const res =
@@ -77,6 +80,7 @@ TEST_F (Json, IteratorInput) {
                              }));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, LeadingWhitespace) {
   parser p{json_out_callbacks{}};
   u8string const res = p.input (u8"   \t    null"sv).eof ();
@@ -86,6 +90,7 @@ TEST_F (Json, LeadingWhitespace) {
   EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{13U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, POSIXLeadingLineEndings) {
   parser p{json_out_callbacks{}};
   p.input (lf + lf + keyword);
@@ -96,6 +101,7 @@ TEST_F (Json, POSIXLeadingLineEndings) {
   EXPECT_EQ (p.input_pos (), (coord{column{xord}, line{3U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, ClassicMacLeadingLineEndings) {
   parser p{json_out_callbacks{}};
   p.input (cr + cr + keyword);  // MacOS Classic line endings
@@ -106,6 +112,7 @@ TEST_F (Json, ClassicMacLeadingLineEndings) {
   EXPECT_EQ (p.input_pos (), (coord{column{xord}, line{3U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, CrLfLeadingLineEndings) {
   parser p{json_out_callbacks{}};
   p.input (crlf + crlf + keyword);  // Windows-style CRLF
@@ -116,6 +123,7 @@ TEST_F (Json, CrLfLeadingLineEndings) {
   EXPECT_EQ (p.input_pos (), (coord{column{xord}, line{3U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, BadLeadingLineEndings) {
   parser p{json_out_callbacks{}};
   // Nobody's line-endings. Each counts as a new line. Note that the middle
@@ -127,6 +135,7 @@ TEST_F (Json, BadLeadingLineEndings) {
   EXPECT_EQ (p.input_pos (), (coord{column{xord}, line{4U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, MixedLeadingLineEndings) {
   parser p{json_out_callbacks{}};
   // A groovy mixture of line-ending characters.
@@ -138,6 +147,7 @@ TEST_F (Json, MixedLeadingLineEndings) {
   EXPECT_EQ (p.input_pos (), (coord{column{xord}, line{5U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, Null) {
   StrictMock<mock_json_callbacks> callbacks;
   callbacks_proxy proxy{callbacks};
@@ -150,6 +160,7 @@ TEST_F (Json, Null) {
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, Move) {
   // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
   // usable.
@@ -161,6 +172,7 @@ TEST_F (Json, Move) {
   EXPECT_EQ (p2.input_pos (), (coord{column{5U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, TwoKeywords) {
   parser p{json_out_callbacks{}};
   p.input (u8" true false "sv);
@@ -169,6 +181,7 @@ TEST_F (Json, TwoKeywords) {
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Json, BadKeyword) {
   check_error (u8"nu"sv, error::expected_token);
   check_error (u8"bad"sv, error::expected_token);
