@@ -18,7 +18,10 @@
 
 #include "peejay/json_error.hpp"
 #include "peejay/portab.hpp"
-#include "peejay/utf.hpp"
+
+#define ICUBABY_INSIDE_NS peejay
+#include "peejay/icubaby.hpp"
+#undef ICUBABY_INSIDE_NS
 
 // Standard library
 #include <array>
@@ -56,6 +59,10 @@ namespace peejay {
 
 template <typename... T>
 constexpr bool always_false = false;
+
+using char8 = icubaby::char8;
+using u8string = icubaby::u8string;
+using u8string_view = icubaby::u8string_view;
 
 #if PEEJAY_CXX20
 template <typename T>
@@ -330,6 +337,8 @@ private:
     return pointer{nullptr, deleter{deleter::mode::do_nothing}};
   }
 
+  void consume_code_point (char32_t code_point);
+
   ///@{
   /// \brief Managing the column and row number (the "coordinate").
 
@@ -383,7 +392,7 @@ private:
   /// uncontrollably.
   static constexpr std::size_t max_stack_depth_ = 200;
 
-  utf8_decoder utf_;
+  icubaby::t8_32 utf_;
   /// The parse stack.
   std::stack<pointer> stack_;
   std::error_code error_;
@@ -410,8 +419,6 @@ inline parser<std::remove_reference_t<Backend>> make_parser (
   return parser<std::remove_reference_t<Backend>>{
       std::forward<Backend> (backend), extensions};
 }
-
-namespace details {
 
 // U+0009  Horizontal tab
 // U+000A  Line feed
@@ -440,22 +447,42 @@ namespace details {
 // U+FEFF  Byte order mark
 
 enum char_set : char32_t {
-  cr = '\x0D',
-  hash = '#',
-  lf = '\x0A',
-  slash = '/',
-  space = '\x20',
-  star = '*',
-  tab = '\x09',
+  asterisk = char32_t{0x2a},                  // '*'
+  backspace = char32_t{0x0008},               // '\b'
+  carriage_return = char32_t{0x000d},         // '\r'
+  character_tabulation = char32_t{0x0009},    // '\t'
+  digit_nine = char32_t{0x0039},              // '9'
+  digit_zero = char32_t{0x0030},              // '0'
+  form_feed = char32_t{0x000c},               // '\f'
+  latin_capital_letter_a = char32_t{0x0041},  // 'A'
+  latin_capital_letter_z = char32_t{0x005a},  // 'Z'
+  latin_small_letter_a = char32_t{0x0061},    // 'a'
+  latin_small_letter_b = char32_t{0x0062},    // 'b'
+  latin_small_letter_f = char32_t{0x0066},    // 'f'
+  latin_small_letter_n = char32_t{0x006e},    // 'n'
+  latin_small_letter_r = char32_t{0x0072},    // 'r'
+  latin_small_letter_t = char32_t{0x0074},    // 't'
+  latin_small_letter_u = char32_t{0x0075},    // 'u'
+  latin_small_letter_z = char32_t{0x007a},    // 'z'
+  line_feed = char32_t{0x000a},               // '\n'
+  number_sign = char32_t{0x0023},             // '#'
+  quotation_mark = char32_t{0x0022},          // '"'
+  reverse_solidus = char32_t{0x005c},         // '\'
+  solidus = char32_t{0x002f},                 // '/'
+  space = char32_t{0x0020},                   // ' '
 };
+
+namespace details {
+
 constexpr bool isspace (char32_t const c) noexcept {
-  return c == char_set::tab || c == char_set::lf || c == char_set::cr ||
-         c == char_set::space;
+  return c == char_set::character_tabulation || c == char_set::line_feed ||
+         c == char_set::carriage_return || c == char_set::space;
 }
 /// Checks if the given character is an alphanumeric character.
-constexpr bool isalnum (char32_t c) noexcept {
-  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') ||
-         (c >= 'a' && c <= 'z');
+constexpr bool isalnum (char32_t const c) noexcept {
+  return (c >= digit_zero && c <= digit_nine) ||
+         (c >= latin_capital_letter_a && c <= latin_capital_letter_z) ||
+         (c >= latin_small_letter_a && c <= latin_small_letter_z);
 }
 
 /// The base class for the various state machines ("matchers") which implement
@@ -591,7 +618,7 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
   bool match = true;
   switch (this->get_state ()) {
   case start_state:
-    assert (!ch || is_utf_char_start (*ch));
+    assert (!ch || icubaby::is_code_point_start (*ch));
     if (!ch || *ch != static_cast<char32_t> (*text_)) {
       this->set_error (parser, error::unrecognized_token);
     } else {
@@ -1068,7 +1095,7 @@ public:
       : matcher<Backend> (start_state),
         is_object_key_{object_key},
         enclosing_char_{enclosing_char},
-        app_{str} {
+        str_{str} {
     assert (str != nullptr);
     str->clear ();
   }
@@ -1097,6 +1124,7 @@ private:
     hex4_state,
   };
 
+#if 0
   class appender {
   public:
     constexpr explicit appender (u8string *const result) noexcept
@@ -1110,12 +1138,14 @@ private:
 
   private:
     u8string *const result_;
-    char16_t high_surrogate_ = 0;
+    t16_32
   };
+#endif
 
-  static std::variant<state, std::error_code> consume_normal (
-      parser<Backend> &p, bool is_object_key, char32_t enclosing_char,
-      char32_t code_point, appender &app);
+  std::variant<state, std::error_code> consume_normal (parser<Backend> &p,
+                                                       bool is_object_key,
+                                                       char32_t enclosing_char,
+                                                       char32_t code_point);
 
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
   /// character. This function wraps consume_normal(). That function does the
@@ -1135,12 +1165,11 @@ private:
   ///   optional with no value if \p c is not a valid hexadecimal character.
   static std::optional<unsigned> hex_value (char32_t c, unsigned value);
 
-  static std::variant<error, std::tuple<unsigned, enum state>> consume_hex (
-      unsigned hex, enum state state, char32_t code_point, appender &app);
+  std::variant<error, std::tuple<unsigned, enum state>> consume_hex (
+      unsigned hex, enum state state, char32_t code_point);
   void hex (parser<Backend> &p, char32_t code_point);
 
-  static std::variant<state, error> consume_escape_state (char32_t code_point,
-                                                          appender &app);
+  std::variant<state, error> consume_escape_state (char32_t code_point);
   void escape (parser<Backend> &p, char32_t code_point);
 
   static constexpr bool is_hex_state (enum state const state) noexcept {
@@ -1150,80 +1179,36 @@ private:
 
   bool is_object_key_;
   char32_t enclosing_char_;
-  appender app_;
+  u8string *const str_;  // output
   unsigned hex_ = 0U;
+  icubaby::t32_8 utf_32_to_8_;
+  icubaby::t16_8 utf_16_to_8_;
 };
 
-// append32
-// ~~~~~~~~
-template <typename Backend>
-bool string_matcher<Backend>::appender::append32 (char32_t const code_point) {
-  if (this->has_high_surrogate ()) {
-    // A high surrogate followed by something other than a low surrogate.
-    return false;
-  }
-  code_point_to_utf8 (code_point, std::back_inserter (*result_));
-  return true;
-}
-
-// append16
-// ~~~~~~~~
-template <typename Backend>
-bool string_matcher<Backend>::appender::append16 (char16_t const cu) {
-  bool ok = true;
-  if (is_utf16_high_surrogate (cu)) {
-    if (!this->has_high_surrogate ()) {
-      high_surrogate_ = cu;
-    } else {
-      // A high surrogate following another high surrogate.
-      ok = false;
-    }
-  } else if (is_utf16_low_surrogate (cu)) {
-    if (!this->has_high_surrogate ()) {
-      // A low surrogate following by something other than a high surrogate.
-      ok = false;
-    } else {
-      std::array<char16_t, 2> const surrogates{{high_surrogate_, cu}};
-      auto [_, code_point] =
-          utf16_to_code_point (std::begin (surrogates), std::end (surrogates));
-      code_point_to_utf8 (code_point, std::back_inserter (*result_));
-      high_surrogate_ = 0;
-    }
-  } else {
-    if (this->has_high_surrogate ()) {
-      // A high surrogate followed by something other than a low surrogate.
-      ok = false;
-    } else {
-      auto const code_point = static_cast<char32_t> (cu);
-      code_point_to_utf8 (code_point, std::back_inserter (*result_));
-    }
-  }
-  return ok;
-}
-
-// consume normal [static]
+// consume normal
 // ~~~~~~~~~~~~~~
 template <typename Backend>
 auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
                                               bool is_object_key,
                                               char32_t enclosing_char,
-                                              char32_t code_point,
-                                              appender &app)
+                                              char32_t code_point)
     -> std::variant<state, std::error_code> {
   if (code_point == enclosing_char) {
-    if (app.has_high_surrogate ()) {
+    if (utf_16_to_8_.partial ()) {
+      utf_16_to_8_.end_cp (std::back_inserter (*str_));
+      assert (!utf_16_to_8_.well_formed ());
       return error::bad_unicode_code_point;
     }
     // Consume the closing quote character.
     auto &n = p.backend ();
-    u8string_view const &result = *app.result ();
+    u8string_view const &result = *str_;
     if (std::error_code const error =
             is_object_key ? n.key (result) : n.string_value (result)) {
       return error;
     }
     return done_state;
   }
-  if (code_point == '\\') {
+  if (code_point == char_set::reverse_solidus) {
     return escape_state;
   }
   if (code_point <= 0x1F) {
@@ -1232,7 +1217,9 @@ auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
   }
 
   // Remember this character.
-  if (!app.append32 (code_point)) {
+  auto it = utf_32_to_8_ (code_point, std::back_inserter (*str_));
+  utf_32_to_8_.end_cp (it);
+  if (!utf_32_to_8_.well_formed ()) {
     return error::bad_unicode_code_point;
   }
   return normal_char_state;
@@ -1253,8 +1240,7 @@ void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
       },
-      string_matcher::consume_normal (p, is_object_key_, enclosing_char_,
-                                      code_point, app_));
+      this->consume_normal (p, is_object_key_, enclosing_char_, code_point));
 }
 
 // hex value [static]
@@ -1275,13 +1261,12 @@ std::optional<unsigned> string_matcher<Backend>::hex_value (
   return {16U * value + digit};
 }
 
-// consume hex [static]
+// consume hex
 // ~~~~~~~~~~~
 template <typename Backend>
 auto string_matcher<Backend>::consume_hex (unsigned const hex,
-                                             enum state const state,
-                                             char32_t const code_point,
-                                             appender & app)
+                                           enum state const state,
+                                           char32_t const code_point)
     -> std::variant<error, std::tuple<unsigned, enum state>> {
 
   assert (is_hex_state (state));
@@ -1299,7 +1284,8 @@ auto string_matcher<Backend>::consume_hex (unsigned const hex,
   case hex4_state:
     // We're done with the hex characters and are switching back to the
     // 'normal' state. The means that we can add the accumulated code-point.
-    if (!app.append16 (static_cast<char16_t> (*opt_value))) {
+    utf_16_to_8_ (static_cast<char16_t> (*opt_value), std::back_inserter (*str_));
+    if (!utf_16_to_8_.well_formed ()) {
       return error::bad_unicode_code_point;
     }
     return std::make_tuple (0U, normal_char_state);
@@ -1307,8 +1293,7 @@ auto string_matcher<Backend>::consume_hex (unsigned const hex,
   case done_state:
   case start_state:
   case normal_char_state:
-  case escape_state:
-    break;
+  case escape_state: break;
   }
 
   PEEJAY_UNREACHABLE;
@@ -1329,32 +1314,37 @@ void string_matcher<Backend>::hex (parser<Backend> &p, char32_t code_point) {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
       },
-      string_matcher::consume_hex (
-          hex_, static_cast<state> (this->get_state ()), code_point, app_));
+      this->consume_hex (hex_, static_cast<state> (this->get_state ()),
+                         code_point));
 }
 
-// consume escape state [static]
+// consume escape state
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
-auto string_matcher<Backend>::consume_escape_state (char32_t code_point,
-                                                    appender &app)
+auto string_matcher<Backend>::consume_escape_state (char32_t code_point)
     -> std::variant<state, error> {
   state next_state = normal_char_state;
   switch (code_point) {
-  case '"': code_point = '"'; break;
-  case '\\': code_point = '\\'; break;
-  case '/': code_point = '/'; break;
-  case 'b': code_point = '\b'; break;
-  case 'f': code_point = '\f'; break;
-  case 'n': code_point = '\n'; break;
-  case 'r': code_point = '\r'; break;
-  case 't': code_point = '\t'; break;
-  case 'u': next_state = hex1_state; break;
+  case char_set::quotation_mark:
+  case char_set::solidus:
+  case char_set::reverse_solidus:
+    // code points are appended as-is.
+    break;
+  case char_set::latin_small_letter_b: code_point = char_set::backspace; break;
+  case char_set::latin_small_letter_f: code_point = char_set::form_feed; break;
+  case char_set::latin_small_letter_n: code_point = char_set::line_feed; break;
+  case char_set::latin_small_letter_r:
+    code_point = char_set::carriage_return;
+    break;
+  case char_set::latin_small_letter_t:
+    code_point = char_set::character_tabulation;
+    break;
+  case char_set::latin_small_letter_u: return {hex1_state};
   default: return {error::invalid_escape_char};
   }
-  if (next_state == normal_char_state && !app.append32 (code_point)) {
-    return {error::invalid_escape_char};
-  }
+  assert (next_state == normal_char_state);
+  utf_32_to_8_ (code_point, std::back_inserter (*str_));
+  assert (utf_32_to_8_.well_formed ());
   return {next_state};
 }
 
@@ -1373,7 +1363,7 @@ void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
       },
-      string_matcher::consume_escape_state (code_point, app_));
+      this->consume_escape_state (code_point));
 }
 
 // consume
@@ -1392,7 +1382,7 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   // Matches the opening quote.
   case start_state:
     if (c == enclosing_char_) {
-      assert (!app_.has_high_surrogate ());
+      assert (!utf_16_to_8_.partial ());
       this->set_state (normal_char_state);
     } else {
       this->set_error (parser, error::expected_token);
@@ -1489,7 +1479,11 @@ array_matcher<Backend>::consume (parser<Backend> &p,
     }
     break;
   case done_state:
-  default: assert (false); break;
+    assert (false && "consume() should not be called when in the 'done' state");
+    break;
+  default:
+    assert (false && "array_matcher<> has reached an unknown state");
+    break;
   }
   return {null_pointer (), true};
 }
@@ -1680,7 +1674,7 @@ private:
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
   /// if the character shoud be treated as whitespace.
   bool crlf (parser<Backend> &parser, char32_t c) {
-    if (c != details::char_set::lf) {
+    if (c != char_set::line_feed) {
       return false;
     }
     parser.reset_column ();
@@ -1711,9 +1705,8 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
 
     case multi_line_comment_ending_state:
       assert (parser.extension_enabled (extensions::multi_line_comments));
-      this->set_state (c == details::char_set::slash
-                           ? body_state
-                           : multi_line_comment_body_state);
+      this->set_state (c == char_set::solidus ? body_state
+                                              : multi_line_comment_body_state);
       break;
 
     case multi_line_comment_crlf_state:
@@ -1728,7 +1721,7 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
       assert (parser.extension_enabled (extensions::bash_comments) ||
               parser.extension_enabled (extensions::single_line_comments) ||
               parser.extension_enabled (extensions::multi_line_comments));
-      if (c == details::char_set::cr || c == details::char_set::lf) {
+      if (c == char_set::carriage_return || c == char_set::line_feed) {
         // This character marks a bash/single-line comment end. Go back to
         // normal whitespace handling. Retry with the same character.
         this->set_state (body_state);
@@ -1755,21 +1748,20 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser,
     return std::pair{null_pointer (), false};
   };
 
-  using details::char_set;
   switch (c) {
   case char_set::space: break;  // Just consume.
-  case char_set::tab:
+  case char_set::character_tabulation:
     // TODO: tab expansion.
     break;
-  case char_set::cr: this->cr (parser, crlf_state); break;
-  case char_set::lf: this->lf (parser); break;
-  case char_set::hash:
+  case char_set::carriage_return: this->cr (parser, crlf_state); break;
+  case char_set::line_feed: this->lf (parser); break;
+  case char_set::number_sign:
     if (!parser.extension_enabled (extensions::bash_comments)) {
       return stop_retry ();
     }
     this->set_state (single_line_comment_state);
     break;
-  case char_set::slash:
+  case char_set::solidus:
     if (!parser.extension_enabled (extensions::single_line_comments) &&
         !parser.extension_enabled (extensions::multi_line_comments)) {
       return stop_retry ();
@@ -1794,11 +1786,10 @@ template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
 whitespace_matcher<Backend>::consume_comment_start (parser<Backend> &parser,
                                                     char32_t c) {
-  using details::char_set;
-  if (c == char_set::slash &&
+  if (c == char_set::solidus &&
       parser.extension_enabled (extensions::single_line_comments)) {
     this->set_state (single_line_comment_state);
-  } else if (c == char_set::star &&
+  } else if (c == char_set::asterisk &&
              parser.extension_enabled (extensions::multi_line_comments)) {
     this->set_state (multi_line_comment_body_state);
   } else {
@@ -1816,18 +1807,19 @@ template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
 whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
                                                       char32_t c) {
-  using details::char_set;
   assert (parser.extension_enabled (extensions::multi_line_comments));
   assert (this->get_state () == multi_line_comment_body_state);
   switch (c) {
-  case char_set::star:
+  case char_set::asterisk:
     // This could be a standalone star character or be followed by a slash
     // to end the multi-line comment.
     this->set_state (multi_line_comment_ending_state);
     break;
-  case char_set::cr: this->cr (parser, multi_line_comment_crlf_state); break;
-  case char_set::lf: this->lf (parser); break;
-  case char_set::tab: break;  // TODO: tab expansion.
+  case char_set::carriage_return:
+    this->cr (parser, multi_line_comment_crlf_state);
+    break;
+  case char_set::line_feed: this->lf (parser); break;
+  case char_set::character_tabulation: break;  // TODO: tab expansion.
   default: break;             // Just consume.
   }
   return {null_pointer (), true};  // Consume this character.
@@ -2072,20 +2064,35 @@ auto parser<Backend>::input (InputIterator first, InputIterator last)
     return *this;
   }
 
-  while (first != last) {
-    std::optional<char32_t> c = utf_.get (*first);
-    if (!c) {
-      ++first;
-      continue;
+  auto code_point = char32_t{0};
+  while (first != last && !error_) {
+    auto *const it = utf_ (*first, &code_point);
+    assert (it == &code_point || it == &code_point + 1);
+    ++first;
+    if (it != &code_point) {
+      this->consume_code_point (code_point);
+      if (!error_) {
+        this->advance_column ();
+      }
     }
+  }
+  return *this;
+}
 
+// consume code point
+// ~~~~~~~~~~~~~~~~~~
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+void parser<Backend>::consume_code_point (char32_t code_point) {
+  bool retry = false;
+  do {
     assert (!stack_.empty ());
     auto &handler = stack_.top ();
-    auto res = handler->consume (*this, c);
+    auto res = handler->consume (*this, code_point);
+    if (error_) {
+      return;
+    }
     if (handler->is_done ()) {
-      if (error_) {
-        break;
-      }
       stack_.pop ();  // release the topmost matcher object.
       matcher_pos_ = pos_;
     }
@@ -2096,24 +2103,14 @@ auto parser<Backend>::input (InputIterator first, InputIterator last)
         // new matcher.
         assert (!error_);
         error_ = error::nesting_too_deep;
-        break;
+        return;
       }
 
       stack_.push (std::move (res.first));
       matcher_pos_ = pos_;
     }
-    // If we're matching this character, advance the column number and increment
-    // the iterator.
-    if (res.second) {
-      // Increment the column number if this is _not_ a UTF-8 continuation
-      // character.
-      if (is_utf_char_start (*first)) {
-        this->advance_column ();
-      }
-      ++first;
-    }
-  }
-  return *this;
+    retry = !res.second;
+  } while (retry);
 }
 
 // eof

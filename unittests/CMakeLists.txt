@@ -26,7 +26,6 @@ add_executable (pj-unittests
   test_emit.cpp
   test_json.cpp
   test_object.cpp
-  test_utf.cpp
   test_number.cpp
   test_string.cpp
 )

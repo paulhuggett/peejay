@@ -166,11 +166,11 @@ dom () -> dom<StackSize>;
 // string
 // ~~~~~~
 template <size_t StackSize>
-std::error_code dom<StackSize>::string_value (u8string_view const &s) {
+std::error_code dom<StackSize>::string_value (icubaby::u8string_view const &s) {
   if (stack_->size () >= stack_size) {
     return error::dom_nesting_too_deep;
   }
-  stack_->emplace (u8string{s});
+  stack_->emplace (icubaby::u8string{s});
   return error::none;
 }
 
@@ -277,7 +277,8 @@ std::error_code dom<StackSize>::end_object () {
     }
     auto &key = stack_->top ();
     assert (std::holds_alternative<u8string> (key));
-    obj.try_emplace (std::move (std::get<u8string> (key)), std::move (value));
+    obj.try_emplace (std::move (std::get<icubaby::u8string> (key)),
+                     std::move (value));
     stack_->pop ();
   }
   // The presence of duplicate keys can mean that we end up with fewer entries

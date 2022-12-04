@@ -170,15 +170,17 @@ TEST_F (JsonString, GCleffUtf8) {
 
   auto p = make_parser (proxy_);
 
-  std::array<char8 const, 6> const input{
-      {'"', static_cast<char8> (0xF0), static_cast<char8> (0x9D),
-       static_cast<char8> (0x84), static_cast<char8> (0x9E), '"'}};
+  std::vector<char8> input;
+  input.emplace_back (char_set::quotation_mark);  // code point 1
+  std::copy (std::begin (gclef), std::end (gclef),
+             std::back_inserter (input));         // code point 2
+  input.emplace_back (char_set::quotation_mark);  // code point 3
   p.input (std::begin (input), std::end (input)).eof ();
 
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
-  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
-  EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
 // NOLINTNEXTLINE
@@ -283,7 +285,7 @@ TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
   p.input (u8R"("\uD834!")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
-  EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
 }
 
 // NOLINTNEXTLINE

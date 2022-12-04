@@ -61,16 +61,6 @@ constexpr char to_hex (unsigned v) noexcept {
       v + ((v < letter_threshold) ? '0' : 'A' - letter_threshold));
 }
 
-enum {
-  quotation_mark = 0x0022,
-  reverse_solidus = 0x005c,
-  backspace = 0x0008,
-  form_feed = 0x000c,
-  line_feed = 0x000a,
-  carriage_return = 0x000d,
-  tab = 0x0009,
-};
-
 std::ostream& emit_string_view (std::ostream& os,
                                 peejay::u8string_view const& str) {
   os << '"';
@@ -86,14 +76,15 @@ std::ostream& emit_string_view (std::ostream& os,
     os.write (reinterpret_cast<char const*> (to_address (first)),
               std::distance (first, pos));
     os << '\\';
+    using peejay::char_set;
     switch (*pos) {
-    case quotation_mark: os << '"'; break;
-    case reverse_solidus: os << '\\'; break;
-    case backspace: os << 'b'; break;
-    case form_feed: os << 'f'; break;
-    case line_feed: os << 'n'; break;
-    case carriage_return: os << 'r'; break;
-    case tab: os << 't'; break;
+    case char_set::quotation_mark: os << '"'; break;
+    case char_set::reverse_solidus: os << '\\'; break;
+    case char_set::backspace: os << 'b'; break;
+    case char_set::form_feed: os << 'f'; break;
+    case char_set::line_feed: os << 'n'; break;
+    case char_set::carriage_return: os << 'r'; break;
+    case char_set::character_tabulation: os << 't'; break;
     default: {
       auto const c = static_cast<std::byte> (*pos);
       auto const high_nibble = ((c & std::byte{0xF0}) >> 4);

@@ -19,7 +19,6 @@
 #include <iostream>
 
 #include "peejay/json.hpp"
-#include "peejay/utf.hpp"
 
 using namespace peejay;
 
