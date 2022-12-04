@@ -588,8 +588,9 @@ public:
   template <typename OutputIterator>
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   OutputIterator operator() (input_type c, OutputIterator dest) {
-    if (to_inter_ (c, &inter_) != &inter_) {
-      dest = to_out_ (inter_, dest);
+    char32_t inter = 0;
+    if (to_inter_ (c, &inter) != &inter) {
+      dest = to_out_ (inter, dest);
     }
     return dest;
   }
@@ -597,8 +598,9 @@ public:
   template <typename OutputIterator>
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   OutputIterator end_cp (OutputIterator dest) {
-    if (to_inter_.end_cp (&inter_) != &inter_) {
-      dest = to_out_ (inter_, dest);
+    char32_t inter = 0;
+    if (to_inter_.end_cp (&inter) != &inter) {
+      dest = to_out_ (inter, dest);
     }
     return to_out_.end_cp (dest);
   }
@@ -621,7 +623,6 @@ public:
   }
 
 private:
-  char32_t inter_ = 0;
   transcoder<input_type, char32_t> to_inter_;
   transcoder<char32_t, output_type> to_out_;
 };
