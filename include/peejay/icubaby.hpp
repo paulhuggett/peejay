@@ -686,7 +686,7 @@ public:
   [[nodiscard]] constexpr bool well_formed () const noexcept {
     return well_formed_;
   }
-  [[nodiscard]] constexpr bool partial () const noexcept { return false; }
+  [[nodiscard]] static constexpr bool partial () noexcept { return false; }
 
 private:
   bool well_formed_ = true;
