@@ -49,7 +49,6 @@ function (setup_target target)
   )
   set (msvc_options
     -W4
-    -wd2220 # 2220: unreachable code
     -wd4068 # 4068: unknown pragma
     -wd4324 # 4324: structure was padded due to alignment specifier
   )
