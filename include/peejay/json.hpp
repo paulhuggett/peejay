@@ -53,16 +53,20 @@ using u8string_view = icubaby::u8string_view;
 template <typename... T>
 [[maybe_unused]] constexpr bool always_false = false;
 
-[[noreturn, maybe_unused]] inline void unreachable () {
-  // Uses compiler specific extensions if possible.
-  // Even if no extension is used, undefined behavior is still raised by
-  // an empty function body and the noreturn attribute.
-#ifdef __GNUC__  // GCC, Clang, ICC
+#ifdef __GNUC__  // GCC 4.8+, Clang, Intel and other compilers
+[[noreturn]] inline __attribute__ ((always_inline)) void unreachable () {
   __builtin_unreachable ();
-#elif defined(_MSC_VER)  // MSVC
-  __assume (false);
-#endif
 }
+#elif defined(_MSC_VER)
+[[noreturn, maybe_unused]] __forceinline void unreachable () {
+  __assume (false);
+}
+#else
+// Unknown compiler so no extension is used, Undefined behavior is still raised
+// by an empty function body and the noreturn attribute.
+[[noreturn, maybe_unused]] inline void unreachable () {
+}
+#endif
 
 #if PEEJAY_CXX20
 template <typename T>
@@ -828,9 +832,9 @@ bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
     this->set_state (integer_initial_digit_state);
     match = do_integer_initial_digit_state (parser, c);
   } else {
-    unreachable ();
     // minus MUST be followed by the 'int' production.
     this->set_error (parser, error::number_out_of_range);
+    unreachable ();
   }
   return match;
 }
@@ -1293,11 +1297,12 @@ auto string_matcher<Backend>::consume_hex (unsigned const hex,
   case done_state:
   case start_state:
   case normal_char_state:
-  case escape_state: break;
+  case escape_state:
+    assert (false && "consume_hex() reached a bad state");
+    break;
   }
 
   unreachable ();
-  return error::invalid_hex_char;
 }
 
 template <typename Backend>
@@ -1973,10 +1978,9 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
       return {null_pointer (), true};
     }
   } break;
-  default: unreachable (); break;
+  default: break;
   }
-  assert (false);  // unreachable.
-  return {null_pointer (), true};
+  unreachable ();
 }
 
 //*     _           _     _                 _                          *
