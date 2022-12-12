@@ -101,14 +101,19 @@ foreach (target gtest gmock gmock_main gtest_main)
     CXX_STANDARD_REQUIRED Yes
     CXX_EXTENSIONS No
   )
+
+  set (gclang_options -Wno-implicit-int-float-conversion)
   if (LIBCXX)
-    target_compile_options (${target} PRIVATE
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
-    )
-    target_link_options (${target} PRIVATE
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-stdlib=libc++>
-    )
+    list (APPEND gclang_options -stdlib=libc++)
   endif ()
+
+  target_compile_definitions (${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
+  target_compile_options (${target} PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+  )
+  target_link_options (${target} PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+  )
 endforeach()
 
 
