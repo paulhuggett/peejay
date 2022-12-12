@@ -24,7 +24,8 @@
 using namespace peejay;
 using null_parser = parser<null>;
 
-static void report_error (null_parser& p, std::string_view const& file_name,
+static void report_error (null_parser const& p,
+                          std::string_view const& file_name,
                           std::string_view const& line) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
