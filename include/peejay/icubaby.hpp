@@ -3,6 +3,9 @@
 //* | / _| || | '_ \/ _` | '_ \ || | *
 //* |_\__|\_,_|_.__/\__,_|_.__/\_, | *
 //*                            |__/  *
+// Home page:
+// https://paulhuggett.github.io/icubaby/
+//
 // MIT License
 //
 // Copyright (c) 2022 Paul Bowen-Huggett
@@ -63,14 +66,31 @@
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <string_view>
 #include <type_traits>
+
+// Define ICUBABY_CXX20 which has value 1 when compiling with C++ 20 or later
+// and 0 otherwise.
+#if __cplusplus >= 202002L
+#define ICUBABY_CXX20 (1)
+#elif defined(_MSVC_LANG) && _MSVC_LANG >= 202002L
+// MSVC does not set the value of __cplusplus correctly unless the
+// /Zc:__cplusplus is supplied. We have to detect C++20 using its
+// compiler-specific macros instead.
+#define ICUBABY_CXX20 (1)
+#else
+#define ICUBABY_CXX20 (0)
+#endif
+
+#ifndef ICUBABY_CXX20
 #include <version>
+#endif
 
 #ifdef __cpp_lib_concepts
 #include <concepts>
 #endif
 
-#ifdef __cpp_concepts
+#if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
 #define ICUBABY_REQUIRES(x) requires x
 #else
 #define ICUBABY_REQUIRES(x)
@@ -78,7 +98,68 @@
 
 namespace icubaby {
 
-#ifdef __cpp_char8_t
+namespace details {
+template <typename... Types>
+struct type_list;
+template <>
+struct type_list<> {};
+
+/// An instance of type_list represents an element in a list. It is somewhat
+/// like a cons cell in Lisp: it has two slots, and each slot holds a type.
+///
+/// A list is formed when a series of type_list instances are chained together,
+/// so that each cell refers to the next one. There is one type_list instance
+/// for each list member. The 'first' member holds a member type and the 'rest'
+/// field is used to chain together type_list instances. The end of the list is
+/// represented by a type_list specialization which takes no arguments and
+/// contains no members.
+template <typename First, typename Rest>
+struct type_list<First, Rest> {
+  using first = First;
+  using rest = Rest;
+};
+
+/// An element in a type list must contain member types names 'first' and
+/// 'rest'. The end of the list is given by the type_list<> specialization.
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L && \
+    defined(__cpp_lib_concepts)
+template <typename T>
+concept is_type_list = requires {
+                         typename T::first;
+                         typename T::rest;
+                       } || std::is_same_v<T, type_list<>>;
+#endif
+
+/// Constructs a type_list from a template parameter pack.
+template <typename... Types>
+struct make;
+template <>
+struct make<> {
+  using type = type_list<>;
+};
+template <typename T, typename... Ts>
+struct make<T, Ts...> {
+  using type = type_list<T, typename make<Ts...>::type>;
+};
+template <typename... Types>
+using make_t = typename make<Types...>::type;
+
+/// Yields true if the type list contains a type matching Element and false
+/// otherwise.
+template <typename TypeList, typename Element>
+ICUBABY_REQUIRES (is_type_list<TypeList>)
+struct contains
+    : std::bool_constant<std::is_same_v<Element, typename TypeList::first> ||
+                         contains<typename TypeList::rest, Element>::value> {};
+template <typename Element>
+struct contains<type_list<>, Element> : std::bool_constant<false> {};
+
+template <typename TypeList, typename Element>
+inline constexpr bool contains_v = contains<TypeList, Element>::value;
+
+}  // end namespace details
+
+#if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
 using char8 = char8_t;
 #else
 using char8 = char;
@@ -90,11 +171,21 @@ using u8string_view = std::basic_string_view<char8>;
 /// A constant for U+FFFD REPLACEMENT CHARACTER
 inline constexpr auto replacement_char = char32_t{0xFFFD};
 
+/// \brief The number of bits required to represent a code point.
+/// Starting with Unicode 2.0, characters are encoded in the range
+/// U+0000..U+10FFFF, which amounts to a 21-bit code space.
+inline constexpr auto code_point_bits = 21U;
+
 inline constexpr auto first_high_surrogate = char32_t{0xD800};
 inline constexpr auto last_high_surrogate = char32_t{0xDBFF};
 inline constexpr auto first_low_surrogate = char32_t{0xDC00};
 inline constexpr auto last_low_surrogate = char32_t{0xDFFF};
 inline constexpr auto max_code_point = char32_t{0x10FFFF};
+static_assert (uint_least32_t{1} << code_point_bits > max_code_point);
+
+namespace details {
+using character_types = make_t<char8, char16_t, char32_t>;
+}  // end namespace details
 
 constexpr bool is_high_surrogate (char32_t c) noexcept {
   return c >= first_high_surrogate && c <= last_high_surrogate;
@@ -113,36 +204,45 @@ constexpr bool is_code_point_start (char16_t c) noexcept {
   return !is_low_surrogate (c);
 }
 constexpr bool is_code_point_start (char32_t c) noexcept {
-  (void)c;
-  return true;
+  return !is_surrogate (c) && c <= max_code_point;
 }
 
 /// Returns the number of code points in a sequence.
+///
+/// \param first  The start of the range of code units to examine.
+/// \param last  The end of the range of code units to examine.
 template <typename InputIterator>
 ICUBABY_REQUIRES (std::input_iterator<InputIterator>)
 constexpr auto length (InputIterator first, InputIterator last) {
-  return std::count_if (first, last,
-                        [] (auto c) { return is_code_point_start (c); });
+  return std::count_if (first, last, [] (auto c) {
+    static_assert (details::contains_v<details::character_types,
+                                       std::decay_t<decltype (c)>>);
+    return is_code_point_start (c);
+  });
 }
 
-/// Returns an iterator to the beginning of the pos'th code-point in the UTF-8
-/// sequence [first, last].
+/// Returns an iterator to the beginning of the pos'th code point in the code
+/// unit sequence [first, last).
 ///
-/// \param first  The start of the range of elements to examine.
-/// \param last  The end of the range of elements to examine.
+/// \param first  The start of the range of code units to examine.
+/// \param last  The end of the range of code units to examine.
 /// \param pos  The number of code points to move.
-/// \returns  An iterator that is 'pos' codepoints after the start of the range or
+/// \returns  An iterator that is 'pos' code points after the start of the range or
 ///           'last' if the end of the range was encountered.
 template <typename InputIterator>
 ICUBABY_REQUIRES (std::input_iterator<InputIterator>)
-InputIterator index (InputIterator first, InputIterator last, std::size_t pos) {
-  auto start_count = std::size_t{0};
+constexpr InputIterator
+    index (InputIterator first, InputIterator last, size_t pos) {
+  auto start_count = size_t{0};
   return std::find_if (first, last, [&start_count, pos] (auto c) {
+    static_assert (details::contains_v<details::character_types,
+                                       std::decay_t<decltype (c)>>);
     return is_code_point_start (c) ? (start_count++ == pos) : false;
   });
 }
 
-#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L && \
+    defined(__cpp_lib_concepts)
 template <typename T>
 concept is_transcoder = requires (T t) {
                           typename T::input_type;
@@ -219,7 +319,8 @@ public:
   explicit constexpr transcoder (bool well_formed) noexcept
       : well_formed_{well_formed} {}
 
-  /// \tparam OutputIterator  An output iterator type to which value of type output_type can be written.
+  /// \tparam OutputIterator  An output iterator type to which value of type
+  ///   output_type can be written.
   /// \param dest  An output iterator to which the output sequence is written.
   /// \returns  Iterator one past the last element assigned.
   template <typename OutputIterator>
@@ -247,7 +348,8 @@ public:
   /// Call once the entire input sequence has been fed to operator(). This
   /// function ensures that the sequence did not end with a partial code point.
   ///
-  /// \tparam OutputIterator  An output iterator type to which value of type output_type can be written.
+  /// \tparam OutputIterator  An output iterator type to which value of type
+  ///   output_type can be written.
   /// \param dest  An output iterator to which the output sequence is written.
   /// \returns  Iterator one past the last element assigned.
   template <typename OutputIterator>
@@ -319,7 +421,8 @@ public:
     pad_ = 0;  // Suppress warning about pad_ being unused.
   }
 
-  /// \tparam OutputIterator  An output iterator type to which values of output_type can be written.
+  /// \tparam OutputIterator  An output iterator type to which values of
+  ///   output_type can be written.
   /// \param code_unit  A UTF-8 code unit,
   /// \param dest  Iterator to which the output should be written.
   /// \returns  Iterator one past the last element assigned.
@@ -406,8 +509,6 @@ private:
     12,12,12,12,12,12,12,36,12,36,12,12, 12,36,12,12,12,12,12,36,12,36,12,12,
     12,36,12,12,12,12,12,12,12,12,12,12,
   }};
-  static constexpr auto code_point_bits = 21U;
-  static_assert (uint_least32_t{1} << code_point_bits > max_code_point);
   uint_least32_t code_point_ : code_point_bits;
   uint_least32_t well_formed_ : 1;
   uint_least32_t pad_ : 2;
@@ -588,21 +689,20 @@ public:
   template <typename OutputIterator>
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   OutputIterator operator() (input_type c, OutputIterator dest) {
-    char32_t inter = 0;
-    if (to_inter_ (c, &inter) != &inter) {
-      dest = to_out_ (inter, dest);
-    }
-    return dest;
+    // The (intermediate) output from the conversion to UTF-32. It's possible
+    // for the transcoder to produce more than a single output code unit if the
+    // input is malformed.
+    std::array<char32_t, 2> intermediate;
+    auto begin = std::begin (intermediate);
+    return copy (begin, to_inter_ (c, begin), dest);
   }
 
   template <typename OutputIterator>
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   OutputIterator end_cp (OutputIterator dest) {
-    char32_t inter = 0;
-    if (to_inter_.end_cp (&inter) != &inter) {
-      dest = to_out_ (inter, dest);
-    }
-    return to_out_.end_cp (dest);
+    std::array<char32_t, 2> intermediate;
+    auto begin = std::begin (intermediate);
+    return copy (begin, to_inter_.end_cp (begin), dest);
   }
 
   template <typename OutputIterator>
@@ -625,6 +725,14 @@ public:
 private:
   transcoder<input_type, char32_t> to_inter_;
   transcoder<char32_t, output_type> to_out_;
+
+  template <typename InputIterator, typename OutputIterator>
+  OutputIterator copy (InputIterator first, InputIterator last,
+                       OutputIterator dest) {
+    std::for_each (first, last,
+                   [this, &dest] (char32_t c) { dest = to_out_ (c, dest); });
+    return dest;
+  }
 };
 
 }  // end namespace details
