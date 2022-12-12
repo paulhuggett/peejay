@@ -42,27 +42,27 @@
 #include <span>
 #endif
 
-#ifdef _MSC_VER
-#define PEEJAY_UNREACHABLE \
-  do {                     \
-    assert (false);        \
-  } while (0)
-#else
-#define PEEJAY_UNREACHABLE    \
-  do {                        \
-    assert (false);           \
-    __builtin_unreachable (); \
-  } while (0)
-#endif  // _MSC_VER
-
 namespace peejay {
-
-template <typename... T>
-constexpr bool always_false = false;
 
 using char8 = icubaby::char8;
 using u8string = icubaby::u8string;
 using u8string_view = icubaby::u8string_view;
+
+/// A type that is always false. Used to improve the failure mesages from
+/// static_assert().
+template <typename... T>
+[[maybe_unused]] constexpr bool always_false = false;
+
+[[noreturn, maybe_unused]] inline void unreachable () {
+  // Uses compiler specific extensions if possible.
+  // Even if no extension is used, undefined behavior is still raised by
+  // an empty function body and the noreturn attribute.
+#ifdef __GNUC__  // GCC, Clang, ICC
+  __builtin_unreachable ();
+#elif defined(_MSC_VER)  // MSVC
+  __assume (false);
+#endif
+}
 
 #if PEEJAY_CXX20
 template <typename T>
@@ -641,7 +641,7 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
     this->set_error (parser, done_ (parser));
     this->set_state (done_state);
     break;
-  default: PEEJAY_UNREACHABLE; break;
+  default: unreachable (); break;
   }
   return {matcher<Backend>::null_pointer (), match};
 }
@@ -828,7 +828,7 @@ bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
     this->set_state (integer_initial_digit_state);
     match = do_integer_initial_digit_state (parser, c);
   } else {
-    PEEJAY_UNREACHABLE;
+    unreachable ();
     // minus MUST be followed by the 'int' production.
     this->set_error (parser, error::number_out_of_range);
   }
@@ -1017,7 +1017,7 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
       match = this->do_exponent_digit_state (parser, c);
       break;
     case done_state:
-    default: PEEJAY_UNREACHABLE; break;
+    default: unreachable (); break;
     }
   } else {
     assert (!parser.has_error ());
@@ -1296,7 +1296,7 @@ auto string_matcher<Backend>::consume_hex (unsigned const hex,
   case escape_state: break;
   }
 
-  PEEJAY_UNREACHABLE;
+  unreachable ();
   return error::invalid_hex_char;
 }
 
@@ -1973,7 +1973,7 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
       return {null_pointer (), true};
     }
   } break;
-  default: PEEJAY_UNREACHABLE; break;
+  default: unreachable (); break;
   }
   assert (false);  // unreachable.
   return {null_pointer (), true};
