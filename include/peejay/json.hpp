@@ -36,9 +36,11 @@
 #include <tuple>
 #include <variant>
 
-// C++20 standard library
-#if PEEJAY_CXX20
+#ifdef PEEJAY_HAVE_CONCEPTS
 #include <concepts>
+#endif
+
+#ifdef __cpp_lib_span
 #include <span>
 #endif
 
@@ -68,7 +70,7 @@ template <typename... T>
 }
 #endif
 
-#if PEEJAY_CXX20
+#if PEEJAY_HAVE_CONCEPTS
 template <typename T>
 concept backend = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
@@ -102,7 +104,7 @@ concept backend = requires (T &&v) {
   /// always follow an earlier call to begin_object().
   { v.end_object () } -> std::convertible_to<std::error_code>;
 };
-#endif  // PEEJAY_CXX20
+#endif  // PEEJAY_HAVE_CONCEPTS
 
 /// \brief JSON parser implementation details.
 namespace details {
@@ -173,7 +175,7 @@ struct coord {
   constexpr coord (struct line y, struct column x) noexcept
       : line{y}, column{x} {}
 
-#if PEEJAY_CXX20
+#if __cpp_impl_three_way_comparison
   // https://github.com/llvm/llvm-project/issues/55919
   _Pragma ("GCC diagnostic push")
   _Pragma ("GCC diagnostic ignored \"-Wzero-as-null-pointer-constant\"")
@@ -203,7 +205,7 @@ struct coord {
     return std::make_pair (line, column) >=
            std::make_pair (rhs.line, rhs.column);
   }
-#endif  // PEEJAY_CXX20
+#endif  // __cpp_impl_three_way_comparison
 
   unsigned line = 1U;
   unsigned column = 1U;
@@ -244,12 +246,25 @@ class parser {
 public:
   explicit parser (extensions extensions = extensions::none)
       : parser (Backend{}, extensions) {}
+
+#if PEEJAY_HAVE_CONCEPTS
   template <typename OtherBackend>
-  PEEJAY_CXX20REQUIRES (backend<OtherBackend>)
+    requires (backend<OtherBackend>)
+#else
+  template <
+      typename OtherBackend,
+      typename std::enable_if_t<
+          !std::is_same_v<parser<Backend>,
+                          typename std::remove_cv_t<
+                              typename std::remove_reference_t<OtherBackend>>>,
+          int> /*unnamed */
+      = 0>
+#endif
   explicit parser (OtherBackend &&backend,
                    extensions extensions = extensions::none);
+
   parser (parser const &) = delete;
-  parser (parser &&) noexcept (std::is_nothrow_constructible_v<Backend>) =
+  parser (parser &&) noexcept (std::is_nothrow_move_constructible_v<Backend>) =
       default;
 
   ~parser () noexcept = default;
@@ -271,7 +286,7 @@ public:
   parser &input (u8string_view const &src) {
     return this->input (std::begin (src), std::end (src));
   }
-#if PEEJAY_CXX20
+#if __cpp_lib_span
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
   parser &input (std::span<char8_t, Extent> const &span) {
@@ -1983,6 +1998,14 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
   unreachable ();
 }
 
+template <typename T>
+struct storage {
+  using type = typename std::aligned_storage_t<sizeof (T), alignof (T)>;
+};
+
+template <typename T>
+using storage_t = typename storage<T>::type;
+
 //*     _           _     _                 _                          *
 //*  __(_)_ _  __ _| |___| |_ ___ _ _    __| |_ ___ _ _ __ _ __ _ ___  *
 //* (_-< | ' \/ _` | / -_)  _/ _ \ ' \  (_-<  _/ _ \ '_/ _` / _` / -_) *
@@ -1991,15 +2014,9 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
 //-MARK:singleton storage
 template <typename Backend>
 struct singleton_storage {
-  template <typename T>
-  struct storage {
-    using type = typename std::aligned_storage_t<sizeof (T), alignof (T)>;
-  };
-
-  typename storage<eof_matcher<Backend>>::type eof;
-  typename storage<whitespace_matcher<Backend>>::type trailing_ws;
-  typename storage<root_matcher<Backend>>::type root;
-
+  storage_t<eof_matcher<Backend>> eof;
+  storage_t<whitespace_matcher<Backend>> trailing_ws;
+  storage_t<root_matcher<Backend>> root;
   std::variant<details::number_matcher<Backend>,
                details::string_matcher<Backend>,
                details::true_token_matcher<Backend>,
@@ -2015,8 +2032,18 @@ struct singleton_storage {
 // ~~~~~~
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
+#if PEEJAY_HAVE_CONCEPTS
 template <typename OtherBackend>
-PEEJAY_CXX20REQUIRES (backend<OtherBackend>)
+  requires (backend<OtherBackend>)
+#else
+template <
+    typename OtherBackend,
+    typename std::enable_if_t<
+        !std::is_same_v<parser<Backend>,
+                        typename std::remove_cv_t<
+                            typename std::remove_reference_t<OtherBackend>>>,
+        int> /* unnamed */>
+#endif
 parser<Backend>::parser (OtherBackend &&backend, extensions const extensions)
     : extensions_{extensions}, backend_{std::forward<OtherBackend> (backend)} {
   using mpointer = typename matcher::pointer;
