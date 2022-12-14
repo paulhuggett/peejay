@@ -40,6 +40,8 @@ TEST (ArrayVec, CtorInitializerList) {
 
 TEST (ArrayVec, CtorCopy) {
   arrayvec<int, 3> const b{3, 5};
+  // Disable clang-tidy warning since that's the point of the test.
+  // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
   arrayvec<int, 3> c = b;
   EXPECT_EQ (2U, c.size ());
   EXPECT_THAT (c, ElementsAre (3, 5));
