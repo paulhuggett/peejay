@@ -27,9 +27,9 @@
 #define PEEJAY_CXX20 (0)
 #endif
 
-#ifndef PEEJAY_CXX20
+#if PEEJAY_CXX20
 #include <version>
-#endif
+#endif  // PEEJAY_CXX20
 
 #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
 #define PEEJAY_HAVE_CONCEPTS (1)
@@ -41,6 +41,12 @@
 #define PEEJAY_CXX20REQUIRES(x) requires x
 #else
 #define PEEJAY_CXX20REQUIRES(x)
-#endif  // PEEJAY_CXX20
+#endif  // PEEJAY_HAVE_CONCEPTS
+
+#if defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
+#define PEEJAY_HAVE_SPAN (1)
+#else
+// #define PEEJAY_HAVE_SPAN (0)
+#endif
 
 #endif  // PEEJAY_PORTAB_HPP

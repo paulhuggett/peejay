@@ -28,6 +28,7 @@
 #endif  // !_WIN32
 
 #include "peejay/emit.hpp"
+#include "peejay/portab.hpp"
 
 using pjparser = peejay::parser<peejay::dom<1024>>;
 using namespace peejay;
@@ -51,7 +52,7 @@ std::variant<std::error_code, std::optional<element>> slurp (pjparser& p,
     in.read (data, buffer.size ());
     auto const available = as_unsigned (in.gcount ());
     // TODO: I just assume that the IStream yields UTF-8.
-#if PEEJAY_CXX20
+#if PEEJAY_HAVE_SPAN
     p.input (std::span{reinterpret_cast<char8 const*> (data), available});
 #else
     p.input (data, data + available);

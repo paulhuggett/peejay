@@ -40,7 +40,7 @@
 #include <concepts>
 #endif
 
-#ifdef __cpp_lib_span
+#ifdef PEEJAY_HAVE_SPAN
 #include <span>
 #endif
 
@@ -286,7 +286,7 @@ public:
   parser &input (u8string_view const &src) {
     return this->input (std::begin (src), std::end (src));
   }
-#if __cpp_lib_span
+#ifdef PEEJAY_HAVE_SPAN
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
   parser &input (std::span<char8_t, Extent> const &span) {
