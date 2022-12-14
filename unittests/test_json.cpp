@@ -22,14 +22,20 @@
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-using testing::DoubleEq;
 using testing::StrictMock;
-using namespace peejay;
+
+using peejay::column;
+using peejay::coord;
+using peejay::error;
+using peejay::line;
+using peejay::null;
+using peejay::parser;
+using peejay::u8string;
+using peejay::u8string_view;
 
 namespace {
 
-class Json : public ::testing::Test {
-protected:
+struct Json : testing::Test {
   static void check_error (u8string_view const& src, error err) {
     ASSERT_NE (err, error::none);
     parser p{json_out_callbacks{}};
@@ -38,12 +44,11 @@ protected:
     EXPECT_NE (p.last_error (), make_error_code (error::none));
   }
 
-  static inline auto const cr = u8"\r"s;
-  static inline auto const lf = u8"\n"s;
-  static inline auto const crlf = cr + lf;
-  static inline auto const keyword = u8"null"s;
-  static inline auto const xord =
-      static_cast<unsigned> (keyword.length ()) + 1U;
+  u8string const cr = u8"\r"s;
+  u8string const lf = u8"\n"s;
+  u8string const crlf = cr + lf;
+  u8string const keyword = u8"null"s;
+  unsigned const xord = static_cast<unsigned> (keyword.length ()) + 1U;
 };
 
 }  // end anonymous namespace
