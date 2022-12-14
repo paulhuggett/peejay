@@ -17,11 +17,17 @@
 #include "peejay/json.hpp"
 
 using namespace std::string_view_literals;
-
-using testing::DoubleEq;
 using testing::StrictMock;
 
-using namespace peejay;
+using peejay::char8;
+using peejay::char_set;
+using peejay::column;
+using peejay::coord;
+using peejay::error;
+using peejay::extensions;
+using peejay::line;
+using peejay::make_parser;
+using peejay::u8string_view;
 
 namespace {
 
