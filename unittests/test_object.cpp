@@ -19,13 +19,19 @@
 #include "peejay/json.hpp"
 #include "peejay/null.hpp"
 
-using namespace std::string_literals;
 using namespace std::string_view_literals;
 
-using testing::DoubleEq;
 using testing::StrictMock;
 
-using namespace peejay;
+using peejay::column;
+using peejay::coord;
+using peejay::error;
+using peejay::extensions;
+using peejay::line;
+using peejay::make_parser;
+using peejay::null;
+using peejay::parser;
+using peejay::u8string;
 
 namespace {
 
