@@ -47,18 +47,29 @@ class mock_json_callbacks : public json_callbacks_base {
 public:
   ~mock_json_callbacks () noexcept override;
 
+  // NOLINTNEXTLINE
   MOCK_METHOD1 (string_value, std::error_code (peejay::u8string_view const &));
+  // NOLINTNEXTLINE
   MOCK_METHOD1 (int64_value, std::error_code (std::int64_t));
+  // NOLINTNEXTLINE
   MOCK_METHOD1 (uint64_value, std::error_code (std::uint64_t));
+  // NOLINTNEXTLINE
   MOCK_METHOD1 (double_value, std::error_code (double));
+  // NOLINTNEXTLINE
   MOCK_METHOD1 (boolean_value, std::error_code (bool));
+  // NOLINTNEXTLINE
   MOCK_METHOD0 (null_value, std::error_code ());
 
+  // NOLINTNEXTLINE
   MOCK_METHOD0 (begin_array, std::error_code ());
+  // NOLINTNEXTLINE
   MOCK_METHOD0 (end_array, std::error_code ());
 
+  // NOLINTNEXTLINE
   MOCK_METHOD0 (begin_object, std::error_code ());
+  // NOLINTNEXTLINE
   MOCK_METHOD1 (key, std::error_code (peejay::u8string_view const &));
+  // NOLINTNEXTLINE
   MOCK_METHOD0 (end_object, std::error_code ());
 };
 
@@ -69,6 +80,12 @@ public:
 
   explicit callbacks_proxy (T &original) : original_ (original) {}
   callbacks_proxy (callbacks_proxy const &) = default;
+  callbacks_proxy (callbacks_proxy &&) noexcept = default;
+
+  ~callbacks_proxy () noexcept = default;
+
+  callbacks_proxy &operator= (callbacks_proxy const &) = delete;
+  callbacks_proxy &operator= (callbacks_proxy &&) noexcept = delete;
 
   std::error_code string_value (peejay::u8string_view const &s) {
     return original_.string_value (s);
