@@ -64,10 +64,10 @@ constexpr char to_hex (unsigned v) noexcept {
 std::ostream& emit_string_view (std::ostream& os,
                                 peejay::u8string_view const& str) {
   os << '"';
-  auto first = std::begin (
-      str);  // NOLINT(llvm-qualified-auto,readability-qualified-auto)
-  auto const last =
-      std::end (str);  // NOLINT(llvm-qualified-auto,readability-qualified-auto)
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
+  auto first = std::begin (str);
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
+  auto const last = std::end (str);
   peejay::u8string_view::const_iterator pos;
   while ((pos = std::find_if (first, last, [] (char const c) {
             return c < ' ' || c == '"' || c == '\\';
