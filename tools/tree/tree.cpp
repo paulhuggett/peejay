@@ -126,6 +126,7 @@ private:
 
 std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
     pjparser& p, char const* file) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
   closer fd{::open (file, O_RDONLY | O_CLOEXEC)};
   if (fd.get () == -1) {
     return std::error_code{errno, std::generic_category ()};
