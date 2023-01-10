@@ -24,6 +24,7 @@
 using namespace peejay;
 using testing::ElementsAre;
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, DefaultCtor) {
   arrayvec<int, 8> b;
   EXPECT_EQ (0U, b.size ());
@@ -31,6 +32,7 @@ TEST (ArrayVec, DefaultCtor) {
   EXPECT_TRUE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, CtorInitializerList) {
   arrayvec<int, 8> const b{1, 2, 3};
   EXPECT_EQ (3U, b.size ());
@@ -38,6 +40,7 @@ TEST (ArrayVec, CtorInitializerList) {
   EXPECT_THAT (b, ElementsAre (1, 2, 3));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, CtorCopy) {
   arrayvec<int, 3> const b{3, 5};
   // Disable clang-tidy warning since that's the point of the test.
