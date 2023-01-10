@@ -266,7 +266,7 @@ def decode_decomposition (cp:CodePoint, cell: str) -> Decomposition:
         parts = parts[1:]
     return Decomposition(formatting, [code_point(p) for p in parts])
 
-def numeric_type(row:Sequence[str]) -> Optional[NumericTypeEnum]:
+def get_numeric_type(row:Sequence[str]) -> Optional[NumericTypeEnum]:
     """Numeric_Type is extracted as follows. If fields 6, 7, and 8 in
     UnicodeData.txt are all non-empty, then Numeric_Type=Decimal. Otherwise, if
     fields 7 and 8 are both non-empty, then Numeric_Type=Digit. Otherwise, if
@@ -289,7 +289,7 @@ def numeric_type(row:Sequence[str]) -> Optional[NumericTypeEnum]:
         return NumericTypeEnum.Numeric
     return None
 
-def numeric_value_decimal(row:Sequence[str]) -> int:
+def get_numeric_value_decimal(row:Sequence[str]) -> int:
     """If the character has the property value Numeric_Type=Decimal, then
     the Numeric_Value of that digit is represented with an integer value
     (limited to the range 0..9) in fields 6, 7, and 8.
@@ -298,11 +298,11 @@ def numeric_value_decimal(row:Sequence[str]) -> int:
     :return: The Numeric_Value field of a record with Numeric_Type=Decimal.
     """
 
-    Numeric_Value = int(row[6])
-    assert Numeric_Value == int(row[7]) and Numeric_Value == int(row[8])
-    return Numeric_Value
+    result = int(row[6])
+    assert result == int(row[7]) and result == int(row[8])
+    return result
 
-def numeric_value_digit(row:Sequence[str]) -> int:
+def get_numeric_value_digit(row:Sequence[str]) -> int:
     """If the character has the property value Numeric_Type=Digit, then the
     Numeric_Value of that digit is represented with an integer value
     (limited to the range 0..9) in fields 7 and 8, and field 6 is null.
@@ -313,11 +313,11 @@ def numeric_value_digit(row:Sequence[str]) -> int:
     :return: The Numeric_Value field of a record with Numeric_Type=Digit.
     """
 
-    Numeric_Value = int(row[7])
+    result = int(row[7])
     assert int(row[7]) == int(row[8])
-    return Numeric_Value
+    return result
 
-def numeric_value_numeric (row:Sequence[str]) -> fractions.Fraction:
+def get_numeric_value_numeric (row:Sequence[str]) -> fractions.Fraction:
     """If the character has the property value Numeric_Type=Numeric, then the
     Numeric_Value of that character is represented with a positive or negative
     integer or rational number in this field, and fields 6 and 7 are null.
@@ -341,14 +341,14 @@ def code_point_value (row:Sequence[str]) -> CodePointValueDict:
     """
 
     assert len (row) == 15
-    Numeric_Type = numeric_type (row)
-    Numeric_Value: Union[None, int, fractions.Fraction] = {
+    numeric_type = get_numeric_type (row)
+    numeric_value: Union[None, int, fractions.Fraction] = {
         None: (lambda _: None),
-        NumericTypeEnum.Decimal: numeric_value_decimal,
-        NumericTypeEnum.Digit: numeric_value_digit,
-        NumericTypeEnum.Numeric: numeric_value_numeric
-    }[Numeric_Type](row)
-    Simple_Uppercase_Mapping = opt_code_point(row[12])
+        NumericTypeEnum.Decimal: get_numeric_value_decimal,
+        NumericTypeEnum.Digit: get_numeric_value_digit,
+        NumericTypeEnum.Numeric: get_numeric_value_numeric
+    }[numeric_type](row)
+    simple_uppercase_mapping = opt_code_point(row[12])
     return {
         # https://www.unicode.org/reports/tr44/#Name
         'Name': row[1],
@@ -361,16 +361,16 @@ def code_point_value (row:Sequence[str]) -> CodePointValueDict:
         # https://www.unicode.org/reports/tr44/#Decomposition_Type
         'Decomposition': decode_decomposition(code_point(row[0]), row[5]),
         # https://www.unicode.org/reports/tr44/#Numeric_Type
-        'Numeric_Type': Numeric_Type,
-        'Numeric_Value': Numeric_Value,
+        'Numeric_Type': numeric_type,
+        'Numeric_Value': numeric_value,
         # https://www.unicode.org/reports/tr44/#Bidi_Mirrored
         'Bidi_Mirrored': yn_field (row[9]),
         # https://www.unicode.org/reports/tr44/#Simple_Uppercase_Mapping
-        'Simple_Uppercase_Mapping': Simple_Uppercase_Mapping,
+        'Simple_Uppercase_Mapping': simple_uppercase_mapping,
         # https://www.unicode.org/reports/tr44/#Simple_Lowercase_Mapping
         'Simple_Lowercase_Mapping': opt_code_point(row[13]),
         # https://www.unicode.org/reports/tr44/#Simple_Titlecase_Mapping
-        'Simple_Titlecase_Mapping': opt_code_point(row[14]) if len(row[14]) > 0 else Simple_Uppercase_Mapping,
+        'Simple_Titlecase_Mapping': opt_code_point(row[14]) if len(row[14]) > 0 else simple_uppercase_mapping,
     }
 
 DbDict = Annotated[dict[CodePoint, CodePointValueDict], 'A dictionary showing mapping a Unicode code point to its properties from UnicodeData.txt']
