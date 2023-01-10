@@ -2026,7 +2026,7 @@ struct singleton_storage {
       terminals_;
 };
 
-}  // namespace peejay
+}  // end namespace details
 
 // (ctor)
 // ~~~~~~
