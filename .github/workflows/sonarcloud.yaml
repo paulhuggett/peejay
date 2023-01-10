@@ -90,6 +90,7 @@ jobs:
                         --define sonar.cfamily.llvm-cov.reportPath=coverage.txt                        \
                         --define sonar.projectVersion="$(git rev-parse HEAD)"                          \
                         --define sonar.projectKey=paulhuggett_peejay                                   \
+                        --define sonar.python.version=3                                                \
                         --define sonar.organization=paulhuggett-github                                 \
                         --define sonar.sourceEncoding=UTF-8                                            \
                         --define sonar.exclusions='build/**/*','docs/**/*'
