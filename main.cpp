@@ -20,7 +20,8 @@
 
 #include "peejay/json.hpp"
 
-using namespace peejay;
+using peejay::make_parser;
+using peejay::u8string_view;
 
 namespace {
 
@@ -64,6 +65,7 @@ public:
 private:
   template <typename T>
   std::error_code write (T&& t) {
+    // NOLINTNEXTLINE
     os_ << std::forward<T> (t);
     return {};
   }
