@@ -21,7 +21,11 @@
 #include "peejay/json.hpp"
 #include "peejay/null.hpp"
 
-using namespace peejay;
+using peejay::char8;
+using peejay::null;
+using peejay::parser;
+using peejay::u8string;
+
 using null_parser = parser<null>;
 
 static void report_error (null_parser const& p,

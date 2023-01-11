@@ -22,8 +22,13 @@
 // 3rd party
 #include <gmock/gmock.h>
 
-using namespace peejay;
 using namespace std::string_literals;
+
+using peejay::array;
+using peejay::element;
+using peejay::emit;
+using peejay::null;
+using peejay::object;
 
 // NOLINTNEXTLINE
 TEST (Emit, Nothing) {

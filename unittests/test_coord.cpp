@@ -18,7 +18,9 @@
 // 3rd party includes
 #include <gtest/gtest.h>
 
-using namespace peejay;
+using peejay::column;
+using peejay::coord;
+using peejay::line;
 
 // NOLINTNEXTLINE
 TEST (Coord, DefaultCtor) {

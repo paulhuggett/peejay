@@ -21,7 +21,7 @@
 // 3rd party
 #include <gmock/gmock.h>
 
-using namespace peejay;
+using peejay::arrayvec;
 using testing::ElementsAre;
 
 // NOLINTNEXTLINE
@@ -53,8 +53,6 @@ TEST (ArrayVec, CtorCopy) {
 namespace {
 
 class no_copy_or_assign {
-  friend std::ostream &operator<< (std::ostream &, no_copy_or_assign const &);
-
 public:
   constexpr explicit no_copy_or_assign (int v) noexcept : v_{v} {}
   no_copy_or_assign (no_copy_or_assign const &) = delete;
@@ -73,12 +71,14 @@ public:
     return v_ == rhs.v_;
   }
 
+  [[nodiscard]] int get () const noexcept { return v_; }
+
 private:
   int v_ = 0;
 };
 
 std::ostream &operator<< (std::ostream &os, no_copy_or_assign const &x) {
-  return os << x.v_;
+  return os << x.get ();
 }
 
 }  // end anonymous namespace

@@ -24,7 +24,12 @@
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-using namespace peejay;
+
+using peejay::error;
+using peejay::extensions;
+using peejay::make_parser;
+using peejay::parser;
+using peejay::u8string_view;
 
 using testing::DoubleEq;
 using testing::StrictMock;

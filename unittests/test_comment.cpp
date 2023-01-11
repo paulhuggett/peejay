@@ -18,7 +18,12 @@
 
 using namespace std::string_view_literals;
 
-using namespace peejay;
+using peejay::column;
+using peejay::coord;
+using peejay::error;
+using peejay::extensions;
+using peejay::line;
+using peejay::make_parser;
 
 namespace {
 

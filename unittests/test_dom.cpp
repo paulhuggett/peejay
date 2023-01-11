@@ -18,9 +18,17 @@
 #include "peejay/dom.hpp"
 #include "peejay/json.hpp"
 
-using namespace peejay;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+
+using peejay::array;
+using peejay::dom;
+using peejay::element;
+using peejay::error;
+using peejay::mark;
+using peejay::null;
+using peejay::object;
+using peejay::u8string;
 
 using testing::ElementsAre;
 using testing::UnorderedElementsAre;
