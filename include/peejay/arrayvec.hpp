@@ -213,7 +213,7 @@ public:
 
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
-    this->element (--size_).~T ();
+    std::destroy_at (&this->element (--size_));
   }
 
   ///@}
