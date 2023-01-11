@@ -6,7 +6,6 @@
 
 A state-machine based JSON parser for C++17 or later. (The silly name comes from the English pronunciation of P.J. which is short for **P**arse **J**SON.)
 
-
 ## JSON5 extension support
 
 Please refer to the [JSON5 specification](https://json5.org) for further details.
