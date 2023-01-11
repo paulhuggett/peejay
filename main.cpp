@@ -85,7 +85,8 @@ std::error_code slurp (IStream&& in) {
     auto const available = static_cast<std::make_unsigned_t<std::streamsize>> (
         std::max (in.gcount (), std::streamsize{0}));
 #if PEEJAY_HAVE_SPAN
-    p.input (std::span{reinterpret_cast<char8 const*> (data), available});
+    p.input (
+        std::span{reinterpret_cast<peejay::char8 const*> (data), available});
 #else
     p.input (data, data + available);
 #endif  // PEEJAY_HAVE_SPAN
