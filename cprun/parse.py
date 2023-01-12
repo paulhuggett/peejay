@@ -192,8 +192,6 @@ def emit_header(db: DbDict, entries:Sequence[OutputRow], include_guard: str) -> 
     :return: None
     """
 
-    entries = code_run_array(db)
-
     print('#ifndef {0}'.format (include_guard))
     print('#define {0}'.format (include_guard))
     print('''
