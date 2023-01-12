@@ -26,6 +26,27 @@ add_library (peejay STATIC
   "${include_dir}/peejay/portab.hpp"
   emit.cpp
   json_error.cpp
+  "${include_dir}/peejay/cprun.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp"
 )
 target_include_directories (peejay PUBLIC "${include_dir}")
 setup_target (peejay)
+
+set (GENCPRUN "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/parse.py")
+set (UNICODE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/UnicodeData.txt")
+
+find_package(Python3 3.7 REQUIRED)
+
+if (NOT Python3_FOUND)
+  message(ERROR "Python3 was not found")
+endif()
+
+add_custom_command(
+  TARGET peejay
+  PRE_BUILD
+  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --hpp > ${include_dir}/peejay/cprun.hpp
+  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > "${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp"
+  BYPRODUCTS "${include_dir}/peejay/cprun.hpp" cprun.cpp
+  COMMENT Generating cprun source/header file
+  VERBATIM
+)

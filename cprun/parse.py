@@ -295,7 +295,7 @@ struct cprun {{
 '''.format(CODE_POINT_BITS, RUN_LENGTH_BITS, RULE_BITS))
     assert CODE_POINT_BITS + RUN_LENGTH_BITS + RULE_BITS <= 32
 
-    print('extern std::array<cprun, {0}> code_point_runs;\n'.format(len(entries)))
+    print('extern std::array<cprun, {0}> const code_point_runs;\n'.format(len(entries)))
     print('#endif // {0}'.format (include_guard))
 
 def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Path) -> None:
@@ -310,7 +310,7 @@ def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Pa
     """
 
     print('#include "{0}"'.format(header_file))
-    print('std::array<cprun, {0}> code_point_runs = {{{{'.format(len(entries)))
+    print('std::array<cprun, {0}> const code_point_runs = {{{{'.format(len(entries)))
     for x in entries:
         print('  {0}'.format(x.as_str(db)))
     print('}};')
@@ -319,8 +319,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog = 'ProgramName',
                                      description = 'Generates C++ source and header files which map Unicode code points to ECMAScript grammar rules')
     parser.set_defaults(emit_header=True)
-    parser.add_argument('-u', '--unicode-data', help='the path of the UnicodeData.txt file', default='./UnicodeData.txt')
-    parser.add_argument('-f', '--header-file', help='the name of the cprun header file', default='cprun.hpp', type=pathlib.Path)
+    parser.add_argument('-u', '--unicode-data', help='the path of the UnicodeData.txt file', default='./UnicodeData.txt', type=pathlib.Path)
+    parser.add_argument('-f', '--header-file', help='the name of the cprun header file', default='cprun.hpp')
     parser.add_argument('--include-guard', help='the name of header file include guard macro', default='CPRUN_HPP')
 
     group = parser.add_mutually_exclusive_group()
