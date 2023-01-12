@@ -2,7 +2,7 @@
 """This module decodes the contents of UnicodeData.txt (from from
 <https://www.unicode.org/Public/zipped/15.0.0/UCD.zip>.
 
-The primary export is the function read_unicode_data() which will read the 
+The primary export is the function read_unicode_data() which will read the
 file and return a dictionary containing the fully decoded contents."""
 
 import csv
@@ -12,15 +12,16 @@ from collections.abc import Sequence
 import fractions
 
 __all__ = [
-    'BidiClass', 
-    'CodePoint', 
-    'CodePointValueDict', 
-    'DbDict', 
-    'Decomposition', 
-    'FormattingFlag', 
-    'GeneralCategory', 
-    'NumericTypeEnum', 
-    'read_unicode_data', 
+    'BidiClass',
+    'CodePoint',
+    'CodePointValueDict',
+    'DbDict',
+    'Decomposition',
+    'FormattingFlag',
+    'GeneralCategory',
+    'MAX_CODE_POINT',
+    'NumericTypeEnum',
+    'read_unicode_data',
 ]
 __author__ = 'Paul Bowen-Huggett'
 
@@ -28,7 +29,7 @@ __author__ = 'Paul Bowen-Huggett'
 # classification of a code point. Drawn from:
 # https://www.unicode.org/reports/tr44/#General_Category_Values
 GeneralCategory = Enum(
-    'GeneralCategory', 
+    'GeneralCategory',
     [
         'Uppercase_Letter',      # an uppercase letter
         'Lowercase_Letter',      # a lowercase letter
@@ -188,17 +189,21 @@ COMPATIBILITY_FORMATTING_FLAGS = dict([('<' + x.name + '>', x)
 
 # A CodePoint is an integer in the range 0..0x10FFFF
 CodePoint = NewType('CodePoint', int)
+MAX_CODE_POINT = 0x10FFFF
 
 class Decomposition:
     """Describes how to decompose a code point.
 
-    :param formatting: A canonical mapping is indicated by formatting=None; for compatibility mappings FormattingFlag is used. 
+    :param formatting: A canonical mapping is indicated by formatting=None; for compatibility mappings FormattingFlag is used.
     :param mappings: The code point to which this code point should be decomposed.
     """
 
     def __init__(self, formatting: Optional[FormattingFlag], mappings:Sequence[CodePoint]) -> None:
         self.formatting = formatting
         self.mappings = mappings
+
+    def __repr__(self) -> str:
+        return '<{0}>'.format(self)
 
     def __str__(self) -> str:
         return '{0}, {1}'.format(self.formatting, self.mappings)
@@ -234,7 +239,7 @@ def yn_field(x: str) -> bool:
 def code_point(x: str) -> CodePoint:
     """Decodes a sequence of hexadecimal digits as a Unicode code point value.
 
-    :param x: A string which should contain a sequence of hexadecimal 
+    :param x: A string which should contain a sequence of hexadecimal
               characters.
     :return: The value of x as a CodePoint.
     """
