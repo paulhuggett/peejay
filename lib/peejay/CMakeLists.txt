@@ -15,6 +15,9 @@
 #===----------------------------------------------------------------------===//
 set (include_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
 
+set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
+set (CPRUN_CPP ${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp)
+
 add_library (peejay STATIC
   "${include_dir}/peejay/arrayvec.hpp"
   "${include_dir}/peejay/dom.hpp"
@@ -26,8 +29,8 @@ add_library (peejay STATIC
   "${include_dir}/peejay/portab.hpp"
   emit.cpp
   json_error.cpp
-  "${include_dir}/peejay/cprun.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp"
+  "${CPRUN_HPP}"
+  "${CPRUN_CPP}"
 )
 target_include_directories (peejay PUBLIC "${include_dir}")
 setup_target (peejay)
@@ -35,18 +38,15 @@ setup_target (peejay)
 set (GENCPRUN "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/parse.py")
 set (UNICODE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/UnicodeData.txt")
 
-find_package(Python3 3.7 REQUIRED)
-
+find_package(Python3 3.10 REQUIRED)
 if (NOT Python3_FOUND)
-  message(ERROR "Python3 was not found")
+  message(ERROR "Python 3.10 was not found")
 endif()
 
-add_custom_command(
-  TARGET peejay
-  PRE_BUILD
-  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --hpp > ${include_dir}/peejay/cprun.hpp
-  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > "${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp"
-  BYPRODUCTS "${include_dir}/peejay/cprun.hpp" cprun.cpp
-  COMMENT Generating cprun source/header file
+add_custom_command (
+  COMMENT "Generating cprun source/header file"
+  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --hpp > ${CPRUN_HPP}
+  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
+  OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
   VERBATIM
 )
