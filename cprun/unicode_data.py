@@ -27,7 +27,7 @@ __author__ = 'Paul Bowen-Huggett'
 # The list of Unicode character categories which provides for the most general
 # classification of a code point. Drawn from:
 # https://www.unicode.org/reports/tr44/#General_Category_Values
-GeneralCategory = Enum (
+GeneralCategory = Enum(
     'GeneralCategory', 
     [
         'Uppercase_Letter',      # an uppercase letter
@@ -190,6 +190,12 @@ COMPATIBILITY_FORMATTING_FLAGS = dict([('<' + x.name + '>', x)
 CodePoint = NewType('CodePoint', int)
 
 class Decomposition:
+    """Describes how to decompose a code point.
+
+    :param formatting: A canonical mapping is indicated by formatting=None; for compatibility mappings FormattingFlag is used. 
+    :param mappings: The code point to which this code point should be decomposed.
+    """
+
     def __init__(self, formatting: Optional[FormattingFlag], mappings:Sequence[CodePoint]) -> None:
         self.formatting = formatting
         self.mappings = mappings
@@ -215,7 +221,7 @@ CodePointValueDict = TypedDict(
     }
 )
 
-def yn_field (x: str) -> bool:
+def yn_field(x: str) -> bool:
     """Converts the input string to boolean. The input must be either 'Y'
     (True) or 'N' (False).
 
@@ -235,7 +241,7 @@ def code_point(x: str) -> CodePoint:
 
     return CodePoint(int(x, 16))
 
-def opt_code_point (x: str) -> Optional[CodePoint]:
+def opt_code_point(x: str) -> Optional[CodePoint]:
     """Returns None or an integer given an empty string or a sequence of
     hexadecimal digits which represent a Unicode code point value.
 
@@ -246,7 +252,7 @@ def opt_code_point (x: str) -> Optional[CodePoint]:
 
     return None if len(x) == 0 else code_point(x)
 
-def decode_decomposition (cp:CodePoint, cell: str) -> Decomposition:
+def decode_decomposition(cp:CodePoint, cell: str) -> Decomposition:
     """Decodes the Decomposition_Type/Decomposition_Mapping fields from
     UnicodeData.txt.
 
@@ -317,7 +323,7 @@ def get_numeric_value_digit(row:Sequence[str]) -> int:
     assert int(row[7]) == int(row[8])
     return result
 
-def get_numeric_value_numeric (row:Sequence[str]) -> fractions.Fraction:
+def get_numeric_value_numeric(row:Sequence[str]) -> fractions.Fraction:
     """If the character has the property value Numeric_Type=Numeric, then the
     Numeric_Value of that character is represented with a positive or negative
     integer or rational number in this field, and fields 6 and 7 are null.
@@ -330,7 +336,7 @@ def get_numeric_value_numeric (row:Sequence[str]) -> fractions.Fraction:
     assert len(row[6]) == 0 and len(row[7]) == 0
     return fractions.Fraction(row[8])
 
-def code_point_value (row:Sequence[str]) -> CodePointValueDict:
+def code_point_value(row:Sequence[str]) -> CodePointValueDict:
     """Takes a row from the UnicodeData.txt file (representing an individual
     code point) and returns a CodePointValue dict which contains the properties
     associated with that code point.
@@ -340,8 +346,8 @@ def code_point_value (row:Sequence[str]) -> CodePointValueDict:
              row.
     """
 
-    assert len (row) == 15
-    numeric_type = get_numeric_type (row)
+    assert len(row) == 15
+    numeric_type = get_numeric_type(row)
     numeric_value: Union[None, int, fractions.Fraction] = {
         None: (lambda _: None),
         NumericTypeEnum.Decimal: get_numeric_value_decimal,
@@ -364,7 +370,7 @@ def code_point_value (row:Sequence[str]) -> CodePointValueDict:
         'Numeric_Type': numeric_type,
         'Numeric_Value': numeric_value,
         # https://www.unicode.org/reports/tr44/#Bidi_Mirrored
-        'Bidi_Mirrored': yn_field (row[9]),
+        'Bidi_Mirrored': yn_field(row[9]),
         # https://www.unicode.org/reports/tr44/#Simple_Uppercase_Mapping
         'Simple_Uppercase_Mapping': simple_uppercase_mapping,
         # https://www.unicode.org/reports/tr44/#Simple_Lowercase_Mapping
@@ -373,7 +379,10 @@ def code_point_value (row:Sequence[str]) -> CodePointValueDict:
         'Simple_Titlecase_Mapping': opt_code_point(row[14]) if len(row[14]) > 0 else simple_uppercase_mapping,
     }
 
-DbDict = Annotated[dict[CodePoint, CodePointValueDict], 'A dictionary showing mapping a Unicode code point to its properties from UnicodeData.txt']
+DbDict = Annotated[
+    dict[CodePoint, CodePointValueDict],
+    'A dictionary showing mapping a Unicode code point to its properties from UnicodeData.txt'
+]
 
 def read_unicode_data(uncode_data_path: str) -> DbDict:
   with open(uncode_data_path) as udb:
