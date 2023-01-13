@@ -31,7 +31,7 @@ static grammar_rule find (char32_t const code_point) {
         return cpr.code_point + cpr.length < value.code_point;
       });
   return (it != end && code_point >= it->code_point &&
-          code_point < it->code_point + it->length)
+          code_point < static_cast<char32_t> (it->code_point + it->length))
              ? static_cast<grammar_rule> (it->rule)
              : grammar_rule::none;
 }
