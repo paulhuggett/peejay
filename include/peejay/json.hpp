@@ -795,7 +795,7 @@ private:
 
   bool is_neg_ = false;
   bool is_integer_ = true;
-  std::uint64_t int_acc_ = 0;
+  uint64_t int_acc_ = 0;
 
   struct {
     double frac_part = 0.0;
@@ -968,7 +968,7 @@ bool number_matcher<Backend>::do_integer_initial_digit_state (
     this->set_state (frac_state);
   } else if (c >= '1' && c <= '9') {
     assert (int_acc_ == 0);
-    int_acc_ = static_cast<unsigned> (c - '0');
+    int_acc_ = static_cast<uint64_t> (c - '0');
     this->set_state (integer_digit_state);
   } else {
     this->set_error (parser, error::unrecognized_token);
@@ -992,8 +992,7 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
     this->set_state (exponent_sign_state);
     number_is_float ();
   } else if (c >= '0' && c <= '9') {
-    std::uint64_t const new_acc =
-        int_acc_ * 10U + static_cast<unsigned> (c - '0');
+    uint64_t const new_acc = int_acc_ * 10U + static_cast<uint64_t> (c - '0');
     if (new_acc < int_acc_) {  // Did this overflow?
       this->set_error (parser, error::number_out_of_range);
     } else {
