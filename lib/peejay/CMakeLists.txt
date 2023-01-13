@@ -44,7 +44,7 @@ if (NOT Python3_FOUND)
 endif()
 
 add_custom_command (
-  COMMENT "Generating cprun source/header file"
+  COMMENT "Generating cprun source/header file '${CPRUN_HPP}' '${CPRUN_CPP}'"
   COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --hpp > ${CPRUN_HPP}
   COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
   OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
