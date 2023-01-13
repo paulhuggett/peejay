@@ -67,9 +67,13 @@ public:
     return *this;
   }
 
+#ifdef PEEJAY_CXX20
+  bool operator== (no_copy_or_assign const &rhs) const noexcept = default;
+#else
   bool operator== (no_copy_or_assign const &rhs) const noexcept {
     return v_ == rhs.v_;
   }
+#endif
 
   [[nodiscard]] int get () const noexcept { return v_; }
 
@@ -309,9 +313,13 @@ namespace {
 class no_default_ctor {
 public:
   explicit no_default_ctor (int v) noexcept : v_{v} {}
+#ifdef PEEJAY_CXX20
+  bool operator== (no_default_ctor const &rhs) const noexcept = default;
+#else
   bool operator== (no_default_ctor const &rhs) const noexcept {
     return v_ == rhs.v_;
   }
+#endif
 
 private:
   int v_;
