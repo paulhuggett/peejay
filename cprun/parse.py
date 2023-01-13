@@ -183,11 +183,10 @@ def dump_db(db: DbDict) -> None:
     for k, v in db.items():
         print('U+{0:04x} {1}'.format(k, v))
 
-def emit_header(db: DbDict, entries:Sequence[OutputRow], include_guard: str) -> None:
+def emit_header(entries:Sequence[OutputRow], include_guard: str) -> None:
     """Emits a C++ header file which declares the array variable along with the
     necessary types.
 
-    :param db: The unicode database dictionary.
     :param entries: A sequence of OutputRow instances sorted by code point.
     :param include_guard: The name of the header file include guard to be used.
     :return: None
@@ -256,4 +255,4 @@ if __name__ == '__main__':
     else:
         db = patch_special_code_points(db)
         entries = code_run_array(db)
-        emit_header(db, entries, args.include_guard) if args.emit_header else emit_source(db, entries, args.header_file)
+        emit_header(entries, args.include_guard) if args.emit_header else emit_source(db, entries, args.header_file)
