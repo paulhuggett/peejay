@@ -27,6 +27,7 @@ class GrammarRule(Enum):
     whitespace = 0
     identifier_start = 1
     identifier_part = 2
+    none = 4
 
 CATEGORY_TO_GRAMMAR_RULE: dict[GeneralCategory, GrammarRule] = {
     GeneralCategory.Spacing_Mark         : GrammarRule.identifier_part,
@@ -198,6 +199,8 @@ def emit_header(db: DbDict, entries:Sequence[OutputRow], include_guard: str) -> 
 #include <array>
 #include <cstdint>
 
+namespace peejay {
+
 enum class grammar_rule {''')
     print(',\n'.join(['  {0} = {1}'.format(x.name, x.value) for x in GrammarRule]))
     print('''}};
@@ -210,7 +213,8 @@ struct cprun {{
 '''.format(CODE_POINT_BITS, RUN_LENGTH_BITS, RULE_BITS))
     assert CODE_POINT_BITS + RUN_LENGTH_BITS + RULE_BITS <= 32
 
-    print('extern std::array<cprun, {0}> const code_point_runs;\n'.format(len(entries)))
+    print('extern std::array<cprun, {0}> const code_point_runs;'.format(len(entries)))
+    print('\n} // end namespace peejay')
     print('#endif // {0}'.format (include_guard))
 
 def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Path) -> None:
@@ -225,10 +229,12 @@ def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Pa
     """
 
     print('#include "{0}"'.format(header_file))
+    print('namespace peejay {')
     print('std::array<cprun, {0}> const code_point_runs = {{{{'.format(len(entries)))
     for x in entries:
         print('  {0}'.format(x.as_str(db)))
     print('}};')
+    print ('} // end namespace peejay')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog = 'ProgramName',

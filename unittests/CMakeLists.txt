@@ -22,6 +22,7 @@ add_executable (pj-unittests
   test_boolean.cpp
   test_comment.cpp
   test_coord.cpp
+  test_cprun.cpp
   test_dom.cpp
   test_emit.cpp
   test_json.cpp
