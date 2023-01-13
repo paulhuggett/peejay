@@ -45,8 +45,9 @@ endif()
 
 add_custom_command (
   COMMENT "Generating cprun source/header file '${CPRUN_HPP}' '${CPRUN_CPP}'"
-  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --hpp > ${CPRUN_HPP}
-  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} ARGS --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
+  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --hpp > ${CPRUN_HPP}
+  COMMAND ${Python_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
+  COMMAND ${Python_EXECUTABLE} -c "with open('../include/peejay/cprun.hpp') as f: print(f.read())"
   OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
   VERBATIM
 )
