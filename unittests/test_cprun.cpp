@@ -7,6 +7,7 @@
 
 using peejay::grammar_rule;
 
+std::ostream& operator<< (std::ostream& os, grammar_rule rule);
 std::ostream& operator<< (std::ostream& os, grammar_rule rule) {
   switch (rule) {
   case grammar_rule::whitespace: os << "whitespace"; break;
@@ -17,7 +18,7 @@ std::ostream& operator<< (std::ostream& os, grammar_rule rule) {
   return os;
 }
 
-grammar_rule find (char32_t const code_point) {
+static grammar_rule find (char32_t const code_point) {
   auto const end = std::end (peejay::code_point_runs);
   auto const it = std::lower_bound (
       std::begin (peejay::code_point_runs), end, peejay::cprun{code_point, 0, 0},
