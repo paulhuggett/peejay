@@ -131,7 +131,9 @@ peejay::u8string to_u8string (T v) {
 
 class json_out_callbacks {
 public:
-  constexpr peejay::u8string const &result () const noexcept { return out_; }
+  [[nodiscard]] constexpr peejay::u8string const &result () const noexcept {
+    return out_;
+  }
 
   std::error_code string_value (peejay::u8string_view const &s) {
     return this->append (
