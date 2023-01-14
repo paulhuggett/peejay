@@ -5,21 +5,6 @@
 
 #include "peejay/cprun.hpp"
 
-namespace peejay {
-
-std::ostream& operator<< (std::ostream& os, grammar_rule rule);
-std::ostream& operator<< (std::ostream& os, grammar_rule rule) {
-  switch (rule) {
-  case grammar_rule::whitespace: os << "whitespace"; break;
-  case grammar_rule::identifier_start: os << "identifier_start"; break;
-  case grammar_rule::identifier_part: os << "identifier_part"; break;
-  case grammar_rule::none: os << "none"; break;
-  }
-  return os;
-}
-
-}  // namespace peejay
-
 using peejay::grammar_rule;
 
 static grammar_rule find (char32_t const code_point) {
