@@ -29,6 +29,7 @@ add_executable (pj-unittests
   test_object.cpp
   test_number.cpp
   test_string.cpp
+  test_whitespace.cpp
 )
 setup_target (pj-unittests)
 target_link_libraries (pj-unittests PRIVATE peejay gtest gmock)

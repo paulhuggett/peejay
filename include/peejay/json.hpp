@@ -16,6 +16,7 @@
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
+#include "peejay/cprun.hpp"
 #include "peejay/json_error.hpp"
 #include "peejay/portab.hpp"
 
@@ -157,6 +158,8 @@ private:
   mode mode_;
 };
 
+grammar_rule code_point_grammar_rule (char32_t const code_point);
+
 }  // end namespace details
 
 struct line {
@@ -224,6 +227,7 @@ enum class extensions : unsigned {
   object_trailing_comma = 1U << 4U,
   single_quote_string = 1U << 5U,
   leading_plus = 1U << 6U,
+  extra_whitespace = 1 << 7U,
   all = ~none,
 };
 
@@ -280,6 +284,15 @@ public:
   /// parser::eof() method.
 
   /// \param src The data to be parsed.
+  parser &input (std::u32string const &src) {
+    return this->input (std::begin (src), std::end (src));
+  }
+  /// \param src The data to be parsed.
+  parser &input (std::u32string_view const &src) {
+    return this->input (std::begin (src), std::end (src));
+  }
+
+
   parser &input (u8string const &src) {
     return this->input (std::begin (src), std::end (src));
   }
@@ -298,6 +311,16 @@ public:
     return this->input (std::begin (span), std::end (span));
   }
 #endif  // PEEJAY_CXX20
+  /// \param first The element in the half-open range of UTF-32 code-units to be parsed.
+  /// \param last The end of the range of UTF-32 code-units to be parsed.
+  template <typename InputIterator>
+  PEEJAY_CXX20REQUIRES (
+      (std::input_iterator<InputIterator> &&
+       std::is_same_v<std::decay_t<typename std::iterator_traits<
+                          InputIterator>::value_type>,
+                      char32_t>))
+  parser &input (InputIterator first, InputIterator last);
+
   /// \param first The element in the half-open range of UTF-8 code-units to be parsed.
   /// \param last The end of the range of UTF-8 code-units to be parsed.
   template <typename InputIterator>
@@ -439,32 +462,6 @@ inline parser<std::remove_reference_t<Backend>> make_parser (
       std::forward<Backend> (backend), extensions};
 }
 
-// U+0009  Horizontal tab
-// U+000A  Line feed
-// U+000B  Vertical tab
-// U+000C  Form feed
-// U+000D  Carriage return
-// U+0020  Space
-// U+00A0  No-Break Space
-// U+1680  Ogham Space Mark
-// U+2000  En Quad
-// U+2001  Em Quad
-// U+2002  En Space
-// U+2003  Em Space
-// U+2004  Three-Per-Em Space
-// U+2005  Four-Per-Em Space
-// U+2006  Six-Per-Em Space
-// U+2007  Figure Space
-// U+2008  Punctuation Space
-// U+2009  Thin Space
-// U+200A  Hair Space
-// U+2028  Line separator
-// U+2029  Paragraph separator
-// U+202F  Narrow No-Break Space
-// U+205F  Medium Mathematical Space
-// U+3000  Ideographic Space
-// U+FEFF  Byte order mark
-
 enum char_set : char32_t {
   asterisk = char32_t{0x2a},                  // '*'
   backspace = char32_t{0x0008},               // '\b'
@@ -472,6 +469,7 @@ enum char_set : char32_t {
   character_tabulation = char32_t{0x0009},    // '\t'
   digit_nine = char32_t{0x0039},              // '9'
   digit_zero = char32_t{0x0030},              // '0'
+  en_quad = char32_t{0x2000},
   form_feed = char32_t{0x000c},               // '\f'
   latin_capital_letter_a = char32_t{0x0041},  // 'A'
   latin_capital_letter_z = char32_t{0x005a},  // 'Z'
@@ -484,11 +482,13 @@ enum char_set : char32_t {
   latin_small_letter_u = char32_t{0x0075},    // 'u'
   latin_small_letter_z = char32_t{0x007a},    // 'z'
   line_feed = char32_t{0x000a},               // '\n'
+  no_break_space = char32_t{0x00a0},
   number_sign = char32_t{0x0023},             // '#'
   quotation_mark = char32_t{0x0022},          // '"'
   reverse_solidus = char32_t{0x005c},         // '\'
   solidus = char32_t{0x002f},                 // '/'
   space = char32_t{0x0020},                   // ' '
+  vertical_tabulation = char32_t{0x000b},
 };
 
 namespace details {
@@ -1787,7 +1787,14 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser,
     }
     this->set_state (comment_start_state);
     break;
-  default: return stop_retry ();
+  default:
+    if (parser.extension_enabled (extensions::extra_whitespace)) {
+      grammar_rule rule = code_point_grammar_rule (c);
+      if (rule == grammar_rule::whitespace) {
+        return {null_pointer (), true};  // Consume this character.
+      }
+    }
+    return stop_retry ();
   }
   return {null_pointer (), true};  // Consume this character.
 }
@@ -2080,6 +2087,28 @@ auto parser<Backend>::make_whitespace_matcher () -> pointer {
 
 // input
 // ~~~~~
+/// \param first The element in the half-open range of UTF-32 code-units to be parsed.
+/// \param last The end of the range of UTF-32 code-units to be parsed.
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+template <typename InputIterator>
+PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator> && std::is_same_v<std::decay_t<typename std::iterator_traits<InputIterator>::value_type>, char32_t>))
+auto parser<Backend>::input (InputIterator first, InputIterator last) -> parser & {
+  if (error_) {
+    return *this;
+  }
+  for (; first != last; ++first) {
+    this->consume_code_point (*first);
+    if (error_) {
+      break;
+    }
+    this->advance_column ();
+  }
+  return *this;
+}
+
+
+
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 template <typename InputIterator>
