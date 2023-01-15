@@ -40,13 +40,14 @@ static void report_error (null_parser const& p,
 
 template <typename IStream>
 static bool slurp (IStream&& in, char const* file_name) {
-  null_parser p = make_parser (null{});
+  null_parser p = make_parser (null{}, peejay::extensions::all);
   std::string line;
   u8string u8line;
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
     std::getline (in, line);
     // TODO: need to convert encoding from host to UTF-8 here?
+    u8line.clear();
     u8line.reserve (line.size ());
     std::transform (std::begin (line), std::end (line),
                     std::back_inserter (u8line),
