@@ -23,4 +23,4 @@ Numbers may have a leading or trailing decimal point |
 Numbers may be IEEE 754 positive infinity, negative infinity, and NaN |
 Numbers may begin with an explicit plus sign | `extensions::leading_plus`
 Single and multi-line comments are allowed | `extensions::bash_comments` (enables use of single line comments beginning with a hash “#” character), `extensions::single_line_comments` (enables use of single line comments beginning with two slash (“//”) characters), `extensions::multi_line_comments` (enables use of multi-line comments enclosed by /\* … \*/ characters)
-Additional white space characters are allowed |
+Additional white space characters are allowed | `extensions::extra_whitespace`
