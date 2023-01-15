@@ -1761,8 +1761,14 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
 
     case multi_line_comment_ending_state:
       assert (parser.extension_enabled (extensions::multi_line_comments));
-      this->set_state (c == char_set::solidus ? body_state
-                                              : multi_line_comment_body_state);
+      switch (c) {
+      // asterisk followed by a second asterisk so don't change state.
+      case char_set::asterisk: break;
+      // asterisk+solidus (*/) means the end of the comment.
+      case char_set::solidus: this->set_state (body_state); break;
+      // some other character. Back to consuming the comment.
+      default: this->set_state (multi_line_comment_body_state); break;
+      }
       break;
 
     case multi_line_comment_crlf_state:

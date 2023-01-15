@@ -200,6 +200,16 @@ TEST_F (Comment, MultiLineMultipleLeading) {
 }
 
 // NOLINTNEXTLINE
+TEST_F (Comment, MultiLineExtraStar) {
+  EXPECT_CALL (callbacks_, null_value ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
+  p.input (u8"/* comment **/ null"sv).eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
