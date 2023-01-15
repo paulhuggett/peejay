@@ -29,6 +29,7 @@ char const* peejay::error_category::name () const noexcept {
 std::string peejay::error_category::message (int const err) const {
   switch (static_cast<error> (err)) {
   case error::none: return "none";
+  case error::bad_identifier: return "bad identifier";
   case error::bad_unicode_code_point: return "bad UNICODE code point";
   case error::dom_nesting_too_deep:
     return "(DOM) object or array contains too many members";

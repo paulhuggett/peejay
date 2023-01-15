@@ -23,6 +23,7 @@ using namespace std::string_view_literals;
 
 using testing::StrictMock;
 
+using peejay::char8;
 using peejay::column;
 using peejay::coord;
 using peejay::error;
@@ -50,9 +51,9 @@ TEST_F (Object, Empty) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8"{\r\n}\n"sv);
-  p.eof ();
-  EXPECT_FALSE (p.has_error ());
+  p.input (u8"{\r\n}\n"sv).eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{1U}, line{3U}}));
 }
@@ -65,7 +66,8 @@ TEST_F (Object, OpeningBraceOnly) {
   auto p = make_parser (proxy_);
   p.input (u8"{"sv).eof ();
   EXPECT_TRUE (p.has_error ());
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member))
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{2U}, line{1U}}));
 }
@@ -80,7 +82,8 @@ TEST_F (Object, SingleKvp) {
 
   auto p = make_parser (proxy_);
   p.input (u8R"({ "a":1 })"sv).eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{line{1U}, column{9U}}));
   EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{10U}}));
 }
@@ -133,7 +136,8 @@ TEST_F (Object, TwoKvps) {
 
   auto p = make_parser (proxy_);
   p.input (u8R"({"a":1, "b" : true })"sv).eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
@@ -148,7 +152,8 @@ TEST_F (Object, DuplicateKeys) {
 
   auto p = make_parser (proxy_);
   p.input (u8R"({"a":1, "a":true})"sv).eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
@@ -165,7 +170,8 @@ TEST_F (Object, ArrayValue) {
   auto p = make_parser (proxy_);
   p.input (u8"{\"a\": [1,2]}"sv);
   p.eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
@@ -173,7 +179,8 @@ TEST_F (Object, MisplacedCommaBeforeCloseBrace) {
   // An object with a trailing comma but with the extension disabled.
   parser p{null{}};
   p.input (u8R"({"a":1,})"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
@@ -181,7 +188,8 @@ TEST_F (Object, MisplacedCommaBeforeCloseBrace) {
 TEST_F (Object, NoCommaBeforeProperty) {
   parser p{null{}};
   p.input (u8R"({"a":1 "b":1})"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member))
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
@@ -189,7 +197,8 @@ TEST_F (Object, NoCommaBeforeProperty) {
 TEST_F (Object, TwoCommasBeforeProperty) {
   parser p{null{}};
   p.input (u8R"({"a":1,,"b":1})"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
 
@@ -207,22 +216,16 @@ TEST_F (Object, TrailingCommaExtensionEnabled) {
   // there is deliberate whitespace around the final comma.
   auto p = make_parser (proxy_, extensions::object_trailing_comma);
   p.input (u8R"({ "a":16, "b":"c" , })"sv).eof ();
-  EXPECT_FALSE (p.has_error ());
-}
-
-// NOLINTNEXTLINE
-TEST_F (Object, KeyIsNotString) {
-  parser p{null{}};
-  p.input (u8"{{}:{}}"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string));
-  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
 TEST_F (Object, BadNestedObject) {
   parser p{null{}};
   p.input (u8"{\"a\":nu}"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
+      << "JSON error was: " << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
@@ -234,5 +237,82 @@ TEST_F (Object, TooDeeplyNested) {
     input += u8"{\"a\":";
   }
   p.input (input).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep));
+  EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep))
+      << "JSON error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, KeyIsNotString) {
+  parser p{null{}};
+  p.input (u8"{{}:{}}"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, KeyIsIdentifierWithoutExtensionEnabled) {
+  parser p{null{}};
+  p.input (u8"{foo:1}"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, IdentifierKey) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"key"sv)).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, end_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8"{key:1}"sv).eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
+
+TEST_F (Object, IdentifierKeyWhitespaceSurrounding) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"$key"sv)).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, end_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8"{ $key : 1 }"sv).eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
+
+TEST_F (Object, IdentifierKeyEmpty) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8"{ : 1 }"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_identifier))
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
+}
+
+TEST_F (Object, IdentifierKeyExtendedChars) {
+  u8string const mathematical_bold_capital_a{
+      static_cast<char8> (0xF0), static_cast<char8> (0x9D),
+      static_cast<char8> (0x90),
+      static_cast<char8> (0x80)};  // U+1d400 MATHEMATICAL BOLD CAPITAL A
+  u8string const zero_width_non_joiner{
+      static_cast<char8> (0xE2), static_cast<char8> (0x80),
+      static_cast<char8> (0x8C)};  // U+200C ZERO WIDTH NON-JOINER
+  u8string const key = mathematical_bold_capital_a + zero_width_non_joiner;
+
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+  EXPECT_CALL (callbacks_, key (peejay::u8string_view (key))).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, end_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8"{ " + key + u8":1}").eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
 }

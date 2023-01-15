@@ -23,6 +23,7 @@ namespace peejay {
 
 enum class error : int {
   none,
+  bad_identifier,
   bad_unicode_code_point,
   dom_nesting_too_deep,
   expected_array_member,

@@ -115,17 +115,7 @@ PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher;
 
 template <typename Backend>
-class false_token_matcher;
-template <typename Backend>
-class null_token_matcher;
-template <typename Backend>
-class number_matcher;
-template <typename Backend>
 class root_matcher;
-template <typename Backend>
-class string_matcher;
-template <typename Backend>
-class true_token_matcher;
 template <typename Backend>
 class whitespace_matcher;
 
@@ -228,6 +218,7 @@ enum class extensions : unsigned {
   single_quote_string = 1U << 5U,
   leading_plus = 1U << 6U,
   extra_whitespace = 1 << 7U,
+  identifier_object_key = 1 << 8U,
   all = ~none,
 };
 
@@ -449,8 +440,10 @@ private:
   }
   ///@}
 
-  pointer make_root_matcher (bool object_key = false);
+  pointer make_root_matcher ();
   pointer make_whitespace_matcher ();
+  pointer make_string_matcher (bool object_key, char32_t enclosing_char);
+  pointer make_identifier_matcher ();
 
   template <typename Matcher, typename... Args>
   PEEJAY_CXX20REQUIRES ((std::derived_from<Matcher, matcher>))
@@ -530,6 +523,7 @@ enum char_set : char32_t {
 
 namespace details {
 
+// FIXME: support the extra whitespace characters
 constexpr bool isspace (char32_t const c) noexcept {
   return c == char_set::character_tabulation || c == char_set::line_feed ||
          c == char_set::carriage_return || c == char_set::space;
@@ -595,11 +589,18 @@ protected:
   }
   ///@}
 
-  pointer make_root_matcher (parser<Backend> &parser, bool object_key = false) {
-    return parser.make_root_matcher (object_key);
+  pointer make_root_matcher (parser<Backend> &parser) {
+    return parser.make_root_matcher ();
   }
   pointer make_whitespace_matcher (parser<Backend> &parser) {
     return parser.make_whitespace_matcher ();
+  }
+  pointer make_string_matcher (parser<Backend> &parser, bool object_key,
+                               char32_t enclosing_char) {
+    return parser.make_string_matcher (object_key, enclosing_char);
+  }
+  pointer make_identifier_matcher (parser<Backend> &parser) {
+    return parser.make_identifier_matcher ();
   }
 
   template <typename Matcher, typename... Args>
@@ -707,8 +708,6 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
 //* |  _/ _` | (_-</ -_) |  _/ _ \ / / -_) ' \  *
 //* |_| \__,_|_/__/\___|  \__\___/_\_\___|_||_| *
 //*                                             *
-
-//-MARK:false token
 template <typename Backend>
 struct false_complete {
   std::error_code operator() (parser<Backend> &p) const {
@@ -729,8 +728,6 @@ public:
 //* |  _| '_| || / -_) |  _/ _ \ / / -_) ' \  *
 //*  \__|_|  \_,_\___|  \__\___/_\_\___|_||_| *
 //*                                           *
-
-//-MARK:true token
 template <typename Backend>
 struct true_complete {
   std::error_code operator() (parser<Backend> &p) const {
@@ -751,8 +748,6 @@ public:
 //* | ' \ || | | | |  _/ _ \ / / -_) ' \  *
 //* |_||_\_,_|_|_|  \__\___/_\_\___|_||_| *
 //*                                       *
-
-//-MARK:null token
 template <typename Backend>
 struct null_complete {
   std::error_code operator() (parser<Backend> &p) const {
@@ -1141,7 +1136,6 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
 //* (_-<  _| '_| | ' \/ _` | *
 //* /__/\__|_| |_|_||_\__, | *
 //*                   |___/  *
-//-MARK:string
 template <typename Backend>
 class string_matcher final : public matcher<Backend> {
 public:
@@ -1458,6 +1452,92 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   return {null_pointer (), true};
 }
 
+//*  _    _         _   _  __ _          *
+//* (_)__| |___ _ _| |_(_)/ _(_)___ _ _  *
+//* | / _` / -_) ' \  _| |  _| / -_) '_| *
+//* |_\__,_\___|_||_\__|_|_| |_\___|_|   *
+//*                                      *
+template <typename Backend>
+class identifier_matcher final : public matcher<Backend> {
+public:
+  explicit identifier_matcher (u8string *const str) noexcept
+      : matcher<Backend> (start_state), str_{str} {}
+  identifier_matcher (identifier_matcher const &) = delete;
+  identifier_matcher (identifier_matcher &&) noexcept = default;
+
+  ~identifier_matcher () noexcept override = default;
+
+  identifier_matcher &operator= (identifier_matcher const &) = delete;
+  identifier_matcher &operator= (identifier_matcher &&) noexcept = default;
+
+  std::pair<typename matcher<Backend>::pointer, bool> consume (
+      parser<Backend> &parser, std::optional<char32_t> ch) override;
+
+private:
+  using matcher<Backend>::null_pointer;
+
+  enum state {
+    done_state = matcher<Backend>::done,
+    start_state,
+    part_state,
+  };
+
+  u8string *const str_;  // output
+  icubaby::t32_8 utf_32_to_8_;
+};
+
+// consume
+// ~~~~~~~
+template <typename Backend>
+std::pair<typename matcher<Backend>::pointer, bool>
+identifier_matcher<Backend>::consume (parser<Backend> &parser,
+                                      std::optional<char32_t> code_point) {
+  if (!code_point) {
+    this->set_error (parser, error::expected_close_quote);
+    return {null_pointer (), true};
+  }
+
+  char32_t const c = *code_point;
+  if (c == char_set::reverse_solidus) {
+    // FIXME: support escape codes
+  }
+
+  switch (this->get_state ()) {
+  case start_state: {
+    if (isspace (c)) {
+      return {this->make_whitespace_matcher (parser), false};
+    }
+    grammar_rule const rule = code_point_grammar_rule (c);
+    if (rule != grammar_rule::identifier_start) {
+      this->set_error (parser, error::bad_identifier);
+      return {null_pointer (), true};
+    }
+    this->set_state (part_state);
+  } break;
+  case part_state: {
+    grammar_rule const rule = code_point_grammar_rule (c);
+    if (rule == grammar_rule::identifier_start ||
+        rule == grammar_rule::identifier_part) {
+      break;
+    }
+    // Don't consume this character.
+    if (std::error_code const error = parser.backend ().key (*str_)) {
+      this->set_error (parser, error);
+    }
+    this->set_state (done_state);
+    return {null_pointer (), false};
+  }
+  }
+
+  // Remember this character.
+  auto it = utf_32_to_8_ (c, std::back_inserter (*str_));
+  utf_32_to_8_.end_cp (it);
+  if (!utf_32_to_8_.well_formed ()) {
+    this->set_error (parser, error::bad_unicode_code_point);
+  }
+  return {null_pointer (), true};
+}
+
 //*                          *
 //*  __ _ _ _ _ _ __ _ _  _  *
 //* / _` | '_| '_/ _` | || | *
@@ -1612,7 +1692,15 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
   case key_state:
     // Match a property name then expect a colon.
     this->set_state (colon_state);
-    return {this->make_root_matcher (parser, true /*object key?*/), false};
+    if (c == '"' || c == '\'') {
+      return {this->make_string_matcher (parser, true /*object key*/, c),
+              false};
+    }
+    if (parser.extension_enabled (extensions::identifier_object_key)) {
+      return {this->make_identifier_matcher (parser), false};
+    }
+    this->set_error (parser, error::expected_string);  // TODO:expected key?
+    break;
   case colon_state:
     if (isspace (c)) {
       // just consume whitespace before the colon.
@@ -1939,8 +2027,8 @@ eof_matcher<Backend>::consume (parser<Backend> &parser,
 template <typename Backend>
 class root_matcher final : public matcher<Backend> {
 public:
-  explicit constexpr root_matcher (bool const is_object_key = false) noexcept
-      : matcher<Backend> (start_state), object_key_{is_object_key} {}
+  explicit constexpr root_matcher () noexcept
+      : matcher<Backend> (start_state) {}
   ~root_matcher () noexcept override = default;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
@@ -1954,7 +2042,6 @@ private:
     start_state,
     new_token_state,
   };
-  bool const object_key_;
 };
 
 // consume
@@ -1976,11 +2063,6 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     return {this->make_whitespace_matcher (parser), false};
 
   case new_token_state: {
-    if (object_key_ && *ch != '"' && *ch != '\'') {
-      this->set_error (parser, error::expected_string);
-      // Don't return here in order to allow the switch default to produce a
-      // different error code for a bad token.
-    }
     this->set_state (done_state);
     switch (*ch) {
     case '+':
@@ -2011,8 +2093,7 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
       }
       [[fallthrough]];
     case '"':
-      return {this->template make_terminal_matcher<string_matcher<Backend>> (
-                  parser, &parser.string_, object_key_, *ch),
+      return {this->make_string_matcher (parser, false /*object key?*/, *ch),
               false};
     case 't':
       return {
@@ -2068,6 +2149,7 @@ struct singleton_storage {
   storage_t<root_matcher<Backend>> root;
   std::variant<details::number_matcher<Backend>,
                details::string_matcher<Backend>,
+               details::identifier_matcher<Backend>,
                details::true_token_matcher<Backend>,
                details::false_token_matcher<Backend>,
                details::null_token_matcher<Backend>,
@@ -2112,10 +2194,10 @@ parser<Backend>::parser (OtherBackend &&backend, extensions const extensions)
 // ~~~~~~~~~~~~~~~~~
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_root_matcher (bool object_key) -> pointer {
+auto parser<Backend>::make_root_matcher () -> pointer {
   using root_matcher = details::root_matcher<Backend>;
   using deleter = typename pointer::deleter_type;
-  return pointer (new (&singletons_.root) root_matcher (object_key),
+  return pointer (new (&singletons_.root) root_matcher (),
                   deleter{deleter::mode::do_dtor});
 }
 
@@ -2126,6 +2208,26 @@ PEEJAY_CXX20REQUIRES (backend<Backend>)
 auto parser<Backend>::make_whitespace_matcher () -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Backend>;
   return this->make_terminal_matcher<whitespace_matcher> ();
+}
+
+// make string matcher
+// ~~~~~~~~~~~~~~~~~~~
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+auto parser<Backend>::make_string_matcher (bool object_key,
+                                           char32_t enclosing_char) -> pointer {
+  using string_matcher = details::string_matcher<Backend>;
+  return this->template make_terminal_matcher<string_matcher> (
+      &string_, object_key, enclosing_char);
+}
+
+// make identifier matcher
+// ~~~~~~~~~~~~~~~~~~~~~~~
+template <typename Backend>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+auto parser<Backend>::make_identifier_matcher () -> pointer {
+  using identifier_matcher = details::identifier_matcher<Backend>;
+  return this->template make_terminal_matcher<identifier_matcher> (&string_);
 }
 
 // input32
