@@ -34,8 +34,7 @@ static void report_error (null_parser const& p,
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n'
-            << line << '\n'
-            << std::string (pos.column - 1U, ' ') << "^\n";
+            << line << std::string (pos.column - 1U, ' ') << "^\n";
 }
 
 template <typename IStream>
