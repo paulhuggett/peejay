@@ -40,12 +40,16 @@ jobs:
       - name: Configure
         run: |
           cmake -S .                                 \
-                -B build                             \
+                -B ./build                           \
                 -D CMAKE_EXPORT_COMPILE_COMMANDS=Yes \
                 -D CMAKE_BUILD_TYPE=Release          \
                 -D CMAKE_C_COMPILER=clang-14         \
                 -D CMAKE_CXX_COMPILER=clang++-14     \
                 -D LIBCXX=Yes
+
+      - name: Build
+        shell: bash
+        run: cmake --build ./build --config Release
 
       - name: Run clang-tidy
         run: |
