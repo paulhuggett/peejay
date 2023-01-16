@@ -12,7 +12,7 @@ Please refer to the [JSON5 specification](https://json5.org) for further details
 
 Feature | Support
 ------- | ---------
-Object keys may be an ECMAScript 5.1 IdentifierName |
+Object keys may be an ECMAScript 5.1 IdentifierName | `extensions::identifier_object_key`
 Objects may have a single trailing comma | `extensions::object_trailing_comma`
 Arrays may have a single trailing comma | `extensions::array_trailing_comma`
 Strings may be single quoted | `extensions::single_quote_string`
