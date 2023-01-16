@@ -279,7 +279,8 @@ TEST_F (JsonString, Utf16HighWithNoLowSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (u8R"("\uD834\u30A1")"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
+      << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{13U}, line{1U}}));
 }

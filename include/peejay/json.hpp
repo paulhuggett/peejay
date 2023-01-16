@@ -1131,6 +1131,32 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
   this->set_error (parser, parser.backend ().double_value (xf));
 }
 
+template <typename StateEnum>
+using hex_accumulate_pair = std::tuple<StateEnum, uint_least16_t>;
+
+template <typename StateEnum, StateEnum Last>
+std::variant<error, hex_accumulate_pair<StateEnum>, char16_t>
+hex_accumulate (hex_accumulate_pair<StateEnum> const & ha, char32_t const code_point) {
+  auto offset = uint_least16_t{0};
+  if (code_point >= '0' && code_point <= '9') {
+    offset = '0';
+  } else if (code_point >= 'a' && code_point <= 'f') {
+    offset = 'a' - 10U;
+  } else if (code_point >= 'A' && code_point <= 'F') {
+    offset = 'A' - 10U;
+  } else {
+    return error::invalid_hex_char;
+  }
+
+  uint_least16_t const value = static_cast<uint_least16_t> (16 * std::get<uint_least16_t> (ha) + static_cast<uint_least16_t> (code_point) - offset);
+  auto state = std::get<StateEnum> (ha);
+  if (state < Last) {
+    return std::pair<StateEnum, uint_least16_t>{static_cast<StateEnum> (state + 1), value};
+  }
+  return static_cast<char16_t> (value);
+}
+
+
 //*     _       _            *
 //*  __| |_ _ _(_)_ _  __ _  *
 //* (_-<  _| '_| | ' \/ _` | *
@@ -1205,17 +1231,6 @@ private:
   /// \param code_point  The Unicode character being processed.
   void normal (parser<Backend> &p, char32_t code_point);
 
-  /// Adds a single hexadecimal character to \p value.
-  ///
-  /// \param c  The Unicode code point of the character to be added.
-  /// \param value  The initial value.
-  /// \returns  If \p c represents a valid hexadecimal character (0..9,A-F,a-f)
-  ///   returns \p value * 16 plus the decoded value of \p c. Returns an
-  ///   optional with no value if \p c is not a valid hexadecimal character.
-  static std::optional<unsigned> hex_value (char32_t c, unsigned value);
-
-  std::variant<error, std::tuple<unsigned, enum state>> consume_hex (
-      unsigned hex, enum state state, char32_t code_point);
   void hex (parser<Backend> &p, char32_t code_point);
 
   std::variant<state, error> consume_escape_state (char32_t code_point);
@@ -1229,7 +1244,7 @@ private:
   bool is_object_key_;
   char32_t enclosing_char_;
   u8string *const str_;  // output
-  unsigned hex_ = 0U;
+  uint_least16_t hex_ = 0U;
   icubaby::t32_8 utf_32_to_8_;
   icubaby::t16_8 utf_16_to_8_;
 };
@@ -1292,80 +1307,35 @@ void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
       this->consume_normal (p, is_object_key_, enclosing_char_, code_point));
 }
 
-// hex value [static]
-// ~~~~~~~~~
+// hex
+// ~~~
 template <typename Backend>
-std::optional<unsigned> string_matcher<Backend>::hex_value (
-    char32_t const c, unsigned const value) {
-  auto digit = 0U;
-  if (c >= '0' && c <= '9') {
-    digit = static_cast<unsigned> (c) - '0';
-  } else if (c >= 'a' && c <= 'f') {
-    digit = static_cast<unsigned> (c) - 'a' + 10U;
-  } else if (c >= 'A' && c <= 'F') {
-    digit = static_cast<unsigned> (c) - 'A' + 10U;
-  } else {
-    return {std::nullopt};
-  }
-  return {16U * value + digit};
-}
-
-// consume hex
-// ~~~~~~~~~~~
-template <typename Backend>
-auto string_matcher<Backend>::consume_hex (unsigned const hex,
-                                           enum state const state,
-                                           char32_t const code_point)
-    -> std::variant<error, std::tuple<unsigned, enum state>> {
-
-  assert (is_hex_state (state));
-  auto const opt_value = hex_value (code_point, hex);
-  if (!opt_value) {
-    return error::invalid_hex_char;
-  }
-  switch (state) {
-  case hex1_state:
-  case hex2_state:
-  case hex3_state:
-    assert (is_hex_state (static_cast<enum state> (state + 1)));
-    return std::make_tuple (*opt_value, static_cast<enum state> (state + 1));
-
-  case hex4_state:
-    // We're done with the hex characters and are switching back to the
-    // 'normal' state. The means that we can add the accumulated code-point.
-    utf_16_to_8_ (static_cast<char16_t> (*opt_value), std::back_inserter (*str_));
-    if (!utf_16_to_8_.well_formed ()) {
-      return error::bad_unicode_code_point;
-    }
-    return std::make_tuple (0U, normal_char_state);
-
-  case done_state:
-  case start_state:
-  case normal_char_state:
-  case escape_state:
-    assert (false && "consume_hex() reached a bad state");
-    break;
+void string_matcher<Backend>::hex (parser<Backend> &p, char32_t const code_point) {
+  assert (is_hex_state (static_cast<state> (this->get_state ())));
+  auto old_state = static_cast<enum state> (this->get_state());
+  if (old_state == hex1_state) {
+    hex_ = 0;
   }
 
-  unreachable ();
-}
-
-template <typename Backend>
-void string_matcher<Backend>::hex (parser<Backend> &p, char32_t code_point) {
+  using hap = hex_accumulate_pair<enum state>;
   std::visit (
-      [this, &p] (auto &&arg) {
+    [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
-        if constexpr (std::is_same_v<T, error>) {
+        if        constexpr (std::is_same_v<T, error>) {
           this->set_error (p, arg);
-        } else if constexpr (std::is_same_v<T, std::tuple<unsigned, state>>) {
-          hex_ = std::get<unsigned> (arg);
-          this->set_state (std::get<state> (arg));
+        } else if constexpr (std::is_same_v<T, hap>) {
+          this->set_state (std::get<enum state> (arg));
+          hex_ = std::get<uint_least16_t> (arg);
+        } else if constexpr (std::is_same_v<T, char16_t>) {
+          utf_16_to_8_ (arg, std::back_inserter (*str_));
+          if (!utf_16_to_8_.well_formed ()) {
+            this->set_error (p, error::bad_unicode_code_point);
+          }
+          this->set_state (normal_char_state);
         } else {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
-      },
-      this->consume_hex (hex_, static_cast<state> (this->get_state ()),
-                         code_point));
+    }, hex_accumulate<enum state, hex4_state>(hap{old_state, hex_}, code_point));
 }
 
 // consume escape state
@@ -1441,7 +1411,7 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   case normal_char_state: this->normal (parser, c); break;
   case escape_state: this->escape (parser, c); break;
 
-  case hex1_state: assert (hex_ == 0U); [[fallthrough]];
+  case hex1_state:
   case hex2_state:
   case hex3_state:
   case hex4_state: this->hex (parser, c); break;
