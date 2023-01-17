@@ -493,15 +493,16 @@ inline parser<std::remove_reference_t<Backend>> make_parser (
 }
 
 enum char_set : char32_t {
-  asterisk = char32_t{0x2a},                  // '*'
-  backspace = char32_t{0x0008},               // '\b'
-  carriage_return = char32_t{0x000d},         // '\r'
-  character_tabulation = char32_t{0x0009},    // '\t'
-  digit_nine = char32_t{0x0039},              // '9'
-  digit_zero = char32_t{0x0030},              // '0'
+  asterisk = char32_t{0x2a},                // '*'
+  backspace = char32_t{0x0008},             // '\b'
+  carriage_return = char32_t{0x000d},       // '\r'
+  character_tabulation = char32_t{0x0009},  // '\t'
+  digit_nine = char32_t{0x0039},            // '9'
+  digit_zero = char32_t{0x0030},            // '0'
   en_quad = char32_t{0x2000},
   form_feed = char32_t{0x000c},               // '\f'
   latin_capital_letter_a = char32_t{0x0041},  // 'A'
+  latin_capital_letter_f = char32_t{0x0046},  // 'F'
   latin_capital_letter_z = char32_t{0x005a},  // 'Z'
   latin_small_letter_a = char32_t{0x0061},    // 'a'
   latin_small_letter_b = char32_t{0x0062},    // 'b'
@@ -513,11 +514,11 @@ enum char_set : char32_t {
   latin_small_letter_z = char32_t{0x007a},    // 'z'
   line_feed = char32_t{0x000a},               // '\n'
   no_break_space = char32_t{0x00a0},
-  number_sign = char32_t{0x0023},             // '#'
-  quotation_mark = char32_t{0x0022},          // '"'
-  reverse_solidus = char32_t{0x005c},         // '\'
-  solidus = char32_t{0x002f},                 // '/'
-  space = char32_t{0x0020},                   // ' '
+  number_sign = char32_t{0x0023},      // '#'
+  quotation_mark = char32_t{0x0022},   // '"'
+  reverse_solidus = char32_t{0x005c},  // '\'
+  solidus = char32_t{0x002f},          // '/'
+  space = char32_t{0x0020},            // ' '
   vertical_tabulation = char32_t{0x000b},
 };
 
@@ -1132,30 +1133,41 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
 }
 
 template <typename StateEnum>
-using hex_accumulate_pair = std::tuple<StateEnum, uint_least16_t>;
+using hex_accumulate_pair = std::pair<StateEnum, uint_least16_t>;
 
-template <typename StateEnum, StateEnum Last>
-std::variant<error, hex_accumulate_pair<StateEnum>, char16_t>
-hex_accumulate (hex_accumulate_pair<StateEnum> const & ha, char32_t const code_point) {
+/// It will return one of three things:
+/// - An error code if the input did not representa valid hexadecimal sequence.
+/// - A new hex_accumulate_pair. This should be stored and passed to the next
+///   call to this function as part of processing the next character.
+/// - A UTF-16 code unit which indicates the end of the hexadecimal character
+///   sequence.
+template <typename StateEnum>
+std::variant<error, hex_accumulate_pair<StateEnum>, char16_t> hex_accumulate (
+    hex_accumulate_pair<StateEnum> const &ha, char32_t const code_point,
+    StateEnum const last) {
   auto offset = uint_least16_t{0};
-  if (code_point >= '0' && code_point <= '9') {
-    offset = '0';
-  } else if (code_point >= 'a' && code_point <= 'f') {
-    offset = 'a' - 10U;
-  } else if (code_point >= 'A' && code_point <= 'F') {
-    offset = 'A' - 10U;
+  if (code_point >= char_set::digit_zero &&
+      code_point <= char_set::digit_nine) {
+    offset = static_cast<uint_least16_t> (char_set::digit_zero);
+  } else if (code_point >= char_set::latin_small_letter_a &&
+             code_point <= char_set::latin_small_letter_f) {
+    offset = static_cast<uint_least16_t> (char_set::latin_small_letter_a) - 10U;
+  } else if (code_point >= char_set::latin_capital_letter_a &&
+             code_point <= char_set::latin_capital_letter_f) {
+    offset =
+        static_cast<uint_least16_t> (char_set::latin_capital_letter_a) - 10U;
   } else {
     return error::invalid_hex_char;
   }
 
   uint_least16_t const value = static_cast<uint_least16_t> (16 * std::get<uint_least16_t> (ha) + static_cast<uint_least16_t> (code_point) - offset);
-  auto state = std::get<StateEnum> (ha);
-  if (state < Last) {
-    return std::pair<StateEnum, uint_least16_t>{static_cast<StateEnum> (state + 1), value};
+  auto state = ha.first;
+  if (state < last) {
+    return hex_accumulate_pair<StateEnum>{static_cast<StateEnum> (state + 1),
+                                          value};
   }
   return static_cast<char16_t> (value);
 }
-
 
 //*     _       _            *
 //*  __| |_ _ _(_)_ _  __ _  *
@@ -1319,7 +1331,7 @@ void string_matcher<Backend>::hex (parser<Backend> &p, char32_t const code_point
 
   using hap = hex_accumulate_pair<enum state>;
   std::visit (
-    [this, &p] (auto &&arg) {
+      [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
         if        constexpr (std::is_same_v<T, error>) {
           this->set_error (p, arg);
@@ -1335,7 +1347,9 @@ void string_matcher<Backend>::hex (parser<Backend> &p, char32_t const code_point
         } else {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
-    }, hex_accumulate<enum state, hex4_state>(hap{old_state, hex_}, code_point));
+      },
+      hex_accumulate<enum state> (hap{old_state, hex_}, code_point,
+                                  hex4_state));
 }
 
 // consume escape state
@@ -1446,14 +1460,23 @@ public:
 private:
   using matcher<Backend>::null_pointer;
 
+  void hex (parser<Backend> &parser, char32_t code_point);
+
   enum state {
     done_state = matcher<Backend>::done,
     start_state,
-    part_state,
+    part_state,  // Implements the ECMAScript IdentifierPart rule.
+    u_state,     // Used after a backslash is encountered.
+    hex1_state,
+    hex2_state,
+    hex3_state,
+    hex4_state,
   };
 
   u8string *const str_;  // output
+  uint_least16_t hex_ = 0;
   icubaby::t32_8 utf_32_to_8_;
+  icubaby::t16_8 utf_16_to_8_;
 };
 
 // consume
@@ -1462,41 +1485,67 @@ template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
 identifier_matcher<Backend>::consume (parser<Backend> &parser,
                                       std::optional<char32_t> code_point) {
+  using return_type = std::pair<typename matcher<Backend>::pointer, bool>;
+  auto consume_and_iterate = return_type{null_pointer (), true};
+  auto retry_char_and_iterate = return_type{null_pointer (), false};
+  auto install_error = [&] (error err) {
+    this->set_error (parser, err);
+    return return_type{null_pointer (), true};
+  };
+  auto change_state = [&] (enum state new_state) {
+    this->set_state (new_state);
+    return return_type{null_pointer (), true};
+  };
+
   if (!code_point) {
-    this->set_error (parser, error::expected_close_quote);
-    return {null_pointer (), true};
+    return install_error (error::expected_close_quote);
   }
 
   char32_t const c = *code_point;
-  if (c == char_set::reverse_solidus) {
-    // FIXME: support escape codes
-  }
-
   switch (this->get_state ()) {
-  case start_state: {
+  case start_state:
     if (isspace (c)) {
       return {this->make_whitespace_matcher (parser), false};
     }
-    grammar_rule const rule = code_point_grammar_rule (c);
-    if (rule != grammar_rule::identifier_start) {
-      this->set_error (parser, error::bad_identifier);
-      return {null_pointer (), true};
+    if (c == char_set::reverse_solidus) {
+      return change_state (u_state);
+    }
+    if (code_point_grammar_rule (c) != grammar_rule::identifier_start) {
+      return install_error (error::bad_identifier);
     }
     this->set_state (part_state);
-  } break;
-  case part_state: {
-    grammar_rule const rule = code_point_grammar_rule (c);
-    if (rule == grammar_rule::identifier_start ||
-        rule == grammar_rule::identifier_part) {
-      break;
+    // Record the character.
+    break;
+  case part_state:
+    if (c == char_set::reverse_solidus) {
+      return change_state (u_state);
     }
-    // Don't consume this character.
-    if (std::error_code const error = parser.backend ().key (*str_)) {
-      this->set_error (parser, error);
+    // We processed part of a Unicode UTF-16 code point. The rest needs to be
+    // expressed using the '\u' escape.
+    if (utf_16_to_8_.partial ()) {
+      return install_error (error::bad_unicode_code_point);
     }
-    this->set_state (done_state);
-    return {null_pointer (), false};
-  }
+    if (grammar_rule const rule = code_point_grammar_rule (c);
+        rule != grammar_rule::identifier_start &&
+        rule != grammar_rule::identifier_part) {
+      // Don't consume this character.
+      if (std::error_code const error = parser.backend ().key (*str_)) {
+        this->set_error (parser, error);
+      }
+      this->set_state (done_state);
+      return retry_char_and_iterate;
+    }
+    // Record the character.
+    break;
+  case u_state:
+    if (c != char_set::latin_small_letter_u) {
+      return install_error (error::expected_token);  // TODO: expected 'u'?
+    }
+    return change_state (hex1_state);
+  case hex1_state: hex_ = 0; [[fallthrough]];
+  case hex2_state:
+  case hex3_state:
+  case hex4_state: this->hex (parser, c); return consume_and_iterate;
   }
 
   // Remember this character.
@@ -1505,7 +1554,36 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   if (!utf_32_to_8_.well_formed ()) {
     this->set_error (parser, error::bad_unicode_code_point);
   }
-  return {null_pointer (), true};
+  return consume_and_iterate;
+}
+
+// hex
+// ~~~
+template <typename Backend>
+void identifier_matcher<Backend>::hex (parser<Backend> &parser,
+                                       char32_t const code_point) {
+  using hap = hex_accumulate_pair<enum state>;
+  std::visit (
+      [this, &parser] (auto &&arg) {
+        using T = std::decay_t<decltype (arg)>;
+        if constexpr (std::is_same_v<T, error>) {
+          this->set_error (parser, arg);
+        } else if constexpr (std::is_same_v<T, hap>) {
+          this->set_state (arg.first);
+          hex_ = arg.second;
+        } else if constexpr (std::is_same_v<T, char16_t>) {
+          utf_16_to_8_ (arg, std::back_inserter (*str_));
+          if (!utf_16_to_8_.well_formed ()) {
+            this->set_error (parser, error::bad_unicode_code_point);
+          }
+          this->set_state (part_state);
+        } else {
+          static_assert (always_false<T>, "non-exhaustive visitor");
+        }
+      },
+      hex_accumulate<enum state> (
+          hap{static_cast<enum state> (this->get_state ()), hex_}, code_point,
+          hex4_state));
 }
 
 //*                          *

@@ -20,6 +20,7 @@
 #include "peejay/null.hpp"
 
 using namespace std::string_view_literals;
+using namespace std::string_literals;
 
 using testing::StrictMock;
 
@@ -315,4 +316,67 @@ TEST_F (Object, IdentifierKeyExtendedChars) {
   p.input (u8"{ " + key + u8":1}").eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
+}
+
+TEST_F (Object, IdentifierKeyHexEscape) {
+  u8string const greek_capital_letter_sigma{static_cast<char8> (0xCE),
+                                            static_cast<char8> (0xA3)};
+  u8string const key = u8"sig"s + greek_capital_letter_sigma + u8"ma"s;
+
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+  EXPECT_CALL (callbacks_, key (peejay::u8string_view (key))).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, end_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({ sig\u03A3ma: 1 })"sv).eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
+
+TEST_F (Object, IdentifierKeyHexEscapeHighLowSurrogatePair) {
+  // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as UTF-8.
+  u8string const gclef8{static_cast<char8> (0xF0), static_cast<char8> (0x9D),
+                        static_cast<char8> (0x84), static_cast<char8> (0x9E)};
+  // The same U+1D11E as a UTF-16 surrogate pair.
+  u8string const gclef16 = u8R"(\uD834\uDD1E)";
+
+  auto const prefix = u8"key"s;
+  auto const suffix = u8"G"s;
+  u8string const expected_key = prefix + gclef8 + suffix;
+
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+  EXPECT_CALL (callbacks_, key (peejay::u8string_view (expected_key)))
+      .Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, end_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8"{ "s + prefix + gclef16 + suffix + u8" : 1 }"s).eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
+
+TEST_F (Object, IdentifierKeyHexEscapeHighSurrogateMissingLow) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({ key\uD834g: 1 })"s).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{12U}, line{1U}}));
+}
+
+TEST_F (Object, IdentifierKeyHexEscapeLowSurrogateOnly) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({ key\uDD1E: 1 })"s).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{11U}, line{1U}}));
 }
