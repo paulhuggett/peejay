@@ -8,6 +8,7 @@
 using peejay::grammar_rule;
 using peejay::details::code_point_grammar_rule;
 
+// NOLINTNEXTLINE
 TEST (CodePointRun, LatinSmallLetterA) {
   constexpr auto a = char32_t{0x0061};  // LATIN SMALL LETTER A
 
@@ -18,20 +19,24 @@ TEST (CodePointRun, LatinSmallLetterA) {
   EXPECT_EQ (code_point_grammar_rule (char32_t{a + 26}), grammar_rule::none);
 }
 
+// NOLINTNEXTLINE
 TEST (CodePointRun, Null) {
   EXPECT_EQ (code_point_grammar_rule (char32_t{0}), grammar_rule::none);
 }
 
+// NOLINTNEXTLINE
 TEST (CodePointRun, Space) {
   EXPECT_EQ (code_point_grammar_rule (char32_t{0x001F}), grammar_rule::none);
   EXPECT_EQ (code_point_grammar_rule (char32_t{0x0020}), grammar_rule::whitespace);
   EXPECT_EQ (code_point_grammar_rule (char32_t{0x0021}), grammar_rule::none);
 }
 
+// NOLINTNEXTLINE
 TEST (CodePointRun, MaxCodePoint) {
   EXPECT_EQ (code_point_grammar_rule (char32_t{0x0010FFFF}), grammar_rule::none);
 }
 
+// NOLINTNEXTLINE
 TEST (CodePointRun, VariationSelector17) {
   static constexpr auto vs17 = char32_t{0xe0100};  // VARIATION SELECTOR-17
 

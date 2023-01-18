@@ -273,6 +273,7 @@ TEST_F (Object, IdentifierKey) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyWhitespaceSurrounding) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"$key"sv)).Times (1);
@@ -285,6 +286,7 @@ TEST_F (Object, IdentifierKeyWhitespaceSurrounding) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyEmpty) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
@@ -297,6 +299,7 @@ TEST_F (Object, IdentifierKeyEmpty) {
   EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyExtendedChars) {
   u8string const mathematical_bold_capital_a{
       static_cast<char8> (0xF0), static_cast<char8> (0x9D),
@@ -318,6 +321,7 @@ TEST_F (Object, IdentifierKeyExtendedChars) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyHexEscape) {
   u8string const greek_capital_letter_sigma{static_cast<char8> (0xCE),
                                             static_cast<char8> (0xA3)};
@@ -334,6 +338,7 @@ TEST_F (Object, IdentifierKeyHexEscape) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyHexEscapeHighLowSurrogatePair) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as UTF-8.
   u8string const gclef8{static_cast<char8> (0xF0), static_cast<char8> (0x9D),
@@ -357,6 +362,7 @@ TEST_F (Object, IdentifierKeyHexEscapeHighLowSurrogatePair) {
       << "JSON error was: " << p.last_error ().message ();
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyHexEscapeHighSurrogateMissingLow) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
@@ -369,6 +375,7 @@ TEST_F (Object, IdentifierKeyHexEscapeHighSurrogateMissingLow) {
   EXPECT_EQ (p.input_pos (), (coord{column{12U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (Object, IdentifierKeyHexEscapeLowSurrogateOnly) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
