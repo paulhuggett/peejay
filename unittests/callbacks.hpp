@@ -124,8 +124,12 @@ peejay::u8string to_u8string (T v) {
   std::string s = std::to_string (v);
   peejay::u8string resl;
   resl.reserve (s.size ());
-  std::transform (std::begin (s), std::end (s), std::back_inserter (resl),
-                  [] (char c) { return static_cast<peejay::char8> (c); });
+  auto const op = [] (char c) { return static_cast<peejay::char8> (c); };
+#if __cpp_lib_ranges
+  std::ranges::transform (s, std::back_inserter (resl), op);
+#else
+  std::transform (std::begin (s), std::end (s), std::back_inserter (resl), op);
+#endif
   return resl;
 }
 

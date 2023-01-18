@@ -119,8 +119,13 @@ overloaded (Ts...) -> overloaded<Ts...>;
 std::string convu8 (peejay::u8string const& str) {
   std::string result;
   result.reserve (str.size ());
+  auto const op = [] (peejay::char8 c) { return static_cast<char> (c); };
+#if __cpp_lib_ranges
+  std::ranges::transform (str, std::back_inserter (result), op);
+#else
   std::transform (std::begin (str), std::end (str), std::back_inserter (result),
-                  [] (peejay::char8 c) { return static_cast<char> (c); });
+                  op);
+#endif
   return result;
 }
 
