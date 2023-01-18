@@ -38,8 +38,11 @@ public:
     os_ << '"';
     std::ostream_iterator<char> out{os_};
     // TODO: not yet supported by Xcode 14.0.1
-    // std::ranges::copy (s, out);
+#if __cpp_lib_ranges
+    std::ranges::copy (s, out);
+#else
     std::copy (std::begin (s), std::end (s), out);
+#endif
     os_ << '"';
     return {};
   }

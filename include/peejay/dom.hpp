@@ -257,7 +257,11 @@ std::error_code dom<StackSize>::end_array () {
     stack_->pop ();
   }
   assert (arr.size () == size);
+#if __cpp_lib_ranges
+  std::ranges::reverse (arr);
+#else
   std::reverse (std::begin (arr), std::end (arr));
+#endif
   stack_->emplace (std::move (arr));
   return error::none;
 }
