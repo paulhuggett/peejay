@@ -396,8 +396,8 @@ TEST_F (String, Escape0Disabled) {
 
 // NOLINTNEXTLINE
 TEST_F (String, Escape0Enabled) {
-  std::u8string const str{'\0'};
-  EXPECT_CALL (callbacks_, string_value (std::u8string_view{str})).Times (1);
+  peejay::u8string const str{'\0'};
+  EXPECT_CALL (callbacks_, string_value (peejay::u8string_view{str})).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escapes);
   p.input (u8R"("\0")"sv).eof ();
@@ -421,8 +421,8 @@ TEST_F (String, EscapeVDisabled) {
 
 // NOLINTNEXTLINE
 TEST_F (String, EscapeVEnabled) {
-  std::u8string const str{'\x0B'};
-  EXPECT_CALL (callbacks_, string_value (std::u8string_view{str})).Times (1);
+  peejay::u8string const str{'\x0B'};
+  EXPECT_CALL (callbacks_, string_value (peejay::u8string_view{str})).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escapes);
   p.input (u8R"("\v")"sv).eof ();
