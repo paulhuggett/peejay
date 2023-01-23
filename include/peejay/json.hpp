@@ -1626,6 +1626,8 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   case hex4_state:
     hex_.consume (this, parser, str_, c);
     return consume_and_iterate;
+
+  default: assert (false); break;
   }
 
   // Remember this character.
