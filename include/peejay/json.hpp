@@ -219,7 +219,7 @@ enum class extensions : unsigned {
   leading_plus = 1U << 6U,
   extra_whitespace = 1 << 7U,
   identifier_object_key = 1 << 8U,
-  string_escape_new_line = 1 << 9U,
+  string_escapes = 1 << 9U,
   all = ~none,
 };
 
@@ -512,10 +512,12 @@ enum char_set : char32_t {
   latin_small_letter_r = char32_t{0x0072},    // 'r'
   latin_small_letter_t = char32_t{0x0074},    // 't'
   latin_small_letter_u = char32_t{0x0075},    // 'u'
+  latin_small_letter_v = char32_t{0x0076},    // 'v'
   latin_small_letter_z = char32_t{0x007a},    // 'z'
   line_feed = char32_t{0x000a},               // '\n'
   line_separator = char32_t{0x2028},
   no_break_space = char32_t{0x00a0},
+  null_char = char32_t{0x0000},
   number_sign = char32_t{0x0023},  // '#'
   paragraph_separator = char32_t{0x2029},
   quotation_mark = char32_t{0x0022},   // '"'
@@ -544,9 +546,11 @@ constexpr bool isspace (char32_t const code_point,
 
 /// Checks if the given character is an alphanumeric character.
 constexpr bool isalnum (char32_t const c) noexcept {
-  return (c >= digit_zero && c <= digit_nine) ||
-         (c >= latin_capital_letter_a && c <= latin_capital_letter_z) ||
-         (c >= latin_small_letter_a && c <= latin_small_letter_z);
+  return (c >= char_set::digit_zero && c <= char_set::digit_nine) ||
+         (c >= char_set::latin_capital_letter_a &&
+          c <= char_set::latin_capital_letter_z) ||
+         (c >= char_set::latin_small_letter_a &&
+          c <= char_set::latin_small_letter_z);
 }
 
 /// The base class for the various state machines ("matchers") which implement
@@ -1400,11 +1404,25 @@ auto string_matcher<Backend>::consume_escape_state (parser<Backend> &parser,
     code_point = char_set::character_tabulation;
     break;
   case char_set::latin_small_letter_u: return {hex1_state};
+
+  case char_set::latin_small_letter_v:
+    if (!parser.extension_enabled (extensions::string_escapes)) {
+      return {error::invalid_escape_char};
+    }
+    code_point = char_set::vertical_tabulation;
+    break;
+  case char_set::digit_zero:
+    if (!parser.extension_enabled (extensions::string_escapes)) {
+      return {error::invalid_escape_char};
+    }
+    code_point = char_set::null_char;
+    break;
+
   case char_set::line_feed:
   case char_set::carriage_return:
   case char_set::line_separator:
   case char_set::paragraph_separator:
-    if (parser.extension_enabled (extensions::string_escape_new_line)) {
+    if (parser.extension_enabled (extensions::string_escapes)) {
       if (code_point == char_set::carriage_return) {
         // a special state to handle the potential line feed.
         next_state = skip_lf_state;
@@ -1472,7 +1490,7 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   // We saw a reverse solidus (backslash) followed by a carriage return.
   // Silently consume a subsequent line_feed.
   case skip_lf_state:
-    assert (parser.extension_enabled (extensions::string_escape_new_line));
+    assert (parser.extension_enabled (extensions::string_escapes));
     this->set_state (normal_char_state);
     if (c != char_set::line_feed) {
       match = false;

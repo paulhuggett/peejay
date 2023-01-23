@@ -165,6 +165,20 @@ TEST_F (String, TrailingBackslashUnterminated) {
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
+TEST_F (String, FourWaysToWriteSolidus) {
+  EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+  EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (4);
+  EXPECT_CALL (callbacks_, end_array ()).Times (1);
+
+  auto p = make_parser (proxy_);
+  p.input (u8R"([ "\u002F", "\u002f", "\/", "/" ])"sv).eof ();
+
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was: "
+      << p.last_error ().message ();
+}
+
 // NOLINTNEXTLINE
 TEST_F (String, GCleffUtf8) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed in UTF-8
@@ -370,6 +384,56 @@ TEST_F (String, PartialHexChar) {
   EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
+TEST_F (String, Escape0Disabled) {
+  auto p = make_parser (proxy_);
+  p.input (u8R"("\0")"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char))
+      << "Error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (String, Escape0Enabled) {
+  std::u8string const str{'\0'};
+  EXPECT_CALL (callbacks_, string_value (std::u8string_view{str})).Times (1);
+
+  auto p = make_parser (proxy_, extensions::string_escapes);
+  p.input (u8R"("\0")"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was: "
+      << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{4U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{5U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (String, EscapeVDisabled) {
+  auto p = make_parser (proxy_);
+  p.input (u8R"("\v")"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char))
+      << "Error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (String, EscapeVEnabled) {
+  std::u8string const str{'\x0B'};
+  EXPECT_CALL (callbacks_, string_value (std::u8string_view{str})).Times (1);
+
+  auto p = make_parser (proxy_, extensions::string_escapes);
+  p.input (u8R"("\v")"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was: "
+      << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{4U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{5U}, line{1U}}));
+}
+
 namespace {
 
 class StringContinuation
@@ -412,7 +476,7 @@ TEST_P (StringContinuation, ExtensionDisabled) {
 TEST_P (StringContinuation, ExtensionEnabled) {
   EXPECT_CALL (callbacks_, string_value (expected)).Times (1);
 
-  auto p = make_parser (proxy_, extensions::string_escape_new_line);
+  auto p = make_parser (proxy_, extensions::string_escapes);
   p.input (peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
            peejay::u8string{suffix})
       .eof ();

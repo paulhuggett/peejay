@@ -16,7 +16,7 @@ Object keys may be an ECMAScript 5.1 IdentifierName | `extensions::identifier_ob
 Objects may have a single trailing comma | `extensions::object_trailing_comma`
 Arrays may have a single trailing comma | `extensions::array_trailing_comma`
 Strings may be single quoted | `extensions::single_quote_string`
-Strings may span multiple lines by escaping new line characters | `extensions::string_escape_new_line`
+Strings may span multiple lines by escaping new line characters | `extensions::string_escapes`
 Strings may include character escapes |
 Numbers may be hexadecimal |
 Numbers may have a leading or trailing decimal point | 
