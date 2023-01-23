@@ -269,7 +269,9 @@ TEST_F (JsonString, Utf16Surrogates) {
   auto p = make_parser (proxy_);
   p.input (u8R"("\uD834\uDD1E")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
-  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was "
+      << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{14U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{15U}, line{1U}}));
 }
@@ -292,7 +294,7 @@ TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
   p.input (u8R"("\uD834!")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
-  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
 }
 
 // NOLINTNEXTLINE

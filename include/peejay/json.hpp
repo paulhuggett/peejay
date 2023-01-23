@@ -148,7 +148,7 @@ private:
   mode mode_;
 };
 
-grammar_rule code_point_grammar_rule (char32_t const code_point);
+grammar_rule code_point_grammar_rule (char32_t code_point) noexcept;
 
 }  // end namespace details
 
@@ -524,11 +524,21 @@ enum char_set : char32_t {
 
 namespace details {
 
-// FIXME: support the extra whitespace characters
-constexpr bool isspace (char32_t const c) noexcept {
-  return c == char_set::character_tabulation || c == char_set::line_feed ||
-         c == char_set::carriage_return || c == char_set::space;
+constexpr bool isspace (char32_t const code_point,
+                        bool const extra_whitespace) noexcept {
+  if (code_point == char_set::character_tabulation ||
+      code_point == char_set::line_feed ||
+      code_point == char_set::carriage_return ||
+      code_point == char_set::space) {
+    return true;
+  }
+  if (extra_whitespace &&
+      code_point_grammar_rule (code_point) == grammar_rule::whitespace) {
+    return true;
+  }
+  return false;
 }
+
 /// Checks if the given character is an alphanumeric character.
 constexpr bool isalnum (char32_t const c) noexcept {
   return (c >= digit_zero && c <= digit_nine) ||
@@ -542,6 +552,11 @@ constexpr bool isalnum (char32_t const c) noexcept {
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher {
+  template <int FirstHexState, int LastHexState, int PostState>
+  PEEJAY_CXX20REQUIRES ((LastHexState - FirstHexState + 1 == 4 &&
+                         (PostState<FirstHexState || PostState> LastHexState)))
+  friend class hex_consumer;
+
 public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
 
@@ -1132,42 +1147,97 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
   this->set_error (parser, parser.backend ().double_value (xf));
 }
 
-template <typename StateEnum>
-using hex_accumulate_pair = std::pair<StateEnum, uint_least16_t>;
+/// Processing of the four hex digits for the UTF-16 escape sequence used by
+/// both string and identifier objects.
+///
+/// \tparam FirstHexState  The initial hex character state.
+/// \tparam LastHexState The final hex character state.
+/// \tparam PostState The state to which the match will switch after the four
+///                   hex characters have been consumed.
+template <int FirstHexState, int LastHexState, int PostState>
+PEEJAY_CXX20REQUIRES ((LastHexState - FirstHexState + 1 == 4 &&
+                       (PostState<FirstHexState || PostState> LastHexState)))
+class hex_consumer {
+public:
+  static constexpr auto first_hex_state = FirstHexState;
+  static constexpr auto last_hex_state = LastHexState;
+  static constexpr auto post_hex_state = PostState;
 
-/// It will return one of three things:
-/// - An error code if the input did not representa valid hexadecimal sequence.
-/// - A new hex_accumulate_pair. This should be stored and passed to the next
-///   call to this function as part of processing the next character.
-/// - A UTF-16 code unit which indicates the end of the hexadecimal character
-///   sequence.
-template <typename StateEnum>
-std::variant<error, hex_accumulate_pair<StateEnum>, char16_t> hex_accumulate (
-    hex_accumulate_pair<StateEnum> const &ha, char32_t const code_point,
-    StateEnum const last) {
-  auto offset = uint_least16_t{0};
-  if (code_point >= char_set::digit_zero &&
-      code_point <= char_set::digit_nine) {
-    offset = static_cast<uint_least16_t> (char_set::digit_zero);
-  } else if (code_point >= char_set::latin_small_letter_a &&
-             code_point <= char_set::latin_small_letter_f) {
-    offset = static_cast<uint_least16_t> (char_set::latin_small_letter_a) - 10U;
-  } else if (code_point >= char_set::latin_capital_letter_a &&
-             code_point <= char_set::latin_capital_letter_f) {
-    offset =
-        static_cast<uint_least16_t> (char_set::latin_capital_letter_a) - 10U;
-  } else {
-    return error::invalid_hex_char;
+  /// Returns true if we have processed a part of a UTF-16 high/surrogate pair.
+  [[nodiscard]] constexpr bool partial () const noexcept {
+    return utf_16_to_8_.partial ();
   }
 
-  uint_least16_t const value = static_cast<uint_least16_t> (16 * std::get<uint_least16_t> (ha) + static_cast<uint_least16_t> (code_point) - offset);
-  auto state = ha.first;
-  if (state < last) {
-    return hex_accumulate_pair<StateEnum>{static_cast<StateEnum> (state + 1),
-                                          value};
+  /// Processes a code point as part of a hex escape sequence (\\uXXXX) for a
+  /// string or identifier.
+  ///
+  /// \p owner  The matcher that is processing a hex escape code.
+  /// \p parser The parser instance associated with the \p owner matcher.
+  /// \p str The string to which a completed code point will be appended.
+  /// \p code_point  The Unicode code point to be added to the hex sequence.
+  template <typename Backend>
+  void consume (matcher<Backend> *const owner, parser<Backend> &parser,
+                u8string *const str, char32_t const code_point) noexcept {
+    int const state = owner->get_state ();
+    assert (state >= first_hex_state && state <= last_hex_state &&
+            "must be one of the hex states");
+    auto const offset = digit_offset (code_point);
+    if (!offset) {
+      owner->set_error (parser, error::invalid_hex_char);
+      return;
+    }
+    hex_ = static_cast<uint_least16_t> (
+        16 * hex_ + static_cast<uint_least16_t> (code_point) - *offset);
+    if (state < LastHexState) {
+      owner->set_state (state + 1);
+      return;
+    }
+    utf_16_to_8_ (hex_, std::back_inserter (*str));
+    if (!utf_16_to_8_.well_formed ()) {
+      owner->set_error (parser, error::bad_unicode_code_point);
+    }
+    hex_ = 0;
+    owner->set_state (PostState);
   }
-  return static_cast<char16_t> (value);
-}
+
+private:
+  /// UTF-16 to UTF-8 converter.
+  icubaby::t16_8 utf_16_to_8_;
+  /// Used to accumulate the code point value from the four hex digits. After
+  /// the four digits have been consumed, this UTF-16 code point value is
+  /// converted to UTF-8 and added to the output.
+  uint_least16_t hex_ = 0U;
+
+  static std::optional<uint_least16_t> digit_offset (
+      char32_t code_point) noexcept {
+    if (code_point >= char_set::digit_zero &&
+        code_point <= char_set::digit_nine) {
+      return static_cast<uint_least16_t> (char_set::digit_zero);
+    }
+    if (code_point >= char_set::latin_small_letter_a &&
+        code_point <= char_set::latin_small_letter_f) {
+      return static_cast<uint_least16_t> (char_set::latin_small_letter_a - 10U);
+    }
+    if (code_point >= char_set::latin_capital_letter_a &&
+        code_point <= char_set::latin_capital_letter_f) {
+      return static_cast<uint_least16_t> (char_set::latin_capital_letter_a -
+                                          10U);
+    }
+    return std::nullopt;
+  }
+};
+
+///{@
+/// The hex_consumer<> template class impleements the handling of UTF-16
+/// hexadecimal escape codes for both string and identifier productions. To
+/// minimize our code size, it's useful to ensure that the template arguments
+/// for its instantiations are the same. To acheive this, we predefine the
+/// expected first and last hex states for the state machines here. We later
+/// statically assert that the values used are consistent.
+constexpr auto first_hex_state = 2;
+constexpr auto last_hex_state = 5;
+constexpr auto post_hex_state = 6;
+///@}
 
 //*     _       _            *
 //*  __| |_ _ _(_)_ _  __ _  *
@@ -1202,32 +1272,14 @@ private:
 
   enum state {
     done_state = matcher<Backend>::done,
-    start_state,
-    normal_char_state,
-    escape_state,
     hex1_state,
     hex2_state,
     hex3_state,
     hex4_state,
+    normal_char_state,
+    start_state,
+    escape_state,
   };
-
-#if 0
-  class appender {
-  public:
-    constexpr explicit appender (u8string *const result) noexcept
-        : result_{result} {
-      assert (result != nullptr);
-    }
-    bool append32 (char32_t code_point);
-    bool append16 (char16_t cu);
-    u8string *result () { return result_; }
-    bool has_high_surrogate () const noexcept { return high_surrogate_ != 0; }
-
-  private:
-    u8string *const result_;
-    t16_32
-  };
-#endif
 
   std::variant<state, std::error_code> consume_normal (parser<Backend> &p,
                                                        bool is_object_key,
@@ -1243,8 +1295,6 @@ private:
   /// \param code_point  The Unicode character being processed.
   void normal (parser<Backend> &p, char32_t code_point);
 
-  void hex (parser<Backend> &p, char32_t code_point);
-
   std::variant<state, error> consume_escape_state (char32_t code_point);
   void escape (parser<Backend> &p, char32_t code_point);
 
@@ -1256,9 +1306,12 @@ private:
   bool is_object_key_;
   char32_t enclosing_char_;
   u8string *const str_;  // output
-  uint_least16_t hex_ = 0U;
+  hex_consumer<hex1_state, hex4_state, normal_char_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
-  icubaby::t16_8 utf_16_to_8_;
+
+  static_assert (decltype (hex_)::first_hex_state == first_hex_state);
+  static_assert (decltype (hex_)::last_hex_state == last_hex_state);
+  static_assert (decltype (hex_)::post_hex_state == post_hex_state);
 };
 
 // consume normal
@@ -1269,12 +1322,15 @@ auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
                                               char32_t enclosing_char,
                                               char32_t code_point)
     -> std::variant<state, std::error_code> {
+  if (code_point == char_set::reverse_solidus) {
+    return escape_state;
+  }
+  // We processed part of a Unicode UTF-16 code point. The rest needs to be
+  // expressed using the '\u' escape.
+  if (hex_.partial ()) {
+    return error::bad_unicode_code_point;
+  }
   if (code_point == enclosing_char) {
-    if (utf_16_to_8_.partial ()) {
-      utf_16_to_8_.end_cp (std::back_inserter (*str_));
-      assert (!utf_16_to_8_.well_formed ());
-      return error::bad_unicode_code_point;
-    }
     // Consume the closing quote character.
     auto &n = p.backend ();
     u8string_view const &result = *str_;
@@ -1283,9 +1339,6 @@ auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
       return error;
     }
     return done_state;
-  }
-  if (code_point == char_set::reverse_solidus) {
-    return escape_state;
   }
   if (code_point <= 0x1F) {
     // Control characters U+0000 through U+001F MUST be escaped.
@@ -1317,39 +1370,6 @@ void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
         }
       },
       this->consume_normal (p, is_object_key_, enclosing_char_, code_point));
-}
-
-// hex
-// ~~~
-template <typename Backend>
-void string_matcher<Backend>::hex (parser<Backend> &p, char32_t const code_point) {
-  assert (is_hex_state (static_cast<state> (this->get_state ())));
-  auto old_state = static_cast<enum state> (this->get_state());
-  if (old_state == hex1_state) {
-    hex_ = 0;
-  }
-
-  using hap = hex_accumulate_pair<enum state>;
-  std::visit (
-      [this, &p] (auto &&arg) {
-        using T = std::decay_t<decltype (arg)>;
-        if        constexpr (std::is_same_v<T, error>) {
-          this->set_error (p, arg);
-        } else if constexpr (std::is_same_v<T, hap>) {
-          this->set_state (std::get<enum state> (arg));
-          hex_ = std::get<uint_least16_t> (arg);
-        } else if constexpr (std::is_same_v<T, char16_t>) {
-          utf_16_to_8_ (arg, std::back_inserter (*str_));
-          if (!utf_16_to_8_.well_formed ()) {
-            this->set_error (p, error::bad_unicode_code_point);
-          }
-          this->set_state (normal_char_state);
-        } else {
-          static_assert (always_false<T>, "non-exhaustive visitor");
-        }
-      },
-      hex_accumulate<enum state> (hap{old_state, hex_}, code_point,
-                                  hex4_state));
 }
 
 // consume escape state
@@ -1416,7 +1436,6 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   // Matches the opening quote.
   case start_state:
     if (c == enclosing_char_) {
-      assert (!utf_16_to_8_.partial ());
       this->set_state (normal_char_state);
     } else {
       this->set_error (parser, error::expected_token);
@@ -1428,7 +1447,7 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   case hex1_state:
   case hex2_state:
   case hex3_state:
-  case hex4_state: this->hex (parser, c); break;
+  case hex4_state: hex_.consume (this, parser, str_, c); break;
 
   case done_state:
   default: assert (false); break;
@@ -1460,23 +1479,26 @@ public:
 private:
   using matcher<Backend>::null_pointer;
 
-  void hex (parser<Backend> &parser, char32_t code_point);
-
   enum state {
     done_state = matcher<Backend>::done,
-    start_state,
-    part_state,  // Implements the ECMAScript IdentifierPart rule.
-    u_state,     // Used after a backslash is encountered.
+    // hexN_state is used to implement the \uXXXX hexadecimal escape
+    // productions.
     hex1_state,
     hex2_state,
     hex3_state,
     hex4_state,
+    part_state,   // Implements the ECMAScript IdentifierPart rule.
+    start_state,  // Implements the ECMAScript IdentifierStart rule.
+    u_state,      // Used after a backslash is encountered.
   };
 
   u8string *const str_;  // output
-  uint_least16_t hex_ = 0;
+  hex_consumer<hex1_state, hex4_state, part_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
-  icubaby::t16_8 utf_16_to_8_;
+
+  static_assert (decltype (hex_)::first_hex_state == first_hex_state);
+  static_assert (decltype (hex_)::last_hex_state == last_hex_state);
+  static_assert (decltype (hex_)::post_hex_state == post_hex_state);
 };
 
 // consume
@@ -1504,7 +1526,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   char32_t const c = *code_point;
   switch (this->get_state ()) {
   case start_state:
-    if (isspace (c)) {
+    if (isspace (c, parser.extension_enabled (extensions::extra_whitespace))) {
       return {this->make_whitespace_matcher (parser), false};
     }
     if (c == char_set::reverse_solidus) {
@@ -1522,16 +1544,17 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
     }
     // We processed part of a Unicode UTF-16 code point. The rest needs to be
     // expressed using the '\u' escape.
-    if (utf_16_to_8_.partial ()) {
+    if (hex_.partial ()) {
       return install_error (error::bad_unicode_code_point);
     }
     if (grammar_rule const rule = code_point_grammar_rule (c);
         rule != grammar_rule::identifier_start &&
         rule != grammar_rule::identifier_part) {
-      // Don't consume this character.
+      // This code point wasn't part of an identifier, so don't consume it.
       if (std::error_code const error = parser.backend ().key (*str_)) {
         this->set_error (parser, error);
       }
+      // TODO: check whether identifier is empty?
       this->set_state (done_state);
       return retry_char_and_iterate;
     }
@@ -1542,10 +1565,12 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
       return install_error (error::expected_token);  // TODO: expected 'u'?
     }
     return change_state (hex1_state);
-  case hex1_state: hex_ = 0; [[fallthrough]];
+  case hex1_state:
   case hex2_state:
   case hex3_state:
-  case hex4_state: this->hex (parser, c); return consume_and_iterate;
+  case hex4_state:
+    hex_.consume (this, parser, str_, c);
+    return consume_and_iterate;
   }
 
   // Remember this character.
@@ -1555,35 +1580,6 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_error (parser, error::bad_unicode_code_point);
   }
   return consume_and_iterate;
-}
-
-// hex
-// ~~~
-template <typename Backend>
-void identifier_matcher<Backend>::hex (parser<Backend> &parser,
-                                       char32_t const code_point) {
-  using hap = hex_accumulate_pair<enum state>;
-  std::visit (
-      [this, &parser] (auto &&arg) {
-        using T = std::decay_t<decltype (arg)>;
-        if constexpr (std::is_same_v<T, error>) {
-          this->set_error (parser, arg);
-        } else if constexpr (std::is_same_v<T, hap>) {
-          this->set_state (arg.first);
-          hex_ = arg.second;
-        } else if constexpr (std::is_same_v<T, char16_t>) {
-          utf_16_to_8_ (arg, std::back_inserter (*str_));
-          if (!utf_16_to_8_.well_formed ()) {
-            this->set_error (parser, error::bad_unicode_code_point);
-          }
-          this->set_state (part_state);
-        } else {
-          static_assert (always_false<T>, "non-exhaustive visitor");
-        }
-      },
-      hex_accumulate<enum state> (
-          hap{static_cast<enum state> (this->get_state ()), hex_}, code_point,
-          hex4_state));
 }
 
 //*                          *
@@ -1648,7 +1644,7 @@ array_matcher<Backend>::consume (parser<Backend> &p,
     return {this->make_root_matcher (p), false};
     break;
   case comma_state:
-    if (isspace (c)) {
+    if (isspace (c, p.extension_enabled (extensions::extra_whitespace))) {
       // just consume whitespace before a comma.
       return {this->make_whitespace_matcher (p), false};
     }
@@ -1747,10 +1743,10 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     if (parser.extension_enabled (extensions::identifier_object_key)) {
       return {this->make_identifier_matcher (parser), false};
     }
-    this->set_error (parser, error::expected_string);  // TODO:expected key?
+    this->set_error (parser, error::expected_object_key);
     break;
   case colon_state:
-    if (isspace (c)) {
+    if (isspace (c, parser.extension_enabled (extensions::extra_whitespace))) {
       // just consume whitespace before the colon.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -1764,7 +1760,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
   case comma_state:
-    if (isspace (c)) {
+    if (isspace (c, parser.extension_enabled (extensions::extra_whitespace))) {
       // just consume whitespace before the comma.
       return {this->make_whitespace_matcher (parser), false};
     }

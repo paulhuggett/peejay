@@ -2,7 +2,7 @@
 
 namespace peejay::details {
 
-grammar_rule code_point_grammar_rule (char32_t const code_point) {
+grammar_rule code_point_grammar_rule (char32_t const code_point) noexcept {
   auto const end = std::end (code_point_runs);
   auto const it = std::lower_bound (
       std::begin (code_point_runs), end,

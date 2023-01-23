@@ -180,7 +180,7 @@ TEST_F (Object, MisplacedCommaBeforeCloseBrace) {
   // An object with a trailing comma but with the extension disabled.
   parser p{null{}};
   p.input (u8R"({"a":1,})"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
@@ -198,7 +198,7 @@ TEST_F (Object, NoCommaBeforeProperty) {
 TEST_F (Object, TwoCommasBeforeProperty) {
   parser p{null{}};
   p.input (u8R"({"a":1,,"b":1})"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
 }
@@ -246,7 +246,7 @@ TEST_F (Object, TooDeeplyNested) {
 TEST_F (Object, KeyIsNotString) {
   parser p{null{}};
   p.input (u8"{{}:{}}"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
@@ -255,7 +255,7 @@ TEST_F (Object, KeyIsNotString) {
 TEST_F (Object, KeyIsIdentifierWithoutExtensionEnabled) {
   parser p{null{}};
   p.input (u8"{foo:1}"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_string))
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
 }
@@ -386,4 +386,17 @@ TEST_F (Object, IdentifierKeyHexEscapeLowSurrogateOnly) {
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{11U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, Utf16HighFollowedByUtf8Char) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
+  auto p = make_parser (proxy_, extensions::identifier_object_key);
+  p.input (u8"{ \\uD834!: 1 }"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
+  EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
 }

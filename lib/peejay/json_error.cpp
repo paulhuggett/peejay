@@ -38,7 +38,7 @@ std::string peejay::error_category::message (int const err) const {
   case error::expected_colon: return "expected colon";
   case error::expected_digits: return "expected digits";
   case error::expected_object_member: return "expected object member";
-  case error::expected_string: return "expected string";
+  case error::expected_object_key: return "expected object key";
   case error::expected_token: return "expected token";
   case error::invalid_escape_char: return "invalid escape character";
   case error::invalid_hex_char: return "invalid hexadecimal escape character";
