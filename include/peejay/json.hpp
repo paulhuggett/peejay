@@ -494,7 +494,8 @@ inline parser<std::remove_reference_t<Backend>> make_parser (
 }
 
 enum char_set : char32_t {
-  asterisk = char32_t{0x2a},                // '*'
+  apostrophe = char32_t{0x0027},            // "'"
+  asterisk = char32_t{0x002a},              // '*'
   backspace = char32_t{0x0008},             // '\b'
   carriage_return = char32_t{0x000d},       // '\r'
   character_tabulation = char32_t{0x0009},  // '\t'
@@ -1405,6 +1406,12 @@ auto string_matcher<Backend>::consume_escape_state (parser<Backend> &parser,
     break;
   case char_set::latin_small_letter_u: return {hex1_state};
 
+  case char_set::apostrophe:
+    if (!parser.extension_enabled (extensions::string_escapes)) {
+      return {error::invalid_escape_char};
+    }
+    // code points is appended as-is.
+    break;
   case char_set::latin_small_letter_v:
     if (!parser.extension_enabled (extensions::string_escapes)) {
       return {error::invalid_escape_char};
