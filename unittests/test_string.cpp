@@ -31,7 +31,7 @@ using peejay::u8string_view;
 
 namespace {
 
-class JsonString : public testing::Test {
+class String : public testing::Test {
 protected:
   StrictMock<mock_json_callbacks> callbacks_;
   callbacks_proxy<mock_json_callbacks> proxy_{callbacks_};
@@ -40,7 +40,7 @@ protected:
 }  // end anonymous namespace
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, EmptyDoubleQuote) {
+TEST_F (String, EmptyDoubleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8""sv)).Times (1);
 
   auto p = make_parser (proxy_);
@@ -52,7 +52,7 @@ TEST_F (JsonString, EmptyDoubleQuote) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, EmptySingleQuote) {
+TEST_F (String, EmptySingleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8""sv)).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_quote_string);
@@ -64,7 +64,7 @@ TEST_F (JsonString, EmptySingleQuote) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, EmptySingleQuoteExtensionDisabled) {
+TEST_F (String, EmptySingleQuoteExtensionDisabled) {
   auto p = make_parser (proxy_);
   p.input (u8R"('')"sv).eof ();
   EXPECT_TRUE (p.has_error ()) << "Expected the parse to succeed";
@@ -74,7 +74,7 @@ TEST_F (JsonString, EmptySingleQuoteExtensionDisabled) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, SimpleDoubleQuote) {
+TEST_F (String, SimpleDoubleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
 
   auto p = make_parser (proxy_);
@@ -86,7 +86,7 @@ TEST_F (JsonString, SimpleDoubleQuote) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, SimpleSingleQuote) {
+TEST_F (String, SimpleSingleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_quote_string);
@@ -98,7 +98,7 @@ TEST_F (JsonString, SimpleSingleQuote) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, UnterminatedDoubleQuote) {
+TEST_F (String, UnterminatedDoubleQuote) {
   auto p = make_parser (proxy_);
   p.input (u8R"("hello)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
@@ -107,7 +107,7 @@ TEST_F (JsonString, UnterminatedDoubleQuote) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, UnterminatedSingleQuote) {
+TEST_F (String, UnterminatedSingleQuote) {
   auto p = make_parser (proxy_, extensions::single_quote_string);
   p.input (u8R"('hello)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
@@ -116,7 +116,7 @@ TEST_F (JsonString, UnterminatedSingleQuote) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, EscapeN) {
+TEST_F (String, EscapeN) {
   EXPECT_CALL (callbacks_, string_value (u8"a\n"sv)).Times (1);
 
   auto p = make_parser (proxy_);
@@ -128,7 +128,7 @@ TEST_F (JsonString, EscapeN) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, BadEscape1) {
+TEST_F (String, BadEscape1) {
   auto p = make_parser (proxy_);
   p.input (u8R"("a\qb")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char));
@@ -137,7 +137,7 @@ TEST_F (JsonString, BadEscape1) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, BadEscape2) {
+TEST_F (String, BadEscape2) {
   auto p = make_parser (proxy_);
   p.input (u8"\"\\\xC3\xBF\""sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char));
@@ -146,7 +146,7 @@ TEST_F (JsonString, BadEscape2) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, BackslashQuoteUnterminated) {
+TEST_F (String, BackslashQuoteUnterminated) {
   auto p = make_parser (proxy_);
   p.input (u8R"("a\")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
@@ -155,7 +155,7 @@ TEST_F (JsonString, BackslashQuoteUnterminated) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, TrailingBackslashUnterminated) {
+TEST_F (String, TrailingBackslashUnterminated) {
   auto p = make_parser (proxy_);
   p.input (u8R"("a\)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
@@ -164,7 +164,7 @@ TEST_F (JsonString, TrailingBackslashUnterminated) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, GCleffUtf8) {
+TEST_F (String, GCleffUtf8) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed in UTF-8
   // Note that the 4 bytes making up the code point count as a single column.
   std::array<char8, 4> gclef{
@@ -190,7 +190,7 @@ TEST_F (JsonString, GCleffUtf8) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, SlashUnicodeUpper) {
+TEST_F (String, SlashUnicodeUpper) {
   EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (1);
 
   auto p = make_parser (proxy_);
@@ -202,7 +202,7 @@ TEST_F (JsonString, SlashUnicodeUpper) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, SlashUnicodeLower) {
+TEST_F (String, SlashUnicodeLower) {
   std::array<char8 const, 2> const expected{
       {static_cast<char8> (0xC2), static_cast<char8> (0xAF)}};
   EXPECT_CALL (callbacks_,
@@ -218,7 +218,7 @@ TEST_F (JsonString, SlashUnicodeLower) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, FourFs) {
+TEST_F (String, FourFs) {
   // Note that there is no unicode code-point at U+FFFF.
   std::array<char8 const, 3> const expected{{static_cast<char8> (0xEF),
                                              static_cast<char8> (0xBF),
@@ -236,7 +236,7 @@ TEST_F (JsonString, FourFs) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, TwoUtf16Chars) {
+TEST_F (String, TwoUtf16Chars) {
   // Encoding for TURNED AMPERSAND (U+214B) followed by KATAKANA LETTER SMALL A
   // (u+30A1) expressed as a pair of UTF-16 characters.
   std::array<char8 const, 6> const expected{
@@ -256,7 +256,7 @@ TEST_F (JsonString, TwoUtf16Chars) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, Utf16Surrogates) {
+TEST_F (String, Utf16Surrogates) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed as a UTF-16
   // surrogate pair.
   std::array<char8 const, 4> const expected{
@@ -277,7 +277,7 @@ TEST_F (JsonString, Utf16Surrogates) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, Utf16HighWithNoLowSurrogate) {
+TEST_F (String, Utf16HighWithNoLowSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (u8R"("\uD834\u30A1")"sv).eof ();
@@ -288,7 +288,7 @@ TEST_F (JsonString, Utf16HighWithNoLowSurrogate) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
+TEST_F (String, Utf16HighFollowedByUtf8Char) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (u8R"("\uD834!")"sv).eof ();
@@ -298,7 +298,7 @@ TEST_F (JsonString, Utf16HighFollowedByUtf8Char) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
+TEST_F (String, Utf16HighWithMissingLowSurrogate) {
   auto p = make_parser (proxy_);
   p.input (u8R"("\uDD1E\u30A1")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
@@ -307,7 +307,7 @@ TEST_F (JsonString, Utf16HighWithMissingLowSurrogate) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, Utf16HighSurrogateFollowedByHighSurrogate) {
+TEST_F (String, Utf16HighSurrogateFollowedByHighSurrogate) {
   auto p = make_parser (proxy_);
   p.input (u8R"("\uD800\uD800")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
@@ -316,7 +316,7 @@ TEST_F (JsonString, Utf16HighSurrogateFollowedByHighSurrogate) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, ControlCharacter) {
+TEST_F (String, ControlCharacter) {
   auto p = make_parser (proxy_);
   p.input (u8"\"\t\""sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
@@ -325,7 +325,7 @@ TEST_F (JsonString, ControlCharacter) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, ControlCharacterUTF16) {
+TEST_F (String, ControlCharacterUTF16) {
   EXPECT_CALL (callbacks_, string_value (u8"\t"sv)).Times (1);
 
   auto p = make_parser (proxy_);
@@ -337,7 +337,7 @@ TEST_F (JsonString, ControlCharacterUTF16) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, Utf16LowWithNoHighSurrogate) {
+TEST_F (String, Utf16LowWithNoHighSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
   p.input (u8R"("\uD834")"sv).eof ();
@@ -347,7 +347,7 @@ TEST_F (JsonString, Utf16LowWithNoHighSurrogate) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, SlashBadHexChar) {
+TEST_F (String, SlashBadHexChar) {
   auto p = make_parser (proxy_);
   p.input (u8R"("\u00xf")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_hex_char));
@@ -356,7 +356,7 @@ TEST_F (JsonString, SlashBadHexChar) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonString, PartialHexChar) {
+TEST_F (String, PartialHexChar) {
   auto p = make_parser (proxy_);
   p.input (u8R"("\u00)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
