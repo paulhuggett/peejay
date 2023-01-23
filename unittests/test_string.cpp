@@ -180,8 +180,12 @@ TEST_F (String, GCleffUtf8) {
 
   std::vector<char8> input;
   input.emplace_back (char_set::quotation_mark);  // code point 1
+#if __cpp_lib_ranges
+  std::ranges::copy (gclef, std::back_inserter (input));  // code point 2
+#else
   std::copy (std::begin (gclef), std::end (gclef),
              std::back_inserter (input));         // code point 2
+#endif
   input.emplace_back (char_set::quotation_mark);  // code point 3
   p.input (std::begin (input), std::end (input)).eof ();
 
@@ -378,7 +382,7 @@ protected:
   static constexpr auto expected =
       u8"Lorem ipsum dolor sit amet, consectetur adipiscing elit."sv;
 
-  peejay::u8string utf8_sequence (std::vector<char32_t> const& in) {
+  static peejay::u8string utf8_sequence (std::vector<char32_t> const& in) {
     peejay::u8string out;
     icubaby::t32_8 utf_32_to_8;
 #if __cpp_lib_ranges
@@ -409,7 +413,7 @@ TEST_P (StringContinuation, ExtensionEnabled) {
   EXPECT_CALL (callbacks_, string_value (expected)).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escape_new_line);
-  p.input (peejay::u8string{prefix} + utf8_sequence (this->GetParam ()) +
+  p.input (peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
            peejay::u8string{suffix})
       .eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
