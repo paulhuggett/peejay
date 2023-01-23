@@ -17,6 +17,8 @@
 #include "peejay/json.hpp"
 
 using namespace std::string_view_literals;
+using namespace std::string_literals;
+
 using testing::StrictMock;
 
 using peejay::char8;
@@ -363,3 +365,64 @@ TEST_F (String, PartialHexChar) {
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
 }
+
+namespace {
+
+class StringContinuation
+    : public String,
+      public testing::WithParamInterface<std::vector<char32_t>> {
+protected:
+  static constexpr auto prefix = u8"\"Lorem ipsum dolor sit amet, \\"sv;
+  static constexpr auto suffix = u8"consectetur adipiscing elit.\""sv;
+
+  static constexpr auto expected =
+      u8"Lorem ipsum dolor sit amet, consectetur adipiscing elit."sv;
+
+  peejay::u8string utf8_sequence (std::vector<char32_t> const& in) {
+    peejay::u8string out;
+    icubaby::t32_8 utf_32_to_8;
+#if __cpp_lib_ranges
+    std::ranges::copy (
+        in, icubaby::iterator{&utf_32_to_8, std::back_inserter (out)});
+#else
+    std::copy (std::begin (in), std::end (in),
+               icubaby::iterator{&utf_32_to_8, std::back_inserter (out)});
+#endif
+    return out;
+  }
+};
+
+}  // end anonymous namespace
+
+// NOLINTNEXTLINE
+TEST_P (StringContinuation, ExtensionDisabled) {
+  auto p = make_parser (proxy_);
+  p.input (peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
+           peejay::u8string{suffix})
+      .eof ();
+  EXPECT_TRUE (p.has_error ()) << "Expected the parse to fail";
+  EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char))
+      << "Got error: " << p.last_error ().message ();
+};
+
+TEST_P (StringContinuation, ExtensionEnabled) {
+  EXPECT_CALL (callbacks_, string_value (expected)).Times (1);
+
+  auto p = make_parser (proxy_, extensions::string_escape_new_line);
+  p.input (peejay::u8string{prefix} + utf8_sequence (this->GetParam ()) +
+           peejay::u8string{suffix})
+      .eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was: "
+      << p.last_error ().message ();
+};
+
+INSTANTIATE_TEST_SUITE_P (
+    StringContinuation, StringContinuation,
+    testing::Values (std::vector<char32_t>{char_set::line_feed},
+                     std::vector<char32_t>{char_set::carriage_return},
+                     std::vector<char32_t>{char_set::carriage_return,
+                                           char_set::line_feed},
+                     std::vector<char32_t>{char_set::line_separator},
+                     std::vector<char32_t>{char_set::paragraph_separator}));

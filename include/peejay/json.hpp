@@ -219,6 +219,7 @@ enum class extensions : unsigned {
   leading_plus = 1U << 6U,
   extra_whitespace = 1 << 7U,
   identifier_object_key = 1 << 8U,
+  string_escape_new_line = 1 << 9U,
   all = ~none,
 };
 
@@ -513,8 +514,10 @@ enum char_set : char32_t {
   latin_small_letter_u = char32_t{0x0075},    // 'u'
   latin_small_letter_z = char32_t{0x007a},    // 'z'
   line_feed = char32_t{0x000a},               // '\n'
+  line_separator = char32_t{0x2028},
   no_break_space = char32_t{0x00a0},
-  number_sign = char32_t{0x0023},      // '#'
+  number_sign = char32_t{0x0023},  // '#'
+  paragraph_separator = char32_t{0x2029},
   quotation_mark = char32_t{0x0022},   // '"'
   reverse_solidus = char32_t{0x005c},  // '\'
   solidus = char32_t{0x002f},          // '/'
@@ -1279,6 +1282,7 @@ private:
     normal_char_state,
     start_state,
     escape_state,
+    skip_lf_state,
   };
 
   std::variant<state, std::error_code> consume_normal (parser<Backend> &p,
@@ -1295,7 +1299,8 @@ private:
   /// \param code_point  The Unicode character being processed.
   void normal (parser<Backend> &p, char32_t code_point);
 
-  std::variant<state, error> consume_escape_state (char32_t code_point);
+  std::variant<state, error> consume_escape_state (parser<Backend> &parser,
+                                                   char32_t code_point);
   void escape (parser<Backend> &p, char32_t code_point);
 
   static constexpr bool is_hex_state (enum state const state) noexcept {
@@ -1375,7 +1380,8 @@ void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
 // consume escape state
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
-auto string_matcher<Backend>::consume_escape_state (char32_t code_point)
+auto string_matcher<Backend>::consume_escape_state (parser<Backend> &parser,
+                                                    char32_t code_point)
     -> std::variant<state, error> {
   state next_state = normal_char_state;
   switch (code_point) {
@@ -1394,6 +1400,19 @@ auto string_matcher<Backend>::consume_escape_state (char32_t code_point)
     code_point = char_set::character_tabulation;
     break;
   case char_set::latin_small_letter_u: return {hex1_state};
+  case char_set::line_feed:
+  case char_set::carriage_return:
+  case char_set::line_separator:
+  case char_set::paragraph_separator:
+    if (parser.extension_enabled (extensions::string_escape_new_line)) {
+      if (code_point == char_set::carriage_return) {
+        // a special state to handle the potential line feed.
+        next_state = skip_lf_state;
+      }
+      // Just consume the character.
+      return next_state;
+    }
+    [[fallthrough]];
   default: return {error::invalid_escape_char};
   }
   assert (next_state == normal_char_state);
@@ -1417,7 +1436,7 @@ void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
       },
-      this->consume_escape_state (code_point));
+      this->consume_escape_state (p, code_point));
 }
 
 // consume
@@ -1432,6 +1451,7 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   }
 
   auto const c = *code_point;
+  bool match = true;
   switch (this->get_state ()) {
   // Matches the opening quote.
   case start_state:
@@ -1449,10 +1469,20 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   case hex3_state:
   case hex4_state: hex_.consume (this, parser, str_, c); break;
 
+  // We saw a reverse solidus (backslash) followed by a carriage return.
+  // Silently consume a subsequent line_feed.
+  case skip_lf_state:
+    assert (parser.extension_enabled (extensions::string_escape_new_line));
+    this->set_state (normal_char_state);
+    if (c != char_set::line_feed) {
+      match = false;
+    }
+    break;
+
   case done_state:
   default: assert (false); break;
   }
-  return {null_pointer (), true};
+  return {null_pointer (), match};
 }
 
 //*  _    _         _   _  __ _          *
