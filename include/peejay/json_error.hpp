@@ -39,6 +39,7 @@ enum class error : int {
   number_out_of_range,
   unexpected_extra_input,
   unrecognized_token,
+  unterminated_multiline_comment,
 };
 
 // ******************

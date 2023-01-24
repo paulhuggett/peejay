@@ -1934,55 +1934,62 @@ std::pair<typename matcher<Backend>::pointer, bool>
 whitespace_matcher<Backend>::consume (parser<Backend> &parser,
                                       std::optional<char32_t> ch) {
   if (!ch) {
-    this->set_state (done_state);
-  } else {
-    auto const c = *ch;
     switch (this->get_state ()) {
-    // Handles the LF part of a Windows-style CR/LF pair.
-    case crlf_state:
-      this->set_state (body_state);
-      if (crlf (parser, c)) {
-        break;
-      }
-      [[fallthrough]];
-    case body_state: return this->consume_body (parser, c);
-    case comment_start_state: return this->consume_comment_start (parser, c);
-
-    case multi_line_comment_ending_state:
-      assert (parser.extension_enabled (extensions::multi_line_comments));
-      switch (c) {
-      // asterisk followed by a second asterisk so don't change state.
-      case char_set::asterisk: break;
-      // asterisk+solidus (*/) means the end of the comment.
-      case char_set::solidus: this->set_state (body_state); break;
-      // some other character. Back to consuming the comment.
-      default: this->set_state (multi_line_comment_body_state); break;
-      }
-      break;
-
-    case multi_line_comment_crlf_state:
-      this->set_state (multi_line_comment_body_state);
-      if (crlf (parser, c)) {
-        break;
-      }
-      [[fallthrough]];
     case multi_line_comment_body_state:
-      return this->multi_line_comment_body (parser, c);
-    case single_line_comment_state:
-      assert (parser.extension_enabled (extensions::bash_comments) ||
-              parser.extension_enabled (extensions::single_line_comments) ||
-              parser.extension_enabled (extensions::multi_line_comments));
-      if (c == char_set::carriage_return || c == char_set::line_feed) {
-        // This character marks a bash/single-line comment end. Go back to
-        // normal whitespace handling. Retry with the same character.
-        this->set_state (body_state);
-        return {null_pointer (), false};
-      }
-      // Just consume the character.
+    case multi_line_comment_ending_state:
+    case multi_line_comment_crlf_state:
+      this->set_error (parser, error::unterminated_multiline_comment);
       break;
-
-    default: assert (false); break;
+    default: this->set_state (done_state); break;
     }
+    return {null_pointer (), true};
+  }
+  auto const c = *ch;
+  switch (this->get_state ()) {
+  // Handles the LF part of a Windows-style CR/LF pair.
+  case crlf_state:
+    this->set_state (body_state);
+    if (crlf (parser, c)) {
+      break;
+    }
+    [[fallthrough]];
+  case body_state: return this->consume_body (parser, c);
+  case comment_start_state: return this->consume_comment_start (parser, c);
+
+  case multi_line_comment_ending_state:
+    assert (parser.extension_enabled (extensions::multi_line_comments));
+    switch (c) {
+    // asterisk followed by a second asterisk so don't change state.
+    case char_set::asterisk: break;
+    // asterisk+solidus (*/) means the end of the comment.
+    case char_set::solidus: this->set_state (body_state); break;
+    // some other character. Back to consuming the comment.
+    default: this->set_state (multi_line_comment_body_state); break;
+    }
+    break;
+
+  case multi_line_comment_crlf_state:
+    this->set_state (multi_line_comment_body_state);
+    if (crlf (parser, c)) {
+      break;
+    }
+    [[fallthrough]];
+  case multi_line_comment_body_state:
+    return this->multi_line_comment_body (parser, c);
+  case single_line_comment_state:
+    assert (parser.extension_enabled (extensions::bash_comments) ||
+            parser.extension_enabled (extensions::single_line_comments) ||
+            parser.extension_enabled (extensions::multi_line_comments));
+    if (c == char_set::carriage_return || c == char_set::line_feed) {
+      // This character marks a bash/single-line comment end. Go back to
+      // normal whitespace handling. Retry with the same character.
+      this->set_state (body_state);
+      return {null_pointer (), false};
+    }
+    // Just consume the character.
+    break;
+
+  default: assert (false); break;
   }
   return {null_pointer (), true};
 }

@@ -220,6 +220,41 @@ TEST_F (Comment, MultiLineTrailing) {
 }
 
 // NOLINTNEXTLINE
+TEST_F (Comment, MultiLineUnterminated) {
+  EXPECT_CALL (callbacks_, null_value ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
+  p.input (u8"null /* comment"sv).eof ();
+  EXPECT_TRUE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.last_error (),
+             make_error_code (error::unterminated_multiline_comment));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Comment, MultiLineUnterminatedNoSlash) {
+  EXPECT_CALL (callbacks_, null_value ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
+  p.input (u8"null /* comment *"sv).eof ();
+  EXPECT_TRUE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.last_error (),
+             make_error_code (error::unterminated_multiline_comment));
+}
+// NOLINTNEXTLINE
+TEST_F (Comment, MultiLineUnterminatedNewline) {
+  EXPECT_CALL (callbacks_, null_value ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::multi_line_comments);
+  p.input (u8"null /* comment\n"sv).eof ();
+  EXPECT_TRUE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+  EXPECT_EQ (p.last_error (),
+             make_error_code (error::unterminated_multiline_comment));
+}
+
+// NOLINTNEXTLINE
 TEST_F (Comment, MultiLineInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -261,21 +296,6 @@ comment */
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{line{6U}, column{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{line{9U}, column{1U}}));
-}
-
-// A missing multi-line comment close is currently ignored. It could reasonably
-// raise an error, but at this point I've chosen not to do so.
-// NOLINTNEXTLINE
-TEST_F (Comment, MultiLineUnclosed) {
-  using testing::_;
-  EXPECT_CALL (callbacks_, null_value ()).Times (1);
-
-  auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"null /*comment"sv).eof ();
-  EXPECT_FALSE (p.has_error ())
-      << "JSON error was: " << p.last_error ().message ();
-  EXPECT_EQ (p.pos (), (coord{line{1U}, column{5U}}));
-  EXPECT_EQ (p.input_pos (), (coord{line{1U}, column{15U}}));
 }
 
 // NOLINTNEXTLINE
