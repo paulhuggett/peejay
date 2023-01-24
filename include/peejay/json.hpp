@@ -220,6 +220,7 @@ enum class extensions : unsigned {
   extra_whitespace = 1 << 7U,
   identifier_object_key = 1 << 8U,
   string_escapes = 1 << 9U,
+  numbers = 1 << 10U,
   all = ~none,
 };
 
@@ -495,38 +496,41 @@ inline parser<std::remove_reference_t<Backend>> make_parser (
 
 enum char_set : char32_t {
   apostrophe = char32_t{0x0027},            // "'"
-  asterisk = char32_t{0x002a},              // '*'
+  asterisk = char32_t{0x002A},              // '*'
   backspace = char32_t{0x0008},             // '\b'
-  carriage_return = char32_t{0x000d},       // '\r'
+  carriage_return = char32_t{0x000D},       // '\r'
   character_tabulation = char32_t{0x0009},  // '\t'
   digit_nine = char32_t{0x0039},            // '9'
   digit_zero = char32_t{0x0030},            // '0'
   en_quad = char32_t{0x2000},
-  form_feed = char32_t{0x000c},               // '\f'
+  form_feed = char32_t{0x000C},               // '\f'
+  full_stop = char32_t{0x002E},               // '.'
   latin_capital_letter_a = char32_t{0x0041},  // 'A'
+  latin_capital_letter_e = char32_t{0x0045},  // 'E'
   latin_capital_letter_f = char32_t{0x0046},  // 'F'
   latin_capital_letter_z = char32_t{0x005a},  // 'Z'
   latin_small_letter_a = char32_t{0x0061},    // 'a'
   latin_small_letter_b = char32_t{0x0062},    // 'b'
+  latin_small_letter_e = char32_t{0x0065},    // 'e'
   latin_small_letter_f = char32_t{0x0066},    // 'f'
-  latin_small_letter_n = char32_t{0x006e},    // 'n'
+  latin_small_letter_n = char32_t{0x006E},    // 'n'
   latin_small_letter_r = char32_t{0x0072},    // 'r'
   latin_small_letter_t = char32_t{0x0074},    // 't'
   latin_small_letter_u = char32_t{0x0075},    // 'u'
   latin_small_letter_v = char32_t{0x0076},    // 'v'
   latin_small_letter_x = char32_t{0x0078},    // 'x'
-  latin_small_letter_z = char32_t{0x007a},    // 'z'
-  line_feed = char32_t{0x000a},               // '\n'
+  latin_small_letter_z = char32_t{0x007A},    // 'z'
+  line_feed = char32_t{0x000A},               // '\n'
   line_separator = char32_t{0x2028},
-  no_break_space = char32_t{0x00a0},
+  no_break_space = char32_t{0x00A0},
   null_char = char32_t{0x0000},
   number_sign = char32_t{0x0023},  // '#'
   paragraph_separator = char32_t{0x2029},
   quotation_mark = char32_t{0x0022},   // '"'
-  reverse_solidus = char32_t{0x005c},  // '\'
-  solidus = char32_t{0x002f},          // '/'
+  reverse_solidus = char32_t{0x005C},  // '\'
+  solidus = char32_t{0x002F},          // '/'
   space = char32_t{0x0020},            // ' '
-  vertical_tabulation = char32_t{0x000b},
+  vertical_tabulation = char32_t{0x000B},
 };
 
 namespace details {
@@ -553,6 +557,23 @@ constexpr bool isalnum (char32_t const c) noexcept {
           c <= char_set::latin_capital_letter_z) ||
          (c >= char_set::latin_small_letter_a &&
           c <= char_set::latin_small_letter_z);
+}
+
+constexpr std::optional<uint_least16_t> digit_offset (
+    char32_t code_point) noexcept {
+  if (code_point >= char_set::digit_zero &&
+      code_point <= char_set::digit_nine) {
+    return static_cast<uint_least16_t> (char_set::digit_zero);
+  }
+  if (code_point >= char_set::latin_small_letter_a &&
+      code_point <= char_set::latin_small_letter_f) {
+    return static_cast<uint_least16_t> (char_set::latin_small_letter_a - 10U);
+  }
+  if (code_point >= char_set::latin_capital_letter_a &&
+      code_point <= char_set::latin_capital_letter_f) {
+    return static_cast<uint_least16_t> (char_set::latin_capital_letter_a - 10U);
+  }
+  return std::nullopt;
 }
 
 #define PEEJAY_HEX_CONSUMER_REQUIRES                                           \
@@ -851,6 +872,8 @@ private:
     exponent_sign_state,
     exponent_initial_digit_state,
     exponent_digit_state,
+    initial_hex_digit,
+    hex_digits,
   };
 
   bool is_neg_ = false;
@@ -886,6 +909,7 @@ bool number_matcher<Backend>::in_terminal_state () const {
   case frac_state:
   case frac_digit_state:
   case exponent_digit_state:
+  case hex_digits:
   case done_state: return true;
   default: return false;
   }
@@ -920,14 +944,18 @@ template <typename Backend>
 bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
                                              char32_t const c) {
   bool match = true;
-  if (c == '.') {
+  if (c == char_set::full_stop) {
     this->set_state (frac_initial_digit_state);
-  } else if (c == 'e' || c == 'E') {
+  } else if (c == char_set::latin_small_letter_e ||
+             c == char_set::latin_capital_letter_e) {
     this->set_state (exponent_sign_state);
-  } else if (c >= '0' && c <= '9') {
+  } else if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
     // digits are definitely not part of the next token so we can issue an error
     // right here.
     this->set_error (parser, error::number_out_of_range);
+  } else if (c == char_set::latin_small_letter_x &&
+             parser.extension_enabled (extensions::numbers)) {
+    this->set_state (initial_hex_digit);
   } else {
     // the 'frac' production is optional.
     match = false;
@@ -1094,6 +1122,26 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
     case exponent_digit_state:
       match = this->do_exponent_digit_state (parser, c);
       break;
+    case initial_hex_digit:
+      if (!digit_offset (c)) {
+        this->set_error (parser, error::expected_digits);
+        break;
+      }
+      this->set_state (hex_digits);
+      [[fallthrough]];
+    case hex_digits:
+      if (auto const offset = digit_offset (c); !offset) {
+        this->set_state (done_state);
+      } else {
+        uint64_t const new_acc =
+            int_acc_ * 16U + static_cast<uint64_t> (c - *offset);
+        if (new_acc < int_acc_) {  // Did this overflow?
+          this->set_error (parser, error::number_out_of_range);
+        } else {
+          int_acc_ = new_acc;
+        }
+      }
+      break;
     case done_state:
     default: unreachable (); break;
     }
@@ -1232,24 +1280,6 @@ private:
   /// the four digits have been consumed, this UTF-16 code point value is
   /// converted to UTF-8 and added to the output.
   uint_least16_t hex_ = 0U;
-
-  static std::optional<uint_least16_t> digit_offset (
-      char32_t code_point) noexcept {
-    if (code_point >= char_set::digit_zero &&
-        code_point <= char_set::digit_nine) {
-      return static_cast<uint_least16_t> (char_set::digit_zero);
-    }
-    if (code_point >= char_set::latin_small_letter_a &&
-        code_point <= char_set::latin_small_letter_f) {
-      return static_cast<uint_least16_t> (char_set::latin_small_letter_a - 10U);
-    }
-    if (code_point >= char_set::latin_capital_letter_a &&
-        code_point <= char_set::latin_capital_letter_f) {
-      return static_cast<uint_least16_t> (char_set::latin_capital_letter_a -
-                                          10U);
-    }
-    return std::nullopt;
-  }
 };
 
 ///{@

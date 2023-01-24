@@ -330,3 +330,45 @@ TEST_F (Number, BadExponentAfterPoint) {
   p.input (u8"1.E"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
+// NOLINTNEXTLINE
+TEST_F (Number, Hex) {
+  EXPECT_CALL (callbacks_, uint64_value (uint64_t{0x10})).Times (1);
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"0x10"sv).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+TEST_F (Number, NegativeHex) {
+  EXPECT_CALL (callbacks_, int64_value (int64_t{-31})).Times (1);
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"-0x1f"sv).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, HexExtensionDisabled) {
+  EXPECT_CALL (callbacks_, uint64_value (uint64_t{0})).Times (1);
+  auto p = make_parser (proxy_);
+  p.input (u8"0x10"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::unexpected_extra_input))
+      << "Error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, BadLetterAfterX) {
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"0xt"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
+      << "Error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, EndAfterX) {
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"0x"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
+      << "Error was: " << p.last_error ().message ();
+}
