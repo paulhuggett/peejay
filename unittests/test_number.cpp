@@ -32,6 +32,7 @@ using peejay::parser;
 using peejay::u8string_view;
 
 using testing::DoubleEq;
+using testing::IsNan;
 using testing::StrictMock;
 
 namespace {
@@ -386,6 +387,23 @@ TEST_F (Number, Infinity) {
 TEST_F (Number, InfinityExtensionDisabled) {
   auto p = make_parser (proxy_);
   p.input (u8"Infinity"sv).eof ();
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
+      << "Error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, NaN) {
+  EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"NaN"sv).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, NaNExtensionDisabled) {
+  auto p = make_parser (proxy_);
+  p.input (u8"NaN"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
       << "Error was: " << p.last_error ().message ();

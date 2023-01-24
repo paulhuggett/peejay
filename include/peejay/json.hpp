@@ -517,6 +517,7 @@ enum char_set : char32_t {
   latin_capital_letter_e = char32_t{0x0045},  // 'E'
   latin_capital_letter_f = char32_t{0x0046},  // 'F'
   latin_capital_letter_i = char32_t{0x0049},  // 'I'
+  latin_capital_letter_n = char32_t{0x004E},  // 'N'
   latin_capital_letter_x = char32_t{0x0058},  // 'X'
   latin_capital_letter_z = char32_t{0x005A},  // 'Z'
   latin_small_letter_a = char32_t{0x0061},    // 'a'
@@ -840,6 +841,26 @@ class infinity_token_matcher
 public:
   infinity_token_matcher ()
       : token_matcher<Backend, infinity_complete<Backend>> (u8"Infinity", {}) {}
+};
+
+//*                   _       _             *
+//*  _ _  __ _ _ _   | |_ ___| |_____ _ _   *
+//* | ' \/ _` | ' \  |  _/ _ \ / / -_) ' \  *
+//* |_||_\__,_|_||_|  \__\___/_\_\___|_||_| *
+//*                                         *
+template <typename Backend>
+struct nan_complete {
+  std::error_code operator() (parser<Backend> &p) const {
+    return p.backend ().double_value (
+        std::numeric_limits<double>::quiet_NaN ());
+  }
+};
+
+template <typename Backend>
+class nan_token_matcher : public token_matcher<Backend, nan_complete<Backend>> {
+public:
+  nan_token_matcher ()
+      : token_matcher<Backend, nan_complete<Backend>> (u8"NaN", {}) {}
 };
 
 //*                 _              *
@@ -2315,6 +2336,17 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
       }
       this->set_error (parser, error::expected_token);
       return {null_pointer (), true};
+
+    case char_set::latin_capital_letter_n:
+      if (parser.extension_enabled (extensions::numbers)) {
+        return {
+            this->template make_terminal_matcher<nan_token_matcher<Backend>> (
+                parser),
+            false};
+      }
+      this->set_error (parser, error::expected_token);
+      return {null_pointer (), true};
+
     case 't':
       return {
           this->template make_terminal_matcher<true_token_matcher<Backend>> (
@@ -2367,14 +2399,14 @@ struct singleton_storage {
   storage_t<eof_matcher<Backend>> eof;
   storage_t<whitespace_matcher<Backend>> trailing_ws;
   storage_t<root_matcher<Backend>> root;
-  std::variant<details::number_matcher<Backend>,
-               details::string_matcher<Backend>,
-               details::identifier_matcher<Backend>,
-               details::true_token_matcher<Backend>,
-               details::false_token_matcher<Backend>,
-               details::null_token_matcher<Backend>,
-               details::infinity_token_matcher<Backend>,
-               details::whitespace_matcher<Backend>>
+  std::variant<
+      details::number_matcher<Backend>, details::string_matcher<Backend>,
+      details::identifier_matcher<Backend>,
+      details::true_token_matcher<Backend>,
+      details::false_token_matcher<Backend>,
+      details::null_token_matcher<Backend>,
+      details::infinity_token_matcher<Backend>,
+      details::nan_token_matcher<Backend>, details::whitespace_matcher<Backend>>
       terminals_;
 };
 
