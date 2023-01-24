@@ -514,6 +514,7 @@ enum char_set : char32_t {
   latin_small_letter_t = char32_t{0x0074},    // 't'
   latin_small_letter_u = char32_t{0x0075},    // 'u'
   latin_small_letter_v = char32_t{0x0076},    // 'v'
+  latin_small_letter_x = char32_t{0x0078},    // 'x'
   latin_small_letter_z = char32_t{0x007a},    // 'z'
   line_feed = char32_t{0x000a},               // '\n'
   line_separator = char32_t{0x2028},
@@ -554,6 +555,11 @@ constexpr bool isalnum (char32_t const c) noexcept {
           c <= char_set::latin_small_letter_z);
 }
 
+#define PEEJAY_HEX_CONSUMER_REQUIRES                                           \
+  PEEJAY_CXX20REQUIRES ((                                                      \
+      LastHexState > FirstHexState && LastHexState - FirstHexState + 1 <= 4 && \
+      (PostState < FirstHexState || PostState > LastHexState)))
+
 /// The base class for the various state machines ("matchers") which implement
 /// the various productions of the JSON grammar.
 //-MARK:matcher
@@ -561,9 +567,7 @@ template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher {
   template <int FirstHexState, int LastHexState, int PostState>
-  PEEJAY_CXX20REQUIRES ((LastHexState - FirstHexState + 1 == 4 &&
-                         (PostState<FirstHexState || PostState> LastHexState)))
-  friend class hex_consumer;
+  PEEJAY_HEX_CONSUMER_REQUIRES friend class hex_consumer;
 
 public:
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
@@ -1160,12 +1164,10 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
 ///
 /// \tparam FirstHexState  The initial hex character state.
 /// \tparam LastHexState The final hex character state.
-/// \tparam PostState The state to which the match will switch after the four
-///                   hex characters have been consumed.
+/// \tparam PostState The state to which the matcher will be switched after
+///                   the four hex characters have been consumed.
 template <int FirstHexState, int LastHexState, int PostState>
-PEEJAY_CXX20REQUIRES ((LastHexState - FirstHexState + 1 == 4 &&
-                       (PostState<FirstHexState || PostState> LastHexState)))
-class hex_consumer {
+PEEJAY_HEX_CONSUMER_REQUIRES class hex_consumer {
 public:
   static constexpr auto first_hex_state = FirstHexState;
   static constexpr auto last_hex_state = LastHexState;
@@ -1176,6 +1178,14 @@ public:
     return utf_16_to_8_.partial ();
   }
 
+  /// Signal the start of a two or four hex digit sequence.
+  ///
+  /// \p is_utf_16  Pass true if expecting a four digit UTF-16 sequence,
+  ///               false if two digit UTF-8 hex digits should follow.
+  void start (bool is_utf_16) noexcept {
+    utf16_ = is_utf_16;
+    hex_ = 0U;
+  }
   /// Processes a code point as part of a hex escape sequence (\\uXXXX) for a
   /// string or identifier.
   ///
@@ -1200,9 +1210,15 @@ public:
       owner->set_state (state + 1);
       return;
     }
-    utf_16_to_8_ (hex_, std::back_inserter (*str));
-    if (!utf_16_to_8_.well_formed ()) {
-      owner->set_error (parser, error::bad_unicode_code_point);
+    auto out = std::back_inserter (*str);
+    if (utf16_) {
+      utf_16_to_8_ (hex_, out);
+      if (!utf_16_to_8_.well_formed ()) {
+        owner->set_error (parser, error::bad_unicode_code_point);
+      }
+    } else {
+      assert (hex_ <= 0xFF);
+      *out = static_cast<char8> (hex_);
     }
     hex_ = 0;
     owner->set_state (PostState);
@@ -1211,6 +1227,7 @@ public:
 private:
   /// UTF-16 to UTF-8 converter.
   icubaby::t16_8 utf_16_to_8_;
+  bool utf16_ = false;
   /// Used to accumulate the code point value from the four hex digits. After
   /// the four digits have been consumed, this UTF-16 code point value is
   /// converted to UTF-8 and added to the output.
@@ -1404,7 +1421,16 @@ auto string_matcher<Backend>::consume_escape_state (parser<Backend> &parser,
   case char_set::latin_small_letter_t:
     code_point = char_set::character_tabulation;
     break;
-  case char_set::latin_small_letter_u: return {hex1_state};
+  case char_set::latin_small_letter_u:
+    hex_.start (true);  // Signal the start of four hex-digit UTF-16.
+    return {hex1_state};
+
+  case char_set::latin_small_letter_x:
+    if (parser.extension_enabled (extensions::string_escapes)) {
+      hex_.start (false);  // Signal the start of two hex-digit UTF-8.
+      return {hex3_state};
+    }
+    return {error::invalid_escape_char};
 
   case char_set::apostrophe:
     if (!parser.extension_enabled (extensions::string_escapes)) {
@@ -1619,6 +1645,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
     if (c != char_set::latin_small_letter_u) {
       return install_error (error::expected_token);  // TODO: expected 'u'?
     }
+    hex_.start (true);  // Signal the start of four hex-digit UTF-16.
     return change_state (hex1_state);
   case hex1_state:
   case hex2_state:

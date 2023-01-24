@@ -148,6 +148,18 @@ TEST_F (String, BadEscape2) {
 }
 
 // NOLINTNEXTLINE
+TEST_F (String, XEscape) {
+  EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (1);
+
+  auto p = make_parser (proxy_, extensions::string_escapes);
+  // String contains just U+002F SOLIDUS ('/')
+  p.input (u8R"("\x2f")"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero was: "
+                                 << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
 TEST_F (String, BackslashQuoteUnterminated) {
   auto p = make_parser (proxy_);
   p.input (u8R"("a\")"sv).eof ();
@@ -165,13 +177,13 @@ TEST_F (String, TrailingBackslashUnterminated) {
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
-TEST_F (String, FourWaysToWriteSolidus) {
+TEST_F (String, FiveWaysToWriteSolidus) {
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (4);
+  EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (5);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
-  auto p = make_parser (proxy_);
-  p.input (u8R"([ "\u002F", "\u002f", "\/", "/" ])"sv).eof ();
+  auto p = make_parser (proxy_, extensions::string_escapes);
+  p.input (u8R"([ "\x2F", "\u002F", "\u002f", "\/", "/" ])"sv).eof ();
 
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
