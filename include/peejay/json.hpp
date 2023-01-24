@@ -500,7 +500,15 @@ enum char_set : char32_t {
   backspace = char32_t{0x0008},             // '\b'
   carriage_return = char32_t{0x000D},       // '\r'
   character_tabulation = char32_t{0x0009},  // '\t'
+  digit_eight = char32_t{0x0038},           // '8'
+  digit_five = char32_t{0x0035},            // '5'
+  digit_four = char32_t{0x0034},            // '4'
   digit_nine = char32_t{0x0039},            // '9'
+  digit_one = char32_t{0x0031},             // '1'
+  digit_seven = char32_t{0x0037},           // '7'
+  digit_six = char32_t{0x0036},             // '6'
+  digit_three = char32_t{0x0033},           // '3'
+  digit_two = char32_t{0x0032},             // '2'
   digit_zero = char32_t{0x0030},            // '0'
   en_quad = char32_t{0x2000},
   form_feed = char32_t{0x000C},               // '\f'
@@ -508,7 +516,8 @@ enum char_set : char32_t {
   latin_capital_letter_a = char32_t{0x0041},  // 'A'
   latin_capital_letter_e = char32_t{0x0045},  // 'E'
   latin_capital_letter_f = char32_t{0x0046},  // 'F'
-  latin_capital_letter_z = char32_t{0x005a},  // 'Z'
+  latin_capital_letter_i = char32_t{0x0049},  // 'I'
+  latin_capital_letter_z = char32_t{0x005A},  // 'Z'
   latin_small_letter_a = char32_t{0x0061},    // 'a'
   latin_small_letter_b = char32_t{0x0062},    // 'b'
   latin_small_letter_e = char32_t{0x0065},    // 'e'
@@ -810,6 +819,26 @@ class null_token_matcher
 public:
   null_token_matcher ()
       : token_matcher<Backend, null_complete<Backend>> (u8"null", {}) {}
+};
+
+//*  _       __ _      _ _          _       _             *
+//* (_)_ _  / _(_)_ _ (_) |_ _  _  | |_ ___| |_____ _ _   *
+//* | | ' \|  _| | ' \| |  _| || | |  _/ _ \ / / -_) ' \  *
+//* |_|_||_|_| |_|_||_|_|\__|\_, |  \__\___/_\_\___|_||_| *
+//*                          |__/                         *
+template <typename Backend>
+struct infinity_complete {
+  std::error_code operator() (parser<Backend> &p) const {
+    return p.backend ().double_value (std::numeric_limits<double>::infinity ());
+  }
+};
+
+template <typename Backend>
+class infinity_token_matcher
+    : public token_matcher<Backend, infinity_complete<Backend>> {
+public:
+  infinity_token_matcher ()
+      : token_matcher<Backend, infinity_complete<Backend>> (u8"Infinity", {}) {}
 };
 
 //*                 _              *
@@ -2238,16 +2267,16 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
       [[fallthrough]];
 
     case '-':
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
+    case char_set::digit_zero:
+    case char_set::digit_one:
+    case char_set::digit_two:
+    case char_set::digit_three:
+    case char_set::digit_four:
+    case char_set::digit_five:
+    case char_set::digit_six:
+    case char_set::digit_seven:
+    case char_set::digit_eight:
+    case char_set::digit_nine:
       return {this->template make_terminal_matcher<number_matcher<Backend>> (
                   parser),
               false};
@@ -2260,6 +2289,14 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     case '"':
       return {this->make_string_matcher (parser, false /*object key?*/, *ch),
               false};
+    case char_set::latin_capital_letter_i:
+      if (parser.extension_enabled (extensions::numbers)) {
+        return {this->template make_terminal_matcher<
+                    infinity_token_matcher<Backend>> (parser),
+                false};
+      }
+      this->set_error (parser, error::expected_token);
+      return {null_pointer (), true};
     case 't':
       return {
           this->template make_terminal_matcher<true_token_matcher<Backend>> (
@@ -2318,6 +2355,7 @@ struct singleton_storage {
                details::true_token_matcher<Backend>,
                details::false_token_matcher<Backend>,
                details::null_token_matcher<Backend>,
+               details::infinity_token_matcher<Backend>,
                details::whitespace_matcher<Backend>>
       terminals_;
 };
