@@ -17,7 +17,7 @@ Objects may have a single trailing comma | `extensions::object_trailing_comma`
 Arrays may have a single trailing comma | `extensions::array_trailing_comma`
 Strings may be single quoted | `extensions::single_quote_string`
 Strings may span multiple lines by escaping new line characters | `extensions::string_escapes`
-Strings may include character escapes |
+Strings may include character escapes | `extensions::string_escapes`
 Numbers may be hexadecimal |
 Numbers may have a leading or trailing decimal point | 
 Numbers may be IEEE 754 positive infinity, negative infinity, and NaN |
