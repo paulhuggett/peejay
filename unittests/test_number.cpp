@@ -349,11 +349,10 @@ TEST_F (Number, NegativeHex) {
 }
 // NOLINTNEXTLINE
 TEST_F (Number, HexExtensionDisabled) {
-  EXPECT_CALL (callbacks_, uint64_value (uint64_t{0})).Times (1);
   auto p = make_parser (proxy_);
   p.input (u8"0x10"sv).eof ();
   EXPECT_TRUE (p.has_error ());
-  EXPECT_EQ (p.last_error (), make_error_code (error::unexpected_extra_input))
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range))
       << "Error was: " << p.last_error ().message ();
 }
 // NOLINTNEXTLINE

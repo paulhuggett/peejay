@@ -517,6 +517,7 @@ enum char_set : char32_t {
   latin_capital_letter_e = char32_t{0x0045},  // 'E'
   latin_capital_letter_f = char32_t{0x0046},  // 'F'
   latin_capital_letter_i = char32_t{0x0049},  // 'I'
+  latin_capital_letter_x = char32_t{0x0058},  // 'X'
   latin_capital_letter_z = char32_t{0x005A},  // 'Z'
   latin_small_letter_a = char32_t{0x0061},    // 'a'
   latin_small_letter_b = char32_t{0x0062},    // 'b'
@@ -973,22 +974,39 @@ template <typename Backend>
 bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
                                              char32_t const c) {
   bool match = true;
-  if (c == char_set::full_stop) {
-    this->set_state (frac_initial_digit_state);
-  } else if (c == char_set::latin_small_letter_e ||
-             c == char_set::latin_capital_letter_e) {
+  switch (c) {
+  case char_set::full_stop: this->set_state (frac_initial_digit_state); break;
+  case char_set::latin_small_letter_e:
+  case char_set::latin_capital_letter_e:
     this->set_state (exponent_sign_state);
-  } else if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
+    break;
+  case char_set::digit_zero:
+  case char_set::digit_one:
+  case char_set::digit_two:
+  case char_set::digit_three:
+  case char_set::digit_four:
+  case char_set::digit_five:
+  case char_set::digit_six:
+  case char_set::digit_seven:
+  case char_set::digit_eight:
+  case char_set::digit_nine:
     // digits are definitely not part of the next token so we can issue an error
     // right here.
     this->set_error (parser, error::number_out_of_range);
-  } else if (c == char_set::latin_small_letter_x &&
-             parser.extension_enabled (extensions::numbers)) {
-    this->set_state (initial_hex_digit);
-  } else {
+    break;
+  case char_set::latin_small_letter_x:
+  case char_set::latin_capital_letter_x:
+    if (parser.extension_enabled (extensions::numbers)) {
+      this->set_state (initial_hex_digit);
+    } else {
+      this->set_error (parser, error::number_out_of_range);
+    }
+    break;
+  default:
     // the 'frac' production is optional.
     match = false;
     this->complete (parser);
+    break;
   }
   return match;
 }
