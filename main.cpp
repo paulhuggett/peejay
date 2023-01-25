@@ -37,7 +37,6 @@ public:
   std::error_code string_value (u8string_view const& s) {
     os_ << '"';
     std::ostream_iterator<char> out{os_};
-    // TODO: not yet supported by Xcode 14.0.1
 #if __cpp_lib_ranges
     std::ranges::copy (s, out);
 #else
