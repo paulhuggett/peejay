@@ -268,4 +268,7 @@ if __name__ == '__main__':
     else:
         db = patch_special_code_points(db)
         entries = code_run_array(db)
-        emit_header(entries, args.include_guard) if args.emit_header else emit_source(db, entries, args.header_file)
+        if args.emit_header:
+            emit_header(entries, args.include_guard)
+        else:
+            emit_source(db, entries, args.header_file)
