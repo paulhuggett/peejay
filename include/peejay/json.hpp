@@ -1729,7 +1729,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
       if (std::error_code const error = parser.backend ().key (*str_)) {
         this->set_error (parser, error);
       }
-      // TODO: check whether identifier is empty?
+      // TODO(paul) check whether identifier is empty?
       this->set_state (done_state);
       return retry_char_and_iterate;
     }
@@ -1737,7 +1737,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
     break;
   case u_state:
     if (c != char_set::latin_small_letter_u) {
-      return install_error (error::expected_token);  // TODO: expected 'u'?
+      return install_error (error::expected_token);  // TODO(paul) expected 'u'?
     }
     hex_.start (true);  // Signal the start of four hex-digit UTF-16.
     return change_state (hex1_state);
@@ -2173,7 +2173,7 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser,
   switch (c) {
   case char_set::space: break;  // Just consume.
   case char_set::character_tabulation:
-    // TODO: tab expansion.
+    // TODO(paul) tab expansion.
     break;
   case char_set::carriage_return: this->cr (parser, crlf_state); break;
   case char_set::line_feed: this->lf (parser); break;
@@ -2260,7 +2260,7 @@ whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
     this->cr (parser, multi_line_comment_crlf_state);
     break;
   case char_set::line_feed: this->lf (parser); break;
-  case char_set::character_tabulation: break;  // TODO: tab expansion.
+  case char_set::character_tabulation: break;  // TODO(paul) tab expansion.
   default: break;             // Just consume.
   }
   return {null_pointer (), true};  // Consume this character.

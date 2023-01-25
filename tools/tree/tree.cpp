@@ -51,7 +51,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
     auto* const data = buffer.data ();
     in.read (data, buffer.size ());
     auto const available = as_unsigned (in.gcount ());
-    // TODO: I just assume that the IStream yields UTF-8.
+    // TODO(paul) I just assume that the IStream yields UTF-8.
 #if PEEJAY_HAVE_SPAN
     p.input (
         std::span{reinterpret_cast<peejay::char8 const*> (data), available});
@@ -120,7 +120,7 @@ public:
   }
 
 private:
-  // TODO: use std::span<> when we can drop C++17 support!
+  // TODO(paul) use std::span<> when we can drop C++17 support!
   std::pair<void*, size_t> span_;
 };
 

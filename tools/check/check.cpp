@@ -51,7 +51,7 @@ static bool slurp (IStream&& in, char const* file_name) {
                            std::ios_base::eofbit)) == 0) {
     std::getline (in, line);
     line += '\n';
-    // TODO: need to convert encoding from host to UTF-8 here?
+    // TODO(paul) need to convert encoding from host to UTF-8 here?
     u8line.clear();
     u8line.reserve (line.size ());
     auto const op = [] (char c) { return static_cast<char8> (c); };
