@@ -44,7 +44,7 @@ constexpr auto as_unsigned (T v) {
 template <typename IStream>
 std::variant<std::error_code, std::optional<peejay::element>> slurp (
     pjparser& p, IStream&& in) {
-  std::array<char, 256> buffer;
+  std::array<char, 256> buffer{};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
