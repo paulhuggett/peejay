@@ -54,9 +54,13 @@ static bool slurp (IStream&& in, char const* file_name) {
     // TODO: need to convert encoding from host to UTF-8 here?
     u8line.clear();
     u8line.reserve (line.size ());
+    auto const op = [] (char c) { return static_cast<char8> (c); };
+#if __cpp_lib_ranges
+    std::ranges::transform (line, std::back_inserter (u8line), op);
+#else
     std::transform (std::begin (line), std::end (line),
-                    std::back_inserter (u8line),
-                    [] (char c) { return static_cast<char8> (c); });
+                    std::back_inserter (u8line), op);
+#endif
     p.input (u8line);
     if (auto const err = p.last_error ()) {
       report_error (p, file_name, line);
