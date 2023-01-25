@@ -131,7 +131,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
   if (fd.get () == -1) {
     return std::error_code{errno, std::generic_category ()};
   }
-  struct stat sb;
+  struct stat sb {};
   if (::fstat (fd.get (), &sb) == -1) {
     return std::error_code{errno, std::generic_category ()};
   }
