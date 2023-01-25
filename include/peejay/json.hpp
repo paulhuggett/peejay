@@ -546,21 +546,6 @@ enum char_set : char32_t {
 
 namespace details {
 
-constexpr bool isspace (char32_t const code_point,
-                        bool const extra_whitespace) noexcept {
-  if (code_point == char_set::character_tabulation ||
-      code_point == char_set::line_feed ||
-      code_point == char_set::carriage_return ||
-      code_point == char_set::space) {
-    return true;
-  }
-  if (extra_whitespace &&
-      code_point_grammar_rule (code_point) == grammar_rule::whitespace) {
-    return true;
-  }
-  return false;
-}
-
 /// Checks if the given character is an alphanumeric character.
 constexpr bool isalnum (char32_t const c) noexcept {
   return (c >= char_set::digit_zero && c <= char_set::digit_nine) ||
@@ -1716,7 +1701,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   char32_t const c = *code_point;
   switch (this->get_state ()) {
   case start_state:
-    if (isspace (c, parser.extension_enabled (extensions::extra_whitespace))) {
+    if (whitespace_matcher<Backend>::want_code_point (c)) {
       return {this->make_whitespace_matcher (parser), false};
     }
     if (c == char_set::reverse_solidus) {
@@ -1837,7 +1822,7 @@ array_matcher<Backend>::consume (parser<Backend> &p,
     return {this->make_root_matcher (p), false};
     break;
   case comma_state:
-    if (isspace (c, p.extension_enabled (extensions::extra_whitespace))) {
+    if (whitespace_matcher<Backend>::want_code_point (c)) {
       // just consume whitespace before a comma.
       return {this->make_whitespace_matcher (p), false};
     }
@@ -1939,7 +1924,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_error (parser, error::expected_object_key);
     break;
   case colon_state:
-    if (isspace (c, parser.extension_enabled (extensions::extra_whitespace))) {
+    if (whitespace_matcher<Backend>::want_code_point (c)) {
       // just consume whitespace before the colon.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -1953,7 +1938,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
   case comma_state:
-    if (isspace (c, parser.extension_enabled (extensions::extra_whitespace))) {
+    if (whitespace_matcher<Backend>::want_code_point (c)) {
       // just consume whitespace before the comma.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -2011,6 +1996,12 @@ public:
   whitespace_matcher &operator= (whitespace_matcher const &) = delete;
   whitespace_matcher &operator= (whitespace_matcher &&) noexcept = default;
 
+  /// Returns true if the argument \p code_point potentially represents the
+  /// start of a whitespace sequence.
+  ///
+  /// \p code_point  The Unicode code point which is to be tested.
+  static constexpr bool want_code_point (char32_t code_point) noexcept;
+
   std::pair<typename matcher<Backend>::pointer, bool> consume (
       parser<Backend> &parser, std::optional<char32_t> ch) override;
 
@@ -2062,6 +2053,38 @@ private:
     return true;
   }
 };
+
+// want code point
+// ~~~~~~~~~~~~~~~
+template <typename Backend>
+constexpr bool whitespace_matcher<Backend>::want_code_point (
+    char32_t code_point) noexcept {
+  bool result = false;
+  switch (code_point) {
+  // The following two code points aren't whitespace but potentially introduce
+  // a comment (assuming that the associated extension has been enabled).
+  case char_set::number_sign:
+  case char_set::solidus: return true;
+  case char_set::space:
+  case char_set::character_tabulation:
+  case char_set::carriage_return:
+  case char_set::line_feed:
+  case char_set::vertical_tabulation:
+  case char_set::form_feed:
+  case char_set::no_break_space: result = true; break;
+  default:
+    // The above collection of code points covers everything below 0x100 (which
+    // are, by far, the most common). For code points above that, we need to
+    // consult the table.
+    if (code_point > 0xFF) {
+      result = code_point_grammar_rule (code_point) == grammar_rule::whitespace;
+    }
+    break;
+  }
+  assert (result ==
+          (code_point_grammar_rule (code_point) == grammar_rule::whitespace));
+  return result;
+}
 
 // consume
 // ~~~~~~~
@@ -2164,8 +2187,20 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser,
     break;
   default:
     if (parser.extension_enabled (extensions::extra_whitespace)) {
-      grammar_rule rule = code_point_grammar_rule (c);
-      if (rule == grammar_rule::whitespace) {
+      bool is_ws = false;
+      switch (c) {
+      case char_set::vertical_tabulation:
+      case char_set::form_feed:
+      case char_set::no_break_space: is_ws = true; break;
+      default:
+        if (c > 0xFF) {
+          is_ws = code_point_grammar_rule (c) == grammar_rule::whitespace;
+        }
+        break;
+      }
+      assert (is_ws ==
+              (code_point_grammar_rule (c) == grammar_rule::whitespace));
+      if (is_ws) {
         return {null_pointer (), true};  // Consume this character.
       }
     }
@@ -2304,8 +2339,10 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
   switch (this->get_state ()) {
   case start_state:
     this->set_state (new_token_state);
-    return {this->make_whitespace_matcher (parser), false};
-
+    if (whitespace_matcher<Backend>::want_code_point (*ch)) {
+      return {this->make_whitespace_matcher (parser), false};
+    }
+    [[fallthrough]];
   case new_token_state: {
     this->set_state (done_state);
     switch (*ch) {

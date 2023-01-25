@@ -90,7 +90,24 @@ TEST_F (Comment, BashInsideArray) {
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
+// NOLINTNEXTLINE
+TEST_F (Comment, BashInsideArrayWithoutWhitespace) {
+  using testing::_;
+  EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
+  auto p = make_parser (proxy_, extensions::bash_comments);
+  p.input (
+       u8R"([#comment
+1,# comment containing #
+2# comment
+]
+)"sv)
+      .eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
 // NOLINTNEXTLINE
 TEST_F (Comment, SingleLineDisabled) {
   auto p = make_parser (proxy_);
@@ -141,6 +158,24 @@ TEST_F (Comment, SingleLineInsideArray) {
        u8R"([//comment
 1,    // comment containing //
 2 // comment
+]
+)"sv)
+      .eof ();
+  EXPECT_FALSE (p.has_error ())
+      << "JSON error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Comment, SingleLineInsideArrayWithoutWhitespace) {
+  using testing::_;
+  EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, end_array ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::single_line_comments);
+  p.input (
+       u8R"([//comment
+1,// comment containing //
+2// comment
 ]
 )"sv)
       .eof ();

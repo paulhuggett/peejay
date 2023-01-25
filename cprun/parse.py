@@ -165,8 +165,10 @@ def patch_special_code_points (db: DbDict) -> DbDict:
     assert CATEGORY_TO_GRAMMAR_RULE[GeneralCategory.Spacing_Mark] == GrammarRule.identifier_part
     special_code_points = {
         CodePoint(0x0009): GeneralCategory.Space_Separator,
+        CodePoint(0x000A): GeneralCategory.Space_Separator,
         CodePoint(0x000B): GeneralCategory.Space_Separator,
         CodePoint(0x000C): GeneralCategory.Space_Separator,
+        CodePoint(0x000D): GeneralCategory.Space_Separator,
         CodePoint(0x0020): GeneralCategory.Space_Separator,
         CodePoint(0x0024): GeneralCategory.Other_Letter,
         CodePoint(0x005F): GeneralCategory.Other_Letter,
