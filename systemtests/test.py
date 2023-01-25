@@ -2,9 +2,9 @@
 from subprocess import run
 from os import walk
 from os.path import join, split, splitext
-from sys import exit
 from pathlib import Path
 from typing import Generator
+import sys
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -50,4 +50,4 @@ if __name__ == "__main__":
     flat_results = [item for sublist in results for item in sublist]
     failures = flat_results.count(False)
     print("PASSES: {0}, FAILURES={1}".format(flat_results.count(True), failures))
-    exit(EXIT_SUCCESS if failures == 0 else EXIT_FAILURE)
+    sys.exit(EXIT_SUCCESS if failures == 0 else EXIT_FAILURE)
