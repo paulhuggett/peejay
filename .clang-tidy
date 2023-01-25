@@ -4,6 +4,7 @@ Checks:            |-
   -altera-*,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -fuchsia-*,
   -llvmlibc-*,
   -misc-no-recursion,
