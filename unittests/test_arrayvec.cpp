@@ -269,7 +269,7 @@ TEST (ArrayVec, MoveLargeToSmall) {
   arrayvec<int, 3> a{3, 5, 7};
   arrayvec<int, 3> b{11};
   b = std::move (a);
-  EXPECT_THAT (a, ElementsAre (3, 5, 7));
+  EXPECT_THAT (b, ElementsAre (3, 5, 7));
 }
 
 // NOLINTNEXTLINE
