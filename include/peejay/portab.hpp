@@ -27,9 +27,11 @@
 #define PEEJAY_CXX20 (0)
 #endif
 
-#if PEEJAY_CXX20
+#ifdef __has_include
+#if __has_include(<version>)
 #include <version>
-#endif  // PEEJAY_CXX20
+#endif
+#endif
 
 #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
 #define PEEJAY_HAVE_CONCEPTS (1)
