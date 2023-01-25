@@ -906,6 +906,7 @@ private:
   bool do_frac_digit_state (parser<Backend> &parser, char32_t c);
   bool do_exponent_sign_state (parser<Backend> &parser, char32_t c);
   bool do_exponent_digit_state (parser<Backend> &parser, char32_t c);
+  void do_hex_digits_state (parser<Backend> &parser, char32_t c);
 
   void complete (parser<Backend> &parser);
   void number_is_float ();
@@ -1161,65 +1162,73 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
   return match;
 }
 
+// do hex digits state
+// ~~~~~~~~~~~~~~~~~~~
+template <typename Backend>
+void number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
+                                                   char32_t const c) {
+  auto const offset = digit_offset (c);
+  if (!offset) {
+    return this->set_state (done_state);
+  }
+
+  auto const new_acc = int_acc_ * 16U + static_cast<uint64_t> (c - *offset);
+  if (new_acc < int_acc_) {  // Did this overflow?
+    return this->set_error (parser, error::number_out_of_range);
+  }
+
+  int_acc_ = new_acc;
+}
+
 // consume
 // ~~~~~~~
 template <typename Backend>
 std::pair<typename matcher<Backend>::pointer, bool>
 number_matcher<Backend>::consume (parser<Backend> &parser,
                                   std::optional<char32_t> ch) {
-  bool match = true;
-  if (ch) {
-    auto const c = *ch;
-    switch (this->get_state ()) {
-    case leading_minus_state:
-      match = this->do_leading_minus_state (parser, c);
-      break;
-    case integer_initial_digit_state:
-      match = this->do_integer_initial_digit_state (parser, c);
-      break;
-    case integer_digit_state:
-      match = this->do_integer_digit_state (parser, c);
-      break;
-    case frac_state: match = this->do_frac_state (parser, c); break;
-    case frac_initial_digit_state:
-    case frac_digit_state: match = this->do_frac_digit_state (parser, c); break;
-    case exponent_sign_state:
-      match = this->do_exponent_sign_state (parser, c);
-      break;
-    case exponent_initial_digit_state:
-    case exponent_digit_state:
-      match = this->do_exponent_digit_state (parser, c);
-      break;
-    case initial_hex_digit:
-      if (!digit_offset (c)) {
-        this->set_error (parser, error::expected_digits);
-        break;
-      }
-      this->set_state (hex_digits);
-      [[fallthrough]];
-    case hex_digits:
-      if (auto const offset = digit_offset (c); !offset) {
-        this->set_state (done_state);
-      } else {
-        uint64_t const new_acc =
-            int_acc_ * 16U + static_cast<uint64_t> (c - *offset);
-        if (new_acc < int_acc_) {  // Did this overflow?
-          this->set_error (parser, error::number_out_of_range);
-        } else {
-          int_acc_ = new_acc;
-        }
-      }
-      break;
-    case done_state:
-    default: unreachable (); break;
-    }
-  } else {
+  if (!ch) {
     assert (!parser.has_error ());
     if (!this->in_terminal_state ()) {
       this->set_error (parser, error::expected_digits);
     }
     this->complete (parser);
+    return {matcher<Backend>::null_pointer (), true};
   }
+
+  bool match = true;
+  auto const c = *ch;
+  switch (this->get_state ()) {
+  case leading_minus_state:
+    match = this->do_leading_minus_state (parser, c);
+    break;
+  case integer_initial_digit_state:
+    match = this->do_integer_initial_digit_state (parser, c);
+    break;
+  case integer_digit_state:
+    match = this->do_integer_digit_state (parser, c);
+    break;
+  case frac_state: match = this->do_frac_state (parser, c); break;
+  case frac_initial_digit_state:
+  case frac_digit_state: match = this->do_frac_digit_state (parser, c); break;
+  case exponent_sign_state:
+    match = this->do_exponent_sign_state (parser, c);
+    break;
+  case exponent_initial_digit_state:
+  case exponent_digit_state:
+    match = this->do_exponent_digit_state (parser, c);
+    break;
+  case initial_hex_digit:
+    if (!digit_offset (c)) {
+      this->set_error (parser, error::expected_digits);
+      break;
+    }
+    this->set_state (hex_digits);
+    [[fallthrough]];
+  case hex_digits: this->do_hex_digits_state (parser, c); break;
+  case done_state:
+  default: unreachable (); break;
+  }
+
   return {matcher<Backend>::null_pointer (), match};
 }
 
