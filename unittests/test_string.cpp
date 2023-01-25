@@ -486,6 +486,7 @@ TEST_P (StringContinuation, ExtensionDisabled) {
       << "Got error: " << p.last_error ().message ();
 };
 
+// NOLINTNEXTLINE
 TEST_P (StringContinuation, ExtensionEnabled) {
   EXPECT_CALL (callbacks_, string_value (expected)).Times (1);
 
