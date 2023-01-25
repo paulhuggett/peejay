@@ -25,6 +25,12 @@
 
 #include "peejay/portab.hpp"
 
+#ifdef __has_include
+#if __has_include(<bit>)
+#include <bit>
+#endif
+#endif
+
 namespace peejay {
 
 #if PEEJAY_CXX20
@@ -230,11 +236,21 @@ private:
 
   T &element (size_t n) noexcept {
     assert (n < Size);
-    return *reinterpret_cast<T *> (data_.data () + n);
+    auto *const result = data_.data () + n;
+#if __cpp_lib_bit_cast
+    return *std::bit_cast<T *> (result);
+#else
+    return *reinterpret_cast<T *> (result);
+#endif
   }
   T const &element (size_t n) const noexcept {
     assert (n < Size);
-    return *reinterpret_cast<T const *> (data_.data () + n);
+    auto const *const result = data_.data () + n;
+#if __cpp_lib_bit_cast
+    return *std::bit_cast<T const *> (result);
+#else
+    return *reinterpret_cast<T const *> (result);
+#endif
   }
 
   /// The actual number of elements for which this buffer is sized.
