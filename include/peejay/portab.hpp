@@ -51,4 +51,13 @@
 // #define PEEJAY_HAVE_SPAN (0)
 #endif
 
+#if PEEJAY_CXX20 && defined(__has_cpp_attribute)
+#if __has_cpp_attribute(unlikely) >= 201803L
+#define PEEJAY_UNLIKELY_ATTRIBUTE [[unlikely]]
+#endif
+#endif
+#ifndef PEEJAY_UNLIKELY_ATTRIBUTE
+#define PEEJAY_UNLIKELY_ATTRIBUTE
+#endif
+
 #endif  // PEEJAY_PORTAB_HPP

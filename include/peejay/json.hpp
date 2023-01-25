@@ -2603,13 +2603,14 @@ void parser<Backend>::consume_code_point (char32_t code_point) {
     }
 
     if (res.first != nullptr) {
-      if (stack_.size () > max_stack_depth_) [[unlikely]] {
-        // We've already hit the maximum allowed parse stack depth. Reject this
-        // new matcher.
-        assert (!error_);
-        error_ = error::nesting_too_deep;
-        return;
-      }
+      if (stack_.size () > max_stack_depth_)
+        PEEJAY_UNLIKELY_ATTRIBUTE {
+          // We've already hit the maximum allowed parse stack depth. Reject
+          // this new matcher.
+          assert (!error_);
+          error_ = error::nesting_too_deep;
+          return;
+        }
 
       stack_.push (std::move (res.first));
       matcher_pos_ = pos_;
