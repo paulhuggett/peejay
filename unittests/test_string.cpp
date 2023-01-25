@@ -500,6 +500,7 @@ TEST_P (StringContinuation, ExtensionEnabled) {
       << p.last_error ().message ();
 };
 
+// NOLINTNEXTLINE
 INSTANTIATE_TEST_SUITE_P (
     StringContinuation, StringContinuation,
     testing::Values (std::vector<char32_t>{char_set::line_feed},
