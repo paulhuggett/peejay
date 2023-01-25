@@ -44,13 +44,15 @@ TEST_F (Whitespace, MultipleTrailingSpaces) {
 }
 
 namespace {
+
 std::u32string const extra_ws_chars{char_set::character_tabulation,
                                     char_set::vertical_tabulation,
                                     char_set::space,
                                     char_set::no_break_space,
                                     char_set::en_quad,
                                     '0'};
-}
+
+} // end anonymous namespace
 
 // NOLINTNEXTLINE
 TEST_F (Whitespace, ExtendedWhitespaceCharactersEnabled) {
