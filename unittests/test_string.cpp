@@ -177,6 +177,7 @@ TEST_F (String, TrailingBackslashUnterminated) {
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
 }
 
+// NOLINTNEXTLINE
 TEST_F (String, FiveWaysToWriteSolidus) {
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (5);
