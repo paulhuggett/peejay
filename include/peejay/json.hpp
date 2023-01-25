@@ -1701,7 +1701,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   char32_t const c = *code_point;
   switch (this->get_state ()) {
   case start_state:
-    if (whitespace_matcher<Backend>::want_code_point (c)) {
+    if (whitespace_matcher<Backend>::want_code_point (parser, c)) {
       return {this->make_whitespace_matcher (parser), false};
     }
     if (c == char_set::reverse_solidus) {
@@ -1822,7 +1822,7 @@ array_matcher<Backend>::consume (parser<Backend> &p,
     return {this->make_root_matcher (p), false};
     break;
   case comma_state:
-    if (whitespace_matcher<Backend>::want_code_point (c)) {
+    if (whitespace_matcher<Backend>::want_code_point (p, c)) {
       // just consume whitespace before a comma.
       return {this->make_whitespace_matcher (p), false};
     }
@@ -1924,7 +1924,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_error (parser, error::expected_object_key);
     break;
   case colon_state:
-    if (whitespace_matcher<Backend>::want_code_point (c)) {
+    if (whitespace_matcher<Backend>::want_code_point (parser, c)) {
       // just consume whitespace before the colon.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -1938,7 +1938,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
   case comma_state:
-    if (whitespace_matcher<Backend>::want_code_point (c)) {
+    if (whitespace_matcher<Backend>::want_code_point (parser, c)) {
       // just consume whitespace before the comma.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -1999,8 +1999,10 @@ public:
   /// Returns true if the argument \p code_point potentially represents the
   /// start of a whitespace sequence.
   ///
+  /// \p parser  The owning parser instance.
   /// \p code_point  The Unicode code point which is to be tested.
-  static constexpr bool want_code_point (char32_t code_point) noexcept;
+  static constexpr bool want_code_point (parser<Backend> &parser,
+                                         char32_t code_point) noexcept;
 
   std::pair<typename matcher<Backend>::pointer, bool> consume (
       parser<Backend> &parser, std::optional<char32_t> ch) override;
@@ -2058,13 +2060,16 @@ private:
 // ~~~~~~~~~~~~~~~
 template <typename Backend>
 constexpr bool whitespace_matcher<Backend>::want_code_point (
-    char32_t code_point) noexcept {
+    parser<Backend> &parser, char32_t code_point) noexcept {
   bool result = false;
   switch (code_point) {
   // The following two code points aren't whitespace but potentially introduce
   // a comment (assuming that the associated extension has been enabled).
   case char_set::number_sign:
-  case char_set::solidus: return true;
+    return parser.extension_enabled (extensions::bash_comments);
+  case char_set::solidus:
+    return parser.extension_enabled (extensions::multi_line_comments) ||
+           parser.extension_enabled (extensions::single_line_comments);
   case char_set::space:
   case char_set::character_tabulation:
   case char_set::carriage_return:
@@ -2339,7 +2344,7 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
   switch (this->get_state ()) {
   case start_state:
     this->set_state (new_token_state);
-    if (whitespace_matcher<Backend>::want_code_point (*ch)) {
+    if (whitespace_matcher<Backend>::want_code_point (parser, *ch)) {
       return {this->make_whitespace_matcher (parser), false};
     }
     [[fallthrough]];
@@ -2598,7 +2603,7 @@ void parser<Backend>::consume_code_point (char32_t code_point) {
     }
 
     if (res.first != nullptr) {
-      if (stack_.size () > max_stack_depth_) {
+      if (stack_.size () > max_stack_depth_) [[unlikely]] {
         // We've already hit the maximum allowed parse stack depth. Reject this
         // new matcher.
         assert (!error_);

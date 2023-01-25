@@ -164,6 +164,26 @@ TEST_F (Comment, SingleLineInsideArray) {
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
+
+// NOLINTNEXTLINE
+TEST_F (Comment, SingleLineDisabledInsideArray) {
+  EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+  EXPECT_CALL (callbacks_, boolean_value (false)).Times (1);
+
+  auto p = make_parser (proxy_);
+  p.input (
+       u8R"(
+[
+    false   // true
+]
+)"sv)
+      .eof ();
+
+  EXPECT_TRUE (p.has_error ());
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member))
+      << "JSON error was: " << p.last_error ().message ();
+}
+
 // NOLINTNEXTLINE
 TEST_F (Comment, SingleLineInsideArrayWithoutWhitespace) {
   using testing::_;
