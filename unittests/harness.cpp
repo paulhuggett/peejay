@@ -58,9 +58,13 @@ public:
   void OnTestIterationStart (UnitTest const &test, int iteration) override {
     listener_->OnTestIterationStart (test, iteration);
   }
-  void OnEnvironmentsSetUpStart (UnitTest const &) override {}
-  void OnEnvironmentsSetUpEnd (UnitTest const &) override {}
-  void OnTestStart (TestInfo const &) override {}
+  void OnEnvironmentsSetUpStart (UnitTest const &unit_test) override {
+    (void)unit_test;
+  }
+  void OnEnvironmentsSetUpEnd (UnitTest const &unit_test) override {
+    (void)unit_test;
+  }
+  void OnTestStart (TestInfo const &test_info) override { (void)test_info; }
   void OnTestPartResult (TestPartResult const &result) override {
     listener_->OnTestPartResult (result);
   }
@@ -69,8 +73,12 @@ public:
       listener_->OnTestEnd (test_info);
     }
   }
-  void OnEnvironmentsTearDownStart (UnitTest const &) override {}
-  void OnEnvironmentsTearDownEnd (UnitTest const &) override {}
+  void OnEnvironmentsTearDownStart (UnitTest const &unit_test) override {
+    (void)unit_test;
+  }
+  void OnEnvironmentsTearDownEnd (UnitTest const &unit_test) override {
+    (void)unit_test;
+  }
   void OnTestIterationEnd (UnitTest const &test, int iteration) override {
     listener_->OnTestIterationEnd (test, iteration);
   }
