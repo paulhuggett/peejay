@@ -340,6 +340,19 @@ TEST_F (Number, Hex) {
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
+// NOLINTNEXTLINE
+TEST_F (Number, HexArray) {
+  EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (uint64_t{0x10})).Times (2);
+  EXPECT_CALL (callbacks_, end_array ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"[0x10,0x10]"sv).eof ();
+  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
 TEST_F (Number, NegativeHex) {
   EXPECT_CALL (callbacks_, int64_value (int64_t{-31})).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);

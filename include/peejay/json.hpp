@@ -906,7 +906,7 @@ private:
   bool do_frac_digit_state (parser<Backend> &parser, char32_t c);
   bool do_exponent_sign_state (parser<Backend> &parser, char32_t c);
   bool do_exponent_digit_state (parser<Backend> &parser, char32_t c);
-  void do_hex_digits_state (parser<Backend> &parser, char32_t c);
+  bool do_hex_digits_state (parser<Backend> &parser, char32_t c);
 
   void complete (parser<Backend> &parser);
   void number_is_float ();
@@ -1165,19 +1165,21 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
 // do hex digits state
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend>
-void number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
+bool number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
                                                    char32_t const c) {
   auto const offset = digit_offset (c);
   if (!offset) {
-    return this->set_state (done_state);
+    this->complete (parser);
+    return false;
   }
 
   auto const new_acc = int_acc_ * 16U + static_cast<uint64_t> (c - *offset);
   if (new_acc < int_acc_) {  // Did this overflow?
-    return this->set_error (parser, error::number_out_of_range);
+    this->set_error (parser, error::number_out_of_range);
   }
 
   int_acc_ = new_acc;
+  return true;
 }
 
 // consume
@@ -1224,7 +1226,7 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
     }
     this->set_state (hex_digits);
     [[fallthrough]];
-  case hex_digits: this->do_hex_digits_state (parser, c); break;
+  case hex_digits: match = this->do_hex_digits_state (parser, c); break;
   case done_state:
   default: unreachable (); break;
   }
