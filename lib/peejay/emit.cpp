@@ -18,18 +18,25 @@
 #include <array>
 #include <cstddef>
 #include <iterator>
+#include <memory>
 #include <span>
+
+#ifdef __has_include
+#if __has_include(<bit>)
+#include <bit>
+#endif
+#endif
 
 namespace {
 
-#if PEEJAY_CXX20
+#if __cpp_lib_to_address
 using std::to_address;
 #else
 template <typename T>
 constexpr T* to_address (T* const p) noexcept {
   return p;
 }
-#endif  // PEEJAY_CXX20
+#endif
 
 class indent {
 public:
@@ -68,12 +75,12 @@ std::ostream& emit_string_view (std::ostream& os,
   auto first = std::begin (str);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = std::end (str);
-  peejay::u8string_view::const_iterator pos;
+  peejay::u8string_view::const_iterator pos = first;
   while ((pos = std::find_if (first, last, [] (char const c) {
             return c < ' ' || c == '"' || c == '\\';
           })) != last) {
     assert (pos >= first);
-    os.write (reinterpret_cast<char const*> (to_address (first)),
+    os.write (peejay::pointer_cast<char const*> (to_address (first)),
               std::distance (first, pos));
     os << '\\';
     using peejay::char_set;
@@ -100,7 +107,7 @@ std::ostream& emit_string_view (std::ostream& os,
   }
   if (first != last) {
     assert (last > first);
-    os.write (reinterpret_cast<char const*> (to_address (first)),
+    os.write (peejay::pointer_cast<char const*> (to_address (first)),
               std::distance (first, last));
   }
   os << '"';

@@ -33,6 +33,17 @@
 
 namespace peejay {
 
+template <typename To, typename From,
+          typename = typename std::enable_if_t<std::is_trivial_v<To> &&
+                                               std::is_trivial_v<From>>>
+constexpr To pointer_cast (From p) noexcept {
+#if __cpp_lib_bit_cast
+  return std::bit_cast<To> (p);
+#else
+  return reinterpret_cast<To> (p);
+#endif
+}
+
 #if PEEJAY_CXX20
 using std::construct_at;
 #else
@@ -236,21 +247,11 @@ private:
 
   T &element (size_t n) noexcept {
     assert (n < Size);
-    auto *const result = data_.data () + n;
-#if __cpp_lib_bit_cast
-    return *std::bit_cast<T *> (result);
-#else
-    return *reinterpret_cast<T *> (result);
-#endif
+    return *pointer_cast<T *> (data_.data () + n);
   }
   T const &element (size_t n) const noexcept {
     assert (n < Size);
-    auto const *const result = data_.data () + n;
-#if __cpp_lib_bit_cast
-    return *std::bit_cast<T const *> (result);
-#else
-    return *reinterpret_cast<T const *> (result);
-#endif
+    return *pointer_cast<T const *> (data_.data () + n);
   }
 
   /// The actual number of elements for which this buffer is sized.
