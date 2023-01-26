@@ -1036,7 +1036,7 @@ bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
     }
   } else if (c >= '0' && c <= '9') {
     this->number_is_float ();
-    fp_acc_.frac_part = fp_acc_.frac_part * 10 + (c - '0');
+    fp_acc_.frac_part = fp_acc_.frac_part * 10.0 + c - '0';
     fp_acc_.frac_scale *= 10;
 
     this->set_state (frac_digit_state);
@@ -1110,7 +1110,7 @@ bool number_matcher<Backend>::do_integer_initial_digit_state (
     this->set_state (frac_state);
   } else if (c >= '1' && c <= '9') {
     assert (int_acc_ == 0);
-    int_acc_ = static_cast<uint64_t> (c - '0');
+    int_acc_ = static_cast<uint64_t> (c) - '0';
     this->set_state (integer_digit_state);
   } else {
     this->set_error (parser, error::unrecognized_token);
@@ -1134,12 +1134,11 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
     this->set_state (exponent_sign_state);
     number_is_float ();
   } else if (c >= '0' && c <= '9') {
-    uint64_t const new_acc = int_acc_ * 10U + static_cast<uint64_t> (c - '0');
+    auto const new_acc = int_acc_ * 10U + static_cast<uint64_t> (c) - '0';
     if (new_acc < int_acc_) {  // Did this overflow?
       this->set_error (parser, error::number_out_of_range);
-    } else {
-      int_acc_ = new_acc;
     }
+    int_acc_ = new_acc;
   } else {
     match = false;
     this->complete (parser);
@@ -1158,7 +1157,7 @@ bool number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
     return false;
   }
 
-  auto const new_acc = int_acc_ * 16U + static_cast<uint64_t> (c - *offset);
+  auto const new_acc = int_acc_ * 16U + static_cast<uint64_t> (c) - *offset;
   if (new_acc < int_acc_) {  // Did this overflow?
     this->set_error (parser, error::number_out_of_range);
   }
