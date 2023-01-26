@@ -431,7 +431,9 @@ public:
   OutputIterator operator() (input_type code_unit, OutputIterator dest) {
     // Prior to C++20, char8 might be signed.
     auto const ucu = static_cast<std::make_unsigned_t<input_type>> (code_unit);
-    assert (ucu < utf8d_.size ());
+    static_assert (std::is_unsigned_v<decltype (ucu)> &&
+                   std::numeric_limits<decltype (ucu)>::max () <=
+                       utf8d_.size ());
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
     auto const type = utf8d_[ucu];
     code_point_ =
