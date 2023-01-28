@@ -59,10 +59,10 @@ public:
   stack &operator= (stack const &) = default;
   stack &operator= (stack &&) noexcept = default;
 
-  [[nodiscard]] bool empty () const { return c_.empty (); }
-  [[nodiscard]] size_type size () const { return c_.size (); }
-  [[nodiscard]] reference top () { return c_.back (); }
-  [[nodiscard]] const_reference top () const { return c_.back (); }
+  [[nodiscard]] bool empty () const noexcept { return c_.empty (); }
+  [[nodiscard]] size_type size () const noexcept { return c_.size (); }
+  [[nodiscard]] reference top () noexcept { return c_.back (); }
+  [[nodiscard]] const_reference top () const noexcept { return c_.back (); }
 
   template <typename... Args>
   decltype (auto) emplace (Args &&...args) {
