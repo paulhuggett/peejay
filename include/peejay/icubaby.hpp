@@ -91,6 +91,7 @@
 #endif
 
 #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ICUBABY_REQUIRES(x) requires x
 #else
 #define ICUBABY_REQUIRES(x)
@@ -695,6 +696,7 @@ public:
     // for the transcoder to produce more than a single output code unit if the
     // input is malformed.
     std::array<char32_t, 2> intermediate;
+    // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
     auto begin = std::begin (intermediate);
     return copy (begin, to_inter_ (c, begin), dest);
   }
@@ -703,6 +705,7 @@ public:
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   OutputIterator end_cp (OutputIterator dest) {
     std::array<char32_t, 2> intermediate;
+    // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
     auto begin = std::begin (intermediate);
     return copy (begin, to_inter_.end_cp (begin), dest);
   }
