@@ -966,27 +966,30 @@ private:
 
   token text_;
   bool is_neg_ = false;
-  // TODO: A variant here?
-  bool is_integer_ = true;
-  uint64_t int_acc_ = 0;
+  struct float_accumulator {
+    /// Promote from integer.
+    explicit constexpr float_accumulator (uint64_t v) noexcept
+        : whole_part{static_cast<double> (v)} {}
+    /// Assign an explicit double.
+    explicit constexpr float_accumulator (double v) noexcept : whole_part{v} {}
 
-  struct {
     double frac_part = 0.0;
     double frac_scale = 1.0;
     double whole_part = 0.0;
 
     bool exp_is_negative = false;
-    unsigned exponent = 0;
-  } fp_acc_;
+    unsigned exponent = 0U;
+  };
+
+  std::variant<uint64_t, float_accumulator> acc_;
 };
 
 // number is float
 // ~~~~~~~~~~~~~~~
 template <typename Backend>
 void number_matcher<Backend>::number_is_float () {
-  if (is_integer_) {
-    fp_acc_.whole_part = static_cast<double> (int_acc_);
-    is_integer_ = false;
+  if (std::holds_alternative<uint64_t> (acc_)) {
+    acc_ = float_accumulator{std::get<uint64_t> (acc_)};
   }
 }
 
@@ -1090,8 +1093,9 @@ bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
     }
   } else if (c >= '0' && c <= '9') {
     this->number_is_float ();
-    fp_acc_.frac_part = fp_acc_.frac_part * 10.0 + c - '0';
-    fp_acc_.frac_scale *= 10;
+    auto &fp_acc = std::get<float_accumulator> (acc_);
+    fp_acc.frac_part = fp_acc.frac_part * 10.0 + c - '0';
+    fp_acc.frac_scale *= 10;
 
     this->set_state (frac_digit_state);
   } else {
@@ -1112,10 +1116,11 @@ bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
                                                       char32_t c) {
   bool match = true;
   this->number_is_float ();
+  auto &fp_acc = std::get<float_accumulator> (acc_);
   this->set_state (exponent_initial_digit_state);
   switch (c) {
-  case '+': fp_acc_.exp_is_negative = false; break;
-  case '-': fp_acc_.exp_is_negative = true; break;
+  case '+': fp_acc.exp_is_negative = false; break;
+  case '-': fp_acc.exp_is_negative = true; break;
   default: match = this->do_exponent_digit_state (parser, c); break;
   }
   return match;
@@ -1136,12 +1141,13 @@ bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
                                                        char32_t const c) {
   assert (this->get_state () == exponent_digit_state ||
           this->get_state () == exponent_initial_digit_state);
-  assert (!is_integer_);
+  assert (std::holds_alternative<float_accumulator> (acc_));
 
   bool match = true;
   if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
-    fp_acc_.exponent = fp_acc_.exponent * 10U +
-                       static_cast<unsigned> (c - char_set::digit_zero);
+    auto &fp_acc = std::get<float_accumulator> (acc_);
+    fp_acc.exponent = fp_acc.exponent * 10U +
+                      static_cast<unsigned> (c - char_set::digit_zero);
     this->set_state (exponent_digit_state);
   } else {
     if (this->get_state () == exponent_initial_digit_state) {
@@ -1160,12 +1166,13 @@ template <typename Backend>
 bool number_matcher<Backend>::do_integer_initial_digit_state (
     parser<Backend> &parser, char32_t const c) {
   assert (this->get_state () == integer_initial_digit_state);
-  assert (is_integer_);
+  assert (std::holds_alternative<uint64_t> (acc_));
   if (c == char_set::digit_zero) {
     this->set_state (frac_state);
   } else if (c >= char_set::digit_one && c <= char_set::digit_nine) {
-    assert (int_acc_ == 0);
-    int_acc_ = static_cast<uint64_t> (c) - char_set::digit_zero;
+    assert (std::get<uint64_t> (acc_) == 0);
+    std::get<uint64_t> (acc_) =
+        static_cast<uint64_t> (c) - char_set::digit_zero;
     this->set_state (integer_digit_state);
   } else if (c == char_set::latin_capital_letter_i) {
     text_.set_text (u8"nfinity");
@@ -1185,7 +1192,7 @@ template <typename Backend>
 bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
                                                       char32_t const c) {
   assert (this->get_state () == integer_digit_state);
-  assert (is_integer_);
+  assert (std::holds_alternative<uint64_t> (acc_));
 
   bool match = true;
   if (c == '.') {
@@ -1195,11 +1202,12 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
     this->set_state (exponent_sign_state);
     number_is_float ();
   } else if (c >= '0' && c <= '9') {
-    auto const new_acc = int_acc_ * 10U + static_cast<uint64_t> (c) - '0';
-    if (new_acc < int_acc_) {  // Did this overflow?
+    auto &int_acc = std::get<uint64_t> (acc_);
+    auto const new_acc = int_acc * 10U + static_cast<uint64_t> (c) - '0';
+    if (new_acc < int_acc) {  // Did this overflow?
       this->set_error (parser, error::number_out_of_range);
     }
-    int_acc_ = new_acc;
+    int_acc = new_acc;
   } else {
     match = false;
     this->complete (parser);
@@ -1218,12 +1226,12 @@ bool number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
     return false;
   }
 
-  auto const new_acc = int_acc_ * 16U + static_cast<uint64_t> (c) - *offset;
-  if (new_acc < int_acc_) {  // Did this overflow?
+  auto &int_acc = std::get<uint64_t> (acc_);
+  auto const new_acc = int_acc * 16U + static_cast<uint64_t> (c) - *offset;
+  if (new_acc < int_acc) {  // Did this overflow?
     this->set_error (parser, error::number_out_of_range);
   }
-
-  int_acc_ = new_acc;
+  int_acc = new_acc;
   return true;
 }
 
@@ -1287,14 +1295,9 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
       break;
     case token::result::more: break;
     case token::result::match:
-      is_integer_ = false;
-      fp_acc_.frac_part = 0.0;
-      fp_acc_.frac_scale = 1.0;
-      fp_acc_.whole_part = this->get_state () == match_token_infinity_state
-                               ? std::numeric_limits<double>::infinity ()
-                               : std::numeric_limits<double>::quiet_NaN ();
-      fp_acc_.exp_is_negative = false;
-      fp_acc_.exponent = 0U;
+      acc_ = float_accumulator{this->get_state () == match_token_infinity_state
+                                   ? std::numeric_limits<double>::infinity ()
+                                   : std::numeric_limits<double>::quiet_NaN ()};
       this->set_state (end_token_state);
       break;
     }
@@ -1326,12 +1329,13 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
   }
   assert (this->in_terminal_state ());
 
-  if (is_integer_) {
+  if (std::holds_alternative<uint64_t> (acc_)) {
     constexpr auto min = std::numeric_limits<std::int64_t>::min ();
     constexpr auto umin = static_cast<std::uint64_t> (min);
 
+    auto &int_acc = std::get<uint64_t> (acc_);
     if (is_neg_) {
-      if (int_acc_ > umin) {
+      if (int_acc > umin) {
         this->set_error (parser, error::number_out_of_range);
         return;
       }
@@ -1339,21 +1343,21 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
       this->set_error (
           parser,
           parser.backend ().int64_value (
-              (int_acc_ == umin) ? min
-                                 : -static_cast<std::int64_t> (int_acc_)));
+              (int_acc == umin) ? min : -static_cast<std::int64_t> (int_acc)));
       return;
     }
-    this->set_error (parser, parser.backend ().uint64_value (int_acc_));
+    this->set_error (parser, parser.backend ().uint64_value (int_acc));
     return;
   }
 
-  auto xf = (fp_acc_.whole_part + fp_acc_.frac_part / fp_acc_.frac_scale);
-  auto exp = std::pow (10, fp_acc_.exponent);
+  auto &fp_acc = std::get<float_accumulator> (acc_);
+  auto xf = (fp_acc.whole_part + fp_acc.frac_part / fp_acc.frac_scale);
+  auto exp = std::pow (10, fp_acc.exponent);
   if (std::isinf (exp)) {
     this->set_error (parser, error::number_out_of_range);
     return;
   }
-  if (fp_acc_.exp_is_negative) {
+  if (fp_acc.exp_is_negative) {
     exp = 1.0 / exp;
   }
 
