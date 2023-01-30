@@ -513,6 +513,7 @@ enum char_set : char32_t {
   en_quad = char32_t{0x2000},
   form_feed = char32_t{0x000C},               // '\f'
   full_stop = char32_t{0x002E},               // '.'
+  hyphen_minus = char32_t{0x002D},            // '-'
   latin_capital_letter_a = char32_t{0x0041},  // 'A'
   latin_capital_letter_e = char32_t{0x0045},  // 'E'
   latin_capital_letter_f = char32_t{0x0046},  // 'F'
@@ -537,6 +538,7 @@ enum char_set : char32_t {
   null_char = char32_t{0x0000},
   number_sign = char32_t{0x0023},  // '#'
   paragraph_separator = char32_t{0x2029},
+  plus_sign = char32_t{0x002B},        // '+'
   quotation_mark = char32_t{0x0022},   // '"'
   reverse_solidus = char32_t{0x005C},  // '\'
   solidus = char32_t{0x002F},          // '/'
@@ -545,15 +547,6 @@ enum char_set : char32_t {
 };
 
 namespace details {
-
-/// Checks if the given character is an alphanumeric character.
-constexpr bool isalnum (char32_t const c) noexcept {
-  return (c >= char_set::digit_zero && c <= char_set::digit_nine) ||
-         (c >= char_set::latin_capital_letter_a &&
-          c <= char_set::latin_capital_letter_z) ||
-         (c >= char_set::latin_small_letter_a &&
-          c <= char_set::latin_small_letter_z);
-}
 
 constexpr std::optional<uint_least16_t> digit_offset (
     char32_t code_point) noexcept {
@@ -666,6 +659,57 @@ private:
   int state_;
 };
 
+class token {
+public:
+  constexpr token () noexcept = default;
+  explicit constexpr token (char8 const *text) noexcept : text_{text} {}
+  enum class result { match, fail, more };
+
+  void set_text (char8 const *text) noexcept { text_ = text; }
+
+  result match (char32_t const code_point) noexcept {
+    assert (icubaby::is_code_point_start (*text_) &&
+            is_identifier_cp (static_cast<char32_t> (*text_)));
+    if (code_point != static_cast<char32_t> (*text_)) {
+      return result::fail;
+    }
+    ++text_;
+    if (*text_ != '\0') {
+      return result::more;
+    }
+    return result::match;
+  }
+
+  /// Checks if the given character is alphanumeric.
+  static constexpr bool is_identifier_cp (char32_t const code_point) noexcept {
+    if (code_point >= char_set::digit_zero &&
+        code_point <= char_set::digit_nine) {
+      return true;
+    }
+    if (code_point >= char_set::latin_capital_letter_a &&
+        code_point <= char_set::latin_capital_letter_z) {
+      return true;
+    }
+    if (code_point >= char_set::latin_small_letter_a &&
+        code_point <= char_set::latin_small_letter_z) {
+      return true;
+    }
+    // U+0080 Is where the Latin-1 supplement starts. Consult the table for
+    // code points beyond this point.
+    if (code_point >= 0x80) {
+      if (grammar_rule const rule = code_point_grammar_rule (code_point);
+          rule == grammar_rule::identifier_start ||
+          rule == grammar_rule::identifier_part) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+private:
+  char8 const *text_ = nullptr;
+};
+
 //*  _       _             *
 //* | |_ ___| |_____ _ _   *
 //* |  _/ _ \ / / -_) ' \  *
@@ -704,11 +748,10 @@ private:
 
   /// The keyword to be matched. The input sequence must exactly match this
   /// string or an unrecognized token error is raised. Once all of the
-  /// characters are matched, complete() is called.
-  char8 const *text_;
-
+  /// characters are matched, done_() is called.
+  token text_;
   /// This function is called once the complete token text has been matched.
-  [[no_unique_address]] DoneFunction const done_;
+  [[no_unique_address]] DoneFunction done_;
 };
 
 template <typename Backend, typename DoneFunction>
@@ -721,20 +764,23 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
   switch (this->get_state ()) {
   case start_state:
     assert (!ch || icubaby::is_code_point_start (*ch));
-    if (!ch || *ch != static_cast<char32_t> (*text_)) {
+    if (!ch) {
       this->set_error (parser, error::unrecognized_token);
-    } else {
-      ++text_;
-      if (*text_ == '\0') {
-        // We've run out of input text, so ensure that the next character isn't
-        // alpha-numeric.
-        this->set_state (last_state);
-      }
+      break;
+    }
+    switch (text_.match (*ch)) {
+    case token::result::fail:
+      this->set_error (parser, error::unrecognized_token);
+      break;
+    case token::result::more: break;
+    case token::result::match:
+      this->set_state (last_state);
+      break;
     }
     break;
   case last_state:
     if (ch) {
-      if (isalnum (*ch) != 0) {
+      if (token::is_identifier_cp (*ch)) {
         this->set_error (parser, error::unrecognized_token);
         return {matcher<Backend>::null_pointer (), true};
       }
@@ -743,8 +789,8 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
     this->set_error (parser, done_ (parser));
     this->set_state (done_state);
     break;
-  default: unreachable (); break;
   }
+
   return {matcher<Backend>::null_pointer (), match};
 }
 
@@ -911,9 +957,16 @@ private:
     exponent_digit_state,
     initial_hex_digit,
     hex_digits,
+
+    match_token_infinity_state,
+    match_token_nan_state,
+    end_token_state,
+
   };
 
+  token text_;
   bool is_neg_ = false;
+  // TODO: A variant here?
   bool is_integer_ = true;
   uint64_t int_acc_ = 0;
 
@@ -942,11 +995,12 @@ void number_matcher<Backend>::number_is_float () {
 template <typename Backend>
 bool number_matcher<Backend>::in_terminal_state () const {
   switch (this->get_state ()) {
-  case integer_digit_state:
-  case frac_state:
-  case frac_digit_state:
+  case end_token_state:
   case exponent_digit_state:
+  case frac_digit_state:
+  case frac_state:
   case hex_digits:
+  case integer_digit_state:
   case done_state: return true;
   default: return false;
   }
@@ -958,13 +1012,13 @@ template <typename Backend>
 bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
                                                       char32_t c) {
   bool match = true;
-  if (c == '-') {
+  if (c == char_set::hyphen_minus) {
     this->set_state (integer_initial_digit_state);
     is_neg_ = true;
-  } else if (c == '+') {
+  } else if (c == char_set::plus_sign) {
     assert (parser.extension_enabled (extensions::leading_plus));
     this->set_state (integer_initial_digit_state);
-  } else if (c >= '0' && c <= '9') {
+  } else if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
     this->set_state (integer_initial_digit_state);
     match = do_integer_initial_digit_state (parser, c);
   } else {
@@ -1085,8 +1139,9 @@ bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
   assert (!is_integer_);
 
   bool match = true;
-  if (c >= '0' && c <= '9') {
-    fp_acc_.exponent = fp_acc_.exponent * 10U + static_cast<unsigned> (c - '0');
+  if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
+    fp_acc_.exponent = fp_acc_.exponent * 10U +
+                       static_cast<unsigned> (c - char_set::digit_zero);
     this->set_state (exponent_digit_state);
   } else {
     if (this->get_state () == exponent_initial_digit_state) {
@@ -1106,12 +1161,18 @@ bool number_matcher<Backend>::do_integer_initial_digit_state (
     parser<Backend> &parser, char32_t const c) {
   assert (this->get_state () == integer_initial_digit_state);
   assert (is_integer_);
-  if (c == '0') {
+  if (c == char_set::digit_zero) {
     this->set_state (frac_state);
-  } else if (c >= '1' && c <= '9') {
+  } else if (c >= char_set::digit_one && c <= char_set::digit_nine) {
     assert (int_acc_ == 0);
-    int_acc_ = static_cast<uint64_t> (c) - '0';
+    int_acc_ = static_cast<uint64_t> (c) - char_set::digit_zero;
     this->set_state (integer_digit_state);
+  } else if (c == char_set::latin_capital_letter_i) {
+    text_.set_text (u8"nfinity");
+    this->set_state (match_token_infinity_state);
+  } else if (c == char_set::latin_capital_letter_n) {
+    text_.set_text (u8"aN");
+    this->set_state (match_token_nan_state);
   } else {
     this->set_error (parser, error::unrecognized_token);
   }
@@ -1175,7 +1236,13 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
   if (!ch) {
     assert (!parser.has_error ());
     if (!this->in_terminal_state ()) {
-      this->set_error (parser, error::expected_digits);
+      switch (this->get_state ()) {
+      case match_token_infinity_state:
+      case match_token_nan_state:
+        this->set_error (parser, error::unrecognized_token);
+        break;
+      default: this->set_error (parser, error::expected_digits); break;
+      }
     }
     this->complete (parser);
     return {matcher<Backend>::null_pointer (), true};
@@ -1211,6 +1278,38 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_state (hex_digits);
     [[fallthrough]];
   case hex_digits: match = this->do_hex_digits_state (parser, c); break;
+
+  case match_token_infinity_state:
+  case match_token_nan_state:
+    switch (text_.match (*ch)) {
+    case token::result::fail:
+      this->set_error (parser, error::unrecognized_token);
+      break;
+    case token::result::more: break;
+    case token::result::match:
+      is_integer_ = false;
+      fp_acc_.frac_part = 0.0;
+      fp_acc_.frac_scale = 1.0;
+      fp_acc_.whole_part = this->get_state () == match_token_infinity_state
+                               ? std::numeric_limits<double>::infinity ()
+                               : std::numeric_limits<double>::quiet_NaN ();
+      fp_acc_.exp_is_negative = false;
+      fp_acc_.exponent = 0U;
+      this->set_state (end_token_state);
+      break;
+    }
+    break;
+  case end_token_state:
+    if (ch) {
+      if (token::is_identifier_cp (*ch)) {
+        this->set_error (parser, error::unrecognized_token);
+        return {matcher<Backend>::null_pointer (), true};
+      }
+      match = false;
+    }
+    this->complete (parser);
+    break;
+
   case done_state:
   default: unreachable (); break;
   }
@@ -1263,10 +1362,6 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
     xf = -xf;
   }
 
-  if (std::isinf (xf) || std::isnan (xf)) {
-    this->set_error (parser, error::number_out_of_range);
-    return;
-  }
   this->set_error (parser, parser.backend ().double_value (xf));
 }
 
@@ -2063,7 +2158,8 @@ constexpr bool whitespace_matcher<Backend>::want_code_point (
   bool result = false;
   switch (code_point) {
   // The following two code points aren't whitespace but potentially introduce
-  // a comment (assuming that the associated extension has been enabled).
+  // a comment which from the parser's POV, counts as whitespace (assuming that
+  // the associated extension has been enabled).
   case char_set::number_sign:
     return parser.extension_enabled (extensions::bash_comments);
   case char_set::solidus:

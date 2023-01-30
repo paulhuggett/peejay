@@ -421,3 +421,81 @@ TEST_F (Number, NaNExtensionDisabled) {
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
       << "Error was: " << p.last_error ().message ();
 }
+// NOLINTNEXTLINE
+TEST_F (Number, PlusInfinity) {
+  EXPECT_CALL (
+      callbacks_,
+      double_value (DoubleEq (std::numeric_limits<double>::infinity ())))
+      .Times (1);
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"+Infinity"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, PlusInfinityExtraCharacters) {
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"+InfinityX"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
+      << "Parse error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, PlusInfinityPartial) {
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"+Inf"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
+      << "Parse error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, MinusInfinity) {
+  EXPECT_CALL (
+      callbacks_,
+      double_value (DoubleEq (-1.0 * std::numeric_limits<double>::infinity ())))
+      .Times (1);
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"-Infinity"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, PlusNan) {
+  EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"+NaN"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, MinusNan) {
+  EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"-NaN"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, ArrayOfNaNAndInfinity) {
+  {
+    testing::InSequence _;
+    EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+    EXPECT_CALL (
+        callbacks_,
+        double_value (DoubleEq (std::numeric_limits<double>::infinity ())))
+        .Times (1);
+    EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
+    EXPECT_CALL (
+        callbacks_,
+        double_value (DoubleEq (std::numeric_limits<double>::infinity ())))
+        .Times (1);
+    EXPECT_CALL (callbacks_,
+                 double_value (DoubleEq (
+                     -1.0 * std::numeric_limits<double>::infinity ())))
+        .Times (1);
+    EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
+    EXPECT_CALL (callbacks_, end_array ()).Times (1);
+  }
+  auto p = make_parser (proxy_, extensions::all);
+  p.input (u8"[Infinity,NaN,+Infinity,-Infinity,-NaN]"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}

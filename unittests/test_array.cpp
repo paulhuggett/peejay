@@ -228,7 +228,8 @@ TEST_F (JsonArray, NestedError1) {
 TEST_F (JsonArray, NestedError2) {
   auto p = make_parser (json_out_callbacks{});
   p.input (u8"[[null"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member));
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_array_member))
+      << "Actual error was: " << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
