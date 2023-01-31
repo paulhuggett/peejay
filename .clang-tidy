@@ -25,4 +25,6 @@ CheckOptions:
     value: true
   - key:   hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
     value: true
+  - key:   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: true
 ...
