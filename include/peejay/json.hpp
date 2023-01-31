@@ -155,11 +155,11 @@ grammar_rule code_point_grammar_rule (char32_t code_point) noexcept;
 
 struct line {
   explicit constexpr operator unsigned () const noexcept { return x; }
-  unsigned x;
+  unsigned x;  // NOLINT
 };
 struct column {
   explicit constexpr operator unsigned () const noexcept { return y; }
-  unsigned y;
+  unsigned y;  // NOLINT
 };
 
 struct coord {
@@ -201,8 +201,8 @@ struct coord {
   }
 #endif  // __cpp_impl_three_way_comparison
 
-  unsigned line = 1U;
-  unsigned column = 1U;
+  unsigned line = 1U;    // NOLINT
+  unsigned column = 1U;  // NOLINT
 };
 
 inline std::ostream &operator<< (std::ostream &os, coord const &c) {
