@@ -451,6 +451,10 @@ private:
   bool *overflow_;
 };
 
+template <typename Container>
+checked_back_insert_iterator (Container *, bool *)
+    -> checked_back_insert_iterator<Container>;
+
 }  // end namespace peejay
 
 #endif  // PEEJAY_ARRAYVEC_HPP
