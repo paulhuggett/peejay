@@ -40,6 +40,8 @@ enum class error : int {
   unexpected_extra_input,
   unrecognized_token,
   unterminated_multiline_comment,
+  identifier_too_long,
+  string_too_long,
 };
 
 // ******************

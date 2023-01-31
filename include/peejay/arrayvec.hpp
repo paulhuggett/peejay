@@ -148,6 +148,9 @@ public:
   /// Returns the number of elements that can be held.
   [[nodiscard]] constexpr size_t capacity () const noexcept { return Size; }
 
+  /// Returns the maximum number of elements the container is able to hold.
+  [[nodiscard]] constexpr size_type max_size () const noexcept { return Size; }
+
   /// Resizes the container to contain \p count elements. If the current size is
   /// less than \p count, the container is reduced to its first \p count
   /// elements. If the current size is less than \p count, additional
@@ -405,6 +408,48 @@ void arrayvec<T, Size>::append (Iterator first, Iterator last) {
     this->emplace_back (*first);
   }
 }
+
+template <typename Container>
+class checked_back_insert_iterator {
+public:
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using difference_type = ptrdiff_t;
+  using pointer = void;
+  using reference = void;
+  using container_type = Container;
+
+  constexpr checked_back_insert_iterator (Container *const container,
+                                          bool *const overflow) noexcept
+      : container_{container}, overflow_{overflow} {}
+
+  constexpr checked_back_insert_iterator &operator= (
+      typename Container::value_type const &value) {
+    if (container_->size () >= container_->max_size ()) {
+      *overflow_ = true;
+    } else {
+      container_->push_back (value);
+    }
+    return *this;
+  }
+  constexpr checked_back_insert_iterator &operator= (
+      typename Container::value_type &&value) {
+    if (container_->size () >= container_->max_size ()) {
+      *overflow_ = true;
+    } else {
+      container_->push_back (std::move (value));
+    }
+    return *this;
+  }
+
+  constexpr checked_back_insert_iterator &operator* () { return *this; }
+  constexpr checked_back_insert_iterator &operator++ () { return *this; }
+  constexpr checked_back_insert_iterator operator++ (int) { return *this; }
+
+private:
+  Container *container_;
+  bool *overflow_;
+};
 
 }  // end namespace peejay
 

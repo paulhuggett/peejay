@@ -47,6 +47,8 @@ std::string peejay::error_category::message (int const err) const {
   case error::unrecognized_token: return "unrecognized token";
   case error::nesting_too_deep: return "objects are too deeply nested";
   case error::unterminated_multiline_comment: return "unterminated /* comment";
+  case error::identifier_too_long: return "identifier too long";
+  case error::string_too_long: return "string too long";
   }
   assert (false && "bad error code");
   return "unknown PJ error_category error";

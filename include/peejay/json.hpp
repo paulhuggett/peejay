@@ -16,6 +16,7 @@
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
+#include "peejay/arrayvec.hpp"
 #include "peejay/cprun.hpp"
 #include "peejay/json_error.hpp"
 #include "peejay/portab.hpp"
@@ -110,16 +111,16 @@ concept backend = requires (T &&v) {
 /// \brief JSON parser implementation details.
 namespace details {
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher;
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 class root_matcher;
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 class whitespace_matcher;
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct singleton_storage;
 
 /// deleter is intended for use as a unique_ptr<> Deleter. It enables
@@ -238,14 +239,19 @@ struct iterator_produces {
       CharType>;
 };
 
-//-MARK:parser
-/// \tparam Backend A type meeting the notifications<> requirements.
-template <typename Backend>
+//*                              *
+//*  _ __  __ _ _ _ ___ ___ _ _  *
+//* | '_ \/ _` | '_(_-</ -_) '_| *
+//* | .__/\__,_|_| /__/\___|_|   *
+//* |_|                          *
+/// \tparam Backend A type meeting the backend<> requirements.
+/// \tparam MaxLength  The maxmum string length allowed by the parser.
+template <typename Backend, size_t MaxLength = 65535>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class parser {
-  friend class details::matcher<Backend>;
-  friend class details::root_matcher<Backend>;
-  friend class details::whitespace_matcher<Backend>;
+  friend class details::matcher<Backend, MaxLength>;
+  friend class details::root_matcher<Backend, MaxLength>;
+  friend class details::whitespace_matcher<Backend, MaxLength>;
 
 public:
   explicit parser (extensions extensions = extensions::none)
@@ -396,7 +402,7 @@ public:
   [[nodiscard]] constexpr coord pos () const noexcept { return matcher_pos_; }
 
 private:
-  using matcher = details::matcher<Backend>;
+  using matcher = details::matcher<Backend, MaxLength>;
   using pointer = std::unique_ptr<matcher, details::deleter<matcher>>;
 
   template <typename InputIterator>
@@ -458,7 +464,7 @@ private:
 
   /// Preallocated storage for "terminal" matchers. These are the matchers,
   /// such as numbers or strings which can't have child objects.
-  details::singleton_storage<Backend> singletons_;
+  details::singleton_storage<Backend, MaxLength> singletons_;
 
   /// The maximum depth to which we allow the parse stack to grow. This value
   /// should be sufficient for any reasonable input: its intention is to prevent
@@ -471,10 +477,10 @@ private:
   std::stack<pointer> stack_;
   std::error_code error_;
 
-  /// Each instance of the string matcher uses this string object to record its
-  /// output. This avoids having to create a new instance each time we scan a
-  /// string.
-  u8string string_;
+  /// Each instance of the string and identifier matcher uses this object to
+  /// record its output. This avoids having to create a new instance each time
+  /// we scan a string.
+  std::unique_ptr<arrayvec<char8, MaxLength>> str_buffer_;
 
   /// The column and row number of the parse within the input stream.
   coord pos_;
@@ -485,6 +491,14 @@ private:
 
 template <typename Backend>
 parser (Backend) -> parser<Backend>;
+
+template <size_t MaxLength, typename Backend>
+PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
+inline parser<std::remove_reference_t<Backend>, MaxLength> make_parser (
+    Backend &&backend, extensions const extensions = extensions::none) {
+  return parser<std::remove_reference_t<Backend>, MaxLength>{
+      std::forward<Backend> (backend), extensions};
+}
 
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
@@ -570,16 +584,21 @@ constexpr std::optional<uint_least16_t> digit_offset (
       LastHexState > FirstHexState && LastHexState - FirstHexState + 1 <= 4 && \
       (PostState < FirstHexState || PostState > LastHexState)))
 
+//*             _      _             *
+//*  _ __  __ _| |_ __| |_  ___ _ _  *
+//* | '  \/ _` |  _/ _| ' \/ -_) '_| *
+//* |_|_|_\__,_|\__\__|_||_\___|_|   *
+//*                                  *
 /// The base class for the various state machines ("matchers") which implement
 /// the various productions of the JSON grammar.
-//-MARK:matcher
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher {
   template <int FirstHexState, int LastHexState, int PostState>
   PEEJAY_HEX_CONSUMER_REQUIRES friend class hex_consumer;
 
 public:
+  using parser_type = parser<Backend, MaxLength>;
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
 
   matcher (matcher const &) = delete;
@@ -596,7 +615,7 @@ public:
   ///   used to process the next character. The boolean value is false if the same
   ///   character must be passed to the next consume() call; true indicates that
   ///   the character was correctly matched by this consume() call.
-  virtual std::pair<pointer, bool> consume (parser<Backend> &parser,
+  virtual std::pair<pointer, bool> consume (parser_type &parser,
                                             std::optional<char32_t> ch) = 0;
 
   /// \returns True if this matcher has completed (and reached it's "done" state). The
@@ -617,8 +636,7 @@ protected:
   /// \brief Errors
 
   /// \returns True if the parser is in an error state.
-  bool set_error (parser<Backend> &parser,
-                  std::error_code const &err) noexcept {
+  bool set_error (parser_type &parser, std::error_code const &err) noexcept {
     bool const has_error = parser.set_error (err);
     if (has_error) {
       set_state (done);
@@ -627,29 +645,27 @@ protected:
   }
   ///@}
 
-  pointer make_root_matcher (parser<Backend> &parser) {
+  pointer make_root_matcher (parser_type &parser) {
     return parser.make_root_matcher ();
   }
-  pointer make_whitespace_matcher (parser<Backend> &parser) {
+  pointer make_whitespace_matcher (parser_type &parser) {
     return parser.make_whitespace_matcher ();
   }
-  pointer make_string_matcher (parser<Backend> &parser, bool object_key,
+  pointer make_string_matcher (parser_type &parser, bool object_key,
                                char32_t enclosing_char) {
     return parser.make_string_matcher (object_key, enclosing_char);
   }
-  pointer make_identifier_matcher (parser<Backend> &parser) {
+  pointer make_identifier_matcher (parser_type &parser) {
     return parser.make_identifier_matcher ();
   }
 
   template <typename Matcher, typename... Args>
-  pointer make_terminal_matcher (parser<Backend> &parser, Args &&...args) {
+  pointer make_terminal_matcher (parser_type &parser, Args &&...args) {
     return parser.template make_terminal_matcher<Matcher, Args...> (
         std::forward<Args> (args)...);
   }
 
-  static constexpr auto null_pointer () {
-    return parser<Backend>::null_pointer ();
-  }
+  static constexpr auto null_pointer () { return parser_type::null_pointer (); }
 
   /// The value to be used for the "done" state in the each of the matcher state
   /// machines.
@@ -659,10 +675,16 @@ private:
   int state_;
 };
 
-class token {
+//*  _       _                                                 *
+//* | |_ ___| |_____ _ _    __ ___ _ _  ____  _ _ __  ___ _ _  *
+//* |  _/ _ \ / / -_) ' \  / _/ _ \ ' \(_-< || | '  \/ -_) '_| *
+//*  \__\___/_\_\___|_||_| \__\___/_||_/__/\_,_|_|_|_\___|_|   *
+//*                                                            *
+class token_consumer {
 public:
-  constexpr token () noexcept = default;
-  explicit constexpr token (char8 const *text) noexcept : text_{text} {}
+  constexpr token_consumer () noexcept = default;
+  explicit constexpr token_consumer (char8 const *text) noexcept
+      : text_{text} {}
   enum class result { match, fail, more };
 
   void set_text (char8 const *text) noexcept { text_ = text; }
@@ -680,7 +702,7 @@ public:
     return result::match;
   }
 
-  /// Checks if the given character is alphanumeric.
+  /// Checks if the given code point is valid in an identifier.
   static constexpr bool is_identifier_cp (char32_t const code_point) noexcept {
     if (code_point >= char_set::digit_zero &&
         code_point <= char_set::digit_nine) {
@@ -718,16 +740,19 @@ private:
 /// A matcher which checks for a specific keyword such as "true", "false", or
 /// "null".
 /// \tparam Backend  The parser callback structure.
-//-MARK:token matcher
-template <typename Backend, typename DoneFunction>
-PEEJAY_CXX20REQUIRES ((backend<Backend> &&
-                       std::invocable<DoneFunction, parser<Backend> &>))
-class token_matcher : public matcher<Backend> {
+template <typename Backend, size_t MaxLength, typename DoneFunction>
+PEEJAY_CXX20REQUIRES (
+    (backend<Backend> &&
+     std::invocable<DoneFunction, parser<Backend, MaxLength> &>))
+class token_matcher : public matcher<Backend, MaxLength> {
 public:
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename matcher<Backend, MaxLength>::parser_type;
+
   /// \param text  The string to be matched.
   /// \param done  The function called when the source string is matched.
   explicit token_matcher (char8 const *text, DoneFunction done) noexcept
-      : matcher<Backend> (start_state), text_{text}, done_{done} {}
+      : inherited (start_state), text_{text}, done_{done} {}
   token_matcher (token_matcher const &) = delete;
   token_matcher (token_matcher &&) noexcept = default;
 
@@ -736,12 +761,12 @@ public:
   token_matcher &operator= (token_matcher const &) = delete;
   token_matcher &operator= (token_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     start_state,
     last_state,
   };
@@ -749,17 +774,18 @@ private:
   /// The keyword to be matched. The input sequence must exactly match this
   /// string or an unrecognized token error is raised. Once all of the
   /// characters are matched, done_() is called.
-  token text_;
+  token_consumer text_;
   /// This function is called once the complete token text has been matched.
   [[no_unique_address]] DoneFunction done_;
 };
 
-template <typename Backend, typename DoneFunction>
-PEEJAY_CXX20REQUIRES ((backend<Backend> &&
-                       std::invocable<DoneFunction, parser<Backend> &>))
-std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
-    Backend, DoneFunction>::consume (parser<Backend> &parser,
-                                     std::optional<char32_t> ch) {
+template <typename Backend, size_t MaxLength, typename DoneFunction>
+PEEJAY_CXX20REQUIRES (
+    (backend<Backend> &&
+     std::invocable<DoneFunction, parser<Backend, MaxLength> &>))
+auto token_matcher<Backend, MaxLength, DoneFunction>::consume (
+    parser_type &parser, std::optional<char32_t> ch)
+    -> std::pair<typename inherited::pointer, bool> {
   bool match = true;
   switch (this->get_state ()) {
   case start_state:
@@ -769,20 +795,18 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
       break;
     }
     switch (text_.match (*ch)) {
-    case token::result::fail:
+    case token_consumer::result::fail:
       this->set_error (parser, error::unrecognized_token);
       break;
-    case token::result::more: break;
-    case token::result::match:
-      this->set_state (last_state);
-      break;
+    case token_consumer::result::more: break;
+    case token_consumer::result::match: this->set_state (last_state); break;
     }
     break;
   case last_state:
     if (ch) {
-      if (token::is_identifier_cp (*ch)) {
+      if (token_consumer::is_identifier_cp (*ch)) {
         this->set_error (parser, error::unrecognized_token);
-        return {matcher<Backend>::null_pointer (), true};
+        return {matcher<Backend, MaxLength>::null_pointer (), true};
       }
       match = false;
     }
@@ -791,7 +815,7 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
     break;
   }
 
-  return {matcher<Backend>::null_pointer (), match};
+  return {matcher<Backend, MaxLength>::null_pointer (), match};
 }
 
 //*   __      _           _       _             *
@@ -799,19 +823,21 @@ std::pair<typename matcher<Backend>::pointer, bool> token_matcher<
 //* |  _/ _` | (_-</ -_) |  _/ _ \ / / -_) ' \  *
 //* |_| \__,_|_/__/\___|  \__\___/_\_\___|_||_| *
 //*                                             *
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct false_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (parser<Backend, MaxLength> &p) const {
     return p.backend ().boolean_value (false);
   }
 };
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 class false_token_matcher
-    : public token_matcher<Backend, false_complete<Backend>> {
+    : public token_matcher<Backend, MaxLength,
+                           false_complete<Backend, MaxLength>> {
 public:
   false_token_matcher ()
-      : token_matcher<Backend, false_complete<Backend>> (u8"false", {}) {}
+      : token_matcher<Backend, MaxLength, false_complete<Backend, MaxLength>> (
+            u8"false", {}) {}
 };
 
 //*  _                  _       _             *
@@ -819,19 +845,21 @@ public:
 //* |  _| '_| || / -_) |  _/ _ \ / / -_) ' \  *
 //*  \__|_|  \_,_\___|  \__\___/_\_\___|_||_| *
 //*                                           *
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct true_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (parser<Backend, MaxLength> &p) const {
     return p.backend ().boolean_value (true);
   }
 };
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 class true_token_matcher
-    : public token_matcher<Backend, true_complete<Backend>> {
+    : public token_matcher<Backend, MaxLength,
+                           true_complete<Backend, MaxLength>> {
 public:
   true_token_matcher ()
-      : token_matcher<Backend, true_complete<Backend>> (u8"true", {}) {}
+      : token_matcher<Backend, MaxLength, true_complete<Backend, MaxLength>> (
+            u8"true", {}) {}
 };
 
 //*           _ _   _       _             *
@@ -839,19 +867,21 @@ public:
 //* | ' \ || | | | |  _/ _ \ / / -_) ' \  *
 //* |_||_\_,_|_|_|  \__\___/_\_\___|_||_| *
 //*                                       *
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct null_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (parser<Backend, MaxLength> &p) const {
     return p.backend ().null_value ();
   }
 };
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 class null_token_matcher
-    : public token_matcher<Backend, null_complete<Backend>> {
+    : public token_matcher<Backend, MaxLength,
+                           null_complete<Backend, MaxLength>> {
 public:
   null_token_matcher ()
-      : token_matcher<Backend, null_complete<Backend>> (u8"null", {}) {}
+      : token_matcher<Backend, MaxLength, null_complete<Backend, MaxLength>> (
+            u8"null", {}) {}
 };
 
 //*  _       __ _      _ _          _       _             *
@@ -859,19 +889,22 @@ public:
 //* | | ' \|  _| | ' \| |  _| || | |  _/ _ \ / / -_) ' \  *
 //* |_|_||_|_| |_|_||_|_|\__|\_, |  \__\___/_\_\___|_||_| *
 //*                          |__/                         *
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct infinity_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (parser<Backend, MaxLength> &p) const {
     return p.backend ().double_value (std::numeric_limits<double>::infinity ());
   }
 };
 
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 class infinity_token_matcher
-    : public token_matcher<Backend, infinity_complete<Backend>> {
+    : public token_matcher<Backend, MaxLength,
+                           infinity_complete<Backend, MaxLength>> {
 public:
   infinity_token_matcher ()
-      : token_matcher<Backend, infinity_complete<Backend>> (u8"Infinity", {}) {}
+      : token_matcher<Backend, MaxLength,
+                      infinity_complete<Backend, MaxLength>> (u8"Infinity",
+                                                              {}) {}
 };
 
 //*                   _       _             *
@@ -879,19 +912,22 @@ public:
 //* | ' \/ _` | ' \  |  _/ _ \ / / -_) ' \  *
 //* |_||_\__,_|_||_|  \__\___/_\_\___|_||_| *
 //*                                         *
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct nan_complete {
-  std::error_code operator() (parser<Backend> &p) const {
+  std::error_code operator() (parser<Backend, MaxLength> &p) const {
     return p.backend ().double_value (
         std::numeric_limits<double>::quiet_NaN ());
   }
 };
 
-template <typename Backend>
-class nan_token_matcher : public token_matcher<Backend, nan_complete<Backend>> {
+template <typename Backend, size_t MaxLength>
+class nan_token_matcher
+    : public token_matcher<Backend, MaxLength,
+                           nan_complete<Backend, MaxLength>> {
 public:
   nan_token_matcher ()
-      : token_matcher<Backend, nan_complete<Backend>> (u8"NaN", {}) {}
+      : token_matcher<Backend, MaxLength, nan_complete<Backend, MaxLength>> (
+            u8"NaN", {}) {}
 };
 
 //*                 _              *
@@ -910,11 +946,13 @@ public:
 //     minus = %x2D               ; -
 //     plus = %x2B                ; +
 //     zero = %x30                ; 0
-//-MARK:number
-template <typename Backend>
-class number_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class number_matcher final : public matcher<Backend, MaxLength> {
 public:
-  number_matcher () noexcept : matcher<Backend> (leading_minus_state) {}
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  number_matcher () noexcept : inherited (leading_minus_state) {}
   number_matcher (number_matcher const &) = delete;
   number_matcher (number_matcher &&) noexcept = default;
 
@@ -923,48 +961,50 @@ public:
   number_matcher &operator= (number_matcher const &) = delete;
   number_matcher &operator= (number_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   [[nodiscard]] bool in_terminal_state () const;
 
-  bool do_leading_minus_state (parser<Backend> &parser, char32_t c);
+  bool do_leading_minus_state (parser_type &parser, char32_t c);
   /// Implements the first character of the 'int' production.
-  bool do_integer_initial_digit_state (parser<Backend> &parser, char32_t c);
-  bool do_integer_digit_state (parser<Backend> &parser, char32_t c);
-  bool do_frac_state (parser<Backend> &parser, char32_t c);
-  bool do_frac_digit_state (parser<Backend> &parser, char32_t c);
-  bool do_exponent_sign_state (parser<Backend> &parser, char32_t c);
-  bool do_exponent_digit_state (parser<Backend> &parser, char32_t c);
-  bool do_hex_digits_state (parser<Backend> &parser, char32_t c);
+  bool do_integer_initial_digit_state (parser_type &parser, char32_t c);
+  bool do_integer_digit_state (parser_type &parser, char32_t c);
+  bool do_frac_state (parser_type &parser, char32_t c);
+  bool do_frac_digit_state (parser_type &parser, char32_t c);
+  bool do_exponent_sign_state (parser_type &parser, char32_t c);
+  bool do_exponent_digit_state (parser_type &parser, char32_t c);
+  bool do_hex_digits_state (parser_type &parser, char32_t c);
 
-  void complete (parser<Backend> &parser);
+  void complete (parser_type &parser);
   void number_is_float ();
 
-  void make_result (parser<Backend> &parser);
+  void make_result (parser_type &parser);
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     leading_minus_state,
     integer_initial_digit_state,
     integer_digit_state,
+
     frac_state,
     frac_initial_digit_state,
     frac_digit_state,
+
     exponent_sign_state,
     exponent_initial_digit_state,
     exponent_digit_state,
+
     initial_hex_digit,
     hex_digits,
 
     match_token_infinity_state,
     match_token_nan_state,
     end_token_state,
-
   };
 
-  token text_;
+  token_consumer text_;
   bool is_neg_ = false;
   struct float_accumulator {
     /// Promote from integer.
@@ -986,8 +1026,8 @@ private:
 
 // number is float
 // ~~~~~~~~~~~~~~~
-template <typename Backend>
-void number_matcher<Backend>::number_is_float () {
+template <typename Backend, size_t MaxLength>
+void number_matcher<Backend, MaxLength>::number_is_float () {
   if (std::holds_alternative<uint64_t> (acc_)) {
     acc_ = float_accumulator{std::get<uint64_t> (acc_)};
   }
@@ -995,8 +1035,8 @@ void number_matcher<Backend>::number_is_float () {
 
 // in terminal state
 // ~~~~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::in_terminal_state () const {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::in_terminal_state () const {
   switch (this->get_state ()) {
   case end_token_state:
   case exponent_digit_state:
@@ -1011,9 +1051,9 @@ bool number_matcher<Backend>::in_terminal_state () const {
 
 // leading minus state
 // ~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
-                                                      char32_t c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_leading_minus_state (
+    parser_type &parser, char32_t c) {
   bool match = true;
   if (c == char_set::hyphen_minus) {
     this->set_state (integer_initial_digit_state);
@@ -1034,9 +1074,9 @@ bool number_matcher<Backend>::do_leading_minus_state (parser<Backend> &parser,
 
 // frac state
 // ~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
-                                             char32_t const c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_frac_state (parser_type &parser,
+                                                        char32_t const c) {
   bool match = true;
   switch (c) {
   case char_set::full_stop: this->set_state (frac_initial_digit_state); break;
@@ -1077,9 +1117,9 @@ bool number_matcher<Backend>::do_frac_state (parser<Backend> &parser,
 
 // frac digit
 // ~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
-                                                   char32_t const c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_frac_digit_state (
+    parser_type &parser, char32_t const c) {
   assert (this->get_state () == frac_initial_digit_state ||
           this->get_state () == frac_digit_state);
 
@@ -1111,9 +1151,9 @@ bool number_matcher<Backend>::do_frac_digit_state (parser<Backend> &parser,
 
 // exponent sign state
 // ~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
-                                                      char32_t c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_exponent_sign_state (
+    parser_type &parser, char32_t c) {
   bool match = true;
   this->number_is_float ();
   auto &fp_acc = std::get<float_accumulator> (acc_);
@@ -1128,17 +1168,17 @@ bool number_matcher<Backend>::do_exponent_sign_state (parser<Backend> &parser,
 
 // complete
 // ~~~~~~~~
-template <typename Backend>
-void number_matcher<Backend>::complete (parser<Backend> &parser) {
+template <typename Backend, size_t MaxLength>
+void number_matcher<Backend, MaxLength>::complete (parser_type &parser) {
   this->set_state (done_state);
   this->make_result (parser);
 }
 
 // exponent digit
 // ~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
-                                                       char32_t const c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_exponent_digit_state (
+    parser_type &parser, char32_t const c) {
   assert (this->get_state () == exponent_digit_state ||
           this->get_state () == exponent_initial_digit_state);
   assert (std::holds_alternative<float_accumulator> (acc_));
@@ -1162,9 +1202,9 @@ bool number_matcher<Backend>::do_exponent_digit_state (parser<Backend> &parser,
 
 // do integer initial digit state
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_integer_initial_digit_state (
-    parser<Backend> &parser, char32_t const c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_integer_initial_digit_state (
+    parser_type &parser, char32_t const c) {
   assert (this->get_state () == integer_initial_digit_state);
   assert (std::holds_alternative<uint64_t> (acc_));
   if (c == char_set::digit_zero) {
@@ -1188,9 +1228,9 @@ bool number_matcher<Backend>::do_integer_initial_digit_state (
 
 // do integer digit state
 // ~~~~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
-                                                      char32_t const c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_integer_digit_state (
+    parser_type &parser, char32_t const c) {
   assert (this->get_state () == integer_digit_state);
   assert (std::holds_alternative<uint64_t> (acc_));
 
@@ -1217,9 +1257,9 @@ bool number_matcher<Backend>::do_integer_digit_state (parser<Backend> &parser,
 
 // do hex digits state
 // ~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
-bool number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
-                                                   char32_t const c) {
+template <typename Backend, size_t MaxLength>
+bool number_matcher<Backend, MaxLength>::do_hex_digits_state (
+    parser_type &parser, char32_t const c) {
   auto const offset = digit_offset (c);
   if (!offset) {
     this->complete (parser);
@@ -1237,10 +1277,10 @@ bool number_matcher<Backend>::do_hex_digits_state (parser<Backend> &parser,
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-number_matcher<Backend>::consume (parser<Backend> &parser,
-                                  std::optional<char32_t> ch) {
+template <typename Backend, size_t MaxLength>
+auto number_matcher<Backend, MaxLength>::consume (parser_type &parser,
+                                                  std::optional<char32_t> ch)
+    -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
     assert (!parser.has_error ());
     if (!this->in_terminal_state ()) {
@@ -1253,7 +1293,7 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
       }
     }
     this->complete (parser);
-    return {matcher<Backend>::null_pointer (), true};
+    return {matcher<Backend, MaxLength>::null_pointer (), true};
   }
 
   bool match = true;
@@ -1290,11 +1330,11 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
   case match_token_infinity_state:
   case match_token_nan_state:
     switch (text_.match (*ch)) {
-    case token::result::fail:
+    case token_consumer::result::fail:
       this->set_error (parser, error::unrecognized_token);
       break;
-    case token::result::more: break;
-    case token::result::match:
+    case token_consumer::result::more: break;
+    case token_consumer::result::match:
       acc_ = float_accumulator{this->get_state () == match_token_infinity_state
                                    ? std::numeric_limits<double>::infinity ()
                                    : std::numeric_limits<double>::quiet_NaN ()};
@@ -1304,9 +1344,9 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
     break;
   case end_token_state:
     if (ch) {
-      if (token::is_identifier_cp (*ch)) {
+      if (token_consumer::is_identifier_cp (*ch)) {
         this->set_error (parser, error::unrecognized_token);
-        return {matcher<Backend>::null_pointer (), true};
+        return {matcher<Backend, MaxLength>::null_pointer (), true};
       }
       match = false;
     }
@@ -1317,13 +1357,13 @@ number_matcher<Backend>::consume (parser<Backend> &parser,
   default: unreachable (); break;
   }
 
-  return {matcher<Backend>::null_pointer (), match};
+  return {matcher<Backend, MaxLength>::null_pointer (), match};
 }
 
 // make result
 // ~~~~~~~~~~~
-template <typename Backend>
-void number_matcher<Backend>::make_result (parser<Backend> &parser) {
+template <typename Backend, size_t MaxLength>
+void number_matcher<Backend, MaxLength>::make_result (parser_type &parser) {
   if (parser.has_error ()) {
     return;
   }
@@ -1369,6 +1409,11 @@ void number_matcher<Backend>::make_result (parser<Backend> &parser) {
   this->set_error (parser, parser.backend ().double_value (xf));
 }
 
+//*  _                                                 *
+//* | |_  _____ __  __ ___ _ _  ____  _ _ __  ___ _ _  *
+//* | ' \/ -_) \ / / _/ _ \ ' \(_-< || | '  \/ -_) '_| *
+//* |_||_\___/_\_\ \__\___/_||_/__/\_,_|_|_|_\___|_|   *
+//*                                                    *
 /// Processing of the four hex digits for the UTF-16 escape sequence used by
 /// both string and identifier objects.
 ///
@@ -1392,51 +1437,52 @@ public:
   ///
   /// \p is_utf_16  Pass true if expecting a four digit UTF-16 sequence,
   ///               false if two digit UTF-8 hex digits should follow.
-  void start (bool is_utf_16) noexcept {
+  void start (bool const is_utf_16) noexcept {
     utf16_ = is_utf_16;
     hex_ = 0U;
   }
   /// Processes a code point as part of a hex escape sequence (\\uXXXX) for a
   /// string or identifier.
   ///
-  /// \p owner  The matcher that is processing a hex escape code.
-  /// \p parser The parser instance associated with the \p owner matcher.
-  /// \p str The string to which a completed code point will be appended.
+  /// \p state  The matcher's current state.
+  /// \p out The container to which a completed code point will be appended.
   /// \p code_point  The Unicode code point to be added to the hex sequence.
-  template <typename Backend>
-  void consume (matcher<Backend> *const owner, parser<Backend> &parser,
-                u8string *const str, char32_t const code_point) noexcept {
-    int const state = owner->get_state ();
+  /// \returns Either an integer representing the next state that the matcher should assume or an error code.
+  template <typename OutputIterator>
+  std::variant<std::error_code, std::pair<int, OutputIterator>> consume (
+      int const state, char32_t const code_point, OutputIterator out) noexcept {
     assert (state >= first_hex_state && state <= last_hex_state &&
             "must be one of the hex states");
     auto const offset = digit_offset (code_point);
     if (!offset) {
-      owner->set_error (parser, error::invalid_hex_char);
-      return;
+      return error::invalid_hex_char;
     }
     hex_ = static_cast<uint_least16_t> (
-        16 * hex_ + static_cast<uint_least16_t> (code_point) - *offset);
+        16U * hex_ + static_cast<uint_least16_t> (code_point) - *offset);
     if (state < LastHexState) {
-      owner->set_state (state + 1);
-      return;
+      // More hex characters to go.
+      return std::make_pair (state + 1, out);
     }
-    auto out = std::back_inserter (*str);
+    // Convert the hex characters to either UTF-8 or -16.
     if (utf16_) {
-      utf_16_to_8_ (hex_, out);
+      out = utf_16_to_8_ (hex_, out);
       if (!utf_16_to_8_.well_formed ()) {
-        owner->set_error (parser, error::bad_unicode_code_point);
+        return error::bad_unicode_code_point;
       }
     } else {
-      assert (hex_ <= 0xFF);
-      *out = static_cast<char8> (hex_);
+      assert (hex_ <= 0xFF && "Two hex digits can't produce a value > 0xFF!");
+      *(out++) = static_cast<char8> (hex_);
     }
+    // Reset hex_ for the next sequence.
     hex_ = 0;
-    owner->set_state (PostState);
+    return std::make_pair (PostState, out);
   }
 
 private:
   /// UTF-16 to UTF-8 converter.
   icubaby::t16_8 utf_16_to_8_;
+  /// true if expecting a four digit UTF-16 sequence, false if two digit UTF-8
+  /// hex digits should follow.
   bool utf16_ = false;
   /// Used to accumulate the code point value from the four hex digits. After
   /// the four digits have been consumed, this UTF-16 code point value is
@@ -1461,12 +1507,15 @@ constexpr auto post_hex_state = 6;
 //* (_-<  _| '_| | ' \/ _` | *
 //* /__/\__|_| |_|_||_\__, | *
 //*                   |___/  *
-template <typename Backend>
-class string_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class string_matcher final : public matcher<Backend, MaxLength> {
 public:
-  explicit string_matcher (u8string *const str, bool object_key,
-                           char32_t enclosing_char) noexcept
-      : matcher<Backend> (start_state),
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  explicit string_matcher (arrayvec<char8, MaxLength> *const str,
+                           bool object_key, char32_t enclosing_char) noexcept
+      : inherited (start_state),
         is_object_key_{object_key},
         enclosing_char_{enclosing_char},
         str_{str} {
@@ -1481,14 +1530,14 @@ public:
   string_matcher &operator= (string_matcher const &) = delete;
   string_matcher &operator= (string_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
-  using matcher<Backend>::null_pointer;
+  using inherited::null_pointer;
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     hex1_state,
     hex2_state,
     hex3_state,
@@ -1499,7 +1548,7 @@ private:
     skip_lf_state,
   };
 
-  std::variant<state, std::error_code> consume_normal (parser<Backend> &p,
+  std::variant<state, std::error_code> consume_normal (parser_type &p,
                                                        bool is_object_key,
                                                        char32_t enclosing_char,
                                                        char32_t code_point);
@@ -1511,11 +1560,11 @@ private:
   ///
   /// \param p  The parent parser instance.
   /// \param code_point  The Unicode character being processed.
-  void normal (parser<Backend> &p, char32_t code_point);
+  void normal (parser_type &p, char32_t code_point);
 
-  std::variant<state, error> consume_escape_state (parser<Backend> &parser,
+  std::variant<state, error> consume_escape_state (parser_type &parser,
                                                    char32_t code_point);
-  void escape (parser<Backend> &p, char32_t code_point);
+  void escape (parser_type &p, char32_t code_point);
 
   static constexpr bool is_hex_state (enum state const state) noexcept {
     return state == hex1_state || state == hex2_state || state == hex3_state ||
@@ -1524,7 +1573,7 @@ private:
 
   bool is_object_key_;
   char32_t enclosing_char_;
-  u8string *const str_;  // output
+  arrayvec<char8, MaxLength> *const str_;  // output
   hex_consumer<hex1_state, hex4_state, normal_char_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
 
@@ -1535,12 +1584,10 @@ private:
 
 // consume normal
 // ~~~~~~~~~~~~~~
-template <typename Backend>
-auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
-                                              bool is_object_key,
-                                              char32_t enclosing_char,
-                                              char32_t code_point)
-    -> std::variant<state, std::error_code> {
+template <typename Backend, size_t MaxLength>
+auto string_matcher<Backend, MaxLength>::consume_normal (
+    parser_type &p, bool is_object_key, char32_t enclosing_char,
+    char32_t code_point) -> std::variant<state, std::error_code> {
   if (code_point == char_set::reverse_solidus) {
     return escape_state;
   }
@@ -1552,7 +1599,7 @@ auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
   if (code_point == enclosing_char) {
     // Consume the closing quote character.
     auto &n = p.backend ();
-    u8string_view const &result = *str_;
+    u8string_view const result{str_->data (), str_->size ()};
     if (std::error_code const error =
             is_object_key ? n.key (result) : n.string_value (result)) {
       return error;
@@ -1565,18 +1612,24 @@ auto string_matcher<Backend>::consume_normal (parser<Backend> &p,
   }
 
   // Remember this character.
-  auto it = utf_32_to_8_ (code_point, std::back_inserter (*str_));
+  bool overflow = false;
+  auto it =
+      utf_32_to_8_ (code_point, checked_back_insert_iterator{str_, &overflow});
   utf_32_to_8_.end_cp (it);
   if (!utf_32_to_8_.well_formed ()) {
     return error::bad_unicode_code_point;
+  }
+  if (overflow) {
+    return error::string_too_long;
   }
   return normal_char_state;
 }
 
 // normal
 // ~~~~~~
-template <typename Backend>
-void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
+template <typename Backend, size_t MaxLength>
+void string_matcher<Backend, MaxLength>::normal (parser_type &p,
+                                                 char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1593,10 +1646,9 @@ void string_matcher<Backend>::normal (parser<Backend> &p, char32_t code_point) {
 
 // consume escape state
 // ~~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
-auto string_matcher<Backend>::consume_escape_state (parser<Backend> &parser,
-                                                    char32_t code_point)
-    -> std::variant<state, error> {
+template <typename Backend, size_t MaxLength>
+auto string_matcher<Backend, MaxLength>::consume_escape_state (
+    parser_type &parser, char32_t code_point) -> std::variant<state, error> {
   state next_state = normal_char_state;
   switch (code_point) {
   case char_set::quotation_mark:
@@ -1659,15 +1711,20 @@ auto string_matcher<Backend>::consume_escape_state (parser<Backend> &parser,
   default: return {error::invalid_escape_char};
   }
   assert (next_state == normal_char_state);
-  utf_32_to_8_ (code_point, std::back_inserter (*str_));
+  bool overflow = false;
+  utf_32_to_8_ (code_point, checked_back_insert_iterator (str_, &overflow));
   assert (utf_32_to_8_.well_formed ());
+  if (overflow) {
+    return {error::string_too_long};
+  }
   return {next_state};
 }
 
 // escape
 // ~~~~~~
-template <typename Backend>
-void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
+template <typename Backend, size_t MaxLength>
+void string_matcher<Backend, MaxLength>::escape (parser_type &p,
+                                                 char32_t code_point) {
   std::visit (
       [this, &p] (auto &&arg) {
         using T = std::decay_t<decltype (arg)>;
@@ -1684,10 +1741,10 @@ void string_matcher<Backend>::escape (parser<Backend> &p, char32_t code_point) {
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-string_matcher<Backend>::consume (parser<Backend> &parser,
-                                  std::optional<char32_t> code_point) {
+template <typename Backend, size_t MaxLength>
+auto string_matcher<Backend, MaxLength>::consume (
+    parser_type &parser, std::optional<char32_t> code_point)
+    -> std::pair<typename inherited::pointer, bool> {
   if (!code_point) {
     this->set_error (parser, error::expected_close_quote);
     return {null_pointer (), true};
@@ -1710,7 +1767,19 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
   case hex1_state:
   case hex2_state:
   case hex3_state:
-  case hex4_state: hex_.consume (this, parser, str_, c); break;
+  case hex4_state: {
+    bool overflow = false;
+    auto out = checked_back_insert_iterator{str_, &overflow};
+    auto v = hex_.consume (this->get_state (), c, out);
+    if (std::holds_alternative<std::error_code> (v)) {
+      assert (v.index () == 0);
+      this->set_error (parser, std::get<std::error_code> (v));
+    } else if (overflow) {
+      this->set_error (parser, error::string_too_long);
+    } else {
+      this->set_state (std::get<1> (v).first);
+    }
+  } break;
 
   // We saw a reverse solidus (backslash) followed by a carriage return.
   // Silently consume a subsequent line_feed.
@@ -1733,11 +1802,14 @@ string_matcher<Backend>::consume (parser<Backend> &parser,
 //* | / _` / -_) ' \  _| |  _| / -_) '_| *
 //* |_\__,_\___|_||_\__|_|_| |_\___|_|   *
 //*                                      *
-template <typename Backend>
-class identifier_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class identifier_matcher final : public matcher<Backend, MaxLength> {
 public:
-  explicit identifier_matcher (u8string *const str) noexcept
-      : matcher<Backend> (start_state), str_{str} {}
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  explicit identifier_matcher (arrayvec<char8, MaxLength> *const str) noexcept
+      : inherited (start_state), str_{str} {}
   identifier_matcher (identifier_matcher const &) = delete;
   identifier_matcher (identifier_matcher &&) noexcept = default;
 
@@ -1746,14 +1818,14 @@ public:
   identifier_matcher &operator= (identifier_matcher const &) = delete;
   identifier_matcher &operator= (identifier_matcher &&) noexcept = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
-  using matcher<Backend>::null_pointer;
+  using inherited::null_pointer;
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     // hexN_state is used to implement the \uXXXX hexadecimal escape
     // productions.
     hex1_state,
@@ -1765,7 +1837,7 @@ private:
     u_state,      // Used after a backslash is encountered.
   };
 
-  u8string *const str_;  // output
+  arrayvec<char8, MaxLength> *const str_;  // output
   hex_consumer<hex1_state, hex4_state, part_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
 
@@ -1776,11 +1848,11 @@ private:
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-identifier_matcher<Backend>::consume (parser<Backend> &parser,
-                                      std::optional<char32_t> code_point) {
-  using return_type = std::pair<typename matcher<Backend>::pointer, bool>;
+template <typename Backend, size_t MaxLength>
+auto identifier_matcher<Backend, MaxLength>::consume (
+    parser_type &parser, std::optional<char32_t> code_point)
+    -> std::pair<typename inherited::pointer, bool> {
+  using return_type = std::pair<typename inherited::pointer, bool>;
   auto consume_and_iterate = return_type{null_pointer (), true};
   auto retry_char_and_iterate = return_type{null_pointer (), false};
   auto install_error = [&] (error err) {
@@ -1799,7 +1871,7 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   char32_t const c = *code_point;
   switch (this->get_state ()) {
   case start_state:
-    if (whitespace_matcher<Backend>::want_code_point (parser, c)) {
+    if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser, c)) {
       return {this->make_whitespace_matcher (parser), false};
     }
     if (c == char_set::reverse_solidus) {
@@ -1824,7 +1896,8 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
         rule != grammar_rule::identifier_start &&
         rule != grammar_rule::identifier_part) {
       // This code point wasn't part of an identifier, so don't consume it.
-      if (std::error_code const error = parser.backend ().key (*str_)) {
+      if (std::error_code const error = parser.backend ().key (
+              u8string_view{str_->data (), str_->size ()})) {
         this->set_error (parser, error);
       }
       // TODO(paul) check whether identifier is empty?
@@ -1842,11 +1915,26 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
   case hex1_state:
   case hex2_state:
   case hex3_state:
-  case hex4_state:
-    hex_.consume (this, parser, str_, c);
+  case hex4_state: {
+    bool overflow = false;
+    auto out = checked_back_insert_iterator{str_, &overflow};
+    auto v = hex_.consume (this->get_state (), c, out);
+    if (std::holds_alternative<std::error_code> (v)) {
+      assert (v.index () == 0);
+      this->set_error (parser, std::get<std::error_code> (v));
+    } else if (overflow) {
+      this->set_error (parser, error::identifier_too_long);
+    } else {
+      this->set_state (std::get<1> (v).first);
+    }
+  }
     return consume_and_iterate;
 
   default: assert (false); break;
+  }
+
+  if (str_->size () >= MaxLength) {
+    return install_error (error::identifier_too_long);
   }
 
   // Remember this character.
@@ -1863,36 +1951,39 @@ identifier_matcher<Backend>::consume (parser<Backend> &parser,
 //* / _` | '_| '_/ _` | || | *
 //* \__,_|_| |_| \__,_|\_, | *
 //*                    |__/  *
-//-MARK:array
-template <typename Backend>
-class array_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class array_matcher final : public matcher<Backend, MaxLength> {
+  using inherited = matcher<Backend, MaxLength>;
+
 public:
-  array_matcher () noexcept : matcher<Backend> (start_state) {}
+  using parser_type = typename inherited::parser_type;
+
+  array_matcher () noexcept : inherited (start_state) {}
   ~array_matcher () noexcept override = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
-  using matcher<Backend>::null_pointer;
+  using inherited::null_pointer;
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     start_state,
     first_object_state,
     object_state,
     comma_state,
   };
 
-  void end_array (parser<Backend> &parser);
+  void end_array (parser_type &parser);
 };
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-array_matcher<Backend>::consume (parser<Backend> &p,
-                                 std::optional<char32_t> ch) {
+template <typename Backend, size_t MaxLength>
+auto array_matcher<Backend, MaxLength>::consume (parser_type &p,
+                                                 std::optional<char32_t> ch)
+    -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
     this->set_error (p, error::expected_array_member);
     return {null_pointer (), true};
@@ -1920,7 +2011,7 @@ array_matcher<Backend>::consume (parser<Backend> &p,
     return {this->make_root_matcher (p), false};
     break;
   case comma_state:
-    if (whitespace_matcher<Backend>::want_code_point (p, c)) {
+    if (whitespace_matcher<Backend, MaxLength>::want_code_point (p, c)) {
       // just consume whitespace before a comma.
       return {this->make_whitespace_matcher (p), false};
     }
@@ -1946,8 +2037,8 @@ array_matcher<Backend>::consume (parser<Backend> &p,
 
 // end array
 // ~~~~~~~~~
-template <typename Backend>
-void array_matcher<Backend>::end_array (parser<Backend> &parser) {
+template <typename Backend, size_t MaxLength>
+void array_matcher<Backend, MaxLength>::end_array (parser_type &parser) {
   this->set_error (parser, parser.backend ().end_array ());
   this->set_state (done_state);
 }
@@ -1957,21 +2048,23 @@ void array_matcher<Backend>::end_array (parser<Backend> &parser) {
 //* / _ \ '_ \| / -_) _|  _| *
 //* \___/_.__// \___\__|\__| *
 //*         |__/             *
-//-MARK:object
-template <typename Backend>
-class object_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class object_matcher final : public matcher<Backend, MaxLength> {
 public:
-  object_matcher () noexcept : matcher<Backend> (start_state) {}
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  object_matcher () noexcept : inherited (start_state) {}
   ~object_matcher () noexcept override = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
-  using matcher<Backend>::null_pointer;
+  using inherited::null_pointer;
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     start_state,
     first_key_state,
     key_state,
@@ -1980,15 +2073,15 @@ private:
     comma_state,
   };
 
-  void end_object (parser<Backend> &parser);
+  void end_object (parser_type &parser);
 };
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-object_matcher<Backend>::consume (parser<Backend> &parser,
-                                  std::optional<char32_t> ch) {
+template <typename Backend, size_t MaxLength>
+auto object_matcher<Backend, MaxLength>::consume (parser_type &parser,
+                                                  std::optional<char32_t> ch)
+    -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
     this->set_error (parser, error::expected_object_member);
     return {null_pointer (), true};
@@ -2022,7 +2115,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_error (parser, error::expected_object_key);
     break;
   case colon_state:
-    if (whitespace_matcher<Backend>::want_code_point (parser, c)) {
+    if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser, c)) {
       // just consume whitespace before the colon.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -2036,7 +2129,7 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
   case comma_state:
-    if (whitespace_matcher<Backend>::want_code_point (parser, c)) {
+    if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser, c)) {
       // just consume whitespace before the comma.
       return {this->make_whitespace_matcher (parser), false};
     }
@@ -2067,25 +2160,27 @@ object_matcher<Backend>::consume (parser<Backend> &parser,
 
 // end object
 // ~~~~~~~~~~~
-template <typename Backend>
-void object_matcher<Backend>::end_object (parser<Backend> &parser) {
+template <typename Backend, size_t MaxLength>
+void object_matcher<Backend, MaxLength>::end_object (parser_type &parser) {
   this->set_error (parser, parser.backend ().end_object ());
   this->set_state (done_state);
 }
 
-//*             *
-//* __ __ _____ *
-//* \ V  V (_-< *
-//*  \_/\_//__/ *
-//*             *
+//*         _    _ _                             *
+//* __ __ _| |_ (_) |_ ___ ____ __  __ _ __ ___  *
+//* \ V  V / ' \| |  _/ -_|_-< '_ \/ _` / _/ -_) *
+//*  \_/\_/|_||_|_|\__\___/__/ .__/\__,_\__\___| *
+//*                          |_|                 *
 /// This matcher consumes whitespace and updates the row number in response to
 /// the various combinations of CR and LF. Supports #, //, and /* style comments
 /// as an extension.
-//-MARK:whitespace
-template <typename Backend>
-class whitespace_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class whitespace_matcher final : public matcher<Backend, MaxLength> {
 public:
-  whitespace_matcher () noexcept : matcher<Backend> (body_state) {}
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  whitespace_matcher () noexcept : inherited (body_state) {}
   whitespace_matcher (whitespace_matcher const &) = delete;
   whitespace_matcher (whitespace_matcher &&) noexcept = default;
 
@@ -2099,17 +2194,17 @@ public:
   ///
   /// \p parser  The owning parser instance.
   /// \p code_point  The Unicode code point which is to be tested.
-  static constexpr bool want_code_point (parser<Backend> &parser,
+  static constexpr bool want_code_point (parser_type &parser,
                                          char32_t code_point) noexcept;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
-  using matcher<Backend>::null_pointer;
+  using inherited::null_pointer;
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     /// Normal whitespace scanning. The "body" is the whitespace being consumed.
     body_state,
     /// Handles the LF part of a Windows-style CR/LF pair.
@@ -2126,26 +2221,24 @@ private:
     multi_line_comment_crlf_state,
   };
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume_body (
-      parser<Backend> &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> consume_body (
+      parser_type &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> consume_comment_start (
+      parser_type &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> multi_line_comment_body (
+      parser_type &parser, char32_t c);
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume_comment_start (
-      parser<Backend> &parser, char32_t c);
-
-  std::pair<typename matcher<Backend>::pointer, bool> multi_line_comment_body (
-      parser<Backend> &parser, char32_t c);
-
-  void cr (parser<Backend> &parser, state next) {
+  void cr (parser_type &parser, state next) {
     assert (this->get_state () == multi_line_comment_body_state ||
             this->get_state () == body_state);
     parser.advance_row ();
     this->set_state (next);
   }
-  void lf (parser<Backend> &parser) { parser.advance_row (); }
+  void lf (parser_type &parser) { parser.advance_row (); }
 
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
   /// if the character shoud be treated as whitespace.
-  bool crlf (parser<Backend> &parser, char32_t c) {
+  bool crlf (parser_type &parser, char32_t c) {
     if (c != char_set::line_feed) {
       return false;
     }
@@ -2156,9 +2249,9 @@ private:
 
 // want code point
 // ~~~~~~~~~~~~~~~
-template <typename Backend>
-constexpr bool whitespace_matcher<Backend>::want_code_point (
-    parser<Backend> &parser, char32_t code_point) noexcept {
+template <typename Backend, size_t MaxLength>
+constexpr bool whitespace_matcher<Backend, MaxLength>::want_code_point (
+    parser_type &parser, char32_t code_point) noexcept {
   bool result = false;
   switch (code_point) {
   // The following two code points aren't whitespace but potentially introduce
@@ -2192,10 +2285,10 @@ constexpr bool whitespace_matcher<Backend>::want_code_point (
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::consume (parser<Backend> &parser,
-                                      std::optional<char32_t> ch) {
+template <typename Backend, size_t MaxLength>
+std::pair<typename matcher<Backend, MaxLength>::pointer, bool>
+whitespace_matcher<Backend, MaxLength>::consume (parser_type &parser,
+                                                 std::optional<char32_t> ch) {
   if (!ch) {
     switch (this->get_state ()) {
     case multi_line_comment_body_state:
@@ -2259,10 +2352,10 @@ whitespace_matcher<Backend>::consume (parser<Backend> &parser,
 
 // consume body
 // ~~~~~~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::consume_body (parser<Backend> &parser,
-                                           char32_t c) {
+template <typename Backend, size_t MaxLength>
+auto whitespace_matcher<Backend, MaxLength>::consume_body (parser_type &parser,
+                                                           char32_t c)
+    -> std::pair<typename inherited::pointer, bool> {
   auto const stop_retry = [this] () {
     // Stop, pop this matcher, and retry with the same character.
     this->set_state (done_state);
@@ -2322,10 +2415,10 @@ whitespace_matcher<Backend>::consume_body (parser<Backend> &parser,
 ///   - just a random / character.
 /// This function handles the character after that initial slash to determine
 /// which of the three it is.
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::consume_comment_start (parser<Backend> &parser,
-                                                    char32_t c) {
+template <typename Backend, size_t MaxLength>
+std::pair<typename matcher<Backend, MaxLength>::pointer, bool>
+whitespace_matcher<Backend, MaxLength>::consume_comment_start (
+    parser_type &parser, char32_t c) {
   if (c == char_set::solidus &&
       parser.extension_enabled (extensions::single_line_comments)) {
     this->set_state (single_line_comment_state);
@@ -2343,10 +2436,10 @@ whitespace_matcher<Backend>::consume_comment_start (parser<Backend> &parser,
 /// Similar to consume_body() except that the commented characters are consumed
 /// as well as whitespace. We're looking to see a star ('*') character which may
 /// indicate the end of the multi-line comment.
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
-                                                      char32_t c) {
+template <typename Backend, size_t MaxLength>
+std::pair<typename matcher<Backend, MaxLength>::pointer, bool>
+whitespace_matcher<Backend, MaxLength>::multi_line_comment_body (
+    parser_type &parser, char32_t c) {
   assert (parser.extension_enabled (extensions::multi_line_comments));
   assert (this->get_state () == multi_line_comment_body_state);
   switch (c) {
@@ -2370,35 +2463,37 @@ whitespace_matcher<Backend>::multi_line_comment_body (parser<Backend> &parser,
 //* / -_) _ \  _| *
 //* \___\___/_|   *
 //*               *
-//-MARK:eof
-template <typename Backend>
-class eof_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class eof_matcher final : public matcher<Backend, MaxLength> {
 public:
-  eof_matcher () noexcept : matcher<Backend> (start_state) {}
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  constexpr eof_matcher () noexcept : inherited (start_state) {}
   ~eof_matcher () noexcept override = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     start_state,
   };
 };
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-eof_matcher<Backend>::consume (parser<Backend> &parser,
-                               std::optional<char32_t> const ch) {
+template <typename Backend, size_t MaxLength>
+auto eof_matcher<Backend, MaxLength>::consume (parser_type &parser,
+                                               std::optional<char32_t> const ch)
+    -> std::pair<typename inherited::pointer, bool> {
   if (ch) {
     this->set_error (parser, error::unexpected_extra_input);
   } else {
     this->set_state (done_state);
   }
-  return {matcher<Backend>::null_pointer (), true};
+  return {inherited::null_pointer (), true};
 }
 
 //*               _                _      _             *
@@ -2406,22 +2501,23 @@ eof_matcher<Backend>::consume (parser<Backend> &parser,
 //* | '_/ _ \/ _ \  _| | '  \/ _` |  _/ _| ' \/ -_) '_| *
 //* |_| \___/\___/\__| |_|_|_\__,_|\__\__|_||_\___|_|   *
 //*                                                     *
-//-MARK:root
-template <typename Backend>
-class root_matcher final : public matcher<Backend> {
+template <typename Backend, size_t MaxLength>
+class root_matcher final : public matcher<Backend, MaxLength> {
 public:
-  explicit constexpr root_matcher () noexcept
-      : matcher<Backend> (start_state) {}
+  using inherited = matcher<Backend, MaxLength>;
+  using parser_type = typename inherited::parser_type;
+
+  constexpr root_matcher () noexcept : inherited (start_state) {}
   ~root_matcher () noexcept override = default;
 
-  std::pair<typename matcher<Backend>::pointer, bool> consume (
-      parser<Backend> &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume (
+      parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
-  using matcher<Backend>::null_pointer;
+  using inherited::null_pointer;
 
   enum state {
-    done_state = matcher<Backend>::done,
+    done_state = inherited::done,
     start_state,
     new_token_state,
   };
@@ -2429,21 +2525,21 @@ private:
 
 // consume
 // ~~~~~~~
-template <typename Backend>
-std::pair<typename matcher<Backend>::pointer, bool>
-root_matcher<Backend>::consume (parser<Backend> &parser,
-                                std::optional<char32_t> ch) {
+template <typename Backend, size_t MaxLength>
+auto root_matcher<Backend, MaxLength>::consume (parser_type &parser,
+                                                std::optional<char32_t> ch)
+    -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
     this->set_error (parser, error::expected_token);
     return {null_pointer (), true};
   }
 
-  using pointer = typename matcher<Backend>::pointer;
+  using pointer = typename inherited::pointer;
   using deleter = typename pointer::deleter_type;
   switch (this->get_state ()) {
   case start_state:
     this->set_state (new_token_state);
-    if (whitespace_matcher<Backend>::want_code_point (parser, *ch)) {
+    if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser, *ch)) {
       return {this->make_whitespace_matcher (parser), false};
     }
     [[fallthrough]];
@@ -2468,8 +2564,8 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     case char_set::digit_seven:
     case char_set::digit_eight:
     case char_set::digit_nine:
-      return {this->template make_terminal_matcher<number_matcher<Backend>> (
-                  parser),
+      return {this->template make_terminal_matcher<
+                  number_matcher<Backend, MaxLength>> (parser),
               false};
     case '\'':
       if (!parser.extension_enabled (extensions::single_quote_string)) {
@@ -2483,7 +2579,7 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
     case char_set::latin_capital_letter_i:
       if (parser.extension_enabled (extensions::numbers)) {
         return {this->template make_terminal_matcher<
-                    infinity_token_matcher<Backend>> (parser),
+                    infinity_token_matcher<Backend, MaxLength>> (parser),
                 false};
       }
       this->set_error (parser, error::expected_token);
@@ -2491,35 +2587,31 @@ root_matcher<Backend>::consume (parser<Backend> &parser,
 
     case char_set::latin_capital_letter_n:
       if (parser.extension_enabled (extensions::numbers)) {
-        return {
-            this->template make_terminal_matcher<nan_token_matcher<Backend>> (
-                parser),
-            false};
+        return {this->template make_terminal_matcher<
+                    nan_token_matcher<Backend, MaxLength>> (parser),
+                false};
       }
       this->set_error (parser, error::expected_token);
       return {null_pointer (), true};
 
     case 't':
-      return {
-          this->template make_terminal_matcher<true_token_matcher<Backend>> (
-              parser),
-          false};
+      return {this->template make_terminal_matcher<
+                  true_token_matcher<Backend, MaxLength>> (parser),
+              false};
     case 'f':
-      return {
-          this->template make_terminal_matcher<false_token_matcher<Backend>> (
-              parser),
-          false};
+      return {this->template make_terminal_matcher<
+                  false_token_matcher<Backend, MaxLength>> (parser),
+              false};
     case 'n':
-      return {
-          this->template make_terminal_matcher<null_token_matcher<Backend>> (
-              parser),
-          false};
+      return {this->template make_terminal_matcher<
+                  null_token_matcher<Backend, MaxLength>> (parser),
+              false};
     case '[':
-      return {pointer{new array_matcher<Backend> (),
+      return {pointer{new array_matcher<Backend, MaxLength> (),
                       deleter{deleter::mode::do_delete}},
               false};
     case '{':
-      return {pointer{new object_matcher<Backend> (),
+      return {pointer{new object_matcher<Backend, MaxLength> (),
                       deleter{deleter::mode::do_delete}},
               false};
     default:
@@ -2545,20 +2637,20 @@ using storage_t = typename storage<T>::type;
 //* (_-< | ' \/ _` | / -_)  _/ _ \ ' \  (_-<  _/ _ \ '_/ _` / _` / -_) *
 //* /__/_|_||_\__, |_\___|\__\___/_||_| /__/\__\___/_| \__,_\__, \___| *
 //*           |___/                                         |___/      *
-//-MARK:singleton storage
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 struct singleton_storage {
-  storage_t<eof_matcher<Backend>> eof;
-  storage_t<whitespace_matcher<Backend>> trailing_ws;
-  storage_t<root_matcher<Backend>> root;
-  std::variant<
-      details::number_matcher<Backend>, details::string_matcher<Backend>,
-      details::identifier_matcher<Backend>,
-      details::true_token_matcher<Backend>,
-      details::false_token_matcher<Backend>,
-      details::null_token_matcher<Backend>,
-      details::infinity_token_matcher<Backend>,
-      details::nan_token_matcher<Backend>, details::whitespace_matcher<Backend>>
+  storage_t<eof_matcher<Backend, MaxLength>> eof;
+  storage_t<whitespace_matcher<Backend, MaxLength>> trailing_ws;
+  storage_t<root_matcher<Backend, MaxLength>> root;
+  std::variant<details::number_matcher<Backend, MaxLength>,
+               details::string_matcher<Backend, MaxLength>,
+               details::identifier_matcher<Backend, MaxLength>,
+               details::true_token_matcher<Backend, MaxLength>,
+               details::false_token_matcher<Backend, MaxLength>,
+               details::null_token_matcher<Backend, MaxLength>,
+               details::infinity_token_matcher<Backend, MaxLength>,
+               details::nan_token_matcher<Backend, MaxLength>,
+               details::whitespace_matcher<Backend, MaxLength>>
       terminals_;
 };
 
@@ -2566,7 +2658,7 @@ struct singleton_storage {
 
 // (ctor)
 // ~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 #if PEEJAY_HAVE_CONCEPTS
 template <typename OtherBackend>
@@ -2580,27 +2672,31 @@ template <
                             typename std::remove_reference_t<OtherBackend>>>,
         int> /* unnamed */>
 #endif
-parser<Backend>::parser (OtherBackend &&backend, extensions const extensions)
-    : extensions_{extensions}, backend_{std::forward<OtherBackend> (backend)} {
+parser<Backend, MaxLength>::parser (OtherBackend &&backend,
+                                    extensions const extensions)
+    : str_buffer_{std::make_unique<arrayvec<char8, MaxLength>> ()},
+      extensions_{extensions},
+      backend_{std::forward<OtherBackend> (backend)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
   // input JSON ends after a single top-level object.
-  stack_.push (mpointer (new (&singletons_.eof) details::eof_matcher<Backend>{},
+  stack_.push (mpointer (new (&singletons_.eof)
+                             details::eof_matcher<Backend, MaxLength>{},
                          deleter{deleter::mode::do_dtor}));
   // We permit whitespace after the top-level object.
   stack_.push (mpointer (new (&singletons_.trailing_ws)
-                             details::whitespace_matcher<Backend>{},
+                             details::whitespace_matcher<Backend, MaxLength>{},
                          deleter{deleter::mode::do_dtor}));
   stack_.push (this->make_root_matcher ());
 }
 
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_root_matcher () -> pointer {
-  using root_matcher = details::root_matcher<Backend>;
+auto parser<Backend, MaxLength>::make_root_matcher () -> pointer {
+  using root_matcher = details::root_matcher<Backend, MaxLength>;
   using deleter = typename pointer::deleter_type;
   return pointer (new (&singletons_.root) root_matcher (),
                   deleter{deleter::mode::do_dtor});
@@ -2608,42 +2704,44 @@ auto parser<Backend>::make_root_matcher () -> pointer {
 
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_whitespace_matcher () -> pointer {
-  using whitespace_matcher = details::whitespace_matcher<Backend>;
+auto parser<Backend, MaxLength>::make_whitespace_matcher () -> pointer {
+  using whitespace_matcher = details::whitespace_matcher<Backend, MaxLength>;
   return this->make_terminal_matcher<whitespace_matcher> ();
 }
 
 // make string matcher
 // ~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_string_matcher (bool object_key,
-                                           char32_t enclosing_char) -> pointer {
-  using string_matcher = details::string_matcher<Backend>;
+auto parser<Backend, MaxLength>::make_string_matcher (bool object_key,
+                                                      char32_t enclosing_char)
+    -> pointer {
+  using string_matcher = details::string_matcher<Backend, MaxLength>;
   return this->template make_terminal_matcher<string_matcher> (
-      &string_, object_key, enclosing_char);
+      str_buffer_.get (), object_key, enclosing_char);
 }
 
 // make identifier matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-auto parser<Backend>::make_identifier_matcher () -> pointer {
-  using identifier_matcher = details::identifier_matcher<Backend>;
-  return this->template make_terminal_matcher<identifier_matcher> (&string_);
+auto parser<Backend, MaxLength>::make_identifier_matcher () -> pointer {
+  using identifier_matcher = details::identifier_matcher<Backend, MaxLength>;
+  return this->template make_terminal_matcher<identifier_matcher> (
+      str_buffer_.get ());
 }
 
 // input32
 // ~~~~~~~
 /// \param first The element in the half-open range of UTF-32 code-units to be parsed.
 /// \param last The end of the range of UTF-32 code-units to be parsed.
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 template <typename InputIterator>
-auto parser<Backend>::input32 (InputIterator first, InputIterator last)
-    -> parser & {
+auto parser<Backend, MaxLength>::input32 (InputIterator first,
+                                          InputIterator last) -> parser & {
   if (error_) {
     return *this;
   }
@@ -2659,11 +2757,11 @@ auto parser<Backend>::input32 (InputIterator first, InputIterator last)
 
 // input8
 // ~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 template <typename InputIterator>
-auto parser<Backend>::input8 (InputIterator first, InputIterator last)
-    -> parser & {
+auto parser<Backend, MaxLength>::input8 (InputIterator first,
+                                         InputIterator last) -> parser & {
   if (error_) {
     return *this;
   }
@@ -2685,9 +2783,9 @@ auto parser<Backend>::input8 (InputIterator first, InputIterator last)
 
 // consume code point
 // ~~~~~~~~~~~~~~~~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-void parser<Backend>::consume_code_point (char32_t code_point) {
+void parser<Backend, MaxLength>::consume_code_point (char32_t code_point) {
   bool retry = false;
   do {
     assert (!stack_.empty ());
@@ -2720,9 +2818,9 @@ void parser<Backend>::consume_code_point (char32_t code_point) {
 
 // eof
 // ~~~
-template <typename Backend>
+template <typename Backend, size_t MaxLength>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
-decltype (auto) parser<Backend>::eof () {
+decltype (auto) parser<Backend, MaxLength>::eof () {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
     auto res = handler->consume (*this, std::optional<char>{std::nullopt});

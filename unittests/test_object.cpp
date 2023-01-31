@@ -389,7 +389,7 @@ TEST_F (Object, IdentifierKeyHexEscapeLowSurrogateOnly) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (Object, Utf16HighFollowedByUtf8Char) {
+TEST_F (Object, IdentifierUtf16HighFollowedByUtf8Char) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
@@ -399,4 +399,53 @@ TEST_F (Object, Utf16HighFollowedByUtf8Char) {
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{9U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, IdentifierMaxLength) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+  EXPECT_CALL (callbacks_, key (u8"a123456789"sv)).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, end_object ()).Times (1);
+
+  constexpr auto max_length = size_t{10};
+  auto p = make_parser<max_length> (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({a123456789:1})"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was: "
+      << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, IdentifierOnePastMaxLength) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  constexpr auto max_length = size_t{10};
+  auto p = make_parser<max_length> (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({a1234567890:1})"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::identifier_too_long))
+      << "Real error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, IdentifierOneUtf8HexPastMaxLength) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  constexpr auto max_length = size_t{10};
+  auto p = make_parser<max_length> (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({a123456789\u0030:1})"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::identifier_too_long))
+      << "Real error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, IdentifierOneUtf16HexPastMaxLength) {
+  EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+
+  constexpr auto max_length = size_t{10};
+  auto p = make_parser<max_length> (proxy_, extensions::identifier_object_key);
+  p.input (u8R"({a123456789\uD834\uDD1E:1})"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::identifier_too_long))
+      << "Real error was: " << p.last_error ().message ();
 }

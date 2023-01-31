@@ -118,6 +118,43 @@ TEST_F (String, UnterminatedSingleQuote) {
 }
 
 // NOLINTNEXTLINE
+TEST_F (String, MaxLength) {
+  EXPECT_CALL (callbacks_, string_value (u8"0123456789"sv)).Times (1);
+  auto p = make_parser<10> (proxy_);
+  p.input (u8R"("0123456789")"sv).eof ();
+  EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
+  EXPECT_FALSE (p.last_error ())
+      << "Expected the parse error to be zero but was: "
+      << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (String, OnePastMaxLength) {
+  auto p = make_parser<10> (proxy_);
+  p.input (u8R"("01234567890")"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
+      << "Real error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (String, OneUtf8HexPastMaxLength) {
+  constexpr auto max_length = size_t{10};
+  auto p = make_parser<max_length> (proxy_);
+  p.input (u8R"("0123456789\u0030")"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
+      << "Real error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (String, OneUtf16HexPastMaxLength) {
+  constexpr auto max_length = size_t{10};
+  auto p = make_parser<max_length> (proxy_);
+  p.input (u8R"("0123456789\uD834\uDD1E")"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
+      << "Real error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
 TEST_F (String, EscapeN) {
   EXPECT_CALL (callbacks_, string_value (u8"a\n"sv)).Times (1);
 
