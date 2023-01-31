@@ -3,7 +3,9 @@
 namespace peejay::details {
 
 grammar_rule code_point_grammar_rule (char32_t const code_point) noexcept {
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const end = std::end (code_point_runs);
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const it = std::lower_bound (
       std::begin (code_point_runs), end,
       cprun{code_point, 0, 0},
