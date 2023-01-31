@@ -26,7 +26,14 @@
 
 class json_callbacks_base {
 public:
+  json_callbacks_base () = default;
+  json_callbacks_base (json_callbacks_base const &) = delete;
+  json_callbacks_base (json_callbacks_base &&) noexcept = delete;
+
   virtual ~json_callbacks_base () noexcept;
+
+  json_callbacks_base &operator= (json_callbacks_base const &) = delete;
+  json_callbacks_base &operator= (json_callbacks_base &&) noexcept = delete;
 
   virtual std::error_code string_value (peejay::u8string_view const &) = 0;
   virtual std::error_code int64_value (std::int64_t) = 0;
@@ -45,7 +52,14 @@ public:
 
 class mock_json_callbacks : public json_callbacks_base {
 public:
+  mock_json_callbacks () = default;
+  mock_json_callbacks (mock_json_callbacks const &) = delete;
+  mock_json_callbacks (mock_json_callbacks &&) noexcept = delete;
+
   ~mock_json_callbacks () noexcept override;
+
+  mock_json_callbacks &operator= (mock_json_callbacks const &) = delete;
+  mock_json_callbacks &operator= (mock_json_callbacks &&) = delete;
 
   // NOLINTNEXTLINE
   MOCK_METHOD1 (string_value, std::error_code (peejay::u8string_view const &));
