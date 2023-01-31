@@ -205,8 +205,10 @@ TEST (ArrayVec, IteratorConstFromNonConstContainer) {
   std::iota (avec.begin (), avec.end (), 42);
 
   // Manually copy the contents of the arrayvec to a new vector but use a
-  // const iterator to do it this time.
+  // const iterator to do it this time. Don't use a range-based for loop so we
+  // get to declare a const iterator.
   std::vector<int> actual;
+  // NOLINTNEXTLINE(modernize-loop-convert)
   for (decltype (avec)::const_iterator it = avec.cbegin (), end = avec.cend ();
        it != end; ++it) {
     actual.push_back (*it);
