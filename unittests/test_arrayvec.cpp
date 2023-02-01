@@ -130,6 +130,12 @@ TEST (ArrayVec, MoveAssign2) {
 }
 
 // NOLINTNEXTLINE
+TEST (ArrayVec, AssignCount) {
+  arrayvec<int, 3> b{1};
+  b.assign (size_t{3}, 7);
+  EXPECT_THAT (b, ElementsAre (7, 7, 7));
+}
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignInitializerList) {
   arrayvec<int, 3> b{1, 2, 3};
   b.assign ({4, 5, 6});

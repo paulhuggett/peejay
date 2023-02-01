@@ -107,6 +107,7 @@ public:
   arrayvec (std::initializer_list<T> init)
       : arrayvec (std::begin (init), std::end (init)) {}
   template <typename ForwardIterator>
+  PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
   arrayvec (ForwardIterator first, ForwardIterator last);
   arrayvec (size_type count, T const &value);
 
@@ -115,8 +116,12 @@ public:
   arrayvec (arrayvec &&other) noexcept (
       std::is_nothrow_move_constructible_v<T>);
 
-  arrayvec &operator= (arrayvec const &other);
-  arrayvec &operator= (arrayvec &&other) noexcept;
+  arrayvec &operator= (arrayvec const &other) {
+    return operator_assign<false> (other);
+  }
+  arrayvec &operator= (arrayvec &&other) noexcept {
+    return operator_assign<true> (other);
+  }
 
   ~arrayvec () noexcept { clear (); }
 
@@ -208,25 +213,39 @@ public:
     construct_at (&element (size_), v);
     ++size_;
   }
-  // Appends a new element to the end of the container.
+  /// Appends a new element to the end of the container.
   template <typename... Args>
   void emplace_back (Args &&...args) {
     assert (size_ < Size);
-    T *const el = &element (size_);
-    construct_at (el, std::forward<Args> (args)...);
+    construct_at (&element (size_), std::forward<Args> (args)...);
     ++size_;
   }
 
-  template <typename InputIt>
-  void assign (InputIt first, InputIt last);
+  /// Replaces the contents with \p count copies of value \p value.
+  ///
+  /// \p count The new size of the container.
+  /// \p value The value with which to initialize elements of the container.
+  void assign (size_type count, T const &value);
+  /// Replaces the contents with copies of those in the range [first, last). The
+  /// behavior is undefined if either argument is an iterator into *this.
+  ///
+  /// \p first The first of the range from which elements are to be copied.
+  /// \p last The last of the range from which elements are to be copied.
+  template <typename InputIterator>
+  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+  void assign (InputIterator first, InputIterator last);
 
+  /// Replaces the contents with the elements from the initializer list \p ilist
+  ///
+  /// \p ilist Initializer list from which elements are to be copied.
   void assign (std::initializer_list<T> ilist) {
     this->assign (std::begin (ilist), std::end (ilist));
   }
 
   /// Add the specified range to the end of the vector.
-  template <typename InputIt>
-  void append (InputIt first, InputIt last);
+  template <typename InputIterator>
+  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+  void append (InputIterator first, InputIterator last);
   void append (std::initializer_list<T> ilist) {
     this->append (std::begin (ilist), std::end (ilist));
   }
@@ -257,6 +276,9 @@ private:
     return *pointer_cast<T const *> (data_.data () + n);
   }
 
+  template <bool IsMove, typename OtherVec>
+  arrayvec &operator_assign (OtherVec &&other) noexcept;
+
   /// The actual number of elements for which this buffer is sized.
   /// Note that this may be less than Size.
   size_type size_ = 0;
@@ -281,6 +303,7 @@ arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept (
 
 template <typename T, size_t Size>
 template <typename ForwardIterator>
+PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
 arrayvec<T, Size>::arrayvec (ForwardIterator first, ForwardIterator last) {
   auto out = begin ();
   for (; first != last; ++size_, ++first, ++out) {
@@ -300,55 +323,36 @@ arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
   }
 }
 
-// operator=
-// ~~~~~~~~~
+// operator assign
+// ~~~~~~~~~~~~~~~
 template <typename T, size_t Size>
-auto arrayvec<T, Size>::operator= (arrayvec &&other) noexcept -> arrayvec & {
+template <bool IsMove, typename OtherVec>
+auto arrayvec<T, Size>::operator_assign (OtherVec &&other) noexcept
+    -> arrayvec & {
   if (&other == this) {
     return *this;
   }
-  auto const p = begin();
+  auto const p = this->begin ();
   auto src = other.begin();
   auto dest = p;
   // Step 1: where both *this and other have constructed members we can just use
   // assignment.
   auto end = dest + std::min (size_, other.size_);
   for (; dest < end; ++src, ++dest) {
-    *dest = std::move (*src);
+    if constexpr (IsMove) {
+      *dest = std::move (*src);
+    } else {
+      *dest = *src;
+    }
   }
   // Step 2: target memory does not contain constructed members.
   end = p + other.size_;
   for (; dest < end; ++src, ++dest) {
-    construct_at (&*dest, std::move (*src));
-  }
-  // Step 3: The 'other' array is shorter than this object so release any extra
-  // members.
-  end = p + size_;
-  for (; dest < end; ++dest) {
-    std::destroy_at (&*dest);
-  }
-  size_ = other.size_;
-  return *this;
-}
-
-template <typename T, size_t Size>
-auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
-  if (&other == this) {
-    return *this;
-  }
-  auto const p = begin();
-  auto src = other.begin();
-  auto dest = p;
-  // Step 1: where both *this and other have constructed members we can just use
-  // assignment.
-  auto end = dest + std::min (size_, other.size_);
-  for (; dest < end; ++src, ++dest) {
-    *dest = *src;
-  }
-  // Step 2: target memory does not contain constructed members.
-  end = p + other.size_;
-  for (; dest < end; ++src, ++dest) {
-    construct_at (&*dest, std::move (*src));
+    if constexpr (IsMove) {
+      construct_at (&*dest, std::move (*src));
+    } else {
+      construct_at (&*dest, *src);
+    }
   }
   // Step 3: The 'other' array is shorter than this object so release any extra
   // members.
@@ -391,19 +395,27 @@ void arrayvec<T, Size>::resize (size_type count) {
 // assign
 // ~~~~~~
 template <typename T, size_t Size>
-template <typename InputIt>
-void arrayvec<T, Size>::assign (InputIt first, InputIt last) {
+void arrayvec<T, Size>::assign (size_type count, T const &value) {
   this->clear ();
-  for (; first != last; ++first) {
-    this->emplace_back (*first);
+  for (; count > 0; --count) {
+    this->emplace_back (value);
   }
+}
+
+template <typename T, size_t Size>
+template <typename InputIterator>
+PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
+  this->clear ();
+  this->append (first, last);
 }
 
 // append
 // ~~~~~~
 template <typename T, size_t Size>
-template <typename Iterator>
-void arrayvec<T, Size>::append (Iterator first, Iterator last) {
+template <typename InputIterator>
+PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+void arrayvec<T, Size>::append (InputIterator first, InputIterator last) {
   for (; first != last; ++first) {
     this->emplace_back (*first);
   }
