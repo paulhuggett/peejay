@@ -117,10 +117,12 @@ public:
       std::is_nothrow_move_constructible_v<T>);
 
   arrayvec &operator= (arrayvec const &other) {
-    return operator_assign<false> (other);
+    operator_assign<false> (other);
+    return *this;
   }
   arrayvec &operator= (arrayvec &&other) noexcept {
-    return operator_assign<true> (other);
+    operator_assign<true> (other);
+    return *this;
   }
 
   ~arrayvec () noexcept { clear (); }
@@ -161,7 +163,8 @@ public:
   /// elements. If the current size is less than \p count, additional
   /// default-inserted elements are appended.
   ///
-  /// \param count  The new number of elements in the container. Must be less than or equal to Size.
+  /// \param count  The new number of elements in the container. Must be less
+  ///               than or equal to Size.
   void resize (size_type count);
 
   ///@}
@@ -277,7 +280,7 @@ private:
   }
 
   template <bool IsMove, typename OtherVec>
-  arrayvec &operator_assign (OtherVec &&other) noexcept;
+  void operator_assign (OtherVec &&other) noexcept;
 
   /// The actual number of elements for which this buffer is sized.
   /// Note that this may be less than Size.
@@ -327,10 +330,9 @@ arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
 // ~~~~~~~~~~~~~~~
 template <typename T, size_t Size>
 template <bool IsMove, typename OtherVec>
-auto arrayvec<T, Size>::operator_assign (OtherVec &&other) noexcept
-    -> arrayvec & {
+void arrayvec<T, Size>::operator_assign (OtherVec &&other) noexcept {
   if (&other == this) {
-    return *this;
+    return;
   }
   auto const p = this->begin ();
   auto src = other.begin();
@@ -361,7 +363,6 @@ auto arrayvec<T, Size>::operator_assign (OtherVec &&other) noexcept
     std::destroy_at (&*dest);
   }
   size_ = other.size_;
-  return *this;
 }
 
 // clear
