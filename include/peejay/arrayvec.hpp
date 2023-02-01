@@ -374,9 +374,7 @@ void arrayvec<T, Size>::operator_assign (OtherVec &&other) noexcept {
 // ~~~~~
 template <typename T, size_t Size>
 void arrayvec<T, Size>::clear () noexcept {
-  for (auto it = begin(), e = end(); it != e; ++it) {
-    std::destroy_at (&*it);
-  }
+  std::for_each (begin (), end (), [] (T &t) { std::destroy_at (&t); });
   size_ = 0;
 }
 
@@ -386,9 +384,8 @@ template <typename T, size_t Size>
 void arrayvec<T, Size>::resize (size_type count) {
   assert (count <= Size);
   if (count < size_) {
-    for (auto it = begin() + count, e = end(); it != e; ++it) {
-      std::destroy_at(&*it);
-    }
+    std::for_each (begin () + count, end (),
+                   [] (T &t) { std::destroy_at (&t); });
     size_ = count;
   } else if (count > size_) {
     for (auto it = end(), e = begin() + count; it != e; ++it) {
