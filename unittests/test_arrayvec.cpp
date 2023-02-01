@@ -68,7 +68,7 @@ public:
 #if PEEJAY_CXX20
   bool operator== (no_copy const &rhs) const noexcept = default;
 #else
-  bool operator== (no_copy_or_assign const &rhs) const noexcept {
+  bool operator== (no_copy const &rhs) const noexcept {
     return v_ == rhs.v_;
   }
 #endif
