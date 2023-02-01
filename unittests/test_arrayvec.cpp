@@ -251,6 +251,8 @@ TEST (ArrayVec, IteratorConstReverse) {
 TEST (ArrayVec, ElementAccess) {
   arrayvec<int, 4> avec (std::size_t{4}, int{});
   int count = 42;
+  // I want to state this loop explicitly for the purposes of the test.
+  // NOLINTNEXTLINE(modernize-loop-convert)
   for (std::size_t index = 0, end = avec.size (); index != end; ++index) {
     avec[index] = count++;
   }
