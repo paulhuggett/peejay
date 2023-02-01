@@ -1826,7 +1826,30 @@ private:
   static_assert (decltype (hex_)::first_hex_state == first_hex_state);
   static_assert (decltype (hex_)::last_hex_state == last_hex_state);
   static_assert (decltype (hex_)::post_hex_state == post_hex_state);
+
+  void hex_states (parser_type &parser, char32_t const code_point);
 };
+
+// hex states
+// ~~~~~~~~~~
+template <typename Backend, size_t MaxLength>
+void identifier_matcher<Backend, MaxLength>::hex_states (
+    parser_type &parser, char32_t const code_point) {
+  assert (this->get_state () == hex1_state ||
+          this->get_state () == hex2_state ||
+          this->get_state () == hex3_state || this->get_state () == hex4_state);
+  bool overflow = false;
+  auto out = checked_back_insert_iterator{str_, &overflow};
+  auto v = hex_.consume (this->get_state (), code_point, out);
+  if (std::holds_alternative<std::error_code> (v)) {
+    assert (v.index () == 0);
+    this->set_error (parser, std::get<std::error_code> (v));
+  } else if (overflow) {
+    this->set_error (parser, error::identifier_too_long);
+  } else {
+    this->set_state (std::get<1> (v).first);
+  }
+}
 
 // consume
 // ~~~~~~~
@@ -1897,20 +1920,7 @@ auto identifier_matcher<Backend, MaxLength>::consume (
   case hex1_state:
   case hex2_state:
   case hex3_state:
-  case hex4_state: {
-    bool overflow = false;
-    auto out = checked_back_insert_iterator{str_, &overflow};
-    auto v = hex_.consume (this->get_state (), c, out);
-    if (std::holds_alternative<std::error_code> (v)) {
-      assert (v.index () == 0);
-      this->set_error (parser, std::get<std::error_code> (v));
-    } else if (overflow) {
-      this->set_error (parser, error::identifier_too_long);
-    } else {
-      this->set_state (std::get<1> (v).first);
-    }
-  }
-    return consume_and_iterate;
+  case hex4_state: this->hex_states (parser, c); return consume_and_iterate;
 
   default: assert (false); break;
   }
