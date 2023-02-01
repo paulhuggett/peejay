@@ -60,6 +60,8 @@ public:
     other.v_ = 0;
   }
 
+  ~no_copy_or_assign () noexcept = default;
+
   no_copy_or_assign &operator= (no_copy_or_assign const &) = delete;
   no_copy_or_assign &operator= (no_copy_or_assign &&other) noexcept {
     v_ = other.v_;
