@@ -16,6 +16,7 @@
 #ifndef PEEJAY_ARRAYVEC_HPP
 #define PEEJAY_ARRAYVEC_HPP
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
