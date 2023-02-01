@@ -752,15 +752,8 @@ public:
 
   /// \param text  The string to be matched.
   /// \param done  The function called when the source string is matched.
-  explicit token_matcher (char8 const *text, DoneFunction done) noexcept
+  constexpr token_matcher (char8 const *text, DoneFunction done) noexcept
       : inherited (start_state), text_{text}, done_{done} {}
-  token_matcher (token_matcher const &) = delete;
-  token_matcher (token_matcher &&) noexcept = default;
-
-  ~token_matcher () noexcept override = default;
-
-  token_matcher &operator= (token_matcher const &) = delete;
-  token_matcher &operator= (token_matcher &&) noexcept = default;
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -954,14 +947,7 @@ class number_matcher final : public matcher<Backend, MaxLength> {
 public:
   using parser_type = typename inherited::parser_type;
 
-  number_matcher () noexcept : inherited (leading_minus_state) {}
-  number_matcher (number_matcher const &) = delete;
-  number_matcher (number_matcher &&) noexcept = default;
-
-  ~number_matcher () noexcept override = default;
-
-  number_matcher &operator= (number_matcher const &) = delete;
-  number_matcher &operator= (number_matcher &&) noexcept = default;
+  constexpr number_matcher () noexcept : inherited (leading_minus_state) {}
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -1516,8 +1502,8 @@ class string_matcher final : public matcher<Backend, MaxLength> {
 public:
   using parser_type = typename inherited::parser_type;
 
-  explicit string_matcher (arrayvec<char8, MaxLength> *const str,
-                           bool object_key, char32_t enclosing_char) noexcept
+  string_matcher (arrayvec<char8, MaxLength> *const str, bool object_key,
+                  char32_t enclosing_char) noexcept
       : inherited (start_state),
         is_object_key_{object_key},
         enclosing_char_{enclosing_char},
@@ -1525,13 +1511,6 @@ public:
     assert (str != nullptr);
     str->clear ();
   }
-  string_matcher (string_matcher const &) = delete;
-  string_matcher (string_matcher &&) noexcept = default;
-
-  ~string_matcher () noexcept override = default;
-
-  string_matcher &operator= (string_matcher const &) = delete;
-  string_matcher &operator= (string_matcher &&) noexcept = default;
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -1812,15 +1791,12 @@ class identifier_matcher final : public matcher<Backend, MaxLength> {
 public:
   using parser_type = typename inherited::parser_type;
 
-  explicit identifier_matcher (arrayvec<char8, MaxLength> *const str) noexcept
-      : inherited (start_state), str_{str} {}
-  identifier_matcher (identifier_matcher const &) = delete;
-  identifier_matcher (identifier_matcher &&) noexcept = default;
-
-  ~identifier_matcher () noexcept override = default;
-
-  identifier_matcher &operator= (identifier_matcher const &) = delete;
-  identifier_matcher &operator= (identifier_matcher &&) noexcept = default;
+  explicit constexpr identifier_matcher (
+      arrayvec<char8, MaxLength> *const str) noexcept
+      : inherited (start_state), str_{str} {
+    assert (str != nullptr);
+    str->clear ();
+  }
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -1962,8 +1938,7 @@ class array_matcher final : public matcher<Backend, MaxLength> {
 public:
   using parser_type = typename inherited::parser_type;
 
-  array_matcher () noexcept : inherited (start_state) {}
-  ~array_matcher () noexcept override = default;
+  constexpr array_matcher () noexcept : inherited (start_state) {}
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -2059,8 +2034,7 @@ class object_matcher final : public matcher<Backend, MaxLength> {
 public:
   using parser_type = typename inherited::parser_type;
 
-  object_matcher () noexcept : inherited (start_state) {}
-  ~object_matcher () noexcept override = default;
+  constexpr object_matcher () noexcept : inherited (start_state) {}
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -2186,14 +2160,7 @@ class whitespace_matcher final : public matcher<Backend, MaxLength> {
 public:
   using parser_type = typename inherited::parser_type;
 
-  whitespace_matcher () noexcept : inherited (body_state) {}
-  whitespace_matcher (whitespace_matcher const &) = delete;
-  whitespace_matcher (whitespace_matcher &&) noexcept = default;
-
-  ~whitespace_matcher () noexcept override = default;
-
-  whitespace_matcher &operator= (whitespace_matcher const &) = delete;
-  whitespace_matcher &operator= (whitespace_matcher &&) noexcept = default;
+  constexpr whitespace_matcher () noexcept : inherited (body_state) {}
 
   /// Returns true if the argument \p code_point potentially represents the
   /// start of a whitespace sequence.
@@ -2477,7 +2444,6 @@ public:
   using parser_type = typename inherited::parser_type;
 
   constexpr eof_matcher () noexcept : inherited (start_state) {}
-  ~eof_matcher () noexcept override = default;
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
