@@ -807,6 +807,8 @@ auto token_matcher<Backend, MaxLength, DoneFunction>::consume (
     this->set_error (parser, done_ (parser));
     this->set_state (done_state);
     break;
+  case done_state:
+  default: unreachable (); break;
   }
 
   return {matcher<Backend, MaxLength>::null_pointer (), match};
