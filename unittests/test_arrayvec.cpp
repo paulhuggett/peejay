@@ -52,23 +52,21 @@ TEST (ArrayVec, CtorCopy) {
 
 namespace {
 
-class no_copy_or_assign {
+class no_copy {
 public:
-  constexpr explicit no_copy_or_assign (int v) noexcept : v_{v} {}
-  no_copy_or_assign (no_copy_or_assign const &) = delete;
-  no_copy_or_assign (no_copy_or_assign &&other) noexcept : v_{other.v_} {
-    other.v_ = 0;
-  }
+  constexpr explicit no_copy (int v) noexcept : v_{v} {}
+  no_copy (no_copy const &) = delete;
+  no_copy (no_copy &&other) noexcept : v_{other.v_} { other.v_ = 0; }
 
-  no_copy_or_assign &operator= (no_copy_or_assign const &) = delete;
-  no_copy_or_assign &operator= (no_copy_or_assign &&other) noexcept {
+  no_copy &operator= (no_copy const &) = delete;
+  no_copy &operator= (no_copy &&other) noexcept {
     v_ = other.v_;
     other.v_ = 0;
     return *this;
   }
 
 #if PEEJAY_CXX20
-  bool operator== (no_copy_or_assign const &rhs) const noexcept = default;
+  bool operator== (no_copy const &rhs) const noexcept = default;
 #else
   bool operator== (no_copy_or_assign const &rhs) const noexcept {
     return v_ == rhs.v_;
@@ -81,7 +79,32 @@ private:
   int v_ = 0;
 };
 
-std::ostream &operator<< (std::ostream &os, no_copy_or_assign const &x) {
+std::ostream &operator<< (std::ostream &os, no_copy const &x) {
+  return os << x.get ();
+}
+
+class no_move {
+public:
+  constexpr explicit no_move (int v) noexcept : v_{v} {}
+  no_move (no_move const &) = default;
+  no_move (no_move &&other) noexcept = delete;
+
+  no_move &operator= (no_move const &) = default;
+  no_move &operator= (no_move &&other) noexcept = delete;
+
+#if PEEJAY_CXX20
+  bool operator== (no_move const &rhs) const noexcept = default;
+#else
+  bool operator== (no_move const &rhs) const noexcept { return v_ == rhs.v_; }
+#endif
+
+  [[nodiscard]] int get () const noexcept { return v_; }
+
+private:
+  int v_ = 0;
+};
+
+std::ostream &operator<< (std::ostream &os, no_move const &x) {
   return os << x.get ();
 }
 
@@ -89,42 +112,42 @@ std::ostream &operator<< (std::ostream &os, no_copy_or_assign const &x) {
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, MoveCtor) {
-  arrayvec<no_copy_or_assign, 4> a;
+  arrayvec<no_copy, 4> a;
   a.emplace_back (2);
   a.emplace_back (3);
   a.emplace_back (5);
-  arrayvec<no_copy_or_assign, 4> const b (std::move (a));
+  arrayvec<no_copy, 4> const b (std::move (a));
   EXPECT_EQ (b.size (), size_t{3});
-  EXPECT_EQ (b[0], no_copy_or_assign{2});
-  EXPECT_EQ (b[1], no_copy_or_assign{3});
-  EXPECT_EQ (b[2], no_copy_or_assign{5});
+  EXPECT_EQ (b[0], no_copy{2});
+  EXPECT_EQ (b[1], no_copy{3});
+  EXPECT_EQ (b[2], no_copy{5});
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, MoveAssign) {
-  arrayvec<no_copy_or_assign, 4> a;
+  arrayvec<no_copy, 4> a;
   a.emplace_back (2);
   a.emplace_back (3);
   a.emplace_back (5);
-  arrayvec<no_copy_or_assign, 4> b;
+  arrayvec<no_copy, 4> b;
   b.emplace_back (7);
   b = std::move (a);
   EXPECT_EQ (b.size (), size_t{3});
-  EXPECT_EQ (b[0], no_copy_or_assign{2});
-  EXPECT_EQ (b[1], no_copy_or_assign{3});
-  EXPECT_EQ (b[2], no_copy_or_assign{5});
+  EXPECT_EQ (b[0], no_copy{2});
+  EXPECT_EQ (b[1], no_copy{3});
+  EXPECT_EQ (b[2], no_copy{5});
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, MoveAssign2) {
-  arrayvec<no_copy_or_assign, 2> a;
+  arrayvec<no_copy, 2> a;
   a.emplace_back (2);
-  arrayvec<no_copy_or_assign, 2> b;
+  arrayvec<no_copy, 2> b;
   b.emplace_back (3);
   b.emplace_back (5);
   b = std::move (a);
   EXPECT_EQ (b.size (), size_t{1});
-  EXPECT_EQ (b[0], no_copy_or_assign{2});
+  EXPECT_EQ (b[0], no_copy{2});
 }
 
 // NOLINTNEXTLINE
@@ -141,19 +164,19 @@ TEST (ArrayVec, AssignInitializerList) {
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, AssignCopy) {
-  arrayvec<int, 3> const b{5, 7};
-  arrayvec<int, 3> c;
+TEST (ArrayVec, AssignCopyLargeToSmall) {
+  arrayvec<no_move, 3> const b{no_move{5}, no_move{7}};
+  arrayvec<no_move, 3> c{no_move{11}};
   c = b;
-  EXPECT_THAT (c, ElementsAre (5, 7));
+  EXPECT_THAT (c, ElementsAre (no_move{5}, no_move{7}));
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, AssignCopy2) {
-  arrayvec<int, 3> const b{5};
-  arrayvec<int, 3> c{7, 9};
+TEST (ArrayVec, AssignCopySmallToLarge) {
+  arrayvec<no_move, 3> const b{no_move{5}};
+  arrayvec<no_move, 3> c{no_move{7}, no_move{9}};
   c = b;
-  EXPECT_THAT (c, ElementsAre (5));
+  EXPECT_THAT (c, ElementsAre (no_move{5}));
 }
 
 // NOLINTNEXTLINE
