@@ -745,8 +745,9 @@ PEEJAY_CXX20REQUIRES (
     (backend<Backend> &&
      std::invocable<DoneFunction, parser<Backend, MaxLength> &>))
 class token_matcher : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename matcher<Backend, MaxLength>::parser_type;
 
   /// \param text  The string to be matched.
@@ -948,8 +949,9 @@ public:
 //     zero = %x30                ; 0
 template <typename Backend, size_t MaxLength>
 class number_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   number_matcher () noexcept : inherited (leading_minus_state) {}
@@ -1509,8 +1511,9 @@ constexpr auto post_hex_state = 6;
 //*                   |___/  *
 template <typename Backend, size_t MaxLength>
 class string_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   explicit string_matcher (arrayvec<char8, MaxLength> *const str,
@@ -1804,8 +1807,9 @@ auto string_matcher<Backend, MaxLength>::consume (
 //*                                      *
 template <typename Backend, size_t MaxLength>
 class identifier_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   explicit identifier_matcher (arrayvec<char8, MaxLength> *const str) noexcept
@@ -2050,8 +2054,9 @@ void array_matcher<Backend, MaxLength>::end_array (parser_type &parser) {
 //*         |__/             *
 template <typename Backend, size_t MaxLength>
 class object_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   object_matcher () noexcept : inherited (start_state) {}
@@ -2176,8 +2181,9 @@ void object_matcher<Backend, MaxLength>::end_object (parser_type &parser) {
 /// as an extension.
 template <typename Backend, size_t MaxLength>
 class whitespace_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   whitespace_matcher () noexcept : inherited (body_state) {}
@@ -2465,8 +2471,9 @@ whitespace_matcher<Backend, MaxLength>::multi_line_comment_body (
 //*               *
 template <typename Backend, size_t MaxLength>
 class eof_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   constexpr eof_matcher () noexcept : inherited (start_state) {}
@@ -2503,8 +2510,9 @@ auto eof_matcher<Backend, MaxLength>::consume (parser_type &parser,
 //*                                                     *
 template <typename Backend, size_t MaxLength>
 class root_matcher final : public matcher<Backend, MaxLength> {
-public:
   using inherited = matcher<Backend, MaxLength>;
+
+public:
   using parser_type = typename inherited::parser_type;
 
   constexpr root_matcher () noexcept : inherited (start_state) {}
