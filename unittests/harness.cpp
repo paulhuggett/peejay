@@ -28,7 +28,9 @@
 
 #include <gmock/gmock.h>
 
-using namespace testing;
+using testing::TestInfo;
+using testing::TestPartResult;
+using testing::UnitTest;
 
 namespace {
 
@@ -41,9 +43,9 @@ bool loud_mode_enabled (int argc, char **argv) {
   });
 }
 
-class quiet_listener : public TestEventListener {
+class quiet_listener : public testing::TestEventListener {
 public:
-  explicit quiet_listener (TestEventListener *const listener)
+  explicit quiet_listener (testing::TestEventListener *const listener)
       : listener_ (listener) {}
   quiet_listener (quiet_listener const &) = delete;
   quiet_listener (quiet_listener &&) = delete;
@@ -97,7 +99,7 @@ int main (int argc, char **argv) {
     // Since Google Mock depends on Google Test, InitGoogleMock() is
     // also responsible for initializing Google Test. Therefore there's
     // no need for calling InitGoogleTest() separately.
-    InitGoogleMock (&argc, argv);
+    testing::InitGoogleMock (&argc, argv);
 
     // Unless the user enables "loud mode" by passing the appropriate switch, we
     // silence much of google test/mock's output so that we only see detailed
