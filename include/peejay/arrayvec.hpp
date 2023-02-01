@@ -33,9 +33,14 @@
 
 namespace peejay {
 
+#if PEEJAY_HAVE_CONCEPTS
+template <typename To, typename From>
+  requires (std::is_trivial_v<To> && std::is_trivial_v<From>)
+#else
 template <typename To, typename From,
           typename = typename std::enable_if_t<std::is_trivial_v<To> &&
                                                std::is_trivial_v<From>>>
+#endif
 constexpr To pointer_cast (From p) noexcept {
 #if __cpp_lib_bit_cast
   return std::bit_cast<To> (p);
