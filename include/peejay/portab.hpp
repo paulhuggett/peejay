@@ -40,6 +40,8 @@
 #endif
 
 #if PEEJAY_HAVE_CONCEPTS
+// This macro can't be written using a constexpr template function.
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define PEEJAY_CXX20REQUIRES(x) requires x
 #else
 #define PEEJAY_CXX20REQUIRES(x)
