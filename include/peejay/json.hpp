@@ -2520,7 +2520,6 @@ public:
   using parser_type = typename inherited::parser_type;
 
   constexpr root_matcher () noexcept : inherited (start_state) {}
-  ~root_matcher () noexcept override = default;
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
