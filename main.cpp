@@ -75,11 +75,10 @@ private:
   std::ostream& os_;
 };
 
-template <typename IStream>
-std::error_code slurp (IStream&& in) {
+std::error_code slurp (std::istream& in) {
   auto p = make_parser (json_writer{std::cout});
 
-  std::array<typename std::decay_t<IStream>::char_type, 256> buffer{{0}};
+  std::array<std::istream::char_type, 256> buffer{{0}};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
                            std::ios_base::eofbit)) == 0) {
@@ -99,6 +98,10 @@ std::error_code slurp (IStream&& in) {
 
   p.eof ();
   return p.last_error ();
+}
+
+std::error_code slurp (std::istream&& in) {
+  return slurp (std::ref (in));
 }
 
 }  // end anonymous namespace

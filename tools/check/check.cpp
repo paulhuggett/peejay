@@ -37,8 +37,7 @@ static void report_error (null_parser const& p,
             << line << std::string (pos.column - 1U, ' ') << "^\n";
 }
 
-template <typename IStream>
-static bool slurp (IStream&& in, char const* file_name) {
+static bool slurp (std::istream & in, char const* file_name) {
   if (in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit)) {
     std::cerr << "cannot read from " << file_name << '\n';
     return false;
@@ -73,6 +72,10 @@ static bool slurp (IStream&& in, char const* file_name) {
     return false;
   }
   return true;
+}
+
+static bool slurp (std::istream && in, char const* file_name) {
+  return slurp (std::ref (in), file_name);
 }
 
 int main (int argc, char const* argv[]) {

@@ -41,9 +41,8 @@ constexpr auto as_unsigned (T v) {
   return static_cast<std::make_unsigned_t<T>> (std::max (T{0}, v));
 }
 
-template <typename IStream>
 std::variant<std::error_code, std::optional<peejay::element>> slurp (
-    pjparser& p, IStream&& in) {
+    pjparser& p, std::istream& in) {
   std::array<char, 256> buffer{};
 
   while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
@@ -67,6 +66,11 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
     return {erc};
   }
   return {std::move (result)};
+}
+
+std::variant<std::error_code, std::optional<peejay::element>> slurp (
+    pjparser& p, std::istream&& in) {
+  return slurp (p, std::ref (in));
 }
 
 #ifdef _WIN32
