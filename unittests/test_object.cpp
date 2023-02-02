@@ -126,6 +126,30 @@ TEST_F (Object, SingleKvpBadEndObject) {
 }
 
 // NOLINTNEXTLINE
+TEST_F (Object, SingleQuotedKeyExtensionEnabled) {
+  {
+    testing::InSequence _;
+    EXPECT_CALL (callbacks_, begin_object ()).Times (1);
+    EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
+    EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+    EXPECT_CALL (callbacks_, end_object ()).Times (1);
+  }
+  auto p = make_parser (proxy_, extensions::single_quote_string);
+  p.input (u8"{ 'a': 1 }"sv).eof ();
+  EXPECT_FALSE (p.last_error ())
+      << "Expected success but error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
+TEST_F (Object, SingleQuotedKeyExtensionDisabled) {
+  EXPECT_CALL (callbacks_, begin_object ());
+  auto p = make_parser (proxy_);
+  p.input (u8"{ 'a': 1 }"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
+      << "Actual error was: " << p.last_error ().message ();
+}
+
+// NOLINTNEXTLINE
 TEST_F (Object, TwoKvps) {
   testing::InSequence _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);

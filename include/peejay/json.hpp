@@ -514,6 +514,7 @@ enum char_set : char32_t {
   backspace = char32_t{0x0008},             // '\b'
   carriage_return = char32_t{0x000D},       // '\r'
   character_tabulation = char32_t{0x0009},  // '\t'
+  colon = char32_t{0x003A},                 // ':'
   digit_eight = char32_t{0x0038},           // '8'
   digit_five = char32_t{0x0035},            // '5'
   digit_four = char32_t{0x0034},            // '4'
@@ -2065,6 +2066,10 @@ private:
   };
 
   void end_object (parser_type &parser);
+  std::pair<typename inherited::pointer, bool> comma (parser_type &parser,
+                                                      char32_t code_point);
+  std::pair<typename inherited::pointer, bool> key (parser_type &parser,
+                                                    char32_t code_point);
 };
 
 // consume
@@ -2093,24 +2098,13 @@ auto object_matcher<Backend, MaxLength>::consume (parser_type &parser,
       break;
     }
     [[fallthrough]];
-  case key_state:
-    // Match a property name then expect a colon.
-    this->set_state (colon_state);
-    if (c == '"' || c == '\'') {
-      return {this->make_string_matcher (parser, true /*object key*/, c),
-              false};
-    }
-    if (parser.extension_enabled (extensions::identifier_object_key)) {
-      return {this->make_identifier_matcher (parser), false};
-    }
-    this->set_error (parser, error::expected_object_key);
-    break;
+  case key_state: return this->key (parser, c);
   case colon_state:
     if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser, c)) {
       // just consume whitespace before the colon.
       return {this->make_whitespace_matcher (parser), false};
     }
-    if (c == ':') {
+    if (c == char_set::colon) {
       this->set_state (value_state);
     } else {
       this->set_error (parser, error::expected_colon);
@@ -2119,31 +2113,63 @@ auto object_matcher<Backend, MaxLength>::consume (parser_type &parser,
   case value_state:
     this->set_state (comma_state);
     return {this->make_root_matcher (parser), false};
-  case comma_state:
-    if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser, c)) {
-      // just consume whitespace before the comma.
-      return {this->make_whitespace_matcher (parser), false};
-    }
-    if (c == ',') {
-      // Strictly conforming JSON requires a property name following a comma but
-      // we have an extension to allow an trailing comma which may be followed
-      // by the object's closing brace.
-      this->set_state (
-          (parser.extension_enabled (extensions::object_trailing_comma))
-              ? first_key_state
-              : key_state);
-      // Consume the comma and any whitespace before the close brace or property
-      // name.
-      return {this->make_whitespace_matcher (parser), true};
-    }
-    if (c == '}') {
-      this->end_object (parser);
-    } else {
-      this->set_error (parser, error::expected_object_member);
-    }
-    break;
+  case comma_state: return this->comma (parser, c);
   case done_state:
-  default: assert (false); break;
+  default: unreachable (); break;
+  }
+  // No change of matcher. Consume the input character.
+  return {null_pointer (), true};
+}
+
+// key
+// ~~~
+/// Match a property name then expect a colon.
+template <typename Backend, size_t MaxLength>
+auto object_matcher<Backend, MaxLength>::key (parser_type &parser,
+                                              char32_t code_point)
+    -> std::pair<typename inherited::pointer, bool> {
+  this->set_state (colon_state);
+  if (code_point == char_set::quotation_mark ||
+      (code_point == apostrophe &&
+       parser.extension_enabled (extensions::single_quote_string))) {
+    return {this->make_string_matcher (parser, true /*object key*/, code_point),
+            false};
+  }
+  if (parser.extension_enabled (extensions::identifier_object_key)) {
+    return {this->make_identifier_matcher (parser), false};
+  }
+
+  this->set_error (parser, error::expected_object_key);
+  return {null_pointer (), true};
+}
+
+// comma
+// ~~~~~
+template <typename Backend, size_t MaxLength>
+auto object_matcher<Backend, MaxLength>::comma (parser_type &parser,
+                                                char32_t code_point)
+    -> std::pair<typename inherited::pointer, bool> {
+  if (whitespace_matcher<Backend, MaxLength>::want_code_point (parser,
+                                                               code_point)) {
+    // just consume whitespace before the comma.
+    return {this->make_whitespace_matcher (parser), false};
+  }
+  if (code_point == ',') {
+    // Strictly conforming JSON requires a property name following a comma but
+    // we have an extension to allow an trailing comma which may be followed
+    // by the object's closing brace.
+    this->set_state (
+        (parser.extension_enabled (extensions::object_trailing_comma))
+            ? first_key_state
+            : key_state);
+    // Consume the comma and any whitespace before the close brace or property
+    // name.
+    return {this->make_whitespace_matcher (parser), true};
+  }
+  if (code_point == '}') {
+    this->end_object (parser);
+  } else {
+    this->set_error (parser, error::expected_object_member);
   }
   // No change of matcher. Consume the input character.
   return {null_pointer (), true};
