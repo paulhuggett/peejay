@@ -1727,15 +1727,15 @@ void string_matcher<Backend, MaxLength>::escape (parser_type &p,
 // consume
 // ~~~~~~~
 template <typename Backend, size_t MaxLength>
-auto string_matcher<Backend, MaxLength>::consume (
-    parser_type &parser, std::optional<char32_t> code_point)
+auto string_matcher<Backend, MaxLength>::consume (parser_type &parser,
+                                                  std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
-  if (!code_point) {
+  if (!ch) {
     this->set_error (parser, error::expected_close_quote);
     return {null_pointer (), true};
   }
 
-  auto const c = *code_point;
+  auto const c = *ch;
   bool match = true;
   switch (this->get_state ()) {
   // Matches the opening quote.
