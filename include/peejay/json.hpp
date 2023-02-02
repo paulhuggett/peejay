@@ -1828,7 +1828,7 @@ private:
   static_assert (decltype (hex_)::last_hex_state == last_hex_state);
   static_assert (decltype (hex_)::post_hex_state == post_hex_state);
 
-  void hex_states (parser_type &parser, char32_t const code_point);
+  void hex_states (parser_type &parser, char32_t code_point);
 };
 
 // hex states
@@ -1836,12 +1836,12 @@ private:
 template <typename Backend, size_t MaxLength>
 void identifier_matcher<Backend, MaxLength>::hex_states (
     parser_type &parser, char32_t const code_point) {
-  assert (this->get_state () == hex1_state ||
-          this->get_state () == hex2_state ||
-          this->get_state () == hex3_state || this->get_state () == hex4_state);
+  auto const state = this->get_state ();
+  assert (state == hex1_state || state == hex2_state || state == hex3_state ||
+          state == hex4_state);
   bool overflow = false;
   auto out = checked_back_insert_iterator{str_, &overflow};
-  auto v = hex_.consume (this->get_state (), code_point, out);
+  auto v = hex_.consume (state, code_point, out);
   if (std::holds_alternative<std::error_code> (v)) {
     assert (v.index () == 0);
     this->set_error (parser, std::get<std::error_code> (v));
