@@ -51,8 +51,8 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
     auto const available = as_unsigned (in.gcount ());
     // TODO(paul) I just assume that the IStream yields UTF-8.
 #if PEEJAY_HAVE_SPAN
-    p.input (
-        std::span{reinterpret_cast<peejay::char8 const*> (data), available});
+    p.input (std::span{peejay::pointer_cast<peejay::char8 const*> (data),
+                       available});
 #else
     p.input (data, data + available);
 #endif  // PEEJAY_CXX20
@@ -119,7 +119,7 @@ public:
   unmapper& operator= (unmapper&&) noexcept = delete;
 
   [[nodiscard]] constexpr T const* begin () const noexcept {
-    return reinterpret_cast<T const*> (span_.first);
+    return peejay::pointer_cast<T const*> (span_.first);
   }
   [[nodiscard]] constexpr T const* end () const noexcept {
     return begin () + span_.second / sizeof (T);
