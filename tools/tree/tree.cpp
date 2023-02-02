@@ -68,12 +68,12 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
   return {std::move (result)};
 }
 
+#ifdef _WIN32
+
 std::variant<std::error_code, std::optional<peejay::element>> slurp (
     pjparser& p, std::istream&& in) {
   return slurp (p, std::ref (in));
 }
-
-#ifdef _WIN32
 
 std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
     pjparser& p, char const* file) {
