@@ -80,8 +80,7 @@ std::error_code slurp (std::istream& in) {
 
   std::array<std::istream::char_type, 256> buffer{{0}};
 
-  while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
-                           std::ios_base::eofbit)) == 0) {
+  while (in.rdstate () == std::ios_base::goodbit) {
     auto* const data = buffer.data ();
     in.read (data, buffer.size ());
     auto const available = static_cast<std::make_unsigned_t<std::streamsize>> (
@@ -94,6 +93,9 @@ std::error_code slurp (std::istream& in) {
     if (auto const err = p.last_error ()) {
       return err;
     }
+  }
+  if ((in.rdstate () & std::ios_base::badbit) != 0) {
+    return make_error_code (std::errc::io_error);
   }
 
   p.eof ();

@@ -45,8 +45,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
     pjparser& p, std::istream& in) {
   std::array<char, 256> buffer{};
 
-  while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
-                           std::ios_base::eofbit)) == 0) {
+  while (in.rdstate () == std::ios_base::goodbit) {
     auto* const data = buffer.data ();
     in.read (data, buffer.size ());
     auto const available = as_unsigned (in.gcount ());
@@ -58,14 +57,17 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
     p.input (data, data + available);
 #endif  // PEEJAY_CXX20
     if (auto const err = p.last_error ()) {
-      return {err};
+      return err;
     }
   }
-  std::optional<peejay::element> result = p.eof ();
-  if (std::error_code const erc = p.last_error ()) {
-    return {erc};
+  if ((in.rdstate () & std::ios_base::badbit) != 0) {
+    return make_error_code (std::errc::io_error);
   }
-  return {std::move (result)};
+  std::optional<peejay::element> result = p.eof ();
+  if (auto const erc = p.last_error ()) {
+    return erc;
+  }
+  return std::move (result);
 }
 
 #ifdef _WIN32

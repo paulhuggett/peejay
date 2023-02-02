@@ -37,17 +37,11 @@ static void report_error (null_parser const& p,
             << line << std::string (pos.column - 1U, ' ') << "^\n";
 }
 
-static bool slurp (std::istream & in, char const* file_name) {
-  if (in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit)) {
-    std::cerr << "cannot read from " << file_name << '\n';
-    return false;
-  }
-
+static bool slurp (std::istream& in, char const* file_name) {
   null_parser p = make_parser (null{}, peejay::extensions::all);
   std::string line;
   u8string u8line;
-  while ((in.rdstate () & (std::ios_base::badbit | std::ios_base::failbit |
-                           std::ios_base::eofbit)) == 0) {
+  while (in.rdstate () == std::ios_base::goodbit) {
     std::getline (in, line);
     line += '\n';
     // TODO(paul) need to convert encoding from host to UTF-8 here?
@@ -65,6 +59,10 @@ static bool slurp (std::istream & in, char const* file_name) {
       report_error (p, file_name, line);
       return false;
     }
+  }
+  if ((in.rdstate () & std::ios_base::badbit) != 0) {
+    std::cerr << "cannot read from " << file_name << '\n';
+    return false;
   }
   p.eof ();
   if (auto const err = p.last_error ()) {
