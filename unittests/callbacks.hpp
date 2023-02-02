@@ -185,7 +185,7 @@ public:
 
 private:
   template <typename StringType>
-  std::error_code append (StringType &&s) {
+  std::error_code append (StringType const &s) {
     if (out_.length () > 0) {
       out_ += ' ';
     }
