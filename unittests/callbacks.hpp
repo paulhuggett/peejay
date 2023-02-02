@@ -14,8 +14,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef UNIT_TESTS_PEEJAY_CALLBACKS_HPP
-#define UNIT_TESTS_PEEJAY_CALLBACKS_HPP
+#ifndef PEEJAY_UNITTESTS_CALLBACKS_HPP
+#define PEEJAY_UNITTESTS_CALLBACKS_HPP
 
 #include <gmock/gmock.h>
 
@@ -196,4 +196,4 @@ private:
   peejay::u8string out_;
 };
 
-#endif  // UNIT_TESTS_PEEJAY_CALLBACKS_H
+#endif  // PEEJAY_UNITTESTS_CALLBACKS_HPP
