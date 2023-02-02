@@ -67,7 +67,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
   if (auto const erc = p.last_error ()) {
     return erc;
   }
-  return std::move (result);
+  return result;
 }
 
 #ifdef _WIN32
