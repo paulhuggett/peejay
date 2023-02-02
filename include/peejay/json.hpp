@@ -2018,11 +2018,7 @@ auto array_matcher<Backend, MaxLength>::consume (parser_type &p,
     }
     break;
   case done_state:
-    assert (false && "consume() should not be called when in the 'done' state");
-    break;
-  default:
-    assert (false && "array_matcher<> has reached an unknown state");
-    break;
+  default: unreachable (); break;
   }
   return {null_pointer (), true};
 }
@@ -2374,9 +2370,8 @@ auto whitespace_matcher<Backend, MaxLength>::consume_body (parser_type &parser,
   };
 
   switch (c) {
-  case char_set::space: break;  // Just consume.
-  case char_set::character_tabulation:
-    // TODO(paul) tab expansion.
+  case char_set::space:
+  case char_set::character_tabulation:  // TODO(paul) tab expansion.
     break;
   case char_set::carriage_return: this->cr (parser, crlf_state); break;
   case char_set::line_feed: this->lf (parser); break;
