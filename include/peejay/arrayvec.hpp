@@ -280,7 +280,7 @@ private:
   }
 
   template <bool IsMove, typename OtherVec>
-  void operator_assign (OtherVec &&other) noexcept;
+  void operator_assign (OtherVec &other) noexcept;
 
   /// The actual number of elements for which this buffer is sized.
   /// Note that this may be less than Size.
@@ -330,7 +330,7 @@ arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
 // ~~~~~~~~~~~~~~~
 template <typename T, size_t Size>
 template <bool IsMove, typename OtherVec>
-void arrayvec<T, Size>::operator_assign (OtherVec &&other) noexcept {
+void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept {
   if (&other == this) {
     return;
   }
