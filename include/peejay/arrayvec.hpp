@@ -135,18 +135,20 @@ public:
 
   /// \name Element access
   ///@{
-  constexpr T const *data () const noexcept { return &element (0); }
-  constexpr T *data () noexcept { return &element (0); }
+  constexpr T const *data () const noexcept { return &element (*this, 0); }
+  constexpr T *data () noexcept { return &element (*this, 0); }
 
   constexpr T const &operator[] (size_t n) const noexcept {
-    return element (n);
+    return element (*this, n);
   }
-  constexpr T &operator[] (size_t n) noexcept { return element (n); }
+  constexpr T &operator[] (size_t n) noexcept { return element (*this, n); }
 
-  constexpr T &front () noexcept { return element (0); }
-  constexpr T const &front () const noexcept { return element (0); }
-  constexpr T &back () noexcept { return element (size_ - 1U); }
-  constexpr T const &back () const noexcept { return element (size_ - 1U); }
+  constexpr T &front () noexcept { return element (*this, 0); }
+  constexpr T const &front () const noexcept { return element (*this, 0); }
+  constexpr T &back () noexcept { return element (*this, size_ - 1U); }
+  constexpr T const &back () const noexcept {
+    return element (*this, size_ - 1U);
+  }
 
   ///@}
 
@@ -179,10 +181,12 @@ public:
   ///@{
   /// Returns an iterator to the beginning of the container.
   [[nodiscard]] constexpr const_iterator begin () const noexcept {
-    return &element (0);
+    return &element (*this, 0);
   }
-  [[nodiscard]] constexpr iterator begin () noexcept { return &element (0); }
-  const_iterator cbegin () noexcept { return &element (0); }
+  [[nodiscard]] constexpr iterator begin () noexcept {
+    return &element (*this, 0);
+  }
+  const_iterator cbegin () noexcept { return &element (*this, 0); }
   /// Returns a reverse iterator to the first element of the reversed
   /// container. It corresponds to the last element of the non-reversed
   /// container.
@@ -219,14 +223,14 @@ public:
   template <typename OtherType>
   void push_back (OtherType const &v) {
     assert (size_ < Size);
-    construct_at (&element (size_), v);
+    construct_at (&element (*this, size_), v);
     ++size_;
   }
   /// Appends a new element to the end of the container.
   template <typename... Args>
   void emplace_back (Args &&...args) {
     assert (size_ < Size);
-    construct_at (&element (size_), std::forward<Args> (args)...);
+    construct_at (&element (*this, size_), std::forward<Args> (args)...);
     ++size_;
   }
 
@@ -262,27 +266,17 @@ public:
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
     --size_;
-    std::destroy_at (&this->element (size_));
+    std::destroy_at (&this->element (*this, size_));
   }
 
   ///@}
 
 private:
-  /// The const- and non-const implementation of operator[].
   template <typename ArrayVec,
             typename ResultType = inherit_const_t<ArrayVec, T>>
-  static ResultType &index (ArrayVec &&v, size_t n) noexcept {
-    assert (n < v.size ());
-    return v.buffer_[n];
-  }
-
-  T &element (size_t n) noexcept {
-    assert (n < Size);
-    return *pointer_cast<T *> (data_.data () + n);
-  }
-  T const &element (size_t n) const noexcept {
-    assert (n < Size);
-    return *pointer_cast<T const *> (data_.data () + n);
+  static ResultType &element (ArrayVec &&v, size_t n) noexcept {
+    assert (n < v.max_size ());
+    return *pointer_cast<ResultType *> (v.data_.data () + n);
   }
 
   template <bool IsMove, typename OtherVec>
