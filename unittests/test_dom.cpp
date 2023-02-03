@@ -104,7 +104,7 @@ TEST (Dom, Array) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"[1,2]"sv).eof ();
   ASSERT_TRUE (root);
-  EXPECT_THAT (std::get<array> (*root),
+  EXPECT_THAT (*std::get<array> (*root),
                ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
 }
 
@@ -124,7 +124,7 @@ TEST (Dom, Object) {
       make_parser (dom{}).input (u8R"({"a":1,"b":2})"sv).eof ();
   ASSERT_TRUE (root);
   EXPECT_THAT (
-      std::get<object> (*root),
+      *std::get<object> (*root),
       UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{1}}),
                             std::make_pair (u8"b"s, element{uint64_t{2}})));
 }
@@ -135,12 +135,12 @@ TEST (Dom, ObjectInsideArray1) {
       make_parser (dom{}).input (u8R"([{"a":1,"b":2},3])"sv).eof ();
   ASSERT_TRUE (root);
   auto const &arr = std::get<array> (*root);
-  ASSERT_EQ (arr.size (), 2U);
+  ASSERT_EQ (arr->size (), 2U);
   EXPECT_THAT (
-      std::get<object> (arr[0]),
+      *std::get<object> ((*arr)[0]),
       UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{1}}),
                             std::make_pair (u8"b"s, element{uint64_t{2}})));
-  EXPECT_THAT (arr[1], element{uint64_t{3}});
+  EXPECT_THAT ((*arr)[1], element{uint64_t{3}});
 }
 
 // NOLINTNEXTLINE
@@ -149,10 +149,10 @@ TEST (Dom, ObjectInsideArray2) {
       make_parser (dom{}).input (u8R"([1,{"a":2,"b":3}])"sv).eof ();
   ASSERT_TRUE (root);
   auto const &arr = std::get<array> (*root);
-  ASSERT_EQ (arr.size (), 2U);
-  EXPECT_THAT (arr[0], element{uint64_t{1}});
+  ASSERT_EQ (arr->size (), 2U);
+  EXPECT_THAT ((*arr)[0], element{uint64_t{1}});
   EXPECT_THAT (
-      std::get<object> (arr[1]),
+      *std::get<object> ((*arr)[1]),
       UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{2}}),
                             std::make_pair (u8"b"s, element{uint64_t{3}})));
 }
@@ -163,10 +163,10 @@ TEST (Dom, ArrayInsideObject) {
       make_parser (dom{}).input (u8R"({"a":[1,2],"b":3})"sv).eof ();
   ASSERT_TRUE (root);
   auto const &obj = std::get<object> (*root);
-  ASSERT_EQ (obj.size (), 2U);
-  EXPECT_THAT (std::get<array> (obj.at (u8"a")),
+  ASSERT_EQ (obj->size (), 2U);
+  EXPECT_THAT (*std::get<array> (obj->at (u8"a")),
                ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
-  EXPECT_EQ (obj.at (u8"b"), element{uint64_t{3}});
+  EXPECT_EQ (obj->at (u8"b"), element{uint64_t{3}});
 }
 
 // NOLINTNEXTLINE
@@ -178,7 +178,7 @@ TEST (Dom, DuplicateKeys) {
   std::optional<element> const root = p.eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
-  EXPECT_THAT (std::get<object> (*root),
+  EXPECT_THAT (*std::get<object> (*root),
                UnorderedElementsAre (std::make_pair (u8"a"s, element{u8"c"s})));
 }
 

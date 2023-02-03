@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <system_error>
@@ -104,16 +105,13 @@ struct mark {
   bool operator!= (mark /*unused*/) const noexcept { return false; }
 #endif  // !PEEJAY_CXX20
 };
+using object = std::shared_ptr<std::unordered_map<u8string, element>>;
+using array = std::shared_ptr<std::vector<element>>;
 using variant = std::variant<int64_t, uint64_t, double, bool, null, u8string,
-                             std::vector<element>,
-                             std::unordered_map<u8string, element>, mark>;
-
+                             array, object, mark>;
 struct element : variant {
   using variant::variant;
 };
-
-using object = std::unordered_map<u8string, element>;
-using array = std::vector<element>;
 
 template <size_t StackSize>
 class dom {
@@ -244,23 +242,23 @@ std::error_code dom<StackSize>::begin_array () {
 // ~~~~~~~~~
 template <size_t StackSize>
 std::error_code dom<StackSize>::end_array () {
-  array arr;
+  auto arr = std::make_shared<array::element_type> ();
   size_t const size = this->elements_until_mark ();
-  arr.reserve (size);
+  arr->reserve (size);
   for (;;) {
     auto &top = stack_->top ();
     if (std::holds_alternative<mark> (top)) {
       stack_->pop ();
       break;
     }
-    arr.emplace_back (std::move (top));
+    arr->emplace_back (std::move (top));
     stack_->pop ();
   }
-  assert (arr.size () == size);
+  assert (arr->size () == size);
 #if __cpp_lib_ranges
-  std::ranges::reverse (arr);
+  std::ranges::reverse (*arr);
 #else
-  std::reverse (std::begin (arr), std::end (arr));
+  std::reverse (std::begin (*arr), std::end (*arr));
 #endif
   stack_->emplace (std::move (arr));
   return error::none;
@@ -271,8 +269,9 @@ std::error_code dom<StackSize>::end_array () {
 template <size_t StackSize>
 std::error_code dom<StackSize>::end_object () {
   assert (this->elements_until_mark () % 2U == 0U);
-  typename object::size_type const size = this->elements_until_mark () / 2U;
-  object obj{size};
+  typename object::element_type::size_type const size =
+      this->elements_until_mark () / 2U;
+  auto obj = std::make_shared<object::element_type> (size);
   for (;;) {
     element value = std::move (stack_->top ());
     stack_->pop ();
@@ -281,13 +280,13 @@ std::error_code dom<StackSize>::end_object () {
     }
     auto &key = stack_->top ();
     assert (std::holds_alternative<u8string> (key));
-    obj.try_emplace (std::move (std::get<icubaby::u8string> (key)),
-                     std::move (value));
+    obj->try_emplace (std::move (std::get<icubaby::u8string> (key)),
+                      std::move (value));
     stack_->pop ();
   }
   // The presence of duplicate keys can mean that we end up with fewer entries
   // in the map than there were key/value pairs on the stack.
-  assert (obj.size () <= size);
+  assert (obj->size () <= size);
   stack_->emplace (std::move (obj));
   return error::none;
 }

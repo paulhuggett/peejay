@@ -139,14 +139,15 @@ std::string convu8 (peejay::u8string const& str) {
 std::ostream& emit (std::ostream& os, indent const i,
                     peejay::element const& el) {
   auto const emit_object = [&os, i] (peejay::object const& obj) {
-    if (obj.empty ()) {
+    assert (obj);
+    if (obj == nullptr || obj->empty ()) {
       os << "{}";
       return;
     }
     os << "{\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
-    for (auto const& [key, value] : obj) {
+    for (auto const& [key, value] : *obj) {
       os << separator << next_indent << '"' << convu8 (key) << "\": ";
       emit (os, next_indent, value);
       separator = ",\n";
@@ -154,14 +155,15 @@ std::ostream& emit (std::ostream& os, indent const i,
     os << '\n' << i << "}";
   };
   auto const emit_array = [&os, i] (peejay::array const& arr) {
-    if (arr.empty ()) {
+    assert (arr);
+    if (arr == nullptr || arr->empty ()) {
       os << "[]";
       return;
     }
     os << "[\n";
     auto const* separator = "";
     indent const next_indent = i.next ();
-    for (auto const& v : arr) {
+    for (auto const& v : *arr) {
       os << separator << next_indent;
       emit (os, next_indent, v);
       separator = ",\n";

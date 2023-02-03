@@ -103,14 +103,16 @@ TEST (Emit, StringBackslashT) {
 // NOLINTNEXTLINE
 TEST (Emit, EmptyArray) {
   std::stringstream os;
-  emit (os, element{array{}});
+  emit (os, std::make_shared<array::element_type> ());
   EXPECT_EQ (os.str (), "[]\n");
 }
 
 // NOLINTNEXTLINE
 TEST (Emit, ArrayOneMember) {
   std::stringstream os;
-  emit (os, element{array{element{uint64_t{1}}}});
+  auto arr = std::make_shared<array::element_type> ();
+  arr->push_back (element{uint64_t{1}});
+  emit (os, arr);
   EXPECT_EQ (os.str (), R"([
   1
 ]
@@ -120,7 +122,10 @@ TEST (Emit, ArrayOneMember) {
 // NOLINTNEXTLINE
 TEST (Emit, ArrayTwoMembers) {
   std::stringstream os;
-  emit (os, element{array{element{uint64_t{1}}, element{uint64_t{2}}}});
+  auto arr = std::make_shared<array::element_type> ();
+  arr->push_back (uint64_t{1});
+  arr->push_back (uint64_t{2});
+  emit (os, arr);
   EXPECT_EQ (os.str (), R"([
   1,
   2
@@ -131,16 +136,16 @@ TEST (Emit, ArrayTwoMembers) {
 // NOLINTNEXTLINE
 TEST (Emit, EmptyObject) {
   std::stringstream os;
-  emit (os, element{object{}});
+  emit (os, std::make_shared<object::element_type> ());
   EXPECT_EQ (os.str (), "{}\n");
 }
 
 // NOLINTNEXTLINE
 TEST (Emit, ObjectOneMember) {
   std::stringstream os;
-  object obj;
-  obj[u8"key"] = element{u8"value"s};
-  emit (os, element{std::move (obj)});
+  auto obj = std::make_shared<object::element_type> ();
+  (*obj)[u8"key"] = element{u8"value"s};
+  emit (os, obj);
   EXPECT_EQ (os.str (), R"({
   "key": "value"
 }
@@ -150,8 +155,11 @@ TEST (Emit, ObjectOneMember) {
 // NOLINTNEXTLINE
 TEST (Emit, ObjectArrayMember) {
   std::stringstream os;
-  object obj;
-  obj[u8"key1"] = element{array{element{uint64_t{1}}, element{uint64_t{2}}}};
+  auto arr = std::make_shared<array::element_type> ();
+  arr->push_back (1);
+  arr->push_back (2);
+  auto obj = std::make_shared<object::element_type> ();
+  (*obj)[u8"key1"] = element{std::move (arr)};
   emit (os, element{std::move (obj)});
   EXPECT_EQ (os.str (), R"({
   "key1": [
