@@ -18,20 +18,32 @@ jobs:
             generator: Xcode
             os: macos-12
 
-          # Ubuntu builds
-          # ~~~~~~~~~~~~~
+          # Linux builds
+          # ~~~~~~~~~~~~
+          - name: Ubuntu-22.04/gcc-11/Debug
+            apt_install: ninja-build
+            build_type: Debug
+            generator: Ninja
+            os: ubuntu-22.04
+
+          - name: Ubuntu-22.04/gcc-11/Release
+            apt_install: ninja-build
+            build_type: Release
+            generator: Ninja
+            os: ubuntu-22.04
+
           - name: Ubuntu-22.04/gcc-12/Debug
-            apt_install: g++-12 libstdc++-12-dev
+            apt_install: g++-12 libstdc++-12-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
-            generator: Unix Makefiles
+            generator: Ninja
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Release
-            apt_install: g++-12 libstdc++-12-dev
+            apt_install: g++-12 libstdc++-12-dev ninja-build
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
-            generator: Unix Makefiles
+            generator: Ninja
             os: ubuntu-22.04
 
           # It's current necesssary to use libc++ because builds witb libstdc++ fail
@@ -39,26 +51,26 @@ jobs:
           # https://github.com/llvm/llvm-project/issues/55560
 
           - name: Ubuntu-22.04/clang-14/Debug
-            apt_install: libc++-dev libc++abi-dev
+            apt_install: libc++-dev libc++abi-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
-            generator: Unix Makefiles
+            generator: Ninja
             options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release
-            apt_install: libc++-dev libc++abi-dev
+            apt_install: libc++-dev libc++abi-dev ninja-build
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
-            generator: Unix Makefiles
+            generator: Ninja
             options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release/C++17
-            apt_install: libc++-dev libc++abi-dev
+            apt_install: ninja-build
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
-            generator: Unix Makefiles
+            generator: Ninja
             options: -DCXX17=Yes -DLIBCXX=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
             os: ubuntu-22.04
 
