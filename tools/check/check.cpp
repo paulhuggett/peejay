@@ -26,65 +26,82 @@ using peejay::null;
 using peejay::parser;
 using peejay::u8string;
 
-using null_parser = parser<null>;
+namespace {
 
-static void report_error (null_parser const& p,
-                          std::string_view const& file_name,
-                          std::string_view const& line) {
+template <typename Backend, size_t MaxLength>
+int report_error (parser<Backend, MaxLength> const& p,
+                  std::string_view const& file_name,
+                  std::string_view const& line) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n'
             << line << std::string (pos.column - 1U, ' ') << "^\n";
+  return false;
 }
 
-static bool slurp (std::istream& in, char const* file_name) {
-  null_parser p = make_parser (null{}, peejay::extensions::all);
+/// Convert from a string of char to a string of char8.
+u8string& line_to_u8 (std::string const& line, u8string& u8line) {
+  // TODO(paul) need to convert encoding from host to UTF-8 here?
+  u8line.clear ();
+  u8line.reserve (line.size ());
+  auto const op = [] (char c) { return static_cast<char8> (c); };
+  auto const out = std::back_inserter (u8line);
+#if __cpp_lib_ranges
+  std::ranges::transform (line, out, op);
+#else
+  std::transform (std::begin (line), std::end (line), out, op);
+#endif
+  return u8line;
+}
+
+/// Read an input stream line by line, feeding it to the parser. Any errors
+/// encountered are reported to stderr.
+bool slurp (std::istream& in, char const* file_name) {
+  auto p = make_parser (null{}, peejay::extensions::all);
   std::string line;
   u8string u8line;
   while (in.rdstate () == std::ios_base::goodbit) {
     std::getline (in, line);
     line += '\n';
-    // TODO(paul) need to convert encoding from host to UTF-8 here?
-    u8line.clear();
-    u8line.reserve (line.size ());
-    auto const op = [] (char c) { return static_cast<char8> (c); };
-#if __cpp_lib_ranges
-    std::ranges::transform (line, std::back_inserter (u8line), op);
-#else
-    std::transform (std::begin (line), std::end (line),
-                    std::back_inserter (u8line), op);
-#endif
-    p.input (u8line);
+    p.input (line_to_u8 (line, u8line));
     if (auto const err = p.last_error ()) {
-      report_error (p, file_name, line);
-      return false;
+      return report_error (p, file_name, line);
     }
   }
-  if ((in.rdstate () & std::ios_base::badbit) != 0) {
-    std::cerr << "cannot read from " << file_name << '\n';
-    return false;
-  }
-  p.eof ();
-  if (auto const err = p.last_error ()) {
-    report_error (p, file_name, line);
+  auto const state = in.rdstate ();
+  if ((state & std::ios_base::eofbit) != 0) {
+    p.eof ();
+    if (auto const err = p.last_error ()) {
+      return report_error (p, file_name, line);
+    }
+  } else if ((state & (std::ios_base::badbit | std::ios_base::failbit)) != 0) {
+    std::cerr << "cannot read from \"" << file_name << "\"\n";
     return false;
   }
   return true;
 }
 
-static bool slurp (std::istream && in, char const* file_name) {
-  return slurp (std::ref (in), file_name);
+std::pair<std::istream&, char const*> open (int argc, char const* argv[],
+                                            std::ifstream& file) {
+  if (argc < 2) {
+    return {std::cin, "<stdin>"};
+  }
+  auto const* path = argv[1];
+  file.open (path);
+  return {file, path};
 }
+
+}  // end anonymous namespace
 
 int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
-    if (!(argc < 2 ? slurp (std::cin, "<stdin>")
-                   : slurp (std::ifstream{argv[1]}, argv[1]))) {
+    std::ifstream file;
+    if (!std::apply (slurp, open (argc, argv, file))) {
       exit_code = EXIT_FAILURE;
     }
   } catch (std::exception const& ex) {
-    std::cerr << "Error: " << ex.what () << '\n';
+    std::cerr << "error: " << ex.what () << '\n';
     exit_code = EXIT_FAILURE;
   } catch (...) {
     std::cerr << "Unknown exception.\n";
