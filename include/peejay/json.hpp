@@ -1802,7 +1802,7 @@ public:
   }
 
   std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+      parser_type &parser, std::optional<char32_t> code_point) override;
 
 private:
   using inherited::null_pointer;
