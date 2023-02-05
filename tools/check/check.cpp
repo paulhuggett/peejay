@@ -29,9 +29,9 @@ using peejay::u8string;
 namespace {
 
 template <typename Backend, size_t MaxLength>
-int report_error (parser<Backend, MaxLength> const& p,
-                  std::string_view const& file_name,
-                  std::string_view const& line) {
+bool report_error (parser<Backend, MaxLength> const& p,
+                   std::string_view const& file_name,
+                   std::string_view const& line) {
   auto const& pos = p.pos ();
   std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
             << " error: " << p.last_error ().message () << '\n'
