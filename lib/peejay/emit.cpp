@@ -62,10 +62,20 @@ std::ostream& operator<< (std::ostream& os, indent const& i) {
 }
 
 constexpr char to_hex (unsigned v) noexcept {
-  assert (v < 0x10);
+  assert (v < 0x10 && "Individual hex values must be < 0x10");
   constexpr auto letter_threshold = 10;
   return static_cast<char> (
       v + ((v < letter_threshold) ? '0' : 'A' - letter_threshold));
+}
+
+constexpr peejay::u8string_view::const_iterator break_char (
+    peejay::u8string_view::const_iterator first,
+    peejay::u8string_view::const_iterator last) noexcept {
+  using peejay::char_set;
+  return std::find_if (first, last, [] (peejay::char8 const c) {
+    return c < char_set::space || c == char_set::quotation_mark ||
+           c == char_set::reverse_solidus;
+  });
 }
 
 std::ostream& emit_string_view (std::ostream& os,
@@ -75,18 +85,15 @@ std::ostream& emit_string_view (std::ostream& os,
   auto first = std::begin (str);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = std::end (str);
-  peejay::u8string_view::const_iterator pos = first;
-  while ((pos = std::find_if (first, last, [] (char const c) {
-            return c < ' ' || c == '"' || c == '\\';
-          })) != last) {
-    assert (pos >= first);
+  auto pos = first;
+  while ((pos = break_char (pos, last)) != last) {
     os.write (peejay::pointer_cast<char const*> (to_address (first)),
               std::distance (first, pos));
-    os << '\\';
     using peejay::char_set;
+    os << '\\';
     switch (*pos) {
-    case char_set::quotation_mark: os << '"'; break;
-    case char_set::reverse_solidus: os << '\\'; break;
+    case char_set::quotation_mark:
+    case char_set::reverse_solidus: os << *pos; break;
     case char_set::backspace: os << 'b'; break;
     case char_set::form_feed: os << 'f'; break;
     case char_set::line_feed: os << 'n'; break;
@@ -102,11 +109,11 @@ std::ostream& emit_string_view (std::ostream& os,
       os.write (hex.data (), hex.size ());
     } break;
     }
+    std::advance (pos, 1);
     first = pos;
-    std::advance (first, 1);
   }
+  assert (pos == last);
   if (first != last) {
-    assert (last > first);
     os.write (peejay::pointer_cast<char const*> (to_address (first)),
               std::distance (first, last));
   }
