@@ -117,10 +117,14 @@ TEST_F (String, UnterminatedSingleQuote) {
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
 }
 
+struct ml10_policy {
+  static constexpr auto max_length = size_t{10};
+};
+
 // NOLINTNEXTLINE
 TEST_F (String, MaxLength) {
   EXPECT_CALL (callbacks_, string_value (u8"0123456789"sv)).Times (1);
-  auto p = make_parser<10> (proxy_);
+  auto p = make_parser<ml10_policy> (proxy_);
   p.input (u8R"("0123456789")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
@@ -130,7 +134,7 @@ TEST_F (String, MaxLength) {
 
 // NOLINTNEXTLINE
 TEST_F (String, OnePastMaxLength) {
-  auto p = make_parser<10> (proxy_);
+  auto p = make_parser<ml10_policy> (proxy_);
   p.input (u8R"("01234567890")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
       << "Real error was: " << p.last_error ().message ();
@@ -138,8 +142,7 @@ TEST_F (String, OnePastMaxLength) {
 
 // NOLINTNEXTLINE
 TEST_F (String, OneUtf8HexPastMaxLength) {
-  constexpr auto max_length = size_t{10};
-  auto p = make_parser<max_length> (proxy_);
+  auto p = make_parser<ml10_policy> (proxy_);
   p.input (u8R"("0123456789\u0030")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
       << "Real error was: " << p.last_error ().message ();
@@ -147,8 +150,7 @@ TEST_F (String, OneUtf8HexPastMaxLength) {
 
 // NOLINTNEXTLINE
 TEST_F (String, OneUtf16HexPastMaxLength) {
-  constexpr auto max_length = size_t{10};
-  auto p = make_parser<max_length> (proxy_);
+  auto p = make_parser<ml10_policy> (proxy_);
   p.input (u8R"("0123456789\uD834\uDD1E")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
       << "Real error was: " << p.last_error ().message ();

@@ -28,8 +28,8 @@ using peejay::u8string;
 
 namespace {
 
-template <typename Backend, size_t MaxLength>
-bool report_error (parser<Backend, MaxLength> const& p,
+template <typename... Params>
+bool report_error (parser<Params...> const& p,
                    std::string_view const& file_name,
                    std::string_view const& line) {
   auto const& pos = p.pos ();
@@ -81,6 +81,17 @@ bool slurp (std::istream& in, char const* file_name) {
   return true;
 }
 
+#if PEEJAY_HAVE_SPAN
+std::pair<std::istream&, char const*> open (std::span<char const*> argv,
+                                            std::ifstream& file) {
+  if (argv.size () < 2U) {
+    return {std::cin, "<stdin>"};
+  }
+  auto const* path = argv[1];
+  file.open (path);
+  return {file, path};
+}
+#else
 std::pair<std::istream&, char const*> open (int argc, char const* argv[],
                                             std::ifstream& file) {
   if (argc < 2) {
@@ -90,6 +101,7 @@ std::pair<std::istream&, char const*> open (int argc, char const* argv[],
   file.open (path);
   return {file, path};
 }
+#endif  // PEEJAY_HAVE_SPAN
 
 }  // end anonymous namespace
 
@@ -97,9 +109,16 @@ int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
     std::ifstream file;
+#if PEEJAY_HAVE_SPAN
+    if (!std::apply (slurp, open (std::span{argv, argv + argc}, file))) {
+      exit_code = EXIT_FAILURE;
+    }
+#else
     if (!std::apply (slurp, open (argc, argv, file))) {
       exit_code = EXIT_FAILURE;
     }
+#endif  // PEEJAY_HAVE_SPAN
+
   } catch (std::exception const& ex) {
     std::cerr << "error: " << ex.what () << '\n';
     exit_code = EXIT_FAILURE;
