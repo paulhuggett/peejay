@@ -123,11 +123,15 @@ public:
       std::is_nothrow_move_constructible_v<T>);
 
   arrayvec &operator= (arrayvec const &other) {
-    operator_assign<false> (other);
+    if (&other != this) {
+      operator_assign<false> (other);
+    }
     return *this;
   }
   arrayvec &operator= (arrayvec &&other) noexcept {
-    operator_assign<true> (other);
+    if (&other != this) {
+      operator_assign<true> (other);
+    }
     return *this;
   }
 
@@ -331,9 +335,7 @@ arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
 template <typename T, size_t Size>
 template <bool IsMove, typename OtherVec>
 void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept {
-  if (&other == this) {
-    return;
-  }
+  assert (&other != this);
   auto const p = this->begin ();
   auto src = other.begin();
   auto dest = p;
