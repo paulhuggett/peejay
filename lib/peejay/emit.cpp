@@ -73,8 +73,9 @@ constexpr peejay::u8string_view::const_iterator break_char (
     peejay::u8string_view::const_iterator last) noexcept {
   using peejay::char_set;
   return std::find_if (first, last, [] (peejay::char8 const c) {
-    return c < char_set::space || c == char_set::quotation_mark ||
-           c == char_set::reverse_solidus;
+    return c < static_cast<peejay::char8> (char_set::space)
+        || c == static_cast<peejay::char8> (char_set::quotation_mark)
+        || c == static_cast<peejay::char8> (char_set::reverse_solidus);
   });
 }
 
