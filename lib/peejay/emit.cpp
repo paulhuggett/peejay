@@ -86,6 +86,7 @@ std::ostream& emit_string_view (std::ostream& os,
   auto first = std::begin (str);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = std::end (str);
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto pos = first;
   while ((pos = break_char (pos, last)) != last) {
     os.write (peejay::pointer_cast<char const*> (to_address (first)),
