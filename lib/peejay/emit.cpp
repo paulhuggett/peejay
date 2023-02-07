@@ -92,8 +92,8 @@ std::ostream& emit_string_view (std::ostream& os,
     using peejay::char_set;
     os << '\\';
     switch (*pos) {
-    case char_set::quotation_mark:
-    case char_set::reverse_solidus: os << *pos; break;
+    case char_set::quotation_mark: os << '"'; break;
+    case char_set::reverse_solidus: os << '\\'; break;
     case char_set::backspace: os << 'b'; break;
     case char_set::form_feed: os << 'f'; break;
     case char_set::line_feed: os << 'n'; break;
