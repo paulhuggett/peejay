@@ -52,7 +52,7 @@ TEST (ArrayVec, CtorCopy) {
 
 namespace {
 
-// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
+// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 class no_copy {
 public:
   constexpr explicit no_copy (int v) noexcept : v_{v} {}
@@ -84,7 +84,7 @@ std::ostream &operator<< (std::ostream &os, no_copy const &x) {
   return os << x.get ();
 }
 
-// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
+// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 class no_move {
 public:
   constexpr explicit no_move (int v) noexcept : v_{v} {}
