@@ -2,6 +2,7 @@
 Checks:            |-
   *,
   -altera-*,
+  -cert-dcl21-cpp,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-owning-memory,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
