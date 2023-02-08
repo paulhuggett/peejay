@@ -68,8 +68,7 @@ bool slurp (std::istream& in, char const* file_name) {
       return report_error (p, file_name, line);
     }
   }
-  auto const state = in.rdstate ();
-  if ((state & std::ios_base::eofbit) != 0) {
+  if (auto const state = in.rdstate (); (state & std::ios_base::eofbit) != 0) {
     p.eof ();
     if (auto const err = p.last_error ()) {
       return report_error (p, file_name, line);
