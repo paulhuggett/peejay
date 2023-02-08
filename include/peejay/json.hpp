@@ -2245,6 +2245,8 @@ private:
       parser_type &parser, char32_t c);
   std::pair<typename inherited::pointer, bool> multi_line_comment_body (
       parser_type &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> extra (parser_type &parser,
+                                                      char32_t c);
 
   void cr (parser_type &parser, state next) {
     assert (this->get_state () == multi_line_comment_body_state ||
@@ -2368,6 +2370,33 @@ whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
   return {null_pointer (), true};
 }
 
+// extra
+// ~~~~~
+template <typename Backend, typename Policies>
+auto whitespace_matcher<Backend, Policies>::extra (parser_type &parser,
+                                                   char32_t c)
+    -> std::pair<typename inherited::pointer, bool> {
+  assert (parser.extension_enabled (extensions::extra_whitespace));
+  bool is_ws = false;
+  switch (c) {
+  case char_set::vertical_tabulation:
+  case char_set::form_feed:
+  case char_set::no_break_space: is_ws = true; break;
+  default:
+    if (c > 0xFF) {
+      is_ws = code_point_grammar_rule (c) == grammar_rule::whitespace;
+    }
+    break;
+  }
+  assert (is_ws == (code_point_grammar_rule (c) == grammar_rule::whitespace));
+  if (is_ws) {
+    return {null_pointer (), true};  // Consume this character.
+  }
+  this->set_state (done_state);
+  return {null_pointer (),
+          false};  // Retry this character with a different matcher.
+}
+
 // consume body
 // ~~~~~~~~~~~~
 template <typename Backend, typename Policies>
@@ -2401,22 +2430,7 @@ auto whitespace_matcher<Backend, Policies>::consume_body (parser_type &parser,
     break;
   default:
     if (parser.extension_enabled (extensions::extra_whitespace)) {
-      bool is_ws = false;
-      switch (c) {
-      case char_set::vertical_tabulation:
-      case char_set::form_feed:
-      case char_set::no_break_space: is_ws = true; break;
-      default:
-        if (c > 0xFF) {
-          is_ws = code_point_grammar_rule (c) == grammar_rule::whitespace;
-        }
-        break;
-      }
-      assert (is_ws ==
-              (code_point_grammar_rule (c) == grammar_rule::whitespace));
-      if (is_ws) {
-        return {null_pointer (), true};  // Consume this character.
-      }
+      return this->extra (parser, c);
     }
     return stop_retry ();
   }
