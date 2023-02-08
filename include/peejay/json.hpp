@@ -1064,6 +1064,9 @@ bool number_matcher<Backend, Policies>::do_leading_minus_state (
   } else if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
     this->set_state (integer_initial_digit_state);
     match = do_integer_initial_digit_state (parser, c);
+  } else if (c == char_set::full_stop) {
+    assert (parser.extension_enabled (extensions::numbers));
+    this->set_state (frac_initial_digit_state);
   } else {
     // minus MUST be followed by the 'int' production.
     this->set_error (parser, error::number_out_of_range);
@@ -2574,8 +2577,12 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
   case new_token_state: {
     this->set_state (done_state);
     switch (*ch) {
-    case '+':
-      if (!parser.extension_enabled (extensions::leading_plus)) {
+    case char_set::plus_sign:
+    case char_set::full_stop:
+      if ((*ch == char_set::plus_sign &&
+           !parser.extension_enabled (extensions::leading_plus)) ||
+          (*ch == char_set::full_stop &&
+           !parser.extension_enabled (extensions::numbers))) {
         this->set_error (parser, error::expected_token);
         return {null_pointer (), true};
       }

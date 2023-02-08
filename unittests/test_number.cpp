@@ -89,7 +89,8 @@ TEST_F (Number, OneWithLeadingPlus) {
   EXPECT_CALL (callbacks_, uint64_value (1U)).Times (1);
   auto p = make_parser (proxy_, extensions::leading_plus);
   p.input (u8"+1"sv).eof ();
-  EXPECT_FALSE (p.has_error ());
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
 }
 
 // NOLINTNEXTLINE
@@ -498,4 +499,19 @@ TEST_F (Number, ArrayOfNaNAndInfinity) {
   p.input (u8"[Infinity,NaN,+Infinity,-Infinity,-NaN]"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, LeadingDot) {
+  EXPECT_CALL (callbacks_, double_value (0.1234)).Times (1);
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8".1234"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, LeadingDotExtensionDisabled) {
+  auto p = make_parser (proxy_);
+  p.input (u8".1234"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
+      << "Real error was: " << p.last_error ().message ();
 }
