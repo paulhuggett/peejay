@@ -492,8 +492,8 @@ class StringContinuation
     : public String,
       public testing::WithParamInterface<std::vector<char32_t>> {
 protected:
-  static constexpr auto prefix = u8"\"Lorem ipsum dolor sit amet, \\"sv;
-  static constexpr auto suffix = u8"consectetur adipiscing elit.\""sv;
+  static constexpr auto prefix = u8R"("Lorem ipsum dolor sit amet, \)"sv;
+  static constexpr auto suffix = u8R"(consectetur adipiscing elit.")"sv;
 
   static constexpr auto expected =
       u8"Lorem ipsum dolor sit amet, consectetur adipiscing elit."sv;
