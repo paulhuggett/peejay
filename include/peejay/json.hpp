@@ -2245,8 +2245,7 @@ private:
       parser_type &parser, char32_t c);
   std::pair<typename inherited::pointer, bool> multi_line_comment_body (
       parser_type &parser, char32_t c);
-  std::pair<typename inherited::pointer, bool> extra (parser_type &parser,
-                                                      char32_t c);
+  std::pair<typename inherited::pointer, bool> extra (char32_t c);
 
   void cr (parser_type &parser, state next) {
     assert (this->get_state () == multi_line_comment_body_state ||
@@ -2373,10 +2372,8 @@ whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
 // extra
 // ~~~~~
 template <typename Backend, typename Policies>
-auto whitespace_matcher<Backend, Policies>::extra (parser_type &parser,
-                                                   char32_t c)
+auto whitespace_matcher<Backend, Policies>::extra (char32_t c)
     -> std::pair<typename inherited::pointer, bool> {
-  assert (parser.extension_enabled (extensions::extra_whitespace));
   bool is_ws = false;
   switch (c) {
   case char_set::vertical_tabulation:
@@ -2430,7 +2427,7 @@ auto whitespace_matcher<Backend, Policies>::consume_body (parser_type &parser,
     break;
   default:
     if (parser.extension_enabled (extensions::extra_whitespace)) {
-      return this->extra (parser, c);
+      return this->extra (c);
     }
     return stop_retry ();
   }
