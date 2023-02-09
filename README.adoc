@@ -33,9 +33,9 @@ Feature | Support
 | Numbers may be hexadecimal
 | `extensions::numbers`
 | Numbers may have a leading or trailing decimal point
-|
+| `extensions::numbers`
 | Numbers may be IEEE 754 positive infinity, negative infinity, and NaN
-|
+| `extensions::numbers`
 | Numbers may begin with an explicit plus sign
 | `extensions::leading_plus`
 | Single and multi-line comments are allowed
