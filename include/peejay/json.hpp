@@ -1018,6 +1018,11 @@ private:
     /// Assign an explicit double.
     explicit constexpr float_accumulator (double v) noexcept : whole_part{v} {}
 
+    void add_digit (unsigned const digit) {
+      frac_part = frac_part * 10.0 + digit;
+      frac_scale *= 10;
+    }
+
     double frac_part = 0.0;
     double frac_scale = 1.0;
     double whole_part = 0.0;
@@ -1146,20 +1151,18 @@ bool number_matcher<Backend, Policies>::do_frac_digit_state (
     }
     break;
 
-  case digit_zero:
-  case digit_one:
-  case digit_two:
-  case digit_three:
-  case digit_four:
-  case digit_five:
-  case digit_six:
-  case digit_seven:
-  case digit_eight:
-  case digit_nine: {
+  case char_set::digit_zero:
+  case char_set::digit_one:
+  case char_set::digit_two:
+  case char_set::digit_three:
+  case char_set::digit_four:
+  case char_set::digit_five:
+  case char_set::digit_six:
+  case char_set::digit_seven:
+  case char_set::digit_eight:
+  case char_set::digit_nine: {
     this->number_is_float ();
-    auto &fp_acc = std::get<float_accumulator> (acc_);
-    fp_acc.frac_part = fp_acc.frac_part * 10.0 + c - '0';
-    fp_acc.frac_scale *= 10;
+    std::get<float_accumulator> (acc_).add_digit (c - char_set::digit_zero);
     this->set_state (frac_digit_state);
   } break;
 
