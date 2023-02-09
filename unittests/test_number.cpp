@@ -515,3 +515,45 @@ TEST_F (Number, LeadingDotExtensionDisabled) {
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
       << "Real error was: " << p.last_error ().message ();
 }
+// NOLINTNEXTLINE
+TEST_F (Number, TrailingDot) {
+  EXPECT_CALL (callbacks_, double_value (1234.0)).Times (1);
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"1234."sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, TrailingDotExtensionDisabled) {
+  auto p = make_parser (proxy_);
+  p.input (u8"1234."sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
+      << "Real error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, ArrayOfLeadingAndTrailingDot) {
+  testing::InSequence _;
+  EXPECT_CALL (callbacks_, begin_array ()).Times (1);
+  EXPECT_CALL (callbacks_, double_value (0.1)).Times (1);
+  EXPECT_CALL (callbacks_, double_value (1.0)).Times (1);
+  EXPECT_CALL (callbacks_, end_array ()).Times (1);
+
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"[.1,1.]"sv).eof ();
+  EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
+                                 << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, LoneDecimalPointThenEOF) {
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8"."sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
+      << "Real error was: " << p.last_error ().message ();
+}
+// NOLINTNEXTLINE
+TEST_F (Number, LoneDecimalPointThenWhitespace) {
+  auto p = make_parser (proxy_, extensions::numbers);
+  p.input (u8". "sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
+      << "Real error was: " << p.last_error ().message ();
+}

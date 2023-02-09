@@ -999,6 +999,11 @@ private:
     initial_hex_digit,
     hex_digits,
 
+    // The same as frac_initial_digit_state but used after
+    // a leading dot to enable a lone dot character to be
+    // rejected.
+    initial_dot_state,
+
     match_token_infinity_state,
     match_token_nan_state,
     end_token_state,
@@ -1066,7 +1071,7 @@ bool number_matcher<Backend, Policies>::do_leading_minus_state (
     match = do_integer_initial_digit_state (parser, c);
   } else if (c == char_set::full_stop) {
     assert (parser.extension_enabled (extensions::numbers));
-    this->set_state (frac_initial_digit_state);
+    this->set_state (initial_dot_state);
   } else {
     // minus MUST be followed by the 'int' production.
     this->set_error (parser, error::number_out_of_range);
@@ -1123,31 +1128,51 @@ bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_frac_digit_state (
     parser_type &parser, char32_t const c) {
-  assert (this->get_state () == frac_initial_digit_state ||
-          this->get_state () == frac_digit_state);
+  auto state = this->get_state ();
+  if (state == initial_dot_state) {
+    state = frac_initial_digit_state;
+  }
+  assert (state == frac_initial_digit_state || state == frac_digit_state);
 
   bool match = true;
-  if (c == 'e' || c == 'E') {
+  switch (c) {
+  case char_set::latin_small_letter_e:
+  case char_set::latin_capital_letter_e:
     this->number_is_float ();
-    if (this->get_state () == frac_initial_digit_state) {
+    if (state == frac_initial_digit_state) {
       this->set_error (parser, error::unrecognized_token);
     } else {
       this->set_state (exponent_sign_state);
     }
-  } else if (c >= '0' && c <= '9') {
+    break;
+
+  case digit_zero:
+  case digit_one:
+  case digit_two:
+  case digit_three:
+  case digit_four:
+  case digit_five:
+  case digit_six:
+  case digit_seven:
+  case digit_eight:
+  case digit_nine: {
     this->number_is_float ();
     auto &fp_acc = std::get<float_accumulator> (acc_);
     fp_acc.frac_part = fp_acc.frac_part * 10.0 + c - '0';
     fp_acc.frac_scale *= 10;
-
     this->set_state (frac_digit_state);
-  } else {
-    if (this->get_state () == frac_initial_digit_state) {
+  } break;
+
+  default:
+    if ((state == frac_initial_digit_state &&
+         !parser.extension_enabled (extensions::numbers)) ||
+        this->get_state () == initial_dot_state) {
       this->set_error (parser, error::unrecognized_token);
     } else {
       match = false;
       this->complete (parser);
     }
+    break;
   }
   return match;
 }
@@ -1238,10 +1263,11 @@ bool number_matcher<Backend, Policies>::do_integer_digit_state (
   assert (std::holds_alternative<uint64_t> (acc_));
 
   bool match = true;
-  if (c == '.') {
+  if (c == char_set::full_stop) {
     this->set_state (frac_initial_digit_state);
     number_is_float ();
-  } else if (c == 'e' || c == 'E') {
+  } else if (c == char_set::latin_small_letter_e ||
+             c == char_set::latin_capital_letter_e) {
     this->set_state (exponent_sign_state);
     number_is_float ();
   } else if (c >= '0' && c <= '9') {
@@ -1292,6 +1318,12 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
       case match_token_nan_state:
         this->set_error (parser, error::unrecognized_token);
         break;
+      case frac_initial_digit_state:
+        // A trailing dot.
+        if (parser.extension_enabled (extensions::numbers)) {
+          break;
+        }
+        [[fallthrough]];
       default: this->set_error (parser, error::expected_digits); break;
       }
     }
@@ -1312,6 +1344,7 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
     match = this->do_integer_digit_state (parser, c);
     break;
   case frac_state: match = this->do_frac_state (parser, c); break;
+  case initial_dot_state:
   case frac_initial_digit_state:
   case frac_digit_state: match = this->do_frac_digit_state (parser, c); break;
   case exponent_sign_state:
