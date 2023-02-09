@@ -641,9 +641,6 @@ protected:
   matcher (matcher &&) noexcept = default;
   matcher &operator= (matcher &&) noexcept = default;
 
-  [[nodiscard]] constexpr int get_state () const noexcept { return state_; }
-  void set_state (int const s) noexcept { state_ = s; }
-
   ///@{
   /// \brief Errors
 
@@ -651,7 +648,7 @@ protected:
   bool set_error (parser_type &parser, std::error_code const &err) noexcept {
     bool const has_error = parser.set_error (err);
     if (has_error) {
-      set_state (done);
+      state_ = done;
     }
     return has_error;
   }
@@ -683,7 +680,6 @@ protected:
   /// machines.
   static constexpr auto done = 1;
 
-private:
   int state_;
 };
 
@@ -771,6 +767,8 @@ public:
       parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
+  using inherited::state_;
+
   enum state {
     done_state = inherited::done,
     start_state,
@@ -793,7 +791,7 @@ auto token_matcher<Backend, Policies, DoneFunction>::consume (
     parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   bool match = true;
-  switch (this->get_state ()) {
+  switch (state_) {
   case start_state:
     assert (!ch || icubaby::is_code_point_start (*ch));
     if (!ch) {
@@ -805,7 +803,7 @@ auto token_matcher<Backend, Policies, DoneFunction>::consume (
       this->set_error (parser, error::unrecognized_token);
       break;
     case token_consumer::result::more: break;
-    case token_consumer::result::match: this->set_state (last_state); break;
+    case token_consumer::result::match: state_ = last_state; break;
     }
     break;
   case last_state:
@@ -817,7 +815,7 @@ auto token_matcher<Backend, Policies, DoneFunction>::consume (
       match = false;
     }
     this->set_error (parser, done_ (parser));
-    this->set_state (done_state);
+    state_ = done_state;
     break;
   case done_state:
   default: unreachable (); break;
@@ -965,6 +963,8 @@ public:
       parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
+  using inherited::null_pointer;
+  using inherited::state_;
   [[nodiscard]] bool in_terminal_state () const;
 
   bool do_leading_minus_state (parser_type &parser, char32_t c);
@@ -981,6 +981,7 @@ private:
   void number_is_float ();
 
   void make_result (parser_type &parser);
+  std::pair<typename inherited::pointer, bool> end (parser_type &parser);
 
   enum state {
     done_state = inherited::done,
@@ -1047,7 +1048,7 @@ void number_matcher<Backend, Policies>::number_is_float () {
 // ~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::in_terminal_state () const {
-  switch (this->get_state ()) {
+  switch (state_) {
   case end_token_state:
   case exponent_digit_state:
   case frac_digit_state:
@@ -1066,17 +1067,17 @@ bool number_matcher<Backend, Policies>::do_leading_minus_state (
     parser_type &parser, char32_t c) {
   bool match = true;
   if (c == char_set::hyphen_minus) {
-    this->set_state (integer_initial_digit_state);
+    state_ = integer_initial_digit_state;
     is_neg_ = true;
   } else if (c == char_set::plus_sign) {
     assert (parser.extension_enabled (extensions::leading_plus));
-    this->set_state (integer_initial_digit_state);
+    state_ = integer_initial_digit_state;
   } else if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
-    this->set_state (integer_initial_digit_state);
+    state_ = integer_initial_digit_state;
     match = do_integer_initial_digit_state (parser, c);
   } else if (c == char_set::full_stop) {
     assert (parser.extension_enabled (extensions::numbers));
-    this->set_state (initial_dot_state);
+    state_ = initial_dot_state;
   } else {
     // minus MUST be followed by the 'int' production.
     this->set_error (parser, error::number_out_of_range);
@@ -1092,11 +1093,9 @@ bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
                                                        char32_t const c) {
   bool match = true;
   switch (c) {
-  case char_set::full_stop: this->set_state (frac_initial_digit_state); break;
+  case char_set::full_stop: state_ = frac_initial_digit_state; break;
   case char_set::latin_small_letter_e:
-  case char_set::latin_capital_letter_e:
-    this->set_state (exponent_sign_state);
-    break;
+  case char_set::latin_capital_letter_e: state_ = exponent_sign_state; break;
   case char_set::digit_zero:
   case char_set::digit_one:
   case char_set::digit_two:
@@ -1114,7 +1113,7 @@ bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
   case char_set::latin_small_letter_x:
   case char_set::latin_capital_letter_x:
     if (parser.extension_enabled (extensions::numbers)) {
-      this->set_state (initial_hex_digit);
+      state_ = initial_hex_digit;
     } else {
       this->set_error (parser, error::number_out_of_range);
     }
@@ -1133,10 +1132,8 @@ bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_frac_digit_state (
     parser_type &parser, char32_t const c) {
-  auto state = this->get_state ();
-  if (state == initial_dot_state) {
-    state = frac_initial_digit_state;
-  }
+  auto const state =
+      (state_ == initial_dot_state) ? frac_initial_digit_state : state_;
   assert (state == frac_initial_digit_state || state == frac_digit_state);
 
   bool match = true;
@@ -1147,7 +1144,7 @@ bool number_matcher<Backend, Policies>::do_frac_digit_state (
     if (state == frac_initial_digit_state) {
       this->set_error (parser, error::unrecognized_token);
     } else {
-      this->set_state (exponent_sign_state);
+      state_ = exponent_sign_state;
     }
     break;
 
@@ -1163,13 +1160,13 @@ bool number_matcher<Backend, Policies>::do_frac_digit_state (
   case char_set::digit_nine: {
     this->number_is_float ();
     std::get<float_accumulator> (acc_).add_digit (c - char_set::digit_zero);
-    this->set_state (frac_digit_state);
+    state_ = frac_digit_state;
   } break;
 
   default:
     if ((state == frac_initial_digit_state &&
          !parser.extension_enabled (extensions::numbers)) ||
-        this->get_state () == initial_dot_state) {
+        this->state_ == initial_dot_state) {
       this->set_error (parser, error::unrecognized_token);
     } else {
       match = false;
@@ -1188,7 +1185,7 @@ bool number_matcher<Backend, Policies>::do_exponent_sign_state (
   bool match = true;
   this->number_is_float ();
   auto &fp_acc = std::get<float_accumulator> (acc_);
-  this->set_state (exponent_initial_digit_state);
+  state_ = exponent_initial_digit_state;
   switch (c) {
   case '+': fp_acc.exp_is_negative = false; break;
   case '-': fp_acc.exp_is_negative = true; break;
@@ -1201,7 +1198,7 @@ bool number_matcher<Backend, Policies>::do_exponent_sign_state (
 // ~~~~~~~~
 template <typename Backend, typename Policies>
 void number_matcher<Backend, Policies>::complete (parser_type &parser) {
-  this->set_state (done_state);
+  state_ = done_state;
   this->make_result (parser);
 }
 
@@ -1210,8 +1207,8 @@ void number_matcher<Backend, Policies>::complete (parser_type &parser) {
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_exponent_digit_state (
     parser_type &parser, char32_t const c) {
-  assert (this->get_state () == exponent_digit_state ||
-          this->get_state () == exponent_initial_digit_state);
+  assert (state_ == exponent_digit_state ||
+          state_ == exponent_initial_digit_state);
   assert (std::holds_alternative<float_accumulator> (acc_));
 
   bool match = true;
@@ -1219,9 +1216,9 @@ bool number_matcher<Backend, Policies>::do_exponent_digit_state (
     auto &fp_acc = std::get<float_accumulator> (acc_);
     fp_acc.exponent = fp_acc.exponent * 10U +
                       static_cast<unsigned> (c - char_set::digit_zero);
-    this->set_state (exponent_digit_state);
+    state_ = exponent_digit_state;
   } else {
-    if (this->get_state () == exponent_initial_digit_state) {
+    if (state_ == exponent_initial_digit_state) {
       this->set_error (parser, error::unrecognized_token);
     } else {
       match = false;
@@ -1236,21 +1233,21 @@ bool number_matcher<Backend, Policies>::do_exponent_digit_state (
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
     parser_type &parser, char32_t const c) {
-  assert (this->get_state () == integer_initial_digit_state);
+  assert (state_ == integer_initial_digit_state);
   assert (std::holds_alternative<uint64_t> (acc_));
   if (c == char_set::digit_zero) {
-    this->set_state (frac_state);
+    state_ = frac_state;
   } else if (c >= char_set::digit_one && c <= char_set::digit_nine) {
     assert (std::get<uint64_t> (acc_) == 0);
     std::get<uint64_t> (acc_) =
         static_cast<uint64_t> (c) - char_set::digit_zero;
-    this->set_state (integer_digit_state);
+    state_ = integer_digit_state;
   } else if (c == char_set::latin_capital_letter_i) {
     text_.set_text (u8"nfinity");
-    this->set_state (match_token_infinity_state);
+    state_ = match_token_infinity_state;
   } else if (c == char_set::latin_capital_letter_n) {
     text_.set_text (u8"aN");
-    this->set_state (match_token_nan_state);
+    state_ = match_token_nan_state;
   } else {
     this->set_error (parser, error::unrecognized_token);
   }
@@ -1262,16 +1259,16 @@ bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_integer_digit_state (
     parser_type &parser, char32_t const c) {
-  assert (this->get_state () == integer_digit_state);
+  assert (state_ == integer_digit_state);
   assert (std::holds_alternative<uint64_t> (acc_));
 
   bool match = true;
   if (c == char_set::full_stop) {
-    this->set_state (frac_initial_digit_state);
+    state_ = frac_initial_digit_state;
     number_is_float ();
   } else if (c == char_set::latin_small_letter_e ||
              c == char_set::latin_capital_letter_e) {
-    this->set_state (exponent_sign_state);
+    state_ = exponent_sign_state;
     number_is_float ();
   } else if (c >= '0' && c <= '9') {
     auto &int_acc = std::get<uint64_t> (acc_);
@@ -1307,6 +1304,31 @@ bool number_matcher<Backend, Policies>::do_hex_digits_state (
   return true;
 }
 
+// end
+// ~~~
+template <typename Backend, typename Policies>
+auto number_matcher<Backend, Policies>::end (parser_type &parser)
+    -> std::pair<typename inherited::pointer, bool> {
+  assert (!parser.has_error ());
+  if (!this->in_terminal_state ()) {
+    switch (state_) {
+    case match_token_infinity_state:
+    case match_token_nan_state:
+      this->set_error (parser, error::unrecognized_token);
+      break;
+    case frac_initial_digit_state:
+      // A trailing dot.
+      if (parser.extension_enabled (extensions::numbers)) {
+        break;
+      }
+      [[fallthrough]];
+    default: this->set_error (parser, error::expected_digits); break;
+    }
+  }
+  this->complete (parser);
+  return {null_pointer (), true};
+}
+
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
@@ -1314,29 +1336,12 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
                                                  std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
-    assert (!parser.has_error ());
-    if (!this->in_terminal_state ()) {
-      switch (this->get_state ()) {
-      case match_token_infinity_state:
-      case match_token_nan_state:
-        this->set_error (parser, error::unrecognized_token);
-        break;
-      case frac_initial_digit_state:
-        // A trailing dot.
-        if (parser.extension_enabled (extensions::numbers)) {
-          break;
-        }
-        [[fallthrough]];
-      default: this->set_error (parser, error::expected_digits); break;
-      }
-    }
-    this->complete (parser);
-    return {matcher<Backend, Policies>::null_pointer (), true};
+    return this->end (parser);
   }
 
   bool match = true;
   auto const c = *ch;
-  switch (this->get_state ()) {
+  switch (state_) {
   case leading_minus_state:
     match = this->do_leading_minus_state (parser, c);
     break;
@@ -1362,7 +1367,7 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
       this->set_error (parser, error::expected_digits);
       break;
     }
-    this->set_state (hex_digits);
+    state_ = hex_digits;
     [[fallthrough]];
   case hex_digits: match = this->do_hex_digits_state (parser, c); break;
 
@@ -1374,10 +1379,10 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
       break;
     case token_consumer::result::more: break;
     case token_consumer::result::match:
-      acc_ = float_accumulator{this->get_state () == match_token_infinity_state
+      acc_ = float_accumulator{state_ == match_token_infinity_state
                                    ? std::numeric_limits<double>::infinity ()
                                    : std::numeric_limits<double>::quiet_NaN ()};
-      this->set_state (end_token_state);
+      state_ = end_token_state;
       break;
     }
     break;
@@ -1385,7 +1390,7 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
     if (ch) {
       if (token_consumer::is_identifier_cp (*ch)) {
         this->set_error (parser, error::unrecognized_token);
-        return {matcher<Backend, Policies>::null_pointer (), true};
+        return {null_pointer (), true};
       }
       match = false;
     }
@@ -1396,7 +1401,7 @@ auto number_matcher<Backend, Policies>::consume (parser_type &parser,
   default: unreachable (); break;
   }
 
-  return {matcher<Backend, Policies>::null_pointer (), match};
+  return {null_pointer (), match};
 }
 
 // make result
@@ -1568,6 +1573,7 @@ public:
 
 private:
   using inherited::null_pointer;
+  using inherited::state_;
 
   enum state {
     done_state = inherited::done,
@@ -1671,7 +1677,7 @@ void string_matcher<Backend, Policies>::normal (parser_type &p,
         if constexpr (std::is_same_v<T, std::error_code>) {
           this->set_error (p, arg);
         } else if constexpr (std::is_same_v<T, state>) {
-          this->set_state (arg);
+          state_ = arg;
         } else {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
@@ -1766,7 +1772,7 @@ void string_matcher<Backend, Policies>::escape (parser_type &p,
         if constexpr (std::is_same_v<T, error>) {
           this->set_error (p, arg);
         } else if constexpr (std::is_same_v<T, state>) {
-          this->set_state (arg);
+          state_ = arg;
         } else {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
@@ -1787,11 +1793,11 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
 
   auto const c = *ch;
   bool match = true;
-  switch (this->get_state ()) {
+  switch (state_) {
   // Matches the opening quote.
   case start_state:
     if (c == enclosing_char_) {
-      this->set_state (normal_char_state);
+      state_ = normal_char_state;
     } else {
       this->set_error (parser, error::expected_token);
     }
@@ -1805,14 +1811,14 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
   case hex4_state: {
     bool overflow = false;
     auto out = checked_back_insert_iterator{str_, &overflow};
-    auto v = hex_.consume (this->get_state (), c, out);
+    auto v = hex_.consume (state_, c, out);
     if (std::holds_alternative<std::error_code> (v)) {
       assert (v.index () == 0);
       this->set_error (parser, std::get<std::error_code> (v));
     } else if (overflow) {
       this->set_error (parser, error::string_too_long);
     } else {
-      this->set_state (std::get<1> (v).first);
+      state_ = std::get<1> (v).first;
     }
   } break;
 
@@ -1820,7 +1826,7 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
   // Silently consume a subsequent line_feed.
   case skip_lf_state:
     assert (parser.extension_enabled (extensions::string_escapes));
-    this->set_state (normal_char_state);
+    state_ = normal_char_state;
     if (c != char_set::line_feed) {
       match = false;
     }
@@ -1856,6 +1862,7 @@ public:
 
 private:
   using inherited::null_pointer;
+  using inherited::state_;
 
   enum state {
     done_state = inherited::done,
@@ -1886,7 +1893,7 @@ private:
 template <typename Backend, typename Policies>
 void identifier_matcher<Backend, Policies>::hex_states (
     parser_type &parser, char32_t const code_point) {
-  auto const state = this->get_state ();
+  auto const state = state_;
   assert (state == hex1_state || state == hex2_state || state == hex3_state ||
           state == hex4_state);
   bool overflow = false;
@@ -1898,7 +1905,7 @@ void identifier_matcher<Backend, Policies>::hex_states (
   } else if (overflow) {
     this->set_error (parser, error::identifier_too_long);
   } else {
-    this->set_state (std::get<1> (v).first);
+    state_ = std::get<1> (v).first;
   }
 }
 
@@ -1916,7 +1923,7 @@ auto identifier_matcher<Backend, Policies>::consume (
     return return_type{null_pointer (), true};
   };
   auto change_state = [&] (enum state new_state) {
-    this->set_state (new_state);
+    state_ = new_state;
     return return_type{null_pointer (), true};
   };
 
@@ -1925,7 +1932,7 @@ auto identifier_matcher<Backend, Policies>::consume (
   }
 
   char32_t const c = *code_point;
-  switch (this->get_state ()) {
+  switch (state_) {
   case start_state:
     if (whitespace_matcher<Backend, Policies>::want_code_point (parser, c)) {
       return {this->make_whitespace_matcher (parser), false};
@@ -1936,7 +1943,7 @@ auto identifier_matcher<Backend, Policies>::consume (
     if (code_point_grammar_rule (c) != grammar_rule::identifier_start) {
       return install_error (error::bad_identifier);
     }
-    this->set_state (part_state);
+    state_ = part_state;
     // Record the character.
     break;
   case part_state:
@@ -1957,7 +1964,7 @@ auto identifier_matcher<Backend, Policies>::consume (
         this->set_error (parser, error);
       }
       // TODO(paul) check whether identifier is empty?
-      this->set_state (done_state);
+      state_ = done_state;
       return retry_char_and_iterate;
     }
     // Record the character.
@@ -2008,6 +2015,7 @@ public:
 
 private:
   using inherited::null_pointer;
+  using inherited::state_;
 
   enum state {
     done_state = inherited::done,
@@ -2031,13 +2039,13 @@ auto array_matcher<Backend, Policies>::consume (parser_type &p,
     return {null_pointer (), true};
   }
   auto const c = *ch;
-  switch (this->get_state ()) {
+  switch (state_) {
   case start_state:
     assert (c == '[');
     if (this->set_error (p, p.backend ().begin_array ())) {
       break;
     }
-    this->set_state (first_object_state);
+    state_ = first_object_state;
     // Match this character and consume whitespace before the object (or close
     // bracket).
     return {this->make_whitespace_matcher (p), true};
@@ -2049,7 +2057,7 @@ auto array_matcher<Backend, Policies>::consume (parser_type &p,
     }
     [[fallthrough]];
   case object_state:
-    this->set_state (comma_state);
+    state_ = comma_state;
     return {this->make_root_matcher (p), false};
     break;
   case comma_state:
@@ -2059,9 +2067,9 @@ auto array_matcher<Backend, Policies>::consume (parser_type &p,
     }
     switch (c) {
     case ',':
-      this->set_state ((p.extension_enabled (extensions::array_trailing_comma))
-                           ? first_object_state
-                           : object_state);
+      state_ = p.extension_enabled (extensions::array_trailing_comma)
+                   ? first_object_state
+                   : object_state;
       return {this->make_whitespace_matcher (p), true};
     case ']': this->end_array (p); break;
     default: this->set_error (p, error::expected_array_member); break;
@@ -2078,7 +2086,7 @@ auto array_matcher<Backend, Policies>::consume (parser_type &p,
 template <typename Backend, typename Policies>
 void array_matcher<Backend, Policies>::end_array (parser_type &parser) {
   this->set_error (parser, parser.backend ().end_array ());
-  this->set_state (done_state);
+  state_ = done_state;
 }
 
 //*      _     _        _    *
@@ -2100,6 +2108,7 @@ public:
 
 private:
   using inherited::null_pointer;
+  using inherited::state_;
 
   enum state {
     done_state = inherited::done,
@@ -2129,10 +2138,10 @@ auto object_matcher<Backend, Policies>::consume (parser_type &parser,
     return {null_pointer (), true};
   }
   auto const c = *ch;
-  switch (this->get_state ()) {
+  switch (state_) {
   case start_state:
     assert (c == '{');
-    this->set_state (first_key_state);
+    state_ = first_key_state;
     if (this->set_error (parser, parser.backend ().begin_object ())) {
       break;
     }
@@ -2151,13 +2160,13 @@ auto object_matcher<Backend, Policies>::consume (parser_type &parser,
       return {this->make_whitespace_matcher (parser), false};
     }
     if (c == char_set::colon) {
-      this->set_state (value_state);
+      state_ = value_state;
     } else {
       this->set_error (parser, error::expected_colon);
     }
     break;
   case value_state:
-    this->set_state (comma_state);
+    state_ = comma_state;
     return {this->make_root_matcher (parser), false};
   case comma_state: return this->comma (parser, c);
   case done_state:
@@ -2174,7 +2183,7 @@ template <typename Backend, typename Policies>
 auto object_matcher<Backend, Policies>::key (parser_type &parser,
                                              char32_t code_point)
     -> std::pair<typename inherited::pointer, bool> {
-  this->set_state (colon_state);
+  state_ = colon_state;
   if (code_point == char_set::quotation_mark ||
       (code_point == apostrophe &&
        parser.extension_enabled (extensions::single_quote_string))) {
@@ -2204,10 +2213,9 @@ auto object_matcher<Backend, Policies>::comma (parser_type &parser,
     // Strictly conforming JSON requires a property name following a comma but
     // we have an extension to allow an trailing comma which may be followed
     // by the object's closing brace.
-    this->set_state (
-        (parser.extension_enabled (extensions::object_trailing_comma))
-            ? first_key_state
-            : key_state);
+    state_ = parser.extension_enabled (extensions::object_trailing_comma)
+                 ? first_key_state
+                 : key_state;
     // Consume the comma and any whitespace before the close brace or property
     // name.
     return {this->make_whitespace_matcher (parser), true};
@@ -2226,7 +2234,7 @@ auto object_matcher<Backend, Policies>::comma (parser_type &parser,
 template <typename Backend, typename Policies>
 void object_matcher<Backend, Policies>::end_object (parser_type &parser) {
   this->set_error (parser, parser.backend ().end_object ());
-  this->set_state (done_state);
+  state_ = done_state;
 }
 
 //*         _    _ _                             *
@@ -2259,6 +2267,7 @@ public:
 
 private:
   using inherited::null_pointer;
+  using inherited::state_;
 
   enum state {
     done_state = inherited::done,
@@ -2287,10 +2296,9 @@ private:
   std::pair<typename inherited::pointer, bool> extra (char32_t c);
 
   void cr (parser_type &parser, state next) {
-    assert (this->get_state () == multi_line_comment_body_state ||
-            this->get_state () == body_state);
+    assert (state_ == multi_line_comment_body_state || state_ == body_state);
     parser.advance_row ();
-    this->set_state (next);
+    state_ = next;
   }
   void lf (parser_type &parser) { parser.advance_row (); }
 
@@ -2348,21 +2356,21 @@ std::pair<typename matcher<Backend, Policies>::pointer, bool>
 whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
                                                 std::optional<char32_t> ch) {
   if (!ch) {
-    switch (this->get_state ()) {
+    switch (state_) {
     case multi_line_comment_body_state:
     case multi_line_comment_ending_state:
     case multi_line_comment_crlf_state:
       this->set_error (parser, error::unterminated_multiline_comment);
       break;
-    default: this->set_state (done_state); break;
+    default: state_ = done_state; break;
     }
     return {null_pointer (), true};
   }
   auto const c = *ch;
-  switch (this->get_state ()) {
+  switch (state_) {
   // Handles the LF part of a Windows-style CR/LF pair.
   case crlf_state:
-    this->set_state (body_state);
+    state_ = body_state;
     if (crlf (parser, c)) {
       break;
     }
@@ -2376,14 +2384,14 @@ whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
     // asterisk followed by a second asterisk so don't change state.
     case char_set::asterisk: break;
     // asterisk+solidus (*/) means the end of the comment.
-    case char_set::solidus: this->set_state (body_state); break;
+    case char_set::solidus: state_ = body_state; break;
     // some other character. Back to consuming the comment.
-    default: this->set_state (multi_line_comment_body_state); break;
+    default: state_ = multi_line_comment_body_state; break;
     }
     break;
 
   case multi_line_comment_crlf_state:
-    this->set_state (multi_line_comment_body_state);
+    state_ = multi_line_comment_body_state;
     if (crlf (parser, c)) {
       break;
     }
@@ -2397,7 +2405,7 @@ whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
     if (c == char_set::carriage_return || c == char_set::line_feed) {
       // This character marks a bash/single-line comment end. Go back to
       // normal whitespace handling. Retry with the same character.
-      this->set_state (body_state);
+      state_ = body_state;
       return {null_pointer (), false};
     }
     // Just consume the character.
@@ -2428,7 +2436,7 @@ auto whitespace_matcher<Backend, Policies>::extra (char32_t c)
   if (is_ws) {
     return {null_pointer (), true};  // Consume this character.
   }
-  this->set_state (done_state);
+  state_ = done_state;
   return {null_pointer (),
           false};  // Retry this character with a different matcher.
 }
@@ -2441,7 +2449,7 @@ auto whitespace_matcher<Backend, Policies>::consume_body (parser_type &parser,
     -> std::pair<typename inherited::pointer, bool> {
   auto const stop_retry = [this] () {
     // Stop, pop this matcher, and retry with the same character.
-    this->set_state (done_state);
+    state_ = done_state;
     return std::pair{null_pointer (), false};
   };
 
@@ -2455,14 +2463,14 @@ auto whitespace_matcher<Backend, Policies>::consume_body (parser_type &parser,
     if (!parser.extension_enabled (extensions::bash_comments)) {
       return stop_retry ();
     }
-    this->set_state (single_line_comment_state);
+    state_ = single_line_comment_state;
     break;
   case char_set::solidus:
     if (!parser.extension_enabled (extensions::single_line_comments) &&
         !parser.extension_enabled (extensions::multi_line_comments)) {
       return stop_retry ();
     }
-    this->set_state (comment_start_state);
+    state_ = comment_start_state;
     break;
   default:
     if (parser.extension_enabled (extensions::extra_whitespace)) {
@@ -2488,10 +2496,10 @@ whitespace_matcher<Backend, Policies>::consume_comment_start (
     parser_type &parser, char32_t c) {
   if (c == char_set::solidus &&
       parser.extension_enabled (extensions::single_line_comments)) {
-    this->set_state (single_line_comment_state);
+    state_ = single_line_comment_state;
   } else if (c == char_set::asterisk &&
              parser.extension_enabled (extensions::multi_line_comments)) {
-    this->set_state (multi_line_comment_body_state);
+    state_ = multi_line_comment_body_state;
   } else {
     this->set_error (parser, error::expected_token);
   }
@@ -2508,12 +2516,12 @@ std::pair<typename matcher<Backend, Policies>::pointer, bool>
 whitespace_matcher<Backend, Policies>::multi_line_comment_body (
     parser_type &parser, char32_t c) {
   assert (parser.extension_enabled (extensions::multi_line_comments));
-  assert (this->get_state () == multi_line_comment_body_state);
+  assert (state_ == multi_line_comment_body_state);
   switch (c) {
   case char_set::asterisk:
     // This could be a standalone star character or be followed by a slash
     // to end the multi-line comment.
-    this->set_state (multi_line_comment_ending_state);
+    state_ = multi_line_comment_ending_state;
     break;
   case char_set::carriage_return:
     this->cr (parser, multi_line_comment_crlf_state);
@@ -2543,6 +2551,7 @@ public:
       parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
+  using inherited::state_;
   enum state {
     done_state = inherited::done,
     start_state,
@@ -2558,7 +2567,7 @@ auto eof_matcher<Backend, Policies>::consume (parser_type &parser,
   if (ch) {
     this->set_error (parser, error::unexpected_extra_input);
   } else {
-    this->set_state (done_state);
+    state_ = done_state;
   }
   return {inherited::null_pointer (), true};
 }
@@ -2582,6 +2591,7 @@ public:
 
 private:
   using inherited::null_pointer;
+  using inherited::state_;
 
   enum state {
     done_state = inherited::done,
@@ -2603,15 +2613,15 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
 
   using pointer = typename inherited::pointer;
   using deleter = typename pointer::deleter_type;
-  switch (this->get_state ()) {
+  switch (state_) {
   case start_state:
-    this->set_state (new_token_state);
+    state_ = new_token_state;
     if (whitespace_matcher<Backend, Policies>::want_code_point (parser, *ch)) {
       return {this->make_whitespace_matcher (parser), false};
     }
     [[fallthrough]];
   case new_token_state: {
-    this->set_state (done_state);
+    state_ = done_state;
     switch (*ch) {
     case char_set::plus_sign:
     case char_set::full_stop:
