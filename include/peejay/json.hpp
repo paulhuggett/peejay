@@ -1677,7 +1677,7 @@ void string_matcher<Backend, Policies>::normal (parser_type &p,
         if constexpr (std::is_same_v<T, std::error_code>) {
           this->set_error (p, arg);
         } else if constexpr (std::is_same_v<T, state>) {
-          state_ = arg;
+          this->state_ = arg;
         } else {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
@@ -1772,7 +1772,7 @@ void string_matcher<Backend, Policies>::escape (parser_type &p,
         if constexpr (std::is_same_v<T, error>) {
           this->set_error (p, arg);
         } else if constexpr (std::is_same_v<T, state>) {
-          state_ = arg;
+          this->state_ = arg;
         } else {
           static_assert (always_false<T>, "non-exhaustive visitor");
         }
