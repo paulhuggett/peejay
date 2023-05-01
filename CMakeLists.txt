@@ -13,18 +13,19 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.13)
 
 project (peejay C CXX)
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
+cmake_policy(SET CMP0077 NEW)
 option (WERROR "Compiler warnings are errors")
-option (CXX17 "Use C++17 (rather than the default C++20")
+option (PEEJAY_CXX17 "Use C++17 (rather than the default C++20")
 option (LIBCXX "Use libc++ rather than libstdc++ (clang only)")
 option (COVERAGE "Generate LLVM Source-based Coverage")
 
-if (CXX17)
+if (PEEJAY_CXX17)
   set (STANDARD 17)
 else ()
   set (STANDARD 20)
