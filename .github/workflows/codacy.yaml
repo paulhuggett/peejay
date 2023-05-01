@@ -11,7 +11,7 @@ jobs:
     name: Tidy
     runs-on: ubuntu-22.04
     env:
-      CLANG_VERSION: 15
+      CLANG_VERSION: 16
       CCT_VERSION: 1.3.2
       CCT: codacy-clang-tidy-linux-1.3.2
       CODACY_URL: https://api.codacy.com
