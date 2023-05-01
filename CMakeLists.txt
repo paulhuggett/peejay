@@ -85,40 +85,42 @@ function (setup_target target)
 endfunction (setup_target)
 
 
+set (googletest_dir "${CMAKE_CURRENT_SOURCE_DIR}/googletest")
+if (EXISTS "${googletest_dir}" AND IS_DIRECTORY "${googletest_dir}")
+  # Tell gtest to link against the "Multi-threaded Debug DLL runtime
+  # library" on Windows.
+  set (gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+  # We don't want to install either gtest or gmock.
+  set (INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+  set (INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+  add_subdirectory (googletest)
+  foreach (target gtest gmock gmock_main gtest_main)
+    set_target_properties (${target} PROPERTIES
+      CXX_STANDARD ${STANDARD}
+      CXX_STANDARD_REQUIRED Yes
+      CXX_EXTENSIONS No
+    )
 
+    set (gclang_options -Wno-implicit-int-float-conversion)
+    if (LIBCXX)
+      list (APPEND gclang_options -stdlib=libc++)
+    endif ()
 
-# Tell gtest to link against the "Multi-threaded Debug DLL runtime
-# library" on Windows.
-set (gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
-# We don't want to install either gtest or gmock.
-set (INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-set (INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-add_subdirectory (googletest)
-foreach (target gtest gmock gmock_main gtest_main)
-  set_target_properties (${target} PROPERTIES
-    CXX_STANDARD ${STANDARD}
-    CXX_STANDARD_REQUIRED Yes
-    CXX_EXTENSIONS No
-  )
-
-  set (gclang_options -Wno-implicit-int-float-conversion)
-  if (LIBCXX)
-    list (APPEND gclang_options -stdlib=libc++)
-  endif ()
-
-  target_compile_definitions (${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
-  target_compile_options (${target} PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-  )
-  target_link_options (${target} PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-  )
-endforeach()
+    target_compile_definitions (${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
+    target_compile_options (${target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+    )
+    target_link_options (${target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+    )
+  endforeach()
+endif ()
 
 
 add_subdirectory (lib)
-add_subdirectory (unittests)
-
+if (TARGET gtest)
+  add_subdirectory (unittests)
+endif ()
 
 add_executable (json-main main.cpp)
 target_link_libraries (json-main PUBLIC peejay)
