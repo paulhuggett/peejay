@@ -13,7 +13,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
-set (include_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
+set (include_dir "${PEEJAY_ROOT}/include")
 
 set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
 set (CPRUN_CPP ${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp)
@@ -33,7 +33,8 @@ add_library (peejay STATIC
   "${CPRUN_HPP}"
   "${CPRUN_CPP}"
 )
-target_include_directories (peejay PUBLIC "${include_dir}")
+target_include_directories (peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>)
+
 setup_target (peejay)
 
 set (GENCPRUN "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/parse.py")
@@ -54,3 +55,21 @@ add_custom_command (
   OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
   VERBATIM
 )
+
+include (GNUInstallDirs)
+install (
+   TARGETS peejay
+   EXPORT peejay
+   PUBLIC_HEADER
+     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
+     COMPONENT peejay
+   LIBRARY
+     DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
+     COMPONENT peejay
+   ARCHIVE
+     DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
+     COMPONENT peejay
+   INCLUDES
+     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+add_dependencies (install-peejay peejay)

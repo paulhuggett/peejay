@@ -31,6 +31,16 @@ else ()
   set (STANDARD 20)
 endif ()
 
+# A custom target from which the installs will hang.
+add_custom_target (install-peejay
+    COMMAND "${CMAKE_COMMAND}"
+            -D CMAKE_INSTALL_COMPONENT=peejay
+            -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
+    USES_TERMINAL
+)
+
+set (PEEJAY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+
 function (setup_target target)
   set (clang_options
     -Weverything
@@ -141,3 +151,18 @@ target_link_libraries (main-klee PUBLIC peejay)
 setup_target (main-klee)
 
 add_subdirectory (tools)
+
+
+include (GNUInstallDirs)
+install (
+  EXPORT peejay
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
+  NAMESPACE peejay::
+)
+# List of four values that specify what project to install. The four values are:
+# - Build directory
+# - Project Name
+# - Project Component
+# - Directory.
+set (CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_CURRENT_BINARY_DIR};${CMAKE_PROJECT_NAME};ALL;/")
+
