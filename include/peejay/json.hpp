@@ -591,11 +591,6 @@ constexpr std::optional<uint_least16_t> digit_offset (
   return std::nullopt;
 }
 
-#define PEEJAY_HEX_CONSUMER_REQUIRES                                           \
-  PEEJAY_CXX20REQUIRES ((                                                      \
-      LastHexState > FirstHexState && LastHexState - FirstHexState + 1 <= 4 && \
-      (PostState < FirstHexState || PostState > LastHexState)))
-
 //*             _      _             *
 //*  _ __  __ _| |_ __| |_  ___ _ _  *
 //* | '  \/ _` |  _/ _| ' \/ -_) '_| *
@@ -607,7 +602,7 @@ template <typename Backend, typename Policies>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher {
   template <int FirstHexState, int LastHexState, int PostState>
-  PEEJAY_HEX_CONSUMER_REQUIRES friend class hex_consumer;
+  friend class hex_consumer;
 
 public:
   using parser_type = parser<Backend, Policies>;
@@ -1466,7 +1461,7 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
 /// \tparam PostState The state to which the matcher will be switched after
 ///                   the four hex characters have been consumed.
 template <int FirstHexState, int LastHexState, int PostState>
-PEEJAY_HEX_CONSUMER_REQUIRES class hex_consumer {
+class hex_consumer {
 public:
   static constexpr auto first_hex_state = FirstHexState;
   static constexpr auto last_hex_state = LastHexState;
