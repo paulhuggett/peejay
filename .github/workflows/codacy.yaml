@@ -25,6 +25,11 @@ jobs:
         with:
           submodules: 'True'
 
+      - name: Apt update
+      - run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+
       - name: Install clang
         run: |
           wget https://apt.llvm.org/llvm.sh
@@ -44,8 +49,6 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get upgrade -y
           sudo apt-get install -y cmake ninja-build
 
       - name: Configure
