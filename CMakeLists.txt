@@ -85,8 +85,7 @@ function (setup_target target)
 endfunction (setup_target)
 
 
-set (googletest_dir "${CMAKE_CURRENT_SOURCE_DIR}/googletest")
-if (EXISTS "${googletest_dir}" AND IS_DIRECTORY "${googletest_dir}")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
   # Tell gtest to link against the "Multi-threaded Debug DLL runtime
   # library" on Windows.
   set (gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
