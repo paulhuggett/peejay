@@ -68,7 +68,7 @@ constexpr char to_hex (unsigned v) noexcept {
       v + ((v < letter_threshold) ? '0' : 'A' - letter_threshold));
 }
 
-constexpr peejay::u8string_view::const_iterator break_char (
+peejay::u8string_view::const_iterator break_char (
     peejay::u8string_view::const_iterator first,
     peejay::u8string_view::const_iterator last) noexcept {
   using peejay::char_set;
@@ -89,7 +89,7 @@ std::ostream& emit_string_view (std::ostream& os,
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto pos = first;
   while ((pos = break_char (pos, last)) != last) {
-    os.write (peejay::pointer_cast<char const*> (to_address (first)),
+    os.write (peejay::pointer_cast<char const*> (std::addressof (*first)),
               std::distance (first, pos));
     using peejay::char_set;
     os << '\\';
