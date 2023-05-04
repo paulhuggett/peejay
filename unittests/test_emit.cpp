@@ -89,14 +89,14 @@ TEST (Emit, Float) {
 // NOLINTNEXTLINE
 TEST (Emit, StringNoEscapes) {
   std::stringstream os;
-  emit (os, element{peejay::u8string{"string"}});
+  emit (os, element{peejay::u8string{u8"string"}});
   EXPECT_EQ (os.str (), "\"string\"\n");
 }
 
 // NOLINTNEXTLINE
 TEST (Emit, StringBackslashT) {
   std::stringstream os;
-  emit (os, element{peejay::u8string{"abc\tdef"}});
+  emit (os, element{peejay::u8string{u8"abc\tdef"}});
   EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
 }
 
