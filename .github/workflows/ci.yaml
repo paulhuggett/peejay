@@ -86,6 +86,12 @@ jobs:
             generator: Visual Studio 17 2022
             os: windows-latest
 
+          - name: Windows-latest/VS2022/Debug/C++17
+            build_type: Debug
+            generator: Visual Studio 17 2022
+            options: -DPEEJAY_CXX17=Yes
+            os: windows-latest
+
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
 
