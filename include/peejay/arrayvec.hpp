@@ -43,7 +43,7 @@ template <typename To, typename From,
                                                std::is_trivial_v<From>>>
 #endif
 constexpr To pointer_cast (From p) noexcept {
-#if __cpp_lib_bit_cast
+#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
   return std::bit_cast<To> (p);
 #else
   return reinterpret_cast<To> (p);

@@ -36,7 +36,7 @@
 #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
 #define PEEJAY_HAVE_CONCEPTS (1)
 #else
-// #define PEEJAY_HAVE_CONCEPTS (0)
+#define PEEJAY_HAVE_CONCEPTS (0)
 #endif
 
 #if PEEJAY_HAVE_CONCEPTS
