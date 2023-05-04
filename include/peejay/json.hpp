@@ -20,6 +20,7 @@
 #include "peejay/cprun.hpp"
 #include "peejay/json_error.hpp"
 #include "peejay/portab.hpp"
+#include "peejay/stack.hpp"
 
 #define ICUBABY_INSIDE_NS peejay
 #include "peejay/icubaby.hpp"
@@ -33,7 +34,6 @@
 #include <memory>
 #include <optional>
 #include <ostream>
-#include <stack>
 #include <string>
 #include <tuple>
 #include <variant>
@@ -121,7 +121,7 @@ template <typename Backend, typename Policies>
 class whitespace_matcher;
 
 template <typename Backend, typename Policies>
-struct singleton_storage;
+struct singletons;
 
 /// deleter is intended for use as a unique_ptr<> Deleter. It enables
 /// unique_ptr<> to be used with a mixture of heap-allocated and
@@ -129,18 +129,13 @@ struct singleton_storage;
 template <typename T>
 class deleter {
 public:
-  enum class mode : char { do_delete, do_dtor, do_nothing };
+  enum class mode : char { do_delete, do_nothing };
 
   /// \param m One of the three modes: delete the object, call the destructor, or do nothing.
   constexpr explicit deleter (mode const m) noexcept : mode_{m} {}
   void operator() (T *const p) const noexcept {
     switch (mode_) {
     case mode::do_delete: delete p; break;
-    case mode::do_dtor:
-      if (p != nullptr) {
-        p->~T ();
-      }
-      break;
     case mode::do_nothing: break;
     }
   }
@@ -178,7 +173,8 @@ struct coord {
   constexpr coord (struct line y, struct column x) noexcept
       : line{y}, column{x} {}
 
-#if __cpp_impl_three_way_comparison
+#if defined(__cpp_impl_three_way_comparison) && \
+    __cpp_impl_three_way_comparison >= 201907L
   // https://github.com/llvm/llvm-project/issues/55919
   _Pragma ("GCC diagnostic push")
   _Pragma ("GCC diagnostic ignored \"-Wzero-as-null-pointer-constant\"")
@@ -285,14 +281,14 @@ public:
                    extensions extensions = extensions::none);
 
   parser (parser const &) = delete;
-  parser (parser &&) noexcept (std::is_nothrow_move_constructible_v<Backend>) =
-      default;
+  parser (parser &&rhs) noexcept (
+      std::is_nothrow_move_constructible_v<Backend>);
 
   ~parser () noexcept = default;
 
   parser &operator= (parser const &) = delete;
-  parser &operator= (parser &&) noexcept (
-      std::is_nothrow_move_assignable_v<Backend>) = default;
+  parser &operator= (parser &&rhs) noexcept (
+      std::is_nothrow_move_assignable_v<Backend>);
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
@@ -467,15 +463,16 @@ private:
   template <typename Matcher, typename... Args>
   PEEJAY_CXX20REQUIRES ((std::derived_from<Matcher, matcher>))
   pointer make_terminal_matcher (Args &&...args) {
-    Matcher &m = singletons_.terminals_.template emplace<Matcher> (
+    Matcher &m = singletons_.terminals.template emplace<Matcher> (
         std::forward<Args> (args)...);
     using deleter = typename pointer::deleter_type;
     return pointer{&m, deleter{deleter::mode::do_nothing}};
   }
 
-  /// Preallocated storage for "terminal" matchers. These are the matchers,
-  /// such as numbers or strings which can't have child objects.
-  details::singleton_storage<Backend, Policies> singletons_;
+  /// The parse stack likely contains pointers into the singletons_ object.
+  /// After move-construction or move-assignment, this function adjusts those
+  /// pointers so that they point to this object rather than the original.
+  void reseat_stack_after_move (parser const &rhs) noexcept;
 
   /// The maximum depth to which we allow the parse stack to grow. This value
   /// should be sufficient for any reasonable input: its intention is to prevent
@@ -485,8 +482,12 @@ private:
 
   icubaby::t8_32 utf_;
   /// The parse stack.
-  std::stack<pointer> stack_;
+  stack<pointer> stack_;
   std::error_code error_;
+
+  /// Preallocated storage for "terminal" matchers. These are the matchers,
+  /// such as numbers or strings which can't have child objects.
+  details::singletons<Backend, Policies> singletons_;
 
   /// Each instance of the string and identifier matcher uses this object to
   /// record its output. This avoids having to create a new instance each time
@@ -1607,7 +1608,7 @@ private:
 
   bool is_object_key_;
   char32_t enclosing_char_;
-  arrayvec<char8, Policies::max_length> *const str_;  // output
+  arrayvec<char8, Policies::max_length> *str_;  // output
   hex_consumer<hex1_state, hex4_state, normal_char_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
 
@@ -1872,7 +1873,7 @@ private:
     u_state,      // Used after a backslash is encountered.
   };
 
-  arrayvec<char8, Policies::max_length> *const str_;  // output
+  arrayvec<char8, Policies::max_length> *str_;  // output
   hex_consumer<hex1_state, hex4_state, part_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
 
@@ -2700,24 +2701,16 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
   unreachable ();
 }
 
-template <typename T>
-struct storage {
-  using type = typename std::aligned_storage_t<sizeof (T), alignof (T)>;
-};
-
-template <typename T>
-using storage_t = typename storage<T>::type;
-
-//*     _           _     _                 _                          *
-//*  __(_)_ _  __ _| |___| |_ ___ _ _    __| |_ ___ _ _ __ _ __ _ ___  *
-//* (_-< | ' \/ _` | / -_)  _/ _ \ ' \  (_-<  _/ _ \ '_/ _` / _` / -_) *
-//* /__/_|_||_\__, |_\___|\__\___/_||_| /__/\__\___/_| \__,_\__, \___| *
-//*           |___/                                         |___/      *
+//*     _           _     _                *
+//*  __(_)_ _  __ _| |___| |_ ___ _ _  ___ *
+//* (_-< | ' \/ _` | / -_)  _/ _ \ ' \(_-< *
+//* /__/_|_||_\__, |_\___|\__\___/_||_/__/ *
+//*           |___/                        *
 template <typename Backend, typename Policies>
-struct singleton_storage {
-  storage_t<eof_matcher<Backend, Policies>> eof;
-  storage_t<whitespace_matcher<Backend, Policies>> trailing_ws;
-  storage_t<root_matcher<Backend, Policies>> root;
+struct singletons {
+  eof_matcher<Backend, Policies> eof;
+  whitespace_matcher<Backend, Policies> trailing_ws;
+  root_matcher<Backend, Policies> root;
   std::variant<details::number_matcher<Backend, Policies>,
                details::string_matcher<Backend, Policies>,
                details::identifier_matcher<Backend, Policies>,
@@ -2727,7 +2720,7 @@ struct singleton_storage {
                details::infinity_token_matcher<Backend, Policies>,
                details::nan_token_matcher<Backend, Policies>,
                details::whitespace_matcher<Backend, Policies>>
-      terminals_;
+      terminals;
 };
 
 }  // end namespace details
@@ -2759,12 +2752,48 @@ parser<Backend, Policies>::parser (OtherBackend &&backend,
   // input JSON ends after a single top-level object.
   stack_.push (mpointer (new (&singletons_.eof)
                              details::eof_matcher<Backend, Policies>{},
-                         deleter{deleter::mode::do_dtor}));
+                         deleter{deleter::mode::do_nothing}));
   // We permit whitespace after the top-level object.
   stack_.push (mpointer (new (&singletons_.trailing_ws)
                              details::whitespace_matcher<Backend, Policies>{},
-                         deleter{deleter::mode::do_dtor}));
+                         deleter{deleter::mode::do_nothing}));
   stack_.push (this->make_root_matcher ());
+}
+
+template <typename Backend, typename Policies>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+parser<Backend, Policies>::parser (parser &&rhs) noexcept (
+    std::is_nothrow_move_constructible_v<Backend>)
+    : utf_{std::move (rhs.utf_)},
+      stack_{std::move (rhs.stack_)},
+      error_{std::move (rhs.error_)},
+      singletons_{std::move (rhs.singletons_)},
+      str_buffer_{std::move (rhs.str_buffer_)},
+      pos_{std::move (rhs.pos_)},
+      matcher_pos_{std::move (rhs.matcher_pos_)},
+      extensions_{std::move (rhs.extensions_)},
+      backend_{std::move (rhs.backend_)} {
+  static_assert (std::is_move_constructible_v<decltype (singletons_)>);
+  reseat_stack_after_move (rhs);
+}
+
+// operator=
+// ~~~~~~~~~
+template <typename Backend, typename Policies>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+auto parser<Backend, Policies>::operator= (parser &&rhs) noexcept (
+    std::is_nothrow_move_assignable_v<Backend>) -> parser & {
+  utf_ = std::move (rhs.utf_);
+  stack_ = std::move (rhs.stack_);
+  error_ = std::move (rhs.error_);
+  singletons_ = std::move (rhs.singletons_);
+  str_buffer_ = std::move (rhs.str_buffer_);
+  pos_ = std::move (rhs.pos_);
+  matcher_pos_ = std::move (rhs.matcher_pos_),
+  extensions_ = std::move (rhs.extensions_);
+  backend_ = std::move (rhs.backend_);
+  reseat_stack_after_move (rhs);
+  return *this;
 }
 
 // make root matcher
@@ -2775,7 +2804,7 @@ auto parser<Backend, Policies>::make_root_matcher () -> pointer {
   using root_matcher = details::root_matcher<Backend, Policies>;
   using deleter = typename pointer::deleter_type;
   return pointer (new (&singletons_.root) root_matcher (),
-                  deleter{deleter::mode::do_dtor});
+                  deleter{deleter::mode::do_nothing});
 }
 
 // make whitespace matcher
@@ -2890,6 +2919,63 @@ void parser<Backend, Policies>::consume_code_point (char32_t code_point) {
     }
     retry = !res.second;
   } while (retry);
+}
+
+// reseat stack after move
+// ~~~~~~~~~~~~~~~~~~~~~~~
+template <typename Backend, typename Policies>
+PEEJAY_CXX20REQUIRES (backend<Backend>)
+void parser<Backend, Policies>::reseat_stack_after_move (
+    parser const &rhs) noexcept {
+  using deleter = typename pointer::deleter_type;
+  constexpr auto d = deleter{deleter::mode::do_nothing};
+
+  auto pos = std::begin (stack_);
+  auto last = std::end (stack_);
+  if (pos != last) {
+    // We know that there is at least one object on the stack.
+    std::advance (last, -1);
+
+    // First matcher on the stack is always the EOF checker.
+    assert (pos->get () == &rhs.singletons_.eof);
+    *pos = pointer (&singletons_.eof, d);
+    ++pos;
+
+    if (pos != last) {
+      // Next is the "trailing whitespace" matcher.
+      assert (pos->get () == &rhs.singletons_.trailing_ws);
+      *pos = pointer (&singletons_.trailing_ws, d);
+      ++pos;
+    }
+
+#ifndef NDEBUG
+    // Check that none of the intermediate stack entries point into the
+    // singletons object.
+    for (auto it2 = pos; it2 != last; ++it2) {
+      assert (it2->get () != &rhs.singletons_.eof &&
+              it2->get () != &rhs.singletons_.trailing_ws &&
+              it2->get () != &rhs.singletons_.root);
+      std::visit ([&it2] (auto &v) { assert (it2->get () != &v); },
+                  rhs.singletons_.terminals);
+    }
+#endif
+
+    auto &top = stack_.top ();
+    if (top.get () == &rhs.singletons_.root) {
+      top = pointer (&singletons_.root, d);
+    } else {
+      assert (top.get () != &rhs.singletons_.eof &&
+              top.get () != &rhs.singletons_.trailing_ws);
+      std::visit (
+          [&top, d, this] (auto &v) {
+            if (top.get () == &v) {
+              using T = std::decay_t<decltype (v)>;
+              top = pointer (&std::get<T> (singletons_.terminals), d);
+            }
+          },
+          rhs.singletons_.terminals);
+    }
+  }
 }
 
 // eof

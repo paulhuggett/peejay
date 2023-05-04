@@ -1,3 +1,4 @@
+#include "peejay/stack.hpp"
 //===- unittests/test_json.cpp --------------------------------------------===//
 //*    _                  *
 //*   (_)___  ___  _ __   *
@@ -175,6 +176,48 @@ TEST_F (Json, Move) {
   EXPECT_FALSE (p2.has_error ());
   EXPECT_EQ (p2.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p2.input_pos (), (coord{column{5U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Json, Move2) {
+  // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
+  // usable.
+  auto p1 = std::make_unique<parser<null>> ();
+  p1->input (u8"[[1"sv);
+  auto p2 = std::move (*p1);
+  p1.reset ();
+  p2.input (u8"]]"sv).eof ();
+  EXPECT_FALSE (p2.has_error ());
+  EXPECT_EQ (p2.pos (), (coord{column{5U}, line{1U}}));
+  EXPECT_EQ (p2.input_pos (), (coord{column{6U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Json, MoveAssign) {
+  // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
+  // usable.
+  auto p1 = parser<null>{};
+  parser<null> p2;
+  p2 = std::move (p1);
+  p2.input (u8"null"sv).eof ();
+  EXPECT_FALSE (p2.has_error ());
+  EXPECT_EQ (p2.pos (), (coord{column{1U}, line{1U}}));
+  EXPECT_EQ (p2.input_pos (), (coord{column{5U}, line{1U}}));
+}
+
+// NOLINTNEXTLINE
+TEST_F (Json, MoveAssign2) {
+  // Move to a new parser instance ('p2') from 'p' and make sure that 'p2' is
+  // usable.
+  auto p1 = std::make_unique<parser<null>> ();
+  p1->input (u8"[[1"sv);
+  parser<null> p2;
+  p2 = std::move (*p1);
+  p1.reset ();
+  p2.input (u8"]]"sv).eof ();
+  EXPECT_FALSE (p2.has_error ());
+  EXPECT_EQ (p2.pos (), (coord{column{5U}, line{1U}}));
+  EXPECT_EQ (p2.input_pos (), (coord{column{6U}, line{1U}}));
 }
 
 // NOLINTNEXTLINE

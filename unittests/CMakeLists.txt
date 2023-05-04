@@ -28,6 +28,7 @@ add_executable (pj-unittests
   test_json.cpp
   test_object.cpp
   test_number.cpp
+  test_stack.cpp
   test_string.cpp
   test_whitespace.cpp
 )

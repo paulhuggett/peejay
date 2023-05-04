@@ -27,6 +27,7 @@ add_library (peejay STATIC
   "${include_dir}/peejay/json_error.hpp"
   "${include_dir}/peejay/null.hpp"
   "${include_dir}/peejay/portab.hpp"
+  "${include_dir}/peejay/stack.hpp"
   emit.cpp
   json.cpp
   json_error.cpp
