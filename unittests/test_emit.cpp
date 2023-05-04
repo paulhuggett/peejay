@@ -89,14 +89,14 @@ TEST (Emit, Float) {
 // NOLINTNEXTLINE
 TEST (Emit, StringNoEscapes) {
   std::stringstream os;
-  emit (os, element{u8"string"});
+  emit (os, element{peejay::u8string{"string"}});
   EXPECT_EQ (os.str (), "\"string\"\n");
 }
 
 // NOLINTNEXTLINE
 TEST (Emit, StringBackslashT) {
   std::stringstream os;
-  emit (os, element{u8"abc\tdef"});
+  emit (os, element{peejay::u8string{"abc\tdef"}});
   EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
 }
 
@@ -156,8 +156,8 @@ TEST (Emit, ObjectOneMember) {
 TEST (Emit, ObjectArrayMember) {
   std::stringstream os;
   auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (1);
-  arr->push_back (2);
+  arr->push_back (uint64_t{1});
+  arr->push_back (uint64_t{2});
   auto obj = std::make_shared<object::element_type> ();
   (*obj)[u8"key1"] = element{std::move (arr)};
   emit (os, element{std::move (obj)});

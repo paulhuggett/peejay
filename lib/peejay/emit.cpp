@@ -29,15 +29,6 @@
 
 namespace {
 
-#if __cpp_lib_to_address
-using std::to_address;
-#else
-template <typename T>
-constexpr T* to_address (T* const p) noexcept {
-  return p;
-}
-#endif
-
 class indent {
 public:
   constexpr indent () noexcept = default;
@@ -116,7 +107,7 @@ std::ostream& emit_string_view (std::ostream& os,
   }
   assert (pos == last);
   if (first != last) {
-    os.write (peejay::pointer_cast<char const*> (to_address (first)),
+    os.write (peejay::pointer_cast<char const*> (&*first),
               std::distance (first, last));
   }
   os << '"';
