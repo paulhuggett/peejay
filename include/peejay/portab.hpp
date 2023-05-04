@@ -47,19 +47,25 @@
 #define PEEJAY_CXX20REQUIRES(x)
 #endif  // PEEJAY_HAVE_CONCEPTS
 
-#if defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
+#if PEEJAY_CXX20 && defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
 #define PEEJAY_HAVE_SPAN (1)
 #else
-// #define PEEJAY_HAVE_SPAN (0)
+#define PEEJAY_HAVE_SPAN (0)
 #endif
 
 #if PEEJAY_CXX20 && defined(__has_cpp_attribute)
 #if __has_cpp_attribute(unlikely) >= 201803L
 #define PEEJAY_UNLIKELY_ATTRIBUTE [[unlikely]]
 #endif
+#if __has_cpp_attribute(no_unique_address)
+#define PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE [[no_unique_address]]
 #endif
+#endif  // PEEJAY_CXX20 && defined(__has_cpp_attribute)
 #ifndef PEEJAY_UNLIKELY_ATTRIBUTE
 #define PEEJAY_UNLIKELY_ATTRIBUTE
+#endif
+#ifndef PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE
+#define PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE
 #endif
 
 #endif  // PEEJAY_PORTAB_HPP

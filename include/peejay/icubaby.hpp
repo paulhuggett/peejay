@@ -303,7 +303,7 @@ public:
 
 private:
   Transcoder* transcoder_;
-  [[no_unique_address]] OutputIterator it_;
+  PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE OutputIterator it_;
 };
 
 template <typename Transcoder, typename OutputIterator>

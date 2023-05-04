@@ -26,10 +26,8 @@
 
 #include "peejay/portab.hpp"
 
-#ifdef __has_include
-#if __has_include(<bit>)
+#if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
 #include <bit>
-#endif
 #endif
 
 namespace peejay {

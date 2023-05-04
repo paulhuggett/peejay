@@ -38,11 +38,11 @@
 #include <tuple>
 #include <variant>
 
-#ifdef PEEJAY_HAVE_CONCEPTS
+#if PEEJAY_HAVE_CONCEPTS
 #include <concepts>
 #endif
 
-#ifdef PEEJAY_HAVE_SPAN
+#if PEEJAY_HAVE_SPAN
 #include <span>
 #endif
 
@@ -312,7 +312,7 @@ public:
   parser &input (u8string_view const &src) {
     return this->input (std::begin (src), std::end (src));
   }
-#ifdef PEEJAY_HAVE_SPAN
+#if PEEJAY_HAVE_SPAN
   /// \param span The span of UTF-8 code units to be parsed.
   template <size_t Extent>
   parser &input (std::span<char8, Extent> const &span) {
@@ -498,7 +498,7 @@ private:
   coord pos_;
   coord matcher_pos_;
   extensions extensions_;
-  [[no_unique_address]] Backend backend_;
+  PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE Backend backend_;
 };
 
 template <typename Backend>
@@ -755,9 +755,9 @@ public:
   using parser_type = typename matcher<Backend, Policies>::parser_type;
 
   /// \param text  The string to be matched.
-  /// \param done  The function called when the source string is matched.
-  constexpr token_matcher (char8 const *text, DoneFunction done) noexcept
-      : inherited (start_state), text_{text}, done_{done} {}
+  /// \param donefn  The function called when the source string is matched.
+  constexpr token_matcher (char8 const *text, DoneFunction donefn) noexcept
+      : inherited (start_state), text_{text}, done_{donefn} {}
 
   std::pair<typename inherited::pointer, bool> consume (
       parser_type &parser, std::optional<char32_t> ch) override;
@@ -776,7 +776,7 @@ private:
   /// characters are matched, done_() is called.
   token_consumer text_;
   /// This function is called once the complete token text has been matched.
-  [[no_unique_address]] DoneFunction done_;
+  PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE DoneFunction done_;
 };
 
 template <typename Backend, typename Policies, typename DoneFunction>

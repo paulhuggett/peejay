@@ -19,12 +19,13 @@
 #include <cstddef>
 #include <iterator>
 #include <memory>
-#include <span>
 
-#ifdef __has_include
-#if __has_include(<bit>)
-#include <bit>
+#if PEEJAY_HAVE_SPAN
+#include <span>
 #endif
+
+#if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
+#include <bit>
 #endif
 
 namespace {
