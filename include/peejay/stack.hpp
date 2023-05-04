@@ -17,8 +17,11 @@
 #define PEEJAY_STACK_HPP
 
 #include <deque>
+#include <iterator>
 #include <memory>
 #include <type_traits>
+
+#include "peejay/portab.hpp"
 
 namespace peejay {
 
@@ -98,13 +101,14 @@ public:
           nullptr)
       : c_ (std::move (c), a) {}
 
-#ifdef PEEJAY_CXX20
+#if PEEJAY_CXX20
   template <typename InputIterator>
+  PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
   stack (InputIterator first, InputIterator last) : c_ (first, last) {}
 
-  template <typename InputIterator, typename Allocator,
-            typename = std::enable_if_t<
-                std::uses_allocator<container_type, Allocator>::value>>
+  template <typename InputIterator, typename Allocator>
+  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator> &&
+                         std::uses_allocator<container_type, Allocator>::value))
   stack (InputIterator first, InputIterator last, Allocator const& alloc)
       : c_ (first, last, alloc) {}
 #endif  // PEEJAY_CXX20
@@ -178,12 +182,12 @@ stack (Container, Allocator)
 
 // #if _LIBCPP_STD_VER > 20
 template <typename InputIterator>
-  requires (std::input_iterator<InputIterator>)
+PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
 stack (InputIterator, InputIterator)
     -> stack<typename std::iterator_traits<InputIterator>::value_type>;
 
 template <typename InputIterator, typename Allocator>
-  requires (std::input_iterator<InputIterator>)
+PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 stack (InputIterator, InputIterator, Allocator) -> stack<
     typename std::iterator_traits<InputIterator>::value_type,
     std::deque<typename std::iterator_traits<InputIterator>::value_type,

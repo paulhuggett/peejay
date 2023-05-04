@@ -46,11 +46,11 @@ TEST (Stack, CopyCtor) {
   EXPECT_TRUE (s1.empty ());
 }
 
-#ifdef PEEJAY_CXX20
+#if PEEJAY_CXX20
 TEST (Stack, IteratorCtor) {
   std::array<int, 4> const a = {{4, 3, 2, 1}};
   peejay::stack stack (std::begin (a), std::end (a));
-  ASSERT_EQ (stack.size (), 1);
+  ASSERT_EQ (stack.size (), 4);
   EXPECT_EQ (stack.top (), 1);
   stack.pop ();
   EXPECT_EQ (stack.top (), 2);
