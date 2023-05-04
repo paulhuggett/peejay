@@ -56,48 +56,46 @@ public:
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
 
-  static_assert (std::is_same<T, value_type>::value);
+  static_assert (std::is_same_v<T, value_type>);
 
   stack () noexcept (
-      std::is_nothrow_default_constructible<container_type>::value)
-      : c_ () {}
-  stack (stack const& other) : c_ (other.c_) {}
+      std::is_nothrow_default_constructible_v<container_type>) = default;
+  stack (stack const& other) = default;
   stack (stack&& other) noexcept (
-      std::is_nothrow_move_constructible<container_type>::value)
-      : c_ (std::move (other.c_)) {}
-  explicit stack (container_type const& c) : c_ (c) {}
-  explicit stack (container_type&& c) : c_ (std::move (c)) {}
+      std::is_nothrow_move_constructible_v<container_type>) = default;
+  explicit stack (container_type const& c) : c_{c} {}
+  explicit stack (container_type&& c) : c_{std::move (c)} {}
 
   template <typename Allocator>
   explicit stack (
       Allocator const& a,
-      std::enable_if_t<std::uses_allocator<container_type, Allocator>::value>* =
+      std::enable_if_t<std::uses_allocator_v<container_type, Allocator>>* =
           nullptr)
       : c_ (a) {}
 
   template <typename Allocator>
   stack (
       stack const& s, Allocator const& a,
-      std::enable_if_t<std::uses_allocator<container_type, Allocator>::value>* =
+      std::enable_if_t<std::uses_allocator_v<container_type, Allocator>>* =
           nullptr)
       : c_ (s.c_, a) {}
   template <typename Allocator>
   stack (
       stack&& s, Allocator const& a,
-      std::enable_if_t<std::uses_allocator<container_type, Allocator>::value>* =
+      std::enable_if_t<std::uses_allocator_v<container_type, Allocator>>* =
           nullptr)
       : c_ (std::move (s.c_), a) {}
 
   template <typename Allocator>
   stack (
       container_type const& c, Allocator const& a,
-      std::enable_if_t<std::uses_allocator<container_type, Allocator>::value>* =
+      std::enable_if_t<std::uses_allocator_v<container_type, Allocator>>* =
           nullptr)
       : c_ (c, a) {}
   template <typename Allocator>
   stack (
       container_type&& c, Allocator const& a,
-      std::enable_if_t<std::uses_allocator<container_type, Allocator>::value>* =
+      std::enable_if_t<std::uses_allocator_v<container_type, Allocator>>* =
           nullptr)
       : c_ (std::move (c), a) {}
 
@@ -108,10 +106,12 @@ public:
 
   template <typename InputIterator, typename Allocator>
   PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator> &&
-                         std::uses_allocator<container_type, Allocator>::value))
+                         std::uses_allocator_v<container_type, Allocator>))
   stack (InputIterator first, InputIterator last, Allocator const& alloc)
       : c_ (first, last, alloc) {}
 #endif  // PEEJAY_CXX20
+
+  ~stack () noexcept (std::is_nothrow_destructible_v<container_type>) = default;
 
   stack& operator= (stack const& other) {
     if (this != &other) {
@@ -120,7 +120,7 @@ public:
     return *this;
   }
   stack& operator= (stack&& other) noexcept (
-      std::is_nothrow_move_assignable<container_type>::value) {
+      std::is_nothrow_move_assignable_v<container_type>) {
     c_ = std::move (other.c_);
     return *this;
   }
@@ -162,8 +162,7 @@ public:
   const_reverse_iterator rcend () noexcept { return c_.rcend (); }
   ///@}
 
-  void swap (stack& s) noexcept (
-      std::is_nothrow_swappable<container_type>::value) {
+  void swap (stack& s) noexcept (std::is_nothrow_swappable_v<container_type>) {
     std::swap (c_, s.c_);
   }
 
@@ -176,7 +175,7 @@ stack (Container) -> stack<typename Container::value_type, Container>;
 
 template <typename Container, typename Allocator,
           typename = std::enable_if_t<
-              std::uses_allocator<Container, Allocator>::value>>
+              std::uses_allocator_v<Container, Allocator>>>
 stack (Container, Allocator)
     -> stack<typename Container::value_type, Container>;
 
@@ -226,9 +225,9 @@ inline bool operator<= (stack<T, Container> const& lhs,
 }
 
 template <typename T, typename Container>
-inline std::enable_if_t<std::is_swappable<Container>::value, void>
+inline std::enable_if_t<std::is_swappable_v<Container>, void>
 swap (stack<T, Container>& x, stack<T, Container>& y) noexcept (
-    std::is_nothrow_swappable<stack<T, Container>>::value) {
+    std::is_nothrow_swappable_v<stack<T, Container>>) {
   x.swap (y);
 }
 
