@@ -1,4 +1,19 @@
 #!/usr/bin/python3
+# ===- cprun/unicode_data.py ----------------------------------------------===//
+# *              _               _            _       _         *
+# *  _   _ _ __ (_) ___ ___   __| | ___    __| | __ _| |_ __ _  *
+# * | | | | '_ \| |/ __/ _ \ / _` |/ _ \  / _` |/ _` | __/ _` | *
+# * | |_| | | | | | (_| (_) | (_| |  __/ | (_| | (_| | || (_| | *
+# *  \__,_|_| |_|_|\___\___/ \__,_|\___|  \__,_|\__,_|\__\__,_| *
+# *                                                             *
+# ===----------------------------------------------------------------------===//
+#
+#  Distributed under the Apache License v2.0.
+#  See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+#  for license information.
+#  SPDX-License-Identifier: Apache-2.0
+#
+# ===----------------------------------------------------------------------===//
 """This module decodes the contents of UnicodeData.txt (from from
 <https://www.unicode.org/Public/zipped/15.0.0/UCD.zip>.
 

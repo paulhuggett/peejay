@@ -1,4 +1,19 @@
 #!/usr/bin/python3
+# ===- systemtests/test.py ------------------------------------------------===//
+# *  _            _    *
+# * | |_ ___  ___| |_  *
+# * | __/ _ \/ __| __| *
+# * | ||  __/\__ \ |_  *
+# *  \__\___||___/\__| *
+# *                    *
+# ===----------------------------------------------------------------------===//
+#
+#  Distributed under the Apache License v2.0.
+#  See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+#  for license information.
+#  SPDX-License-Identifier: Apache-2.0
+#
+# ===----------------------------------------------------------------------===//
 from subprocess import run
 from os import walk
 from os.path import join, split, splitext

@@ -1,3 +1,18 @@
+//===- include/peejay/stack.hpp ---------------------------*- mode: C++ -*-===//
+//*      _             _     *
+//*  ___| |_ __ _  ___| | __ *
+//* / __| __/ _` |/ __| |/ / *
+//* \__ \ || (_| | (__|   <  *
+//* |___/\__\__,_|\___|_|\_\ *
+//*                          *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 #ifndef PEEJAY_STACK_HPP
 #define PEEJAY_STACK_HPP
 
