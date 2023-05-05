@@ -64,6 +64,7 @@ jobs:
                 -S .                                               \
                 -B build                                           \
                 -D COVERAGE=Yes                                    \
+                -D PEEJAY_CXX17=Yes                                \
                 -D LIBCXX=Yes                                      \
                 -D CMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
                 -D CMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }}
