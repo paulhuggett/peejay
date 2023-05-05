@@ -179,7 +179,6 @@ template <typename Container, typename Allocator,
 stack (Container, Allocator)
     -> stack<typename Container::value_type, Container>;
 
-// #if _LIBCPP_STD_VER > 20
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES (std::input_iterator<InputIterator>)
 stack (InputIterator, InputIterator)
@@ -191,7 +190,6 @@ stack (InputIterator, InputIterator, Allocator) -> stack<
     typename std::iterator_traits<InputIterator>::value_type,
     std::deque<typename std::iterator_traits<InputIterator>::value_type,
                Allocator>>;
-// #endif
 
 template <typename T, typename Container>
 inline bool operator== (stack<T, Container> const& lhs,
