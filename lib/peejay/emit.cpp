@@ -43,10 +43,7 @@ constexpr T* to_address (T* const p) noexcept {
 }
 template <typename T>
 constexpr auto to_address (T const& p) noexcept {
-  if constexpr (requires { std::pointer_traits<T>::to_address (p); }) {
-    return std::pointer_traits<T>::to_address (p);
-  }
-  return std::to_address (p.operator->());
+  return to_address (p.operator->());
 }
 #endif  // defined(__cpp_lib_to_address)
 
