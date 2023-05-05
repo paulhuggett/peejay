@@ -84,8 +84,6 @@ jobs:
         run: |
           sonar-scanner -X \
                         --define sonar.host.url="${{ env.SONAR_SERVER_URL }}"                          \
-                        --define sonar.cfamily.cache.enabled=true                                      \
-                        --define sonar.cfamily.cache.path="${{ env.SONAR_CACHE_DIR }}"                 \
                         --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
                         --define sonar.cfamily.llvm-cov.reportPath=coverage.txt                        \
                         --define sonar.projectVersion="$(git rev-parse HEAD)"                          \
