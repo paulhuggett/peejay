@@ -11,11 +11,13 @@ jobs:
           - name: macOS-12/Xcode/Debug
             build_type: Debug
             generator: Xcode
+	    options: -DWERROR=Yes
             os: macos-12
 
           - name: macOS-12/Xcode/Release
             build_type: Release
             generator: Xcode
+	    options: -DWERROR=Yes
             os: macos-12
 
           # Linux builds
@@ -24,12 +26,14 @@ jobs:
             apt_install: ninja-build
             build_type: Debug
             generator: Ninja
+	    options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-11/Release
             apt_install: ninja-build
             build_type: Release
             generator: Ninja
+	    options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Debug
@@ -37,6 +41,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Ninja
+	    options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Release
@@ -44,6 +49,7 @@ jobs:
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Ninja
+	    #options: -DWERROR=Yes
             os: ubuntu-22.04
 
           # It's current necesssary to use libc++ because builds witb libstdc++ fail
@@ -55,7 +61,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
-            options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
+            options: -DLIBCXX=Yes -DWERROR=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release
@@ -63,7 +69,7 @@ jobs:
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
-            options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
+            options: -DLIBCXX=Yes -DWERROR=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release/C++17
@@ -71,7 +77,7 @@ jobs:
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
-            options: -DPEEJAY_CXX17=Yes -DLIBCXX=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
+            options: -DPEEJAY_CXX17=Yes -DWERROR=Yes -DLIBCXX=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
             os: ubuntu-22.04
 
           # Windows builds
@@ -79,17 +85,19 @@ jobs:
           - name: Windows-latest/VS2022/Debug
             build_type: Debug
             generator: Visual Studio 17 2022
+	    options: -D WERROR=Yes
             os: windows-latest
 
           - name: Windows-latest/VS2022/Release
             build_type: Release
             generator: Visual Studio 17 2022
+	    options: -D WERROR=Yes
             os: windows-latest
 
           - name: Windows-latest/VS2022/Debug/C++17
             build_type: Debug
             generator: Visual Studio 17 2022
-            options: -DPEEJAY_CXX17=Yes
+            options: -D PEEJAY_CXX17=Yes -D WERROR=Yes
             os: windows-latest
 
     name: ${{ matrix.name }}
@@ -115,7 +123,6 @@ jobs:
                 -B "${{ runner.workspace }}/build"           \
                 -G "${{ matrix.generator }}"                 \
                 -D CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-                -D WERROR=Yes                                \
                 ${{ matrix.cxx_compiler }}                   \
                 ${{ matrix.options }}
 
