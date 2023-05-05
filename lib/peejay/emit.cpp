@@ -28,28 +28,13 @@
 #include <bit>
 #endif
 
-namespace {
+#include "peejay/to_address.hpp"
 
-#if defined(__cpp_lib_to_address)
-template <typename T>
-constexpr T* to_address (T* const p) noexcept {
-  return std::to_address (p);
-}
-#else
-template <typename T>
-constexpr T* to_address (T* const p) noexcept {
-  static_assert (!std::is_function_v<T>);
-  return p;
-}
-template <typename T>
-constexpr auto to_address (T const& p) noexcept {
-  return to_address (p.operator->());
-}
-#endif  // defined(__cpp_lib_to_address)
+namespace {
 
 template <typename T>
 constexpr char const* to_char_pointer (T const& x) {
-  return peejay::pointer_cast<char const*> (to_address (x));
+  return peejay::pointer_cast<char const*> (peejay::to_address (x));
 };
 
 class indent {
