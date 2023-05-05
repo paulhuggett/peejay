@@ -11,13 +11,13 @@ jobs:
           - name: macOS-12/Xcode/Debug
             build_type: Debug
             generator: Xcode
-	    options: -DWERROR=Yes
+            options: -DWERROR=Yes
             os: macos-12
 
           - name: macOS-12/Xcode/Release
             build_type: Release
             generator: Xcode
-	    options: -DWERROR=Yes
+            options: -DWERROR=Yes
             os: macos-12
 
           # Linux builds
@@ -26,14 +26,14 @@ jobs:
             apt_install: ninja-build
             build_type: Debug
             generator: Ninja
-	    options: -DWERROR=Yes
+            options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-11/Release
             apt_install: ninja-build
             build_type: Release
             generator: Ninja
-	    options: -DWERROR=Yes
+            options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Debug
@@ -41,7 +41,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Ninja
-	    options: -DWERROR=Yes
+            options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Release
@@ -49,7 +49,7 @@ jobs:
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Ninja
-	    #options: -DWERROR=Yes
+            #options: -DWERROR=Yes
             os: ubuntu-22.04
 
           # It's current necesssary to use libc++ because builds witb libstdc++ fail
@@ -85,13 +85,13 @@ jobs:
           - name: Windows-latest/VS2022/Debug
             build_type: Debug
             generator: Visual Studio 17 2022
-	    options: -D WERROR=Yes
+            options: -DWERROR=Yes
             os: windows-latest
 
           - name: Windows-latest/VS2022/Release
             build_type: Release
             generator: Visual Studio 17 2022
-	    options: -D WERROR=Yes
+            options: -DWERROR=Yes
             os: windows-latest
 
           - name: Windows-latest/VS2022/Debug/C++17
