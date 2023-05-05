@@ -30,6 +30,31 @@
 
 namespace {
 
+#if defined(__cpp_lib_to_address)
+template <typename T>
+constexpr T* to_address (T* const p) noexcept {
+  return std::to_address (p);
+}
+#else
+template <typename T>
+constexpr T* to_address (T* const p) noexcept {
+  static_assert (!std::is_function_v<T>);
+  return p;
+}
+template <typename T>
+constexpr auto to_address (T const& p) noexcept {
+  if constexpr (requires { std::pointer_traits<T>::to_address (p); }) {
+    return std::pointer_traits<T>::to_address (p);
+  }
+  return std::to_address (p.operator->());
+}
+#endif  // defined(__cpp_lib_to_address)
+
+template <typename T>
+constexpr char const* to_char_pointer (T const& x) {
+  return peejay::pointer_cast<char const*> (to_address (x));
+};
+
 class indent {
 public:
   constexpr indent () noexcept = default;
@@ -81,8 +106,7 @@ std::ostream& emit_string_view (std::ostream& os,
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto pos = first;
   while ((pos = break_char (pos, last)) != last) {
-    os.write (peejay::pointer_cast<char const*> (std::addressof (*first)),
-              std::distance (first, pos));
+    os.write (to_char_pointer (first), std::distance (first, pos));
     using peejay::char_set;
     os << '\\';
     switch (*pos) {
@@ -108,8 +132,7 @@ std::ostream& emit_string_view (std::ostream& os,
   }
   assert (pos == last);
   if (first != last) {
-    os.write (peejay::pointer_cast<char const*> (&*first),
-              std::distance (first, last));
+    os.write (to_char_pointer (first), std::distance (first, last));
   }
   os << '"';
   return os;
