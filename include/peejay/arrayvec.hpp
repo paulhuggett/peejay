@@ -58,37 +58,7 @@ constexpr T *construct_at (T *p, Args &&...args) {
 }
 #endif
 
-/// Provides a member typedef inherit_const::type, which is defined as \p R
-/// const if \p T is a const type and \p R if \p T is non-const.
-///
-/// \tparam T  A type whose constness will determine the constness of
-///   inherit_const::type.
-/// \tparam R  The result type.
-/// \tparam RC  The const-result type.
-template <typename T, typename R, typename RC = R const>
-struct inherit_const {
-  /// If \p T is const, \p R const otherwise \p R.
-  using type =
-      typename std::conditional_t<std::is_const_v<std::remove_reference_t<T>>,
-                                  RC, R>;
-};
-
-template <typename T, typename R, typename RC = R const>
-using inherit_const_t = typename inherit_const<T, R, RC>::type;
-
-static_assert (std::is_same_v<inherit_const_t<int, bool>, bool>, "int -> bool");
-static_assert (std::is_same_v<inherit_const_t<int const, bool>, bool const>,
-               "int const -> bool const");
-static_assert (std::is_same_v<inherit_const_t<int &, bool>, bool>,
-               "int& -> bool");
-static_assert (std::is_same_v<inherit_const_t<int const &, bool>, bool const>,
-               "int const & -> bool const");
-static_assert (std::is_same_v<inherit_const_t<int &&, bool>, bool>,
-               "int && -> bool");
-static_assert (std::is_same_v<inherit_const_t<int const &&, bool>, bool const>,
-               "int const && -> bool const");
-
-template <typename T, size_t Size = 256>
+template <typename T, std::size_t Size = 256 / sizeof (T)>
 class arrayvec {
 public:
   using value_type = T;
@@ -98,7 +68,7 @@ public:
   using pointer = value_type *;
   using const_pointer = value_type const *;
 
-  using size_type = size_t;
+  using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
 
   using iterator = value_type *;
@@ -113,7 +83,7 @@ public:
   template <typename ForwardIterator>
   PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
   arrayvec (ForwardIterator first, ForwardIterator last);
-  arrayvec (size_type count, T const &value);
+  arrayvec (size_type count, T const &value = T ());
 
   arrayvec (arrayvec const &other)
       : arrayvec (std::begin (other), std::end (other)) {}
@@ -137,33 +107,39 @@ public:
 
   /// \name Element access
   ///@{
-  constexpr T const *data () const noexcept { return &element (*this, 0); }
-  constexpr T *data () noexcept { return &element (*this, 0); }
-
-  constexpr T const &operator[] (size_t n) const noexcept {
-    return element (*this, n);
+  constexpr T const *data () const noexcept {
+    return pointer_cast<T const *> (data_.data ());
   }
-  constexpr T &operator[] (size_t n) noexcept { return element (*this, n); }
+  constexpr T *data () noexcept { return pointer_cast<T *> (data_.data ()); }
 
-  constexpr T &front () noexcept { return element (*this, 0); }
-  constexpr T const &front () const noexcept { return element (*this, 0); }
-  constexpr T &back () noexcept { return element (*this, size_ - 1U); }
-  constexpr T const &back () const noexcept {
-    return element (*this, size_ - 1U);
+  constexpr T const &operator[] (std::size_t n) const noexcept {
+    assert (n < max_size ());
+    return *(data () + n);
   }
+  constexpr T &operator[] (std::size_t n) noexcept {
+    assert (n < max_size ());
+    return *(data () + n);
+  }
+
+  constexpr T &front () noexcept { return *data (); }
+  constexpr T const &front () const noexcept { return *data (); }
+  constexpr T &back () noexcept { return *(data () + size_ - 1U); }
+  constexpr T const &back () const noexcept { return *(data () + size_ - 1U); }
 
   ///@}
 
   /// \name Capacity
   ///@{
   /// Returns the number of elements.
-  [[nodiscard]] constexpr size_t size () const noexcept { return size_; }
+  [[nodiscard]] constexpr std::size_t size () const noexcept { return size_; }
 
   /// Checks whether the container is empty.
   [[nodiscard]] constexpr bool empty () const noexcept { return size_ == 0U; }
 
   /// Returns the number of elements that can be held.
-  [[nodiscard]] constexpr size_t capacity () const noexcept { return Size; }
+  [[nodiscard]] constexpr std::size_t capacity () const noexcept {
+    return Size;
+  }
 
   /// Returns the maximum number of elements the container is able to hold.
   [[nodiscard]] constexpr size_type max_size () const noexcept { return Size; }
@@ -183,12 +159,10 @@ public:
   ///@{
   /// Returns an iterator to the beginning of the container.
   [[nodiscard]] constexpr const_iterator begin () const noexcept {
-    return &element (*this, 0);
+    return data ();
   }
-  [[nodiscard]] constexpr iterator begin () noexcept {
-    return &element (*this, 0);
-  }
-  const_iterator cbegin () noexcept { return &element (*this, 0); }
+  [[nodiscard]] constexpr iterator begin () noexcept { return data (); }
+  const_iterator cbegin () noexcept { return data (); }
   /// Returns a reverse iterator to the first element of the reversed
   /// container. It corresponds to the last element of the non-reversed
   /// container.
@@ -225,14 +199,14 @@ public:
   template <typename OtherType>
   void push_back (OtherType const &v) {
     assert (size_ < Size);
-    construct_at (&element (*this, size_), v);
+    construct_at (data () + size_, v);
     ++size_;
   }
   /// Appends a new element to the end of the container.
   template <typename... Args>
   void emplace_back (Args &&...args) {
     assert (size_ < Size);
-    construct_at (&element (*this, size_), std::forward<Args> (args)...);
+    construct_at (data () + size_, std::forward<Args> (args)...);
     ++size_;
   }
 
@@ -268,19 +242,12 @@ public:
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
     --size_;
-    std::destroy_at (&this->element (*this, size_));
+    std::destroy_at (data () + size_);
   }
 
   ///@}
 
 private:
-  template <typename ArrayVec,
-            typename ResultType = inherit_const_t<ArrayVec, T>>
-  static ResultType &element (ArrayVec &&v, size_t n) noexcept {
-    assert (n < v.max_size ());
-    return *pointer_cast<ResultType *> (v.data_.data () + n);
-  }
-
   template <bool IsMove, typename OtherVec>
   void operator_assign (OtherVec &other) noexcept;
 
@@ -294,11 +261,12 @@ private:
 
 // (ctor)
 // ~~~~~~
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept (
     std::is_nothrow_move_constructible_v<T>) {
-  auto dest = begin();
-  for (auto src = other.begin(), src_end = other.end(); src != src_end; ++src) {
+  auto dest = begin ();
+  for (auto src = other.begin (), src_end = other.end (); src != src_end;
+       ++src) {
     construct_at (&*dest, std::move (*src));
     ++dest;
   }
@@ -306,7 +274,7 @@ arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept (
   other.size_ = 0;
 }
 
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 template <typename ForwardIterator>
 PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
 arrayvec<T, Size>::arrayvec (ForwardIterator first, ForwardIterator last) {
@@ -320,7 +288,7 @@ arrayvec<T, Size>::arrayvec (ForwardIterator first, ForwardIterator last) {
   }
 }
 
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
   assert (count <= Size);
   while (count-- > 0) {
@@ -330,12 +298,12 @@ arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
 
 // operator assign
 // ~~~~~~~~~~~~~~~
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 template <bool IsMove, typename OtherVec>
 void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept {
   assert (&other != this);
   auto const p = this->begin ();
-  auto src = other.begin();
+  auto src = other.begin ();
   auto dest = p;
   // Step 1: where both *this and other have constructed members we can just use
   // assignment.
@@ -367,7 +335,7 @@ void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept {
 
 // clear
 // ~~~~~
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 void arrayvec<T, Size>::clear () noexcept {
   std::for_each (begin (), end (), [] (T &t) { std::destroy_at (&t); });
   size_ = 0;
@@ -375,7 +343,7 @@ void arrayvec<T, Size>::clear () noexcept {
 
 // resize
 // ~~~~~~
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 void arrayvec<T, Size>::resize (size_type count) {
   assert (count <= Size);
   if (count < size_) {
@@ -383,7 +351,7 @@ void arrayvec<T, Size>::resize (size_type count) {
                    [] (T &t) { std::destroy_at (&t); });
     size_ = count;
   } else if (count > size_) {
-    for (auto it = end(), e = begin() + count; it != e; ++it) {
+    for (auto it = end (), e = begin () + count; it != e; ++it) {
       construct_at (&*it);
     }
     size_ = count;
@@ -392,7 +360,7 @@ void arrayvec<T, Size>::resize (size_type count) {
 
 // assign
 // ~~~~~~
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 void arrayvec<T, Size>::assign (size_type count, T const &value) {
   this->clear ();
   for (; count > 0; --count) {
@@ -400,7 +368,7 @@ void arrayvec<T, Size>::assign (size_type count, T const &value) {
   }
 }
 
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
@@ -410,7 +378,7 @@ void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
 
 // append
 // ~~~~~~
-template <typename T, size_t Size>
+template <typename T, std::size_t Size>
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 void arrayvec<T, Size>::append (InputIterator first, InputIterator last) {
