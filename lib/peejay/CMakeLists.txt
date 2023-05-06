@@ -42,9 +42,9 @@ setup_target (peejay)
 set (GENCPRUN "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/parse.py")
 set (UNICODE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/UnicodeData.txt")
 
-find_package(Python3 3.10 REQUIRED)
+find_package(Python3 3.8 REQUIRED)
 if (NOT Python3_FOUND)
-  message(ERROR "Python 3.10 was not found")
+  message(ERROR "Python 3.8 was not found")
 endif()
 
 # Run the gencprun utility to create the cprun.[ch]pp files. Uncomment the
