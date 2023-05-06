@@ -111,7 +111,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
       CXX_EXTENSIONS No
     )
 
-    set (gclang_options -Wno-implicit-int-float-conversion)
+    #set (gclang_options -Wno-implicit-int-float-conversion)
     if (LIBCXX)
       list (APPEND gclang_options -stdlib=libc++)
     endif ()
