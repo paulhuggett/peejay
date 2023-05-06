@@ -42,21 +42,23 @@ setup_target (peejay)
 set (GENCPRUN "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/parse.py")
 set (UNICODE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/UnicodeData.txt")
 
-find_package(Python3 3.8 REQUIRED)
+# Look for python 3.10. The parse.py program uses some features from typing that
+# were introduced in that version of Python.
+find_package(Python3 3.10 REQUIRED)
 if (NOT Python3_FOUND)
-  message(ERROR "Python 3.8 was not found")
-endif()
-
-# Run the gencprun utility to create the cprun.[ch]pp files. Uncomment the
-# third COMMAND to see the contents of cprun.hpp in the build transcript.
-add_custom_command (
-  COMMENT "Generating cprun source/header file '${CPRUN_HPP}' '${CPRUN_CPP}'"
-  COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --hpp > ${CPRUN_HPP}
-  COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
-  #COMMAND ${Python3_EXECUTABLE} -c "with open('${CPRUN_HPP}') as f: print(f.read())"
-  OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
-  VERBATIM
-)
+  message(WARNING "Python 3.10 was not found: cprun generation is disabled")
+else()
+  # Run the gencprun utility to create the cprun.[ch]pp files. Uncomment the
+  # third COMMAND to see the contents of cprun.hpp in the build transcript.
+  add_custom_command (
+    COMMENT "Generating cprun source/header file '${CPRUN_HPP}' '${CPRUN_CPP}'"
+    COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --hpp --include-guard=PEEJAY_CPRUN_HPP > ${CPRUN_HPP}
+    COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
+    #COMMAND ${Python3_EXECUTABLE} -c "with open('${CPRUN_HPP}') as f: print(f.read())"
+    OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
+    VERBATIM
+  )
+endif ()
 
 include (GNUInstallDirs)
 install (

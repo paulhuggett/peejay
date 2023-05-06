@@ -208,7 +208,7 @@ def emit_header(entries:Sequence[OutputRow], include_guard: str) -> None:
     :param include_guard: The name of the header file include guard to be used.
     :return: None
     """
-
+    print('// This file was auto-generated. DO NOT EDIT!')
     print('#ifndef {0}'.format (include_guard))
     print('#define {0}'.format (include_guard))
     print('''
@@ -247,6 +247,7 @@ def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Pa
     :result: None
     """
 
+    print('// This file was auto-generated. DO NOT EDIT!')
     print('#include "{0}"'.format(header_file))
     print('namespace peejay {')
     print('''
