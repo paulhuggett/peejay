@@ -44,7 +44,7 @@ set (UNICODE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/UnicodeData.txt")
 
 # Look for python 3.10. The parse.py program uses some features from typing that
 # were introduced in that version of Python.
-find_package(Python3 3.10 REQUIRED)
+find_package(Python3 3.10)
 if (NOT Python3_FOUND)
   message(WARNING "Python 3.10 was not found: cprun generation is disabled")
 else()
