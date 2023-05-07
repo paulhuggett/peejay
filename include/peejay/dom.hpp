@@ -28,68 +28,9 @@
 
 #include "peejay/arrayvec.hpp"
 #include "peejay/json.hpp"
+#include "peejay/stack.hpp"
 
 namespace peejay {
-
-namespace details {
-
-template <typename Tp, class Container = arrayvec<Tp, 256>>
-class stack {
-public:
-  using container_type = Container;
-  using value_type = typename container_type::value_type;
-  using reference = typename container_type::reference;
-  using const_reference = typename container_type::const_reference;
-  using size_type = typename container_type::size_type;
-  static_assert (std::is_same_v<Tp, value_type>);
-
-  stack () noexcept (std::is_nothrow_default_constructible_v<Container>)
-      : stack (Container ()) {}
-  explicit stack (Container const &cont) noexcept (
-      std::is_nothrow_move_assignable_v<Container>)
-      : c_{cont} {}
-  explicit stack (Container &&cont) noexcept (
-      std::is_nothrow_move_constructible_v<Container>)
-      : c_{std::move (cont)} {}
-
-  ~stack () noexcept = default;
-
-  stack (stack const &) = default;
-  stack (stack &&) noexcept = default;
-
-  stack &operator= (stack const &) = default;
-  stack &operator= (stack &&) noexcept = default;
-
-  [[nodiscard]] bool empty () const noexcept { return c_.empty (); }
-  [[nodiscard]] size_type size () const noexcept { return c_.size (); }
-  [[nodiscard]] reference top () noexcept { return c_.back (); }
-  [[nodiscard]] const_reference top () const noexcept { return c_.back (); }
-
-  template <typename... Args>
-  decltype (auto) emplace (Args &&...args) {
-    return c_.emplace_back (std::forward<Args> (args)...);
-  }
-
-  void pop () { c_.pop_back (); }
-
-  template <typename Function>
-  size_t find_if (Function fn) const {
-    auto rend = std::rend (c_);
-    auto pos = std::find_if (std::rbegin (c_), rend, fn);
-    if (pos == rend) {
-      return 0;
-    }
-
-    auto const result = std::distance (pos.base (), std::end (c_));
-    assert (result >= 0);
-    return static_cast<std::make_unsigned_t<decltype (result)>> (result);
-  }
-
-private:
-  container_type c_;
-};
-
-}  // end namespace details
 
 struct element;
 struct null {
@@ -150,11 +91,9 @@ public:
   std::error_code end_object ();
 
 private:
-  [[nodiscard]] size_t elements_until_mark () const noexcept {
-    return stack_->find_if (
-        [] (element const &v) { return std::holds_alternative<mark> (v); });
-  }
-  using stack_type = details::stack<element, arrayvec<element, stack_size>>;
+  [[nodiscard]] size_t elements_until_mark () const noexcept;
+
+  using stack_type = stack<element, arrayvec<element, stack_size>>;
   std::unique_ptr<stack_type> stack_ = std::make_unique<stack_type> ();
 };
 
@@ -289,6 +228,23 @@ std::error_code dom<StackSize>::end_object () {
   assert (obj->size () <= size);
   stack_->emplace (std::move (obj));
   return error::none;
+}
+
+// elements until mark
+// ~~~~~~~~~~~~~~~~~~~
+template <size_t StackSize>
+size_t dom<StackSize>::elements_until_mark () const noexcept {
+  auto rend = std::rend (*stack_);
+  auto pos = std::find_if (std::rbegin (*stack_), rend, [] (element const &v) {
+    return std::holds_alternative<mark> (v);
+  });
+  if (pos == rend) {
+    return 0;
+  }
+
+  auto const result = std::distance (pos.base (), std::end (*stack_));
+  assert (result >= 0);
+  return static_cast<std::make_unsigned_t<decltype (result)>> (result);
 }
 
 template <size_t Size1, size_t Size2>
