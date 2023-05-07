@@ -23,7 +23,7 @@ jobs:
           # Linux builds
           # ~~~~~~~~~~~~
           - name: Ubuntu-20.04/clang-8/Debug/C++17
-            apt_install: clang-8 ninja-build
+            apt_install: clang-8 libc++-dev libc++abi-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8
             generator: Ninja
