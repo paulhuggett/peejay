@@ -17,6 +17,8 @@ cmake_minimum_required(VERSION 3.13)
 
 project (peejay C CXX)
 
+include (CheckCXXCompilerFlag)
+
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 cmake_policy(SET CMP0077 NEW)
@@ -41,11 +43,12 @@ add_custom_target (install-peejay
 
 set (PEEJAY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 
+# setup target
+# ~~~~~~~~~~~~
 function (setup_target target)
   set (clang_options
     -Weverything
     -Wno-c++14-extensions
-    -Wno-c++20-compat
     -Wno-c++98-compat
     -Wno-c++98-compat-pedantic
     -Wno-c99-extensions
@@ -63,6 +66,13 @@ function (setup_target target)
     -wd4068 # 4068: unknown pragma
     -wd4324 # 4324: structure was padded due to alignment specifier
   )
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
+    check_cxx_compiler_flag (-Wno-c++20-compat CLANG_W_NO_CXX20_COMPAT)
+    if (${CLANG_W_NO_CXX20_COMPAT})
+      list (APPEND clang_options -Wno-c++20-compat)
+    endif ()
+  endif ()
 
   if (WERROR)
     list (APPEND clang_options -Werror)
@@ -111,7 +121,13 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
       CXX_EXTENSIONS No
     )
 
-    #set (gclang_options -Wno-implicit-int-float-conversion)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
+      check_cxx_compiler_flag (-Wno-implicit-int-float-conversion CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION)
+      if (${CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION})
+        list (APPEND gclang_options -Wno-implicit-int-float-conversion)
+      endif ()
+    endif ()
+
     if (LIBCXX)
       list (APPEND gclang_options -stdlib=libc++)
     endif ()
