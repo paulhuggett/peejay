@@ -27,7 +27,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8
             generator: Ninja
-            options: -D WERROR=Yes -D PEEJAY_CXX17=Yes
+            options: -D WERROR=Yes -D PEEJAY_CXX17=Yes -D LIBCXX=Yes
             os: ubuntu-20.04
 
           - name: Ubuntu-22.04/gcc-11/Debug
