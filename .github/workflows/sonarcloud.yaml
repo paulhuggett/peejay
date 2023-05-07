@@ -6,7 +6,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
-  build:
+  sonar:
     name: Build
     runs-on: ubuntu-22.04
     env:
