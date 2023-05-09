@@ -584,8 +584,8 @@ struct limits<16> {
 template <typename TypeParam>
 class NumberLimits : public testing::Test {
 public:
-  static constexpr int bits = TypeParam ();
-  using policy = typename limits<bits>::policy;
+  static constexpr int bits_param = TypeParam ();
+  using policy = typename limits<bits_param>::policy;
 
   using mocks = mock_json_callbacks<typename policy::integer_type>;
   StrictMock<mocks> callbacks_;
@@ -599,6 +599,7 @@ TYPED_TEST_SUITE (NumberLimits, Sizes, );
 
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, UintMax) {
+  constexpr auto bits = TypeParam ();
   assert (limits<bits>::uint_max_str == to_u8string (limits<bits>::uint_max) &&
           "The hard-wired unsigned max string seems to be incorrect");
   EXPECT_CALL (TestFixture::callbacks_, uint64_value (limits<bits>::uint_max))
@@ -609,6 +610,7 @@ TYPED_TEST (NumberLimits, UintMax) {
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntMin) {
+  constexpr auto bits = TypeParam ();
   assert (limits<bits>::int_min_str == to_u8string (limits<bits>::int_min) &&
           "The hard-wired signed min string seems to be incorrect");
   EXPECT_CALL (TestFixture::callbacks_, int64_value (limits<bits>::int_min))
@@ -619,18 +621,21 @@ TYPED_TEST (NumberLimits, IntMin) {
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerPositiveOverflow) {
+  constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8string_view{limits<bits>::uint_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow1) {
+  constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8"-123123123123123123123123123123"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow2) {
+  constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8string_view{limits<bits>::int_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
