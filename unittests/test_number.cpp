@@ -599,8 +599,6 @@ TYPED_TEST_SUITE (NumberLimits, Sizes, );
 
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, UintMax) {
-  constexpr auto bits = TypeParam ();
-
   assert (limits<bits>::uint_max_str == to_u8string (limits<bits>::uint_max) &&
           "The hard-wired unsigned max string seems to be incorrect");
   EXPECT_CALL (TestFixture::callbacks_, uint64_value (limits<bits>::uint_max))
@@ -611,7 +609,6 @@ TYPED_TEST (NumberLimits, UintMax) {
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntMin) {
-  constexpr auto bits = TypeParam ();
   assert (limits<bits>::int_min_str == to_u8string (limits<bits>::int_min) &&
           "The hard-wired signed min string seems to be incorrect");
   EXPECT_CALL (TestFixture::callbacks_, int64_value (limits<bits>::int_min))
@@ -622,7 +619,6 @@ TYPED_TEST (NumberLimits, IntMin) {
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerPositiveOverflow) {
-  constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8string_view{limits<bits>::uint_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
@@ -635,7 +631,6 @@ TYPED_TEST (NumberLimits, IntegerNegativeOverflow1) {
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow2) {
-  constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8string_view{limits<bits>::int_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
