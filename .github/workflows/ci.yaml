@@ -23,7 +23,7 @@ jobs:
           # Linux builds
           # ~~~~~~~~~~~~
           - name: Ubuntu-20.04/clang-8/Debug/C++17
-            apt_install: clang-8 libc++-dev libc++abi-dev ninja-build
+            apt_install: clang-8 cmake libc++-8-dev libc++abi-8-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8
             generator: Ninja
@@ -31,21 +31,21 @@ jobs:
             os: ubuntu-20.04
 
           - name: Ubuntu-22.04/gcc-11/Debug
-            apt_install: ninja-build
+            apt_install: cmake ninja-build
             build_type: Debug
             generator: Ninja
             options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-11/Release
-            apt_install: ninja-build
+            apt_install: cmake ninja-build
             build_type: Release
             generator: Ninja
             options: -DWERROR=Yes
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Debug
-            apt_install: g++-12 libstdc++-12-dev ninja-build
+            apt_install: cmake g++-12 libstdc++-12-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Ninja
@@ -53,7 +53,7 @@ jobs:
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-12/Release
-            apt_install: g++-12 libstdc++-12-dev ninja-build
+            apt_install: cmake g++-12 libstdc++-12-dev ninja-build
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_C_COMPILER=gcc-12
             generator: Ninja
@@ -65,7 +65,7 @@ jobs:
           # https://github.com/llvm/llvm-project/issues/55560
 
           - name: Ubuntu-22.04/clang-14/Debug
-            apt_install: libc++-dev libc++abi-dev ninja-build
+            apt_install: clang-14 cmake libc++-dev libc++abi-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
@@ -73,7 +73,7 @@ jobs:
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release
-            apt_install: libc++-dev libc++abi-dev ninja-build
+            apt_install: clang-14 cmake libc++-dev libc++abi-dev ninja-build
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
@@ -81,7 +81,7 @@ jobs:
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release/C++17
-            apt_install: ninja-build
+            apt_install: clang-14 cmake ninja-build
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
