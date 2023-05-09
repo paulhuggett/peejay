@@ -170,7 +170,7 @@ TEST_F (Json, MixedLeadingLineEndings) {
 
 // NOLINTNEXTLINE
 TEST_F (Json, Null) {
-  StrictMock<mock_json_callbacks> callbacks;
+  StrictMock<mock_json_callbacks<std::int64_t>> callbacks;
   callbacks_proxy proxy{callbacks};
   EXPECT_CALL (callbacks, null_value ()).Times (1);
 

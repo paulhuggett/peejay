@@ -24,20 +24,23 @@
 
 #include "peejay/json.hpp"
 
+template <typename IntegerType>
 class json_callbacks_base {
 public:
+  using integer_type = IntegerType;
+
   json_callbacks_base () = default;
   json_callbacks_base (json_callbacks_base const &) = delete;
   json_callbacks_base (json_callbacks_base &&) noexcept = delete;
 
-  virtual ~json_callbacks_base () noexcept;
+  virtual ~json_callbacks_base () noexcept = default;
 
   json_callbacks_base &operator= (json_callbacks_base const &) = delete;
   json_callbacks_base &operator= (json_callbacks_base &&) noexcept = delete;
 
   virtual std::error_code string_value (peejay::u8string_view const &) = 0;
-  virtual std::error_code int64_value (std::int64_t) = 0;
-  virtual std::error_code uint64_value (std::uint64_t) = 0;
+  virtual std::error_code int64_value (std::make_signed_t<IntegerType>) = 0;
+  virtual std::error_code uint64_value (std::make_unsigned_t<IntegerType>) = 0;
   virtual std::error_code double_value (double) = 0;
   virtual std::error_code boolean_value (bool) = 0;
   virtual std::error_code null_value () = 0;
@@ -50,13 +53,14 @@ public:
   virtual std::error_code end_object () = 0;
 };
 
-class mock_json_callbacks : public json_callbacks_base {
+template <typename IntegerType>
+class mock_json_callbacks : public json_callbacks_base<IntegerType> {
 public:
   mock_json_callbacks () = default;
   mock_json_callbacks (mock_json_callbacks const &) = delete;
   mock_json_callbacks (mock_json_callbacks &&) noexcept = delete;
 
-  ~mock_json_callbacks () noexcept override;
+  ~mock_json_callbacks () noexcept override = default;
 
   mock_json_callbacks &operator= (mock_json_callbacks const &) = delete;
   mock_json_callbacks &operator= (mock_json_callbacks &&) = delete;
@@ -64,9 +68,10 @@ public:
   // NOLINTNEXTLINE
   MOCK_METHOD1 (string_value, std::error_code (peejay::u8string_view const &));
   // NOLINTNEXTLINE
-  MOCK_METHOD1 (int64_value, std::error_code (std::int64_t));
+  MOCK_METHOD1 (int64_value, std::error_code (std::make_signed_t<IntegerType>));
   // NOLINTNEXTLINE
-  MOCK_METHOD1 (uint64_value, std::error_code (std::uint64_t));
+  MOCK_METHOD1 (uint64_value,
+                std::error_code (std::make_unsigned_t<IntegerType>));
   // NOLINTNEXTLINE
   MOCK_METHOD1 (double_value, std::error_code (double));
   // NOLINTNEXTLINE
@@ -104,10 +109,12 @@ public:
   std::error_code string_value (peejay::u8string_view const &s) {
     return original_.string_value (s);
   }
-  std::error_code int64_value (std::int64_t v) {
+  std::error_code int64_value (
+      std::make_signed_t<typename T::integer_type> const v) {
     return original_.int64_value (v);
   }
-  std::error_code uint64_value (std::uint64_t v) {
+  std::error_code uint64_value (
+      std::make_unsigned_t<typename T::integer_type> const v) {
     return original_.uint64_value (v);
   }
   std::error_code double_value (double v) { return original_.double_value (v); }

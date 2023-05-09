@@ -15,7 +15,6 @@
 #===----------------------------------------------------------------------===//
 add_executable (pj-unittests
   harness.cpp
-  callbacks.cpp
   callbacks.hpp
   test_array.cpp
   test_arrayvec.cpp

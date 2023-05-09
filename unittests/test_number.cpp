@@ -39,8 +39,9 @@ namespace {
 
 class Number : public ::testing::Test {
 protected:
-  StrictMock<mock_json_callbacks> callbacks_;
-  callbacks_proxy<mock_json_callbacks> proxy_{callbacks_};
+  using mocks = mock_json_callbacks<std::uint64_t>;
+  StrictMock<mocks> callbacks_;
+  callbacks_proxy<mocks> proxy_{callbacks_};
 };
 
 }  // end of anonymous namespace
@@ -226,70 +227,6 @@ TEST_F (Number, IntegerMax) {
   parser p{proxy_};
   p.input (str_max).eof ();
   EXPECT_FALSE (p.has_error ());
-}
-
-namespace {
-
-// Note that I hard-wire the numbers here rather than just using
-// numeric_limits<> so that  we've got a reference for the string constants
-// below.
-constexpr auto uint64_max = UINT64_C (18446744073709551615);
-static_assert (uint64_max == std::numeric_limits<std::uint64_t>::max (),
-               "Hard-wired unsigned 64-bit max value seems to be incorrect");
-constexpr auto uint64_max_str =
-    u8"18446744073709551615";  // string equivalent of uint64_max.
-constexpr auto uint64_overflow =
-    u8"18446744073709551616";  // uint64_max plus 1.
-
-// The literal "most negative int" cannot be written in C++. Integer constants
-// are formed by building an unsigned integer and then applying unary minus.
-constexpr auto int64_min = -(INT64_C (9223372036854775807)) - 1;
-static_assert (int64_min == std::numeric_limits<std::int64_t>::min (),
-               "Hard-wired signed 64-bit min value seems to be incorrect");
-constexpr auto int64_min_str = u8"-9223372036854775808";
-constexpr auto int64_overflow = u8"-9223372036854775809";  // int64_min minus 1.
-
-}  // end anonymous namespace
-
-// NOLINTNEXTLINE
-TEST_F (Number, Uint64Max) {
-  assert (uint64_max_str == to_u8string (uint64_max) &&
-          "The hard-wired unsigned 64-bit max string seems to be incorrect");
-  EXPECT_CALL (callbacks_, uint64_value (uint64_max)).Times (1);
-  parser p{proxy_};
-  p.input (u8string_view{uint64_max_str}).eof ();
-  EXPECT_FALSE (p.has_error ());
-}
-
-// NOLINTNEXTLINE
-TEST_F (Number, Int64Min) {
-  assert (int64_min_str == to_u8string (int64_min) &&
-          "The hard-wired signed 64-bit min string seems to be incorrect");
-  EXPECT_CALL (callbacks_, int64_value (int64_min)).Times (1);
-  parser p{proxy_};
-  p.input (u8string_view{int64_min_str}).eof ();
-  EXPECT_FALSE (p.has_error ());
-}
-
-// NOLINTNEXTLINE
-TEST_F (Number, IntegerPositiveOverflow) {
-  parser p{proxy_};
-  p.input (u8string_view{uint64_overflow}).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
-}
-
-// NOLINTNEXTLINE
-TEST_F (Number, IntegerNegativeOverflow1) {
-  parser p{proxy_};
-  p.input (u8"-123123123123123123123123123123"sv).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
-}
-
-// NOLINTNEXTLINE
-TEST_F (Number, IntegerNegativeOverflow2) {
-  parser p{proxy_};
-  p.input (u8string_view{int64_overflow}).eof ();
-  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 // NOLINTNEXTLINE
@@ -556,4 +493,150 @@ TEST_F (Number, LoneDecimalPointThenWhitespace) {
   p.input (u8". "sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
       << "Real error was: " << p.last_error ().message ();
+}
+
+namespace {
+
+template <int Bits>
+struct limits {};
+template <>
+struct limits<64> {
+  struct policy {
+    static constexpr std::size_t max_length = 20;
+    using integer_type = std::int64_t;
+  };
+
+  // Note that I hard-wire the numbers here rather than just using
+  // numeric_limits<> so that  we've got a reference for the string constants
+  // below.
+  static constexpr auto uint_max = UINT64_C (18'446'744'073'709'551'615);
+  static_assert (uint_max == std::numeric_limits<std::uint64_t>::max (),
+                 "Hard-wired unsigned 64-bit max value seems to be incorrect");
+  static constexpr auto uint_max_str =
+      u8"18446744073709551615";  // string equivalent of uint_max.
+  static constexpr auto uint_overflow =
+      u8"18446744073709551616";  // uint_max plus 1.
+
+  // The literal "most negative int" cannot be written in C++. Integer constants
+  // are formed by building an unsigned integer and then applying unary minus.
+  static constexpr auto int_min = -(INT64_C (9'223'372'036'854'775'807)) - 1;
+  static_assert (int_min == std::numeric_limits<std::int64_t>::min (),
+                 "Hard-wired signed 64-bit min value seems to be incorrect");
+  static constexpr auto int_min_str = u8"-9223372036854775808";
+  static constexpr auto int_overflow =
+      u8"-9223372036854775809";  // int_min minus 1.
+};
+
+template <>
+struct limits<32> {
+  struct policy {
+    static constexpr std::size_t max_length = 20;
+    using integer_type = std::int32_t;
+  };
+
+  // Note that I hard-wire the numbers here rather than just using
+  // numeric_limits<> so that  we've got a reference for the string constants
+  // below.
+  static constexpr auto uint_max = UINT32_C (4'294'967'295);
+  static_assert (uint_max == std::numeric_limits<std::uint32_t>::max (),
+                 "Hard-wired unsigned 32-bit max value seems to be incorrect");
+  static constexpr auto uint_max_str =
+      u8"4294967295";  // string equivalent of uint_max.
+  static constexpr auto uint_overflow = u8"4294967296";  // uint_max plus 1.
+
+  // The literal "most negative int" cannot be written in C++. Integer constants
+  // are formed by building an unsigned integer and then applying unary minus.
+  static constexpr auto int_min = -(INT32_C (2'147'483'647)) - 1;
+  static_assert (int_min == std::numeric_limits<std::int32_t>::min (),
+                 "Hard-wired signed 32-bit min value seems to be incorrect");
+  static constexpr auto int_min_str = u8"-2147483648";
+  static constexpr auto int_overflow = u8"-2147483649";  // int_min minus 1.
+};
+
+template <>
+struct limits<16> {
+  struct policy {
+    static constexpr std::size_t max_length = 20;
+    using integer_type = std::int16_t;
+  };
+
+  // Note that I hard-wire the numbers here rather than just using
+  // numeric_limits<> so that  we've got a reference for the string constants
+  // below.
+  static constexpr auto uint_max = UINT16_C (65535);
+  static_assert (uint_max == std::numeric_limits<std::uint16_t>::max (),
+                 "Hard-wired unsigned 16-bit max value seems to be incorrect");
+  static constexpr auto uint_max_str =
+      u8"65535";  // string equivalent of uint_max.
+  static constexpr auto uint_overflow = u8"65536";  // uint_max plus 1.
+
+  // The literal "most negative int" cannot be written in C++. Integer constants
+  // are formed by building an unsigned integer and then applying unary minus.
+  static constexpr auto int_min = -(INT16_C (32767)) - 1;
+  static_assert (int_min == std::numeric_limits<std::int16_t>::min (),
+                 "Hard-wired signed 16-bit min value seems to be incorrect");
+  static constexpr auto int_min_str = u8"-32768";
+  static constexpr auto int_overflow = u8"-32769";  // int_min minus 1.
+};
+
+}  // end anonymous namespace
+
+template <typename TypeParam>
+class NumberLimits : public testing::Test {
+public:
+  static constexpr int bits = TypeParam ();
+  using policy = typename limits<bits>::policy;
+
+  using mocks = mock_json_callbacks<typename policy::integer_type>;
+  StrictMock<mocks> callbacks_;
+  callbacks_proxy<mocks> proxy_{callbacks_};
+};
+
+using Sizes = testing::Types<std::integral_constant<int, 16>,
+                             std::integral_constant<int, 32>,
+                             std::integral_constant<int, 64>>;
+TYPED_TEST_SUITE (NumberLimits, Sizes, );
+
+// NOLINTNEXTLINE
+TYPED_TEST (NumberLimits, UintMax) {
+  constexpr auto bits = TypeParam ();
+
+  assert (limits<bits>::uint_max_str == to_u8string (limits<bits>::uint_max) &&
+          "The hard-wired unsigned max string seems to be incorrect");
+  EXPECT_CALL (TestFixture::callbacks_, uint64_value (limits<bits>::uint_max))
+      .Times (1);
+  auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
+  p.input (u8string_view{limits<bits>::uint_max_str}).eof ();
+  EXPECT_FALSE (p.has_error ());
+}
+// NOLINTNEXTLINE
+TYPED_TEST (NumberLimits, IntMin) {
+  constexpr auto bits = TypeParam ();
+  assert (limits<bits>::int_min_str == to_u8string (limits<bits>::int_min) &&
+          "The hard-wired signed min string seems to be incorrect");
+  EXPECT_CALL (TestFixture::callbacks_, int64_value (limits<bits>::int_min))
+      .Times (1);
+  auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
+  p.input (u8string_view{limits<bits>::int_min_str}).eof ();
+  EXPECT_FALSE (p.has_error ());
+}
+// NOLINTNEXTLINE
+TYPED_TEST (NumberLimits, IntegerPositiveOverflow) {
+  constexpr auto bits = TypeParam ();
+  auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
+  p.input (u8string_view{limits<bits>::uint_overflow}).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
+}
+// NOLINTNEXTLINE
+TYPED_TEST (NumberLimits, IntegerNegativeOverflow1) {
+  auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
+  p.input (u8"-123123123123123123123123123123"sv).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
+}
+// NOLINTNEXTLINE
+TYPED_TEST (NumberLimits, IntegerNegativeOverflow2) {
+  constexpr auto bits = TypeParam ();
+  auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
+  p.input (u8string_view{limits<bits>::int_overflow}).eof ();
+  EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }

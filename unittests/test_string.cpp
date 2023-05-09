@@ -35,8 +35,8 @@ namespace {
 
 class String : public testing::Test {
 protected:
-  StrictMock<mock_json_callbacks> callbacks_;
-  callbacks_proxy<mock_json_callbacks> proxy_{callbacks_};
+  StrictMock<mock_json_callbacks<std::uint64_t>> callbacks_;
+  callbacks_proxy<mock_json_callbacks<std::uint64_t>> proxy_{callbacks_};
 };
 
 }  // end anonymous namespace
@@ -119,6 +119,7 @@ TEST_F (String, UnterminatedSingleQuote) {
 
 struct ml10_policy {
   static constexpr auto max_length = size_t{10};
+  using integer_type = std::int64_t;
 };
 
 // NOLINTNEXTLINE

@@ -35,8 +35,9 @@ namespace {
 
 class JsonArray : public testing::Test {
 protected:
-  StrictMock<mock_json_callbacks> callbacks_;
-  callbacks_proxy<mock_json_callbacks> proxy_{callbacks_};
+  using mocks = mock_json_callbacks<std::uint64_t>;
+  StrictMock<mocks> callbacks_;
+  callbacks_proxy<mocks> proxy_{callbacks_};
 };
 
 }  // end anonymous namespace

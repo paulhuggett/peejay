@@ -28,8 +28,8 @@ namespace {
 
 class Whitespace : public testing::Test {
 protected:
-  testing::StrictMock<mock_json_callbacks> callbacks_;
-  callbacks_proxy<mock_json_callbacks> proxy_{callbacks_};
+  testing::StrictMock<mock_json_callbacks<std::uint64_t>> callbacks_;
+  callbacks_proxy<mock_json_callbacks<std::uint64_t>> proxy_{callbacks_};
 };
 
 }  // end of anonymous namespace

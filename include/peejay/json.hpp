@@ -73,7 +73,11 @@ template <typename... T>
 #endif
 
 #if PEEJAY_HAVE_CONCEPTS
-template <typename T>
+template <typename Policy>
+concept policy = std::is_integral_v<decltype (Policy::max_length)> &&
+                 std::is_integral_v<typename Policy::integer_type>;
+
+template <typename T, typename IntegerType = std::int64_t>
 concept backend = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
@@ -82,9 +86,13 @@ concept backend = requires (T &&v) {
   /// Called when a JSON string has been parsed.
   { v.string_value (u8string_view{}) } -> std::convertible_to<std::error_code>;
   /// Called when an integer value has been parsed.
-  { v.int64_value (std::int64_t{}) } -> std::convertible_to<std::error_code>;
+  {
+    v.int64_value (std::make_signed_t<IntegerType>{})
+  } -> std::convertible_to<std::error_code>;
   /// Called when an unsigned integer value has been parsed.
-  { v.uint64_value (std::uint64_t{}) } -> std::convertible_to<std::error_code>;
+  {
+    v.uint64_value (std::make_unsigned_t<IntegerType>{})
+  } -> std::convertible_to<std::error_code>;
   /// Called when a floating-point value has been parsed.
   { v.double_value (double{}) } -> std::convertible_to<std::error_code>;
   /// Called when a boolean value has been parsed
@@ -241,6 +249,8 @@ struct default_policies {
   /// The maximum length of strings or identifiers that will be permitted before
   /// a string_too_long or identifier_too_long error is raised.
   static constexpr size_t max_length = 65535;
+
+  using integer_type = std::int64_t;
 };
 
 //*                              *
@@ -254,7 +264,8 @@ struct default_policies {
 /// \tparam Policies  A type which contains a collection of policies which
 ///                   control the behaviour of the parser.
 template <typename Backend, typename Policies = default_policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 class parser {
   friend class details::matcher<Backend, Policies>;
   friend class details::root_matcher<Backend, Policies>;
@@ -501,21 +512,27 @@ private:
   PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE Backend backend_;
 };
 
+template <typename Backend, typename Policies = default_policies>
+parser (Backend, Policies) -> parser<Backend, Policies>;
 template <typename Backend>
-parser (Backend) -> parser<Backend>;
+parser (Backend) -> parser<Backend, default_policies>;
 
 template <typename Policies, typename Backend>
-PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
-inline parser<std::remove_reference_t<Backend>, Policies> make_parser (
-    Backend &&backend, extensions const extensions = extensions::none) {
+PEEJAY_CXX20REQUIRES ((
+    policy<Policies> &&
+    backend<std::remove_reference_t<Backend>, typename Policies::integer_type>))
+inline decltype (auto)
+    make_parser (Backend &&backend,
+                 extensions const extensions = extensions::none) {
   return parser<std::remove_reference_t<Backend>, Policies>{
       std::forward<Backend> (backend), extensions};
 }
 
 template <typename Backend>
 PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
-inline parser<std::remove_reference_t<Backend>> make_parser (
-    Backend &&backend, extensions const extensions = extensions::none) {
+inline decltype (auto)
+    make_parser (Backend &&backend,
+                 extensions const extensions = extensions::none) {
   return parser<std::remove_reference_t<Backend>>{
       std::forward<Backend> (backend), extensions};
 }
@@ -952,6 +969,8 @@ class number_matcher final : public matcher<Backend, Policies> {
 
 public:
   using parser_type = typename inherited::parser_type;
+  using uinteger_type = std::make_unsigned_t<typename Policies::integer_type>;
+  using sinteger_type = std::make_signed_t<typename Policies::integer_type>;
 
   constexpr number_matcher () noexcept : inherited (leading_minus_state) {}
 
@@ -1010,7 +1029,7 @@ private:
   bool is_neg_ = false;
   struct float_accumulator {
     /// Promote from integer.
-    explicit constexpr float_accumulator (uint64_t v) noexcept
+    explicit constexpr float_accumulator (uinteger_type v) noexcept
         : whole_part{static_cast<double> (v)} {}
     /// Assign an explicit double.
     explicit constexpr float_accumulator (double v) noexcept : whole_part{v} {}
@@ -1028,15 +1047,15 @@ private:
     unsigned exponent = 0U;
   };
 
-  std::variant<uint64_t, float_accumulator> acc_;
+  std::variant<uinteger_type, float_accumulator> acc_;
 };
 
 // number is float
 // ~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
 void number_matcher<Backend, Policies>::number_is_float () {
-  if (std::holds_alternative<uint64_t> (acc_)) {
-    acc_ = float_accumulator{std::get<uint64_t> (acc_)};
+  if (std::holds_alternative<uinteger_type> (acc_)) {
+    acc_ = float_accumulator{std::get<uinteger_type> (acc_)};
   }
 }
 
@@ -1230,13 +1249,13 @@ template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
     parser_type &parser, char32_t const c) {
   assert (state_ == integer_initial_digit_state);
-  assert (std::holds_alternative<uint64_t> (acc_));
+  assert (std::holds_alternative<uinteger_type> (acc_));
   if (c == char_set::digit_zero) {
     state_ = frac_state;
   } else if (c >= char_set::digit_one && c <= char_set::digit_nine) {
-    assert (std::get<uint64_t> (acc_) == 0);
-    std::get<uint64_t> (acc_) =
-        static_cast<uint64_t> (c) - char_set::digit_zero;
+    assert (std::get<uinteger_type> (acc_) == 0);
+    std::get<uinteger_type> (acc_) =
+        static_cast<uinteger_type> (c) - char_set::digit_zero;
     state_ = integer_digit_state;
   } else if (c == char_set::latin_capital_letter_i) {
     text_.set_text (u8"nfinity");
@@ -1256,7 +1275,7 @@ template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_integer_digit_state (
     parser_type &parser, char32_t const c) {
   assert (state_ == integer_digit_state);
-  assert (std::holds_alternative<uint64_t> (acc_));
+  assert (std::holds_alternative<uinteger_type> (acc_));
 
   bool match = true;
   if (c == char_set::full_stop) {
@@ -1267,8 +1286,9 @@ bool number_matcher<Backend, Policies>::do_integer_digit_state (
     state_ = exponent_sign_state;
     number_is_float ();
   } else if (c >= '0' && c <= '9') {
-    auto &int_acc = std::get<uint64_t> (acc_);
-    auto const new_acc = int_acc * 10U + static_cast<uint64_t> (c) - '0';
+    auto &int_acc = std::get<uinteger_type> (acc_);
+    auto const new_acc = static_cast<uinteger_type> (
+        int_acc * 10U + static_cast<uinteger_type> (c) - '0');
     if (new_acc < int_acc) {  // Did this overflow?
       this->set_error (parser, error::number_out_of_range);
     }
@@ -1291,8 +1311,9 @@ bool number_matcher<Backend, Policies>::do_hex_digits_state (
     return false;
   }
 
-  auto &int_acc = std::get<uint64_t> (acc_);
-  auto const new_acc = int_acc * 16U + static_cast<uint64_t> (c) - *offset;
+  auto &int_acc = std::get<uinteger_type> (acc_);
+  auto const new_acc = static_cast<uinteger_type> (
+      int_acc * 16U + static_cast<uinteger_type> (c) - *offset);
   if (new_acc < int_acc) {  // Did this overflow?
     this->set_error (parser, error::number_out_of_range);
   }
@@ -1409,11 +1430,11 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
   }
   assert (this->in_terminal_state ());
 
-  if (std::holds_alternative<uint64_t> (acc_)) {
-    constexpr auto min = std::numeric_limits<std::int64_t>::min ();
-    constexpr auto umin = static_cast<std::uint64_t> (min);
+  if (std::holds_alternative<uinteger_type> (acc_)) {
+    constexpr auto min = std::numeric_limits<sinteger_type>::min ();
+    constexpr auto umin = static_cast<uinteger_type> (min);
 
-    auto &int_acc = std::get<uint64_t> (acc_);
+    auto &int_acc = std::get<uinteger_type> (acc_);
     if (is_neg_) {
       if (int_acc > umin) {
         this->set_error (parser, error::number_out_of_range);
@@ -1423,7 +1444,7 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
       this->set_error (
           parser,
           parser.backend ().int64_value (
-              (int_acc == umin) ? min : -static_cast<std::int64_t> (int_acc)));
+              (int_acc == umin) ? min : -static_cast<sinteger_type> (int_acc)));
       return;
     }
     this->set_error (parser, parser.backend ().uint64_value (int_acc));
@@ -2728,7 +2749,8 @@ struct singletons {
 // (ctor)
 // ~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 #if PEEJAY_HAVE_CONCEPTS
 template <typename OtherBackend>
   requires (backend<OtherBackend>)
@@ -2761,7 +2783,8 @@ parser<Backend, Policies>::parser (OtherBackend &&backend,
 }
 
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 parser<Backend, Policies>::parser (parser &&rhs) noexcept (
     std::is_nothrow_move_constructible_v<Backend>)
     : utf_{std::move (rhs.utf_)},
@@ -2780,7 +2803,8 @@ parser<Backend, Policies>::parser (parser &&rhs) noexcept (
 // operator=
 // ~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 auto parser<Backend, Policies>::operator= (parser &&rhs) noexcept (
     std::is_nothrow_move_assignable_v<Backend>) -> parser & {
   utf_ = std::move (rhs.utf_);
@@ -2799,7 +2823,8 @@ auto parser<Backend, Policies>::operator= (parser &&rhs) noexcept (
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 auto parser<Backend, Policies>::make_root_matcher () -> pointer {
   using root_matcher = details::root_matcher<Backend, Policies>;
   using deleter = typename pointer::deleter_type;
@@ -2810,7 +2835,8 @@ auto parser<Backend, Policies>::make_root_matcher () -> pointer {
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 auto parser<Backend, Policies>::make_whitespace_matcher () -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Backend, Policies>;
   return this->make_terminal_matcher<whitespace_matcher> ();
@@ -2819,7 +2845,8 @@ auto parser<Backend, Policies>::make_whitespace_matcher () -> pointer {
 // make string matcher
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 auto parser<Backend, Policies>::make_string_matcher (bool object_key,
                                                      char32_t enclosing_char)
     -> pointer {
@@ -2831,7 +2858,8 @@ auto parser<Backend, Policies>::make_string_matcher (bool object_key,
 // make identifier matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 auto parser<Backend, Policies>::make_identifier_matcher () -> pointer {
   using identifier_matcher = details::identifier_matcher<Backend, Policies>;
   return this->template make_terminal_matcher<identifier_matcher> (
@@ -2843,7 +2871,8 @@ auto parser<Backend, Policies>::make_identifier_matcher () -> pointer {
 /// \param first The element in the half-open range of UTF-32 code-units to be parsed.
 /// \param last The end of the range of UTF-32 code-units to be parsed.
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 template <typename InputIterator>
 auto parser<Backend, Policies>::input32 (InputIterator first,
                                          InputIterator last) -> parser & {
@@ -2863,7 +2892,8 @@ auto parser<Backend, Policies>::input32 (InputIterator first,
 // input8
 // ~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 template <typename InputIterator>
 auto parser<Backend, Policies>::input8 (InputIterator first, InputIterator last)
     -> parser & {
@@ -2889,7 +2919,8 @@ auto parser<Backend, Policies>::input8 (InputIterator first, InputIterator last)
 // consume code point
 // ~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 void parser<Backend, Policies>::consume_code_point (char32_t code_point) {
   bool retry = false;
   do {
@@ -2924,7 +2955,8 @@ void parser<Backend, Policies>::consume_code_point (char32_t code_point) {
 // reseat stack after move
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 void parser<Backend, Policies>::reseat_stack_after_move (
     parser const &rhs) noexcept {
   using deleter = typename pointer::deleter_type;
@@ -2981,7 +3013,8 @@ void parser<Backend, Policies>::reseat_stack_after_move (
 // eof
 // ~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
+PEEJAY_CXX20REQUIRES ((policy<Policies> &&
+                       backend<Backend, typename Policies::integer_type>))
 decltype (auto) parser<Backend, Policies>::eof () {
   while (!stack_.empty () && !has_error ()) {
     auto &handler = stack_.top ();
