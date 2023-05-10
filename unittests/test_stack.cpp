@@ -26,11 +26,12 @@
 
 using namespace std::string_literals;
 
+// NOLINTNEXTLINE
 TEST (Stack, DefaultCtor) {
   peejay::stack<int> stack;
   EXPECT_TRUE (stack.empty ());
 }
-
+// NOLINTNEXTLINE
 TEST (Stack, CopyCtor) {
   peejay::stack<int> s1;
   s1.push (1);
@@ -45,8 +46,8 @@ TEST (Stack, CopyCtor) {
   s1.pop ();
   EXPECT_TRUE (s1.empty ());
 }
-
 #if PEEJAY_CXX20
+// NOLINTNEXTLINE
 TEST (Stack, IteratorCtor) {
   std::array<int, 4> const a = {{4, 3, 2, 1}};
   peejay::stack stack (std::begin (a), std::end (a));
@@ -62,7 +63,7 @@ TEST (Stack, IteratorCtor) {
   EXPECT_TRUE (stack.empty ());
 }
 #endif
-
+// NOLINTNEXTLINE
 TEST (Stack, ContainerCtor) {
   std::deque<int> const d{4, 3, 2, 1};
   peejay::stack stack (d);
@@ -78,7 +79,7 @@ TEST (Stack, ContainerCtor) {
   stack.pop ();
   EXPECT_TRUE (stack.empty ());
 }
-
+// NOLINTNEXTLINE
 TEST (Stack, ContainerRValueRefCtor) {
   peejay::stack stack (std::deque<int>{4, 3, 2, 1});
   ASSERT_EQ (stack.size (), 4);
@@ -92,7 +93,7 @@ TEST (Stack, ContainerRValueRefCtor) {
   stack.pop ();
   EXPECT_TRUE (stack.empty ());
 }
-
+// NOLINTNEXTLINE
 TEST (Stack, Eq) {
   std::vector<int> const a = {{4, 3, 2, 1}};
   peejay::stack s1 (a);
@@ -104,7 +105,7 @@ TEST (Stack, Eq) {
   EXPECT_FALSE (s1 > s2);
   EXPECT_TRUE (s1 >= s2);
 }
-
+// NOLINTNEXTLINE
 TEST (Stack, Push1Value) {
   peejay::stack<int> stack;
   stack.push (17);
@@ -112,7 +113,7 @@ TEST (Stack, Push1Value) {
   EXPECT_FALSE (stack.empty ());
   EXPECT_EQ (17, stack.top ());
 }
-
+// NOLINTNEXTLINE
 TEST (ArrayStack, PushMoveValue) {
   peejay::stack<std::string> stack;
   auto value = "str"s;
@@ -121,13 +122,13 @@ TEST (ArrayStack, PushMoveValue) {
   std::string const& top = stack.top ();
   EXPECT_EQ ("str", top);
 }
-
+// NOLINTNEXTLINE
 TEST (ArrayStack, Emplace) {
   peejay::stack<std::string> stack;
   stack.emplace ("str");
   EXPECT_EQ ("str", stack.top ());
 }
-
+// NOLINTNEXTLINE
 TEST (ArrayStack, PushAndPop) {
   peejay::stack<int> stack;
   stack.push (31);
