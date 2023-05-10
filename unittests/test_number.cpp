@@ -628,7 +628,6 @@ TYPED_TEST (NumberLimits, IntegerPositiveOverflow) {
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow1) {
-  constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8"-123123123123123123123123123123"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
