@@ -259,6 +259,38 @@ private:
       data_;
 };
 
+template <typename T, std::size_t Size>
+bool operator== (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+  return lhs.size () == rhs.size () &&
+         std::equal (std::begin (lhs), std::end (lhs), std::begin (rhs));
+}
+
+template <typename T, std::size_t Size>
+bool operator!= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+  return !operator== (lhs, rhs);
+}
+
+template <typename T, std::size_t Size>
+bool operator< (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+  return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (),
+                                       rhs.end ());
+}
+
+template <typename T, std::size_t Size>
+bool operator<= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+  return !(rhs < lhs);
+}
+
+template <typename T, std::size_t Size>
+bool operator> (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+  return rhs < lhs;
+}
+
+template <typename T, std::size_t Size>
+bool operator>= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+  return !(lhs < rhs);
+}
+
 // (ctor)
 // ~~~~~~
 template <typename T, std::size_t Size>

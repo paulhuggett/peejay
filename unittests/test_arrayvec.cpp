@@ -375,3 +375,64 @@ TEST (ArrayVec, NoDefaultEmplace) {
   sv.emplace_back (7);
   EXPECT_THAT (sv, ElementsAre (no_default_ctor{7}));
 }
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, Eq) {
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} == arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} == arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1} == arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} ==
+                arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+  EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} ==
+                 arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, Neq) {
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} != arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} != arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1} != arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} !=
+                 arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+  EXPECT_TRUE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} !=
+                arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, Ge) {
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} >= arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} >= arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1} >= arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} >=
+                arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+  EXPECT_TRUE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} >=
+                arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, Gt) {
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} > arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} > arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1} > arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} >
+                 arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+  EXPECT_TRUE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} >
+                arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, Le) {
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} <= arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} <= arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1} <= arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} <=
+                arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+  EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} <=
+                 arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, Lt) {
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} < arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} < arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1} < arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} <
+                 arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+  EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} <
+                 arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
