@@ -35,7 +35,7 @@ namespace {
 template <typename T>
 constexpr char const* to_char_pointer (T const& x) noexcept {
   return peejay::pointer_cast<char const*> (peejay::to_address (x));
-};
+}
 
 class indent {
 public:
