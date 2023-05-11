@@ -347,11 +347,12 @@ namespace {
 
 class no_default_ctor {
 public:
-  explicit no_default_ctor (int v) noexcept : v_{v} {}
+  explicit constexpr no_default_ctor (int v) noexcept : v_{v} {}
 #if PEEJAY_CXX20
-  bool operator== (no_default_ctor const &rhs) const noexcept = default;
+  constexpr bool operator== (no_default_ctor const &rhs) const noexcept =
+      default;
 #else
-  bool operator== (no_default_ctor const &rhs) const noexcept {
+  constexpr bool operator== (no_default_ctor const &rhs) const noexcept {
     return v_ == rhs.v_;
   }
 #endif
@@ -435,4 +436,53 @@ TEST (ArrayVec, Lt) {
                  arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
   EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} <
                  arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseSinglePos) {
+  peejay::arrayvec<int, 3> v{1, 2, 3};
+  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  EXPECT_THAT (v, testing::ElementsAre (2, 3));
+  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  EXPECT_THAT (v, testing::ElementsAre (3));
+  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  EXPECT_TRUE (v.empty ());
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseSingleSecondElement) {
+  peejay::arrayvec<int, 3> v{1, 2, 3};
+  EXPECT_EQ (v.erase (v.begin () + 1), v.begin () + 1);
+  EXPECT_THAT (v, testing::ElementsAre (1, 3));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseSingleFinalElement) {
+  peejay::arrayvec<int, 3> v{1, 2, 3};
+  EXPECT_EQ (v.erase (v.begin () + 2), v.begin () + 2);
+  EXPECT_THAT (v, testing::ElementsAre (1, 2));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseRangeAll) {
+  peejay::arrayvec<int, 3> a{1, 2, 3};
+  EXPECT_EQ (a.erase (a.begin (), a.end ()), a.end ());
+  EXPECT_TRUE (a.empty ());
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseRangeFirstTwo) {
+  peejay::arrayvec<int, 3> b{1, 2, 3};
+  auto const first = b.begin ();
+  EXPECT_EQ (b.erase (first, first + 2), first);
+  EXPECT_THAT (b, testing::ElementsAre (3));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseRangeFirstOnly) {
+  peejay::arrayvec<int, 3> b{1, 2, 3};
+  auto const first = b.begin ();
+  EXPECT_EQ (b.erase (first, first + 1), first);
+  EXPECT_THAT (b, testing::ElementsAre (2, 3));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, EraseRangeSecondToEnd) {
+  peejay::arrayvec<int, 3> b{1, 2, 3};
+  auto const first = b.begin () + 1;
+  EXPECT_EQ (b.erase (first, b.end ()), first);
+  EXPECT_THAT (b, testing::ElementsAre (1));
 }

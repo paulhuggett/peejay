@@ -245,6 +245,26 @@ public:
     std::destroy_at (data () + size_);
   }
 
+  /// Erases the specified element from the container. Invalidates iterators
+  /// and references at or after the point of the erase, including the end()
+  /// iterator.
+  ///
+  /// \p pos Iterator to the element to remove.
+  /// \returns Iterator following the last removed element. If \p pos refers
+  ///   to the last element, then the end() iterator is returned.
+  iterator erase (const_iterator pos);
+
+  /// Erases the elements in the range [\p first, \p last). Invalidates
+  /// iterators and references at or after the point of the erase, including
+  /// the end() iterator.
+  ///
+  /// \p first  The first of the range of elements to remove.
+  /// \p last  The last of the range of elements to remove.
+  /// \returns Iterator following the last removed element. If last == end()
+  ///   prior to removal, then the updated end() iterator is returned. If
+  ///   [\p first, \p last) is an empty range, then last is returned.
+  iterator erase (const_iterator first, const_iterator last);
+
   ///@}
 
 private:
@@ -417,6 +437,46 @@ void arrayvec<T, Size>::append (InputIterator first, InputIterator last) {
   for (; first != last; ++first) {
     this->emplace_back (*first);
   }
+}
+
+/// Erases the specified element from the container. Invalidates iterators
+/// and references at or after the point of the erase, including the end()
+/// iterator.
+///
+/// \p pos Iterator to the element to remove.
+/// \returns Iterator following the last removed element. If \p pos refers
+///   to the last element, then the end() iterator is returned.
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
+  assert (pos >= begin () && pos <= end () &&
+          "Iterator argument to erase() is out of range");
+  auto r = iterator{data () + (pos - data ())};
+  std::destroy_at (r);
+  std::move (r + 1, end (), r);
+  --size_;
+  return r;
+}
+/// Erases the elements in the range [\p first, \p last). Invalidates
+/// iterators and references at or after the point of the erase, including
+/// the end() iterator.
+///
+/// \p first  The first of the range of elements to remove.
+/// \p last  The last of the range of elements to remove.
+/// \returns Iterator following the last removed element. If last == end()
+///   prior to removal, then the updated end() iterator is returned. If
+///   [\p first, \p last) is an empty range, then last is returned.
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
+    -> iterator {
+  assert (first >= begin () && first <= last && last <= cend () &&
+          "Iterator range to erase() is invalid");
+  auto *const p = data () + (first - begin ());
+  //  auto n = std::distance (first, last);
+  auto new_end = std::move (const_iterator{p + (last - first)}, cend (), p);
+  std::for_each (new_end, end (), [] (value_type &v) { std::destroy_at (&v); });
+  size_ -= last - first;
+
+  return iterator{p};
 }
 
 template <typename Container>
