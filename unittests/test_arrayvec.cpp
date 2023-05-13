@@ -490,12 +490,14 @@ TEST (ArrayVec, EraseRangeSecondToEnd) {
 enum class action { added, deleted, moved, copied };
 
 static std::ostream &operator<< (std::ostream &os, action a) {
+  char const * str = "";
   switch (a) {
-  case action::added: return os << "added";
-  case action::deleted: return os << "deleted";
-  case action::moved: return os << "moved";
-  case action::copied: return os << "copied";
+  case action::added: str = "added"; break;
+  case action::deleted: str = "deleted"; break;
+  case action::moved: str = "moved"; break;
+  case action::copied: str = "copied"; break;
   }
+  return os << str;
 }
 
 struct tracker {
