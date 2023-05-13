@@ -162,27 +162,27 @@ public:
     return data ();
   }
   [[nodiscard]] constexpr iterator begin () noexcept { return data (); }
-  const_iterator cbegin () noexcept { return data (); }
+  const_iterator cbegin () const noexcept { return data (); }
   /// Returns a reverse iterator to the first element of the reversed
   /// container. It corresponds to the last element of the non-reversed
   /// container.
   reverse_iterator rbegin () noexcept { return reverse_iterator{this->end ()}; }
-  const_reverse_iterator rbegin () const noexcept {
-    return const_reverse_iterator{this->end ()};
-  }
-  const_reverse_iterator rcbegin () noexcept {
+  const_reverse_iterator rbegin () const noexcept { return rcbegin (); }
+  const_reverse_iterator rcbegin () const noexcept {
     return const_reverse_iterator{this->end ()};
   }
 
   /// Returns an iterator to the end of the container.
-  const_iterator end () const noexcept { return begin () + size_; }
-  iterator end () noexcept { return begin () + size_; }
-  const_iterator cend () noexcept { return begin () + size_; }
-  reverse_iterator rend () noexcept { return reverse_iterator{this->begin ()}; }
-  const_reverse_iterator rend () const noexcept {
-    return const_reverse_iterator{this->begin ()};
+  iterator end () noexcept {
+    return begin () + std::min (size_, data_.size ());
   }
-  const_reverse_iterator rcend () noexcept {
+  const_iterator end () const noexcept { return cend (); }
+  const_iterator cend () const noexcept {
+    return begin () + std::min (size_, data_.size ());
+  }
+  reverse_iterator rend () noexcept { return reverse_iterator{this->begin ()}; }
+  const_reverse_iterator rend () const noexcept { return rcend (); }
+  const_reverse_iterator rcend () const noexcept {
     return const_reverse_iterator{this->begin ()};
   }
   ///@}
