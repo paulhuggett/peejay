@@ -719,23 +719,21 @@ protected:
 class token_consumer {
 public:
   constexpr token_consumer () noexcept = default;
-  explicit constexpr token_consumer (char8 const *text) noexcept
+  explicit constexpr token_consumer (u8string_view text) noexcept
       : text_{text} {}
   enum class result { match, fail, more };
 
-  void set_text (char8 const *text) noexcept { text_ = text; }
+  void set_text (u8string_view text) noexcept { text_ = text; }
 
   result match (char32_t const code_point) noexcept {
-    assert (icubaby::is_code_point_start (*text_) &&
-            is_identifier_cp (static_cast<char32_t> (*text_)));
-    if (code_point != static_cast<char32_t> (*text_)) {
+    auto const c = text_.front ();
+    assert (icubaby::is_code_point_start (c) &&
+            is_identifier_cp (static_cast<char32_t> (c)));
+    if (code_point != static_cast<char32_t> (c)) {
       return result::fail;
     }
-    ++text_;
-    if (*text_ != '\0') {
-      return result::more;
-    }
-    return result::match;
+    text_.remove_prefix (1);
+    return text_.empty () ? result::match : result::more;
   }
 
   /// Checks if the given code point is valid in an identifier.
@@ -765,7 +763,7 @@ public:
   }
 
 private:
-  char8 const *text_ = nullptr;
+  u8string_view text_;
 };
 
 //*  _       _             *
@@ -788,7 +786,7 @@ public:
 
   /// \param text  The string to be matched.
   /// \param donefn  The function called when the source string is matched.
-  constexpr token_matcher (char8 const *text, DoneFunction donefn) noexcept
+  constexpr token_matcher (u8string_view text, DoneFunction donefn) noexcept
       : inherited (start_state), text_{text}, done_{donefn} {}
 
   std::pair<typename inherited::pointer, bool> consume (
@@ -1263,6 +1261,8 @@ bool number_matcher<Backend, Policies>::do_exponent_digit_state (
 template <typename Backend, typename Policies>
 bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
     parser_type &parser, char32_t const c) {
+  using namespace std::string_view_literals;
+
   assert (state_ == integer_initial_digit_state);
   assert (std::holds_alternative<uinteger_type> (acc_));
   if (c == char_set::digit_zero) {
@@ -1273,10 +1273,10 @@ bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
         static_cast<uinteger_type> (c) - char_set::digit_zero;
     state_ = integer_digit_state;
   } else if (c == char_set::latin_capital_letter_i) {
-    text_.set_text (u8"nfinity");
+    text_.set_text (u8"nfinity"sv);
     state_ = match_token_infinity_state;
   } else if (c == char_set::latin_capital_letter_n) {
-    text_.set_text (u8"aN");
+    text_.set_text (u8"aN"sv);
     state_ = match_token_nan_state;
   } else {
     this->set_error (parser, error::unrecognized_token);
@@ -2916,13 +2916,13 @@ auto parser<Backend, Policies>::input8 (InputIterator first, InputIterator last)
     return *this;
   }
 
-  auto code_point = char32_t{0};
+  std::array<char32_t, 1> code_point{{0}};
   while (first != last && !error_) {
-    auto *const it = utf_ (*first, &code_point);
-    assert (it == &code_point || it == &code_point + 1);
+    auto it = utf_ (*first, std::begin (code_point));
+    assert (it == std::begin (code_point) || it == std::end (code_point));
     ++first;
-    if (it != &code_point) {
-      this->consume_code_point (code_point);
+    if (it != std::begin (code_point)) {
+      this->consume_code_point (code_point[0]);
       if (!error_) {
         this->advance_column ();
       }
