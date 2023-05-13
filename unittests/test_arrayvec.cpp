@@ -486,3 +486,220 @@ TEST (ArrayVec, EraseRangeSecondToEnd) {
   EXPECT_EQ (b.erase (first, b.end ()), first);
   EXPECT_THAT (b, testing::ElementsAre (1));
 }
+
+enum class action { added, deleted, moved, copied };
+
+static std::ostream &operator<< (std::ostream &os, action a) {
+  switch (a) {
+  case action::added: return os << "added";
+  case action::deleted: return os << "deleted";
+  case action::moved: return os << "moved";
+  case action::copied: return os << "copied";
+  }
+}
+
+struct tracker {
+  std::vector<std::tuple<int, int, action>> actions;
+};
+
+class trackee {
+public:
+  trackee (tracker *const t, int v) : t_{t}, v_{v} {
+    t_->actions.emplace_back (v_, 0, action::added);
+  }
+  trackee (trackee const &rhs) : t_{rhs.t_}, v_{rhs.v_} {
+    t_->actions.emplace_back (v_, rhs.v_, action::copied);
+  }
+  trackee (trackee &&rhs) noexcept : t_{rhs.t_}, v_{rhs.v_} {
+    t_->actions.emplace_back (v_, rhs.v_, action::moved);
+    if (rhs.v_ > 0) {
+      rhs.v_ = -rhs.v_;
+    }
+  }
+
+  ~trackee () noexcept { t_->actions.emplace_back (v_, 0, action::deleted); }
+
+  trackee &operator= (trackee const &rhs) {
+    if (this != &rhs) {
+      t_->actions.emplace_back (v_, rhs.v_, action::copied);
+      t_ = rhs.t_;
+      v_ = rhs.v_;
+    }
+    return *this;
+  }
+  trackee &operator= (trackee &&rhs) noexcept {
+    t_->actions.emplace_back (v_, rhs.v_, action::moved);
+    t_ = rhs.t_;
+    v_ = rhs.v_;
+    if (rhs.v_ > 0) {
+      rhs.v_ = -rhs.v_;
+    }
+    return *this;
+  }
+
+  constexpr int get () const noexcept { return v_; }
+  constexpr tracker const *owner () const noexcept { return t_; }
+
+private:
+  tracker *t_;
+  int v_;
+};
+
+constexpr bool operator== (trackee const &lhs, trackee const &rhs) {
+  return lhs.owner () == rhs.owner () && lhs.get () == rhs.get ();
+}
+constexpr bool operator== (trackee const &lhs, int rhs) {
+  return lhs.get () == rhs;
+}
+constexpr bool operator== (int lhs, trackee const &rhs) {
+  return lhs == rhs.get ();
+}
+constexpr bool operator!= (trackee const &lhs, trackee const &rhs) {
+  return !operator== (lhs, rhs);
+}
+constexpr bool operator!= (trackee const &lhs, int rhs) {
+  return !operator== (lhs, rhs);
+}
+constexpr bool operator!= (int lhs, trackee const &rhs) {
+  return !operator== (lhs, rhs);
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedCopyInsert) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v{trackee{&t, 1}, trackee{&t, 2},
+                                 trackee{&t, 3}};
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (1, 0, action::added),
+                                     std::make_tuple (2, 0, action::added),
+                                     std::make_tuple (3, 0, action::added),
+                                     std::make_tuple (1, 1, action::copied),
+                                     std::make_tuple (2, 2, action::copied),
+                                     std::make_tuple (3, 3, action::copied),
+                                     std::make_tuple (3, 0, action::deleted),
+                                     std::make_tuple (2, 0, action::deleted),
+                                     std::make_tuple (1, 0, action::deleted)));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedMoveInsert) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (1, 0, action::added),
+                                     std::make_tuple (2, 0, action::added),
+                                     std::make_tuple (3, 0, action::added)));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedEraseSinglePos) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (1, 0, action::added),
+                                     std::make_tuple (2, 0, action::added),
+                                     std::make_tuple (3, 0, action::added)));
+  t.actions.clear ();
+
+  // Remove the first element.
+  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  EXPECT_THAT (v, testing::ElementsAre (2, 3));
+  EXPECT_THAT (
+      t.actions,
+      testing::ElementsAre (
+          std::make_tuple (1, 2, action::moved),    // 2 moved to replace 1
+          std::make_tuple (-2, 3, action::moved),   // 3 moved to replace 2
+          std::make_tuple (-3, 0, action::deleted)  // original 3 deleted
+          ));
+  t.actions.clear ();
+
+  // Remove the first element.
+  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  EXPECT_THAT (v, testing::ElementsAre (3));
+  EXPECT_THAT (
+      t.actions,
+      testing::ElementsAre (
+          std::make_tuple (2, 3, action::moved),    // 3 moved to replace 2
+          std::make_tuple (-3, 0, action::deleted)  // original 3 deleted
+          ));
+  t.actions.clear ();
+
+  // Remove the single remaining element.
+  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  EXPECT_TRUE (v.empty ());
+  EXPECT_THAT (t.actions, testing::ElementsAre (std::make_tuple (
+                              3, 0, action::deleted)  // 3 deleted
+                                                ));
+  t.actions.clear ();
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedEraseRangeAll) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  t.actions.clear ();
+
+  EXPECT_EQ (v.erase (v.begin (), v.end ()), v.end ());
+  EXPECT_TRUE (v.empty ());
+
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (1, 0, action::deleted),
+                                     std::make_tuple (2, 0, action::deleted),
+                                     std::make_tuple (3, 0, action::deleted)));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedEraseRangeFirstTwo) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  t.actions.clear ();
+
+  auto const first = v.begin ();
+  EXPECT_EQ (v.erase (first, first + 2), first);
+  EXPECT_THAT (v, testing::ElementsAre (3));
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (1, 3, action::moved),
+                                     std::make_tuple (2, 0, action::deleted),
+                                     std::make_tuple (-3, 0, action::deleted)));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedEraseRangeFirstOnly) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  t.actions.clear ();
+
+  auto const first = v.begin ();
+  EXPECT_EQ (v.erase (first, first + 1), first);
+  EXPECT_THAT (v, testing::ElementsAre (2, 3));
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (1, 2, action::moved),
+                                     std::make_tuple (-2, 3, action::moved),
+                                     std::make_tuple (-3, 0, action::deleted)));
+}
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedEraseRangeSecondToEnd) {
+  tracker t;
+  peejay::arrayvec<trackee, 3> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  t.actions.clear ();
+
+  auto const first = v.begin () + 1;
+  EXPECT_EQ (v.erase (first, v.end ()), first);
+  EXPECT_THAT (v, testing::ElementsAre (1));
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (2, 0, action::deleted),
+                                     std::make_tuple (3, 0, action::deleted)));
+}

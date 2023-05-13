@@ -450,9 +450,10 @@ template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
   assert (pos >= begin () && pos <= end () &&
           "Iterator argument to erase() is out of range");
-  auto r = iterator{data () + (pos - data ())};
-  std::destroy_at (r);
+  auto *const d = data ();
+  auto r = iterator{d + (pos - d)};
   std::move (r + 1, end (), r);
+  std::destroy_at (d + size_ - 1U);
   --size_;
   return r;
 }
@@ -471,11 +472,9 @@ auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
   assert (first >= begin () && first <= last && last <= cend () &&
           "Iterator range to erase() is invalid");
   auto *const p = data () + (first - begin ());
-  //  auto n = std::distance (first, last);
-  auto new_end = std::move (const_iterator{p + (last - first)}, cend (), p);
+  auto new_end = std::move (iterator{p + (last - first)}, end (), p);
   std::for_each (new_end, end (), [] (value_type &v) { std::destroy_at (&v); });
-  size_ -= last - first;
-
+  size_ -= static_cast<std::size_t> (last - first);
   return iterator{p};
 }
 
