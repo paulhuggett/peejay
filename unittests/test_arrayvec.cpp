@@ -528,7 +528,13 @@ public:
     }
   }
 
-  ~trackee () noexcept { t_->actions.emplace_back (v_, 0, action::deleted); }
+  ~trackee () noexcept {
+    try {
+      t_->actions.emplace_back (v_, 0, action::deleted);
+    } catch (...) {
+      std::abort ();
+    }
+  }
 
   trackee &operator= (trackee const &rhs) {
     if (this != &rhs) {
