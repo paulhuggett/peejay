@@ -607,7 +607,8 @@ constexpr std::optional<uint_least16_t> digit_offset (
   return std::nullopt;
 }
 
-constexpr grammar_rule code_point_grammar_rule (char32_t const code_point) noexcept {
+PEEJAY_CONSTEXPR_CXX20 grammar_rule
+code_point_grammar_rule (char32_t const code_point) noexcept {
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const end = std::end (code_point_runs);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)

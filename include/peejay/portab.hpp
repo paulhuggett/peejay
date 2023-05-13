@@ -27,6 +27,12 @@
 #define PEEJAY_CXX20 (0)
 #endif
 
+#if PEEJAY_CXX20
+#define PEEJAY_CONSTEXPR_CXX20 constexpr
+#else
+#define PEEJAY_CONSTEXPR_CXX20 inline
+#endif
+
 #ifdef __has_include
 #if __has_include(<version>)
 #include <version>
