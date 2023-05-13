@@ -462,28 +462,32 @@ TEST (ArrayVec, EraseSingleFinalElement) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeAll) {
   peejay::arrayvec<int, 3> a{1, 2, 3};
-  EXPECT_EQ (a.erase (a.begin (), a.end ()), a.end ());
+  auto last = a.erase (a.begin (), a.end ());
+  EXPECT_EQ (last, a.end ());
   EXPECT_TRUE (a.empty ());
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeFirstTwo) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
   auto const first = b.begin ();
-  EXPECT_EQ (b.erase (first, first + 2), first);
+  auto last = b.erase (first, first + 2);
+  EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (3));
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeFirstOnly) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
   auto const first = b.begin ();
-  EXPECT_EQ (b.erase (first, first + 1), first);
+  auto const last = b.erase (first, first + 1);
+  EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (2, 3));
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeSecondToEnd) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
   auto const first = b.begin () + 1;
-  EXPECT_EQ (b.erase (first, b.end ()), first);
+  auto const last = b.erase (first, b.end ());
+  EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (1));
 }
 
