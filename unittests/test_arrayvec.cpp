@@ -440,29 +440,34 @@ TEST (ArrayVec, Lt) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseSinglePos) {
   peejay::arrayvec<int, 3> v{1, 2, 3};
-  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  auto const e1 = v.erase (v.cbegin ());
+  EXPECT_EQ (e1, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (2, 3));
-  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  auto const e2 = v.erase (v.cbegin ());
+  EXPECT_EQ (e2, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (3));
-  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  auto const e3 = v.erase (v.cbegin ());
+  EXPECT_EQ (e3, v.begin ());
   EXPECT_TRUE (v.empty ());
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseSingleSecondElement) {
   peejay::arrayvec<int, 3> v{1, 2, 3};
-  EXPECT_EQ (v.erase (v.begin () + 1), v.begin () + 1);
+  auto const last = v.erase (v.begin () + 1);
+  EXPECT_EQ (last, v.begin () + 1);
   EXPECT_THAT (v, testing::ElementsAre (1, 3));
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseSingleFinalElement) {
   peejay::arrayvec<int, 3> v{1, 2, 3};
-  EXPECT_EQ (v.erase (v.begin () + 2), v.begin () + 2);
+  auto const last = v.erase (v.begin () + 2);
+  EXPECT_EQ (last, v.begin () + 2);
   EXPECT_THAT (v, testing::ElementsAre (1, 2));
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeAll) {
   peejay::arrayvec<int, 3> a{1, 2, 3};
-  auto last = a.erase (a.begin (), a.end ());
+  auto const last = a.erase (a.begin (), a.end ());
   EXPECT_EQ (last, a.end ());
   EXPECT_TRUE (a.empty ());
 }
@@ -470,7 +475,7 @@ TEST (ArrayVec, EraseRangeAll) {
 TEST (ArrayVec, EraseRangeFirstTwo) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
   auto const first = b.begin ();
-  auto last = b.erase (first, first + 2);
+  auto const last = b.erase (first, first + 2);
   EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (3));
 }
@@ -612,7 +617,8 @@ TEST (ArrayVec, TrackedEraseSinglePos) {
   t.actions.clear ();
 
   // Remove the first element.
-  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  auto last1 = v.erase (v.cbegin ());
+  EXPECT_EQ (last1, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (2, 3));
   EXPECT_THAT (
       t.actions,
@@ -624,7 +630,8 @@ TEST (ArrayVec, TrackedEraseSinglePos) {
   t.actions.clear ();
 
   // Remove the first element.
-  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  auto last2 = v.erase (v.cbegin ());
+  EXPECT_EQ (last2, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (3));
   EXPECT_THAT (
       t.actions,
@@ -635,7 +642,8 @@ TEST (ArrayVec, TrackedEraseSinglePos) {
   t.actions.clear ();
 
   // Remove the single remaining element.
-  EXPECT_EQ (v.erase (v.cbegin ()), v.begin ());
+  auto last3 = v.erase (v.cbegin ());
+  EXPECT_EQ (last3, v.begin ());
   EXPECT_TRUE (v.empty ());
   EXPECT_THAT (t.actions, testing::ElementsAre (std::make_tuple (
                               3, 0, action::deleted)  // 3 deleted
@@ -651,7 +659,8 @@ TEST (ArrayVec, TrackedEraseRangeAll) {
   v.emplace_back (&t, 3);
   t.actions.clear ();
 
-  EXPECT_EQ (v.erase (v.begin (), v.end ()), v.end ());
+  auto last = v.erase (v.begin (), v.end ());
+  EXPECT_EQ (last, v.end ());
   EXPECT_TRUE (v.empty ());
 
   EXPECT_THAT (t.actions,
@@ -669,7 +678,8 @@ TEST (ArrayVec, TrackedEraseRangeFirstTwo) {
   t.actions.clear ();
 
   auto const first = v.begin ();
-  EXPECT_EQ (v.erase (first, first + 2), first);
+  auto const last = v.erase (first, first + 2);
+  EXPECT_EQ (last, first);
   EXPECT_THAT (v, testing::ElementsAre (3));
   EXPECT_THAT (t.actions,
                testing::ElementsAre (std::make_tuple (1, 3, action::moved),
@@ -686,7 +696,8 @@ TEST (ArrayVec, TrackedEraseRangeFirstOnly) {
   t.actions.clear ();
 
   auto const first = v.begin ();
-  EXPECT_EQ (v.erase (first, first + 1), first);
+  auto const last = v.erase (first, first + 1);
+  EXPECT_EQ (last, first);
   EXPECT_THAT (v, testing::ElementsAre (2, 3));
   EXPECT_THAT (t.actions,
                testing::ElementsAre (std::make_tuple (1, 2, action::moved),
@@ -703,7 +714,8 @@ TEST (ArrayVec, TrackedEraseRangeSecondToEnd) {
   t.actions.clear ();
 
   auto const first = v.begin () + 1;
-  EXPECT_EQ (v.erase (first, v.end ()), first);
+  auto const last = v.erase (first, v.end ());
+  EXPECT_EQ (last, first);
   EXPECT_THAT (v, testing::ElementsAre (1));
   EXPECT_THAT (t.actions,
                testing::ElementsAre (std::make_tuple (2, 0, action::deleted),
