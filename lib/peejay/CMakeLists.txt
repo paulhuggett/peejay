@@ -29,7 +29,6 @@ add_library (peejay STATIC
   "${include_dir}/peejay/stack.hpp"
   "${include_dir}/peejay/to_address.hpp"
   emit.cpp
-  json_error.cpp
   "${CPRUN_HPP}"
 )
 target_include_directories (peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>)

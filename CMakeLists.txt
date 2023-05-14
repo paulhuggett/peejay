@@ -55,6 +55,7 @@ function (setup_target target)
     -Wno-exit-time-destructors
     -Wno-padded
     -Wno-undef
+    -Wno-weak-vtables
   )
   set (gcc_options
     -Wall
