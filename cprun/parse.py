@@ -214,25 +214,23 @@ def emit_header(entries:Sequence[OutputRow], include_guard: str) -> None:
     print('''
 #include <array>
 #include <cstdint>
-#include <ostream>
 
 namespace peejay {
 
 enum class grammar_rule {''')
     print(',\n'.join(['  {0} = {1}'.format(x.name, x.value) for x in GrammarRule]))
     print('''}};
-
-std::ostream& operator<< (std::ostream& os, grammar_rule rule);
-
 struct cprun {{
-  uint_least32_t code_point: {0};
-  uint_least32_t length: {1};
-  uint_least32_t rule: {2};
-}};
-'''.format(CODE_POINT_BITS, RUN_LENGTH_BITS, RULE_BITS))
+  std::uint_least32_t code_point: {0};
+  std::uint_least32_t length: {1};
+  std::uint_least32_t rule: {2};
+}};'''.format(CODE_POINT_BITS, RUN_LENGTH_BITS, RULE_BITS))
     assert CODE_POINT_BITS + RUN_LENGTH_BITS + RULE_BITS <= 32
 
-    print('extern std::array<cprun, {0}> const code_point_runs;'.format(len(entries)))
+    print('inline std::array<cprun, {0}> const code_point_runs = {{{{'.format(len(entries)))
+    for x in entries:
+        print('  {0}'.format(x.as_str(db)))
+    print('}};')
     print('\n} // end namespace peejay')
     print('#endif // {0}'.format (include_guard))
 
@@ -246,23 +244,7 @@ def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Pa
                         file.
     :result: None
     """
-
-    print('// This file was auto-generated. DO NOT EDIT!')
-    print('#include "{0}"'.format(header_file))
-    print('namespace peejay {')
-    print('''
-std::ostream& operator<< (std::ostream& os, grammar_rule rule) {
-  switch (rule) {''')
-    print('\n'.join(['  case grammar_rule::{0}: os << "{0}"; break;'.format(x.name) for x in GrammarRule ]))
-    print('''  }
-  return os;
-}
-''')
-    print('std::array<cprun, {0}> const code_point_runs = {{{{'.format(len(entries)))
-    for x in entries:
-        print('  {0}'.format(x.as_str(db)))
-    print('}};')
-    print ('} // end namespace peejay')
+    pass
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog = 'ProgramName',

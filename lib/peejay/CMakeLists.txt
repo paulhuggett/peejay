@@ -16,7 +16,6 @@
 set (include_dir "${PEEJAY_ROOT}/include")
 
 set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
-set (CPRUN_CPP ${CMAKE_CURRENT_SOURCE_DIR}/cprun.cpp)
 
 add_library (peejay STATIC
   "${include_dir}/peejay/arrayvec.hpp"
@@ -32,7 +31,6 @@ add_library (peejay STATIC
   emit.cpp
   json_error.cpp
   "${CPRUN_HPP}"
-  "${CPRUN_CPP}"
 )
 target_include_directories (peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>)
 
@@ -47,14 +45,13 @@ find_package(Python3 3.10)
 if (NOT Python3_FOUND)
   message(WARNING "Python 3.10 was not found: cprun generation is disabled")
 else()
-  # Run the gencprun utility to create the cprun.[ch]pp files. Uncomment the
-  # third COMMAND to see the contents of cprun.hpp in the build transcript.
+  # Run the gencprun utility to create cprun.hpp. Uncomment the
+  # second COMMAND to see the contents of the file in the build transcript.
   add_custom_command (
-    COMMENT "Generating cprun source/header file '${CPRUN_HPP}' '${CPRUN_CPP}'"
+    COMMENT "Generating cprun header file '${CPRUN_HPP}'"
     COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --hpp --include-guard=PEEJAY_CPRUN_HPP > ${CPRUN_HPP}
-    COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --cpp --header-file=peejay/cprun.hpp > ${CPRUN_CPP}
     #COMMAND ${Python3_EXECUTABLE} -c "with open('${CPRUN_HPP}') as f: print(f.read())"
-    OUTPUT ${CPRUN_HPP} ${CPRUN_CPP}
+    OUTPUT ${CPRUN_HPP}
     VERBATIM
   )
 endif ()
