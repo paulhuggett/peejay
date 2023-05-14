@@ -440,12 +440,15 @@ TEST (ArrayVec, Lt) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseSinglePos) {
   peejay::arrayvec<int, 3> v{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const e1 = v.erase (v.cbegin ());
   EXPECT_EQ (e1, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (2, 3));
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const e2 = v.erase (v.cbegin ());
   EXPECT_EQ (e2, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (3));
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const e3 = v.erase (v.cbegin ());
   EXPECT_EQ (e3, v.begin ());
   EXPECT_TRUE (v.empty ());
@@ -453,6 +456,7 @@ TEST (ArrayVec, EraseSinglePos) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseSingleSecondElement) {
   peejay::arrayvec<int, 3> v{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = v.erase (v.begin () + 1);
   EXPECT_EQ (last, v.begin () + 1);
   EXPECT_THAT (v, testing::ElementsAre (1, 3));
@@ -460,6 +464,7 @@ TEST (ArrayVec, EraseSingleSecondElement) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseSingleFinalElement) {
   peejay::arrayvec<int, 3> v{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = v.erase (v.begin () + 2);
   EXPECT_EQ (last, v.begin () + 2);
   EXPECT_THAT (v, testing::ElementsAre (1, 2));
@@ -467,6 +472,7 @@ TEST (ArrayVec, EraseSingleFinalElement) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeAll) {
   peejay::arrayvec<int, 3> a{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = a.erase (a.begin (), a.end ());
   EXPECT_EQ (last, a.end ());
   EXPECT_TRUE (a.empty ());
@@ -474,7 +480,9 @@ TEST (ArrayVec, EraseRangeAll) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeFirstTwo) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const first = b.begin ();
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = b.erase (first, first + 2);
   EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (3));
@@ -482,7 +490,9 @@ TEST (ArrayVec, EraseRangeFirstTwo) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeFirstOnly) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const first = b.begin ();
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = b.erase (first, first + 1);
   EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (2, 3));
@@ -490,7 +500,9 @@ TEST (ArrayVec, EraseRangeFirstOnly) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, EraseRangeSecondToEnd) {
   peejay::arrayvec<int, 3> b{1, 2, 3};
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const first = b.begin () + 1;
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = b.erase (first, b.end ());
   EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (1));
@@ -623,6 +635,7 @@ TEST (ArrayVec, TrackedEraseSinglePos) {
   t.actions.clear ();
 
   // Remove the first element.
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto last1 = v.erase (v.cbegin ());
   EXPECT_EQ (last1, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (2, 3));
@@ -636,6 +649,7 @@ TEST (ArrayVec, TrackedEraseSinglePos) {
   t.actions.clear ();
 
   // Remove the first element.
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto last2 = v.erase (v.cbegin ());
   EXPECT_EQ (last2, v.begin ());
   EXPECT_THAT (v, testing::ElementsAre (3));
@@ -648,6 +662,7 @@ TEST (ArrayVec, TrackedEraseSinglePos) {
   t.actions.clear ();
 
   // Remove the single remaining element.
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto last3 = v.erase (v.cbegin ());
   EXPECT_EQ (last3, v.begin ());
   EXPECT_TRUE (v.empty ());
@@ -665,6 +680,7 @@ TEST (ArrayVec, TrackedEraseRangeAll) {
   v.emplace_back (&t, 3);
   t.actions.clear ();
 
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto last = v.erase (v.begin (), v.end ());
   EXPECT_EQ (last, v.end ());
   EXPECT_TRUE (v.empty ());
@@ -683,7 +699,9 @@ TEST (ArrayVec, TrackedEraseRangeFirstTwo) {
   v.emplace_back (&t, 3);
   t.actions.clear ();
 
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const first = v.begin ();
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = v.erase (first, first + 2);
   EXPECT_EQ (last, first);
   EXPECT_THAT (v, testing::ElementsAre (3));
@@ -701,7 +719,9 @@ TEST (ArrayVec, TrackedEraseRangeFirstOnly) {
   v.emplace_back (&t, 3);
   t.actions.clear ();
 
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const first = v.begin ();
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = v.erase (first, first + 1);
   EXPECT_EQ (last, first);
   EXPECT_THAT (v, testing::ElementsAre (2, 3));
@@ -719,7 +739,9 @@ TEST (ArrayVec, TrackedEraseRangeSecondToEnd) {
   v.emplace_back (&t, 3);
   t.actions.clear ();
 
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const first = v.begin () + 1;
+  // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const last = v.erase (first, v.end ());
   EXPECT_EQ (last, first);
   EXPECT_THAT (v, testing::ElementsAre (1));
