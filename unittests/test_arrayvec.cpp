@@ -749,3 +749,43 @@ TEST (ArrayVec, TrackedEraseRangeSecondToEnd) {
                testing::ElementsAre (std::make_tuple (2, 0, action::deleted),
                                      std::make_tuple (3, 0, action::deleted)));
 }
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedSizeAfterResizeSame) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  t.actions.clear ();
+
+  v.resize (3, trackee (&t, 4));
+  EXPECT_EQ (3U, v.size ());
+  EXPECT_EQ (8U, v.capacity ());
+  EXPECT_EQ (std::distance (std::begin (v), std::end (v)), 3);
+  EXPECT_FALSE (v.empty ());
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (4, 0, action::added),
+                                     std::make_tuple (4, 0, action::deleted)));
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedResizeLarger) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+  t.actions.clear ();
+
+  v.resize (5, trackee (&t, 4));
+  EXPECT_EQ (5U, v.size ());
+  EXPECT_EQ (8U, v.capacity ());
+  EXPECT_EQ (std::distance (std::begin (v), std::end (v)), 5);
+  EXPECT_FALSE (v.empty ());
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (4, 0, action::added),
+                                     std::make_tuple (4, 4, action::copied),
+                                     std::make_tuple (4, 4, action::copied),
+                                     std::make_tuple (4, 0, action::deleted)));
+}

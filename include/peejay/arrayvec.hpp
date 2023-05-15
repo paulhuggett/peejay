@@ -25,6 +25,7 @@
 #include <type_traits>
 
 #include "peejay/portab.hpp"
+#include "peejay/to_address.hpp"
 
 #if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
 #include <bit>
@@ -153,6 +154,16 @@ public:
   ///               than or equal to Size.
   void resize (size_type count);
 
+  /// Resizes the container to contain count elements. If the current size is
+  /// greater than \p count, the container is reduced to its first \p count
+  /// elements. If the current size is less than \p count, additional
+  /// copies of \p value are appended.
+  ///
+  /// \param count  The new number of elements in the container. Must be less
+  ///               than or equal to Size.
+  /// \param value  The value with which to initialize the new elements.
+  void resize (size_type count, value_type const &value);
+
   ///@}
 
   /// \name Iterators
@@ -225,7 +236,6 @@ public:
   template <typename InputIterator>
   PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
   void assign (InputIterator first, InputIterator last);
-
   /// Replaces the contents with the elements from the initializer list \p ilist
   ///
   /// \p ilist Initializer list from which elements are to be copied.
@@ -255,7 +265,6 @@ public:
   /// \returns Iterator following the last removed element. If \p pos refers
   ///   to the last element, then the end() iterator is returned.
   iterator erase (const_iterator pos);
-
   /// Erases the elements in the range [\p first, \p last). Invalidates
   /// iterators and references at or after the point of the erase, including
   /// the end() iterator.
@@ -272,6 +281,9 @@ public:
 private:
   template <bool IsMove, typename OtherVec>
   void operator_assign (OtherVec &other) noexcept;
+
+  template <typename... Args>
+  void resize_impl (size_type count, Args &&...args);
 
   /// The actual number of elements for which this buffer is sized.
   /// Note that this may be less than Size.
@@ -398,18 +410,29 @@ void arrayvec<T, Size>::clear () noexcept {
 // resize
 // ~~~~~~
 template <typename T, std::size_t Size>
-void arrayvec<T, Size>::resize (size_type count) {
+template <typename... Args>
+void arrayvec<T, Size>::resize_impl (size_type count, Args &&...args) {
   assert (count <= Size);
+  count = (std::min) (count, Size);
   if (count < size_) {
     std::for_each (begin () + count, end (),
                    [] (T &t) { std::destroy_at (&t); });
-    size_ = count;
-  } else if (count > size_) {
+  } else {
     for (auto it = end (), e = begin () + count; it != e; ++it) {
-      construct_at (&*it);
+      construct_at (to_address (it), std::forward<Args> (args)...);
     }
-    size_ = count;
   }
+  size_ = count;
+}
+
+template <typename T, std::size_t Size>
+void arrayvec<T, Size>::resize (size_type count) {
+  return resize_impl (count);
+}
+
+template <typename T, std::size_t Size>
+void arrayvec<T, Size>::resize (size_type count, value_type const &value) {
+  return resize_impl (count, value);
 }
 
 // assign
