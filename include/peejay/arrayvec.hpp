@@ -174,11 +174,13 @@ public:
 
   /// Returns an iterator to the end of the container.
   iterator end () noexcept {
-    return begin () + std::min (size_, data_.size ());
+    // (Curious parentheses to avoid a clash with MSVC min macro.)
+    return begin () + (std::min) (size_, data_.size ());
   }
   const_iterator end () const noexcept { return cend (); }
   const_iterator cend () const noexcept {
-    return begin () + std::min (size_, data_.size ());
+    // (Curious parentheses to avoid a clash with MSVC min macro.)
+    return begin () + (std::min) (size_, data_.size ());
   }
   reverse_iterator rend () noexcept { return reverse_iterator{this->begin ()}; }
   const_reverse_iterator rend () const noexcept { return rcend (); }
