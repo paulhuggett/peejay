@@ -17,6 +17,7 @@
 #define PEEJAY_JSON_HPP
 
 #include "peejay/arrayvec.hpp"
+#include "peejay/cbii.hpp"
 #include "peejay/cprun.hpp"
 #include "peejay/json_error.hpp"
 #include "peejay/portab.hpp"
