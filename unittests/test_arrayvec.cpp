@@ -600,7 +600,7 @@ constexpr bool operator!= (int lhs, trackee const &rhs) {
   return !operator== (lhs, rhs);
 }
 
-std::ostream &operator<< (std::ostream &os, trackee const &t) {
+static std::ostream &operator<< (std::ostream &os, trackee const &t) {
   return os << t.get ();
 }
 
