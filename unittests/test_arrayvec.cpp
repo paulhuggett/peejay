@@ -530,6 +530,13 @@ public:
   trackee (tracker *const t, int v) : t_{t}, v_{v} {
     t_->actions.emplace_back (v_, 0, action::added);
   }
+  trackee (tracker *const t, int v, std::nullopt_t) noexcept : t_{t}, v_{v} {
+    try {
+      t_->actions.emplace_back (v_, 0, action::added);
+    } catch (...) {
+      std::abort ();
+    }
+  }
   trackee (trackee const &rhs) : t_{rhs.t_}, v_{rhs.v_} {
     t_->actions.emplace_back (v_, rhs.v_, action::copied);
   }
@@ -591,6 +598,10 @@ constexpr bool operator!= (trackee const &lhs, int rhs) {
 }
 constexpr bool operator!= (int lhs, trackee const &rhs) {
   return !operator== (lhs, rhs);
+}
+
+std::ostream &operator<< (std::ostream &os, trackee const &t) {
+  return os << t.get ();
 }
 
 // NOLINTNEXTLINE
@@ -789,3 +800,105 @@ TEST (ArrayVec, TrackedResizeLarger) {
                                      std::make_tuple (4, 4, action::copied),
                                      std::make_tuple (4, 0, action::deleted)));
 }
+
+TEST (ArrayVec, TrackedInsert1) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  trackee x{&t, 4};
+  t.actions.clear ();
+  v.insert (v.begin (), x);
+  EXPECT_EQ (4U, v.size ());
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (3, 3, action::moved),
+                                     std::make_tuple (-3, 2, action::moved),
+                                     std::make_tuple (-2, 1, action::moved),
+                                     std::make_tuple (-1, 4, action::copied)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 4), trackee (&t, 1),
+                                        trackee (&t, 2), trackee (&t, 3)));
+}
+TEST (ArrayVec, TrackedInsertRValue) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  trackee x{&t, 4};
+  t.actions.clear ();
+  v.insert (v.begin (), std::move (x));
+  EXPECT_EQ (4U, v.size ());
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (3, 3, action::moved),
+                                     std::make_tuple (-3, 2, action::moved),
+                                     std::make_tuple (-2, 1, action::moved),
+                                     std::make_tuple (-1, 4, action::moved)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 4), trackee (&t, 1),
+                                        trackee (&t, 2), trackee (&t, 3)));
+}
+
+TEST (ArrayVec, TrackedEmplace1) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  t.actions.clear ();
+  // Uses a ctor that could throw.
+  v.emplace (v.begin (), &t, 4);
+  EXPECT_EQ (4U, v.size ());
+  EXPECT_THAT (
+      t.actions,
+      testing::ElementsAre (
+          std::make_tuple (3, 3, action::moved),
+          std::make_tuple (-3, 2, action::moved),
+          std::make_tuple (-2, 1, action::moved),
+          std::make_tuple (4, 0,
+                           action::added),  // construct the internal temporary
+          std::make_tuple (-1, 4,
+                           action::moved),  // move the temporary into place
+          std::make_tuple (-4, 0, action::deleted)  // destroy the temporary
+          ));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 4), trackee (&t, 1),
+                                        trackee (&t, 2), trackee (&t, 3)));
+}
+TEST (ArrayVec, TrackedEmplaceNoexcept) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  t.actions.clear ();
+  // Invoke a noexcept ctor.
+  v.emplace (v.begin (), &t, 4, std::nullopt);
+  EXPECT_EQ (4U, v.size ());
+  EXPECT_THAT (t.actions,
+               testing::ElementsAre (std::make_tuple (3, 3, action::moved),
+                                     std::make_tuple (-3, 2, action::moved),
+                                     std::make_tuple (-2, 1, action::moved),
+                                     std::make_tuple (-1, 0, action::deleted),
+                                     std::make_tuple (4, 0, action::added)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 4), trackee (&t, 1),
+                                        trackee (&t, 2), trackee (&t, 3)));
+}
+
+#if 0
+TEST (ArrayVec, TrackedInsert2) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  std::array<trackee, 2> x{{trackee(&t, 4), trackee{&t, 5}}};
+  v.insert (v.begin (), x.begin(), x.end ());
+  EXPECT_EQ (4U, v.size ());
+  EXPECT_THAT (v, testing::ElementsAre(trackee(&t, 4), trackee(&t, 5), trackee(&t, 1), trackee(&t, 2), trackee(&t, 3)));
+}
+
+#endif

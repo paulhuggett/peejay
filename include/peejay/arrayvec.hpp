@@ -257,6 +257,39 @@ public:
     std::destroy_at (data () + size_);
   }
 
+  /// Inserts \p value before \p pos.
+  ///
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param value  Element value to insert.
+  /// \returns An iterator pointing to the new element.
+  iterator insert (const_iterator pos, const_reference value);
+  /// Inserts \p value before \p pos.
+  ///
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param value  Element value to insert.
+  /// \returns An iterator pointing to the new element.
+  iterator insert (const_iterator pos, T &&value);
+
+  /// Inserts a new element into the container directly before pos.
+  ///
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param args Arguments to be forwarded to the element's constructor.
+  /// \returns An iterator pointing to the emplaced element.
+  template <typename... Args>
+  iterator emplace (const_iterator pos, Args &&...args);
+
+  // NOT YET IMPLEMENTED
+  // ~~~~~~~~~~~~~~~~~~~
+  // iterator insert (const_iterator pos, size_type count, T const & value);
+  // template <typename InputIterator>
+  // PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+  // iterator insert (const_iterator pos, InputIterator first, InputIterator
+  // last);
+  //
+  // iterator insert (const_iterator pos, std::initializer_list<T> ilist) {
+  //   return insert (pos, std::begin (ilist), std::end (ilist));
+  // }
+
   /// Erases the specified element from the container. Invalidates iterators
   /// and references at or after the point of the erase, including the end()
   /// iterator.
@@ -284,6 +317,8 @@ private:
 
   template <typename... Args>
   void resize_impl (size_type count, Args &&...args);
+
+  void move_range (iterator from_start, iterator from_end, iterator to);
 
   /// The actual number of elements for which this buffer is sized.
   /// Note that this may be less than Size.
@@ -464,13 +499,8 @@ void arrayvec<T, Size>::append (InputIterator first, InputIterator last) {
   }
 }
 
-/// Erases the specified element from the container. Invalidates iterators
-/// and references at or after the point of the erase, including the end()
-/// iterator.
-///
-/// \p pos Iterator to the element to remove.
-/// \returns Iterator following the last removed element. If \p pos refers
-///   to the last element, then the end() iterator is returned.
+// erase
+// ~~~~~
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
   assert (pos >= begin () && pos <= end () &&
@@ -482,15 +512,7 @@ auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
   --size_;
   return r;
 }
-/// Erases the elements in the range [\p first, \p last). Invalidates
-/// iterators and references at or after the point of the erase, including
-/// the end() iterator.
-///
-/// \p first  The first of the range of elements to remove.
-/// \p last  The last of the range of elements to remove.
-/// \returns Iterator following the last removed element. If last == end()
-///   prior to removal, then the updated end() iterator is returned. If
-///   [\p first, \p last) is an empty range, then last is returned.
+
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
     -> iterator {
@@ -501,6 +523,91 @@ auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
   std::for_each (new_end, end (), [] (value_type &v) { std::destroy_at (&v); });
   size_ -= static_cast<std::size_t> (last - first);
   return iterator{p};
+}
+
+// move range
+// ~~~~~~~~~~
+template <typename T, std::size_t Size>
+void arrayvec<T, Size>::move_range (iterator from_start, iterator from_end,
+                                    iterator to) {
+  auto last = end ();
+  difference_type const n = last - to;  // number to be moved.
+
+  iterator src = from_start + n;
+  iterator pos = last;
+  while (src < from_end) {
+    construct_at (to_address (pos++), std::move (*(src++)));
+  }
+
+  std::move_backward (from_start, from_start + n, last);
+}
+
+// insert
+// ~~~~~~
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
+    -> iterator {
+  assert (size () < Size && pos >= begin () && pos <= end ());
+
+  auto *const d = data ();
+  auto r = iterator{d + (pos - d)};
+  if (pos == end ()) {
+    push_back (value);
+    return r;
+  }
+  move_range (r, end (), r + 1);
+  *r = value;
+  size_ += 1;
+  return r;
+}
+
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
+  assert (size () < Size && pos >= begin () && pos <= end ());
+
+  auto *const d = data ();
+  auto r = iterator{d + (pos - d)};
+  if (pos == end ()) {
+    emplace_back (value);
+    return r;
+  }
+  move_range (r, end (), r + 1);
+  *r = std::move (value);
+  size_ += 1;
+  return r;
+}
+
+// emplace
+// ~~~~~~~
+template <typename T, std::size_t Size>
+template <typename... Args>
+auto arrayvec<T, Size>::emplace (const_iterator pos, Args &&...args)
+    -> iterator {
+  assert (size () < Size && pos >= begin () && pos <= end ());
+
+  auto *const d = data ();
+  auto const e = end ();
+  auto r = iterator{d + (pos - d)};
+  if (pos == e) {
+    emplace_back (std::forward<Args> (args)...);
+    return r;
+  }
+
+  move_range (r, e, r + 1);
+  if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
+    // After destroying the object at 'r', we can construct in-place.
+    auto *const p = to_address (r);
+    std::destroy_at (p);
+    construct_at (p, std::forward<Args> (args)...);
+  } else {
+    // Constructing the object might throw and the location is already occupied
+    // by an element so we first make a temporary instance then move-assign it
+    // to the required location.
+    T t{std::forward<Args> (args)...};
+    *r = std::move (t);
+  }
+  size_ += 1;
+  return r;
 }
 
 template <typename Container>
