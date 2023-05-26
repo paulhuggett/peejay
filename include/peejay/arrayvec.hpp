@@ -86,7 +86,7 @@ public:
   template <typename ForwardIterator>
   PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
   arrayvec (ForwardIterator first, ForwardIterator last);
-  arrayvec (size_type count, T const &value = T ());
+  arrayvec (size_type count, const_reference value = T ());
 
   arrayvec (arrayvec const &other)
       : arrayvec (std::begin (other), std::end (other)) {}
@@ -115,19 +115,31 @@ public:
   }
   constexpr T *data () noexcept { return pointer_cast<T *> (data_.data ()); }
 
-  constexpr T const &operator[] (size_type n) const noexcept {
+  constexpr const_reference operator[] (size_type n) const noexcept {
     assert (n < max_size ());
     return *(data () + n);
   }
-  constexpr T &operator[] (size_type n) noexcept {
+  constexpr reference operator[] (size_type n) noexcept {
     assert (n < max_size ());
     return *(data () + n);
   }
 
-  constexpr T &front () noexcept { return *data (); }
-  constexpr T const &front () const noexcept { return *data (); }
-  constexpr T &back () noexcept { return *(data () + size_ - 1U); }
-  constexpr T const &back () const noexcept { return *(data () + size_ - 1U); }
+  constexpr reference front () noexcept {
+    assert (size_ > 0);
+    return *data ();
+  }
+  constexpr const_reference front () const noexcept {
+    assert (size_ > 0);
+    return *data ();
+  }
+  constexpr reference back () noexcept {
+    assert (size_ > 0);
+    return *(data () + size_ - 1U);
+  }
+  constexpr const_reference back () const noexcept {
+    assert (size_ > 0);
+    return *(data () + size_ - 1U);
+  }
 
   ///@}
 
@@ -167,7 +179,7 @@ public:
   /// \param count  The new number of elements in the container. Must be less
   ///               than or equal to Size.
   /// \param value  The value with which to initialize the new elements.
-  void resize (size_type count, value_type const &value);
+  void resize (size_type count, const_reference value);
 
   ///@}
 
@@ -227,7 +239,7 @@ public:
   ///
   /// \p count The new size of the container.
   /// \p value The value with which to initialize elements of the container.
-  void assign (size_type count, T const &value);
+  void assign (size_type count, const_reference value);
   /// Replaces the contents with copies of those in the range [first, last). The
   /// behavior is undefined if either argument is an iterator into *this.
   ///
@@ -407,7 +419,7 @@ arrayvec<T, Size>::arrayvec (ForwardIterator first, ForwardIterator last) {
 }
 
 template <typename T, std::size_t Size>
-arrayvec<T, Size>::arrayvec (size_type count, T const &value) {
+arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
   assert (count <= Size);
   for (; count > 0; --count) {
     this->emplace_back (value);
@@ -456,7 +468,7 @@ void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept {
 // ~~~~~
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::clear () noexcept {
-  std::for_each (begin (), end (), [] (T &t) { std::destroy_at (&t); });
+  std::for_each (begin (), end (), [] (reference t) { std::destroy_at (&t); });
   size_ = 0;
 }
 
@@ -470,7 +482,7 @@ void arrayvec<T, Size>::resize_impl (size_type count, Args &&...args) {
   count = (std::min) (count, max_size ());
   if (count < size_) {
     std::for_each (begin () + count, end (),
-                   [] (T &t) { std::destroy_at (&t); });
+                   [] (reference t) { std::destroy_at (&t); });
   } else {
     for (auto it = end (), e = begin () + count; it != e; ++it) {
       construct_at (to_address (it), std::forward<Args> (args)...);
@@ -485,7 +497,7 @@ void arrayvec<T, Size>::resize (size_type count) {
 }
 
 template <typename T, std::size_t Size>
-void arrayvec<T, Size>::resize (size_type count, value_type const &value) {
+void arrayvec<T, Size>::resize (size_type count, const_reference value) {
   return resize_impl (count, value);
 }
 
@@ -518,7 +530,7 @@ void arrayvec<T, Size>::emplace_back (Args &&...args) {
 // assign
 // ~~~~~~
 template <typename T, std::size_t Size>
-void arrayvec<T, Size>::assign (size_type count, T const &value) {
+void arrayvec<T, Size>::assign (size_type count, const_reference value) {
   this->clear ();
   for (; count > 0; --count) {
     this->emplace_back (value);
@@ -565,7 +577,7 @@ auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
           "Iterator range to erase() is invalid");
   auto *const p = data () + (first - begin ());
   auto new_end = std::move (iterator{p + (last - first)}, end (), p);
-  std::for_each (new_end, end (), [] (value_type &v) { std::destroy_at (&v); });
+  std::for_each (new_end, end (), [] (reference v) { std::destroy_at (&v); });
   size_ -= static_cast<size_type> (last - first);
   return iterator{p};
 }
