@@ -566,7 +566,7 @@ auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
   auto *const p = data () + (first - begin ());
   auto new_end = std::move (iterator{p + (last - first)}, end (), p);
   std::for_each (new_end, end (), [] (value_type &v) { std::destroy_at (&v); });
-  size_ -= static_cast<std::size_t> (last - first);
+  size_ -= static_cast<size_type> (last - first);
   return iterator{p};
 }
 
