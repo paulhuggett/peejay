@@ -651,12 +651,12 @@ auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
   auto *const d = data ();
   auto r = iterator{d + (pos - d)};
   if (pos == end ()) {
-    emplace_back (value);
+    emplace_back (std::move (value));
     return r;
   }
   move_range (r, r + 1);
   size_ += 1;
-  *r = std::move (value);  // FIXME: uninit?
+  *r = std::move (value);
   return r;
 }
 
@@ -665,28 +665,24 @@ template <typename InputIterator>
 PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 auto arrayvec<T, Size>::insert (const_iterator pos, InputIterator first,
                                 InputIterator last) -> iterator {
+  auto *const d = data ();
+  auto r = iterator{d + (pos - d)};
   if constexpr (std::is_same_v<typename std::iterator_traits<
                                    InputIterator>::iterator_category,
                                std::input_iterator_tag>) {
-    auto *const d = data ();
-    auto result = iterator{d + (pos - d)};
-
     while (first != last) {
       this->insert (pos, *first);
       ++first;
       ++pos;
     }
-    return result;
+    return r;
   }
 
   auto const n = std::distance (first, last);
   assert (n <= max_size () - size ());
-
-  auto *const d = data ();
-  auto r = iterator{d + (pos - d)};
   move_range (r, r + n);
-  size_ += n;
-  std::copy (first, last, r);
+  size_ += static_cast<size_type> (n);
+  std::copy (first, last, r);  // FIXME: uninit?
   return r;
 }
 

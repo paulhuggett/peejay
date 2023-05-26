@@ -560,9 +560,11 @@ public:
     }
   }
   trackee (trackee const &rhs) : t_{rhs.t_}, v_{rhs.v_} {
+    assert (rhs.init_);
     t_->actions.emplace_back (v_, rhs.v_, action::copy_ctor);
   }
   trackee (trackee &&rhs) noexcept : t_{rhs.t_}, v_{rhs.v_} {
+    assert (rhs.init_);
     t_->actions.emplace_back (v_, rhs.v_, action::move_ctor);
     if (rhs.v_ > 0) {
       rhs.v_ = -rhs.v_;
@@ -570,6 +572,7 @@ public:
   }
 
   ~trackee () noexcept {
+    init_ = false;
     try {
       t_->actions.emplace_back (v_, 0, action::deleted);
     } catch (...) {
@@ -578,6 +581,7 @@ public:
   }
 
   trackee &operator= (trackee const &rhs) {
+    assert (init_);
     if (this != &rhs) {
       t_->actions.emplace_back (v_, rhs.v_, action::copy_assign);
       t_ = rhs.t_;
@@ -586,6 +590,7 @@ public:
     return *this;
   }
   trackee &operator= (trackee &&rhs) noexcept {
+    assert (init_);
     t_->actions.emplace_back (v_, rhs.v_, action::move_assign);
     t_ = rhs.t_;
     v_ = rhs.v_;
@@ -595,10 +600,17 @@ public:
     return *this;
   }
 
-  constexpr int get () const noexcept { return v_; }
-  constexpr tracker const *owner () const noexcept { return t_; }
+  constexpr int get () const noexcept {
+    assert (init_);
+    return v_;
+  }
+  constexpr tracker const *owner () const noexcept {
+    assert (init_);
+    return t_;
+  }
 
 private:
+  bool init_ = true;
   tracker *t_;
   int v_;
 };
@@ -919,6 +931,24 @@ TEST (ArrayVec, TrackedInsertRValue) {
                               std::make_tuple (-1, 4, action::move_assign)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 4), trackee (&t, 1),
                                         trackee (&t, 2), trackee (&t, 3)));
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedInsertRValueAtEnd) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  trackee x{&t, 4};
+  t.actions.clear ();
+  v.insert (v.end (), std::move (x));
+  EXPECT_EQ (4U, v.size ());
+  EXPECT_THAT (t.actions, testing::ElementsAre (
+                              std::make_tuple (4, 4, action::move_ctor)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 2),
+                                        trackee (&t, 3), trackee (&t, 4)));
 }
 
 // NOLINTNEXTLINE
