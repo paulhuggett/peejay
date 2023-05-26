@@ -1,3 +1,18 @@
+//===- include/peejay/to_address.hpp ----------------------*- mode: C++ -*-===//
+//*  _                    _     _                    *
+//* | |_ ___     __ _  __| | __| |_ __ ___  ___ ___  *
+//* | __/ _ \   / _` |/ _` |/ _` | '__/ _ \/ __/ __| *
+//* | || (_) | | (_| | (_| | (_| | | |  __/\__ \__ \ *
+//*  \__\___/   \__,_|\__,_|\__,_|_|  \___||___/___/ *
+//*                                                  *
+//===----------------------------------------------------------------------===//
+//
+// Distributed under the Apache License v2.0.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 #ifndef PEEJAY_TO_ADDRESS_HPP
 #define PEEJAY_TO_ADDRESS_HPP
 
