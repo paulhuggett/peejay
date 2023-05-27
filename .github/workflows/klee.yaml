@@ -1,0 +1,64 @@
+# Some of the these steps are probably unnecessary on the GitHub runners.
+# However, I'd like to be able to use the 'act' <https://github.com/nektos/act>
+# tool to run the action locally.
+#
+# Instructions for using the Kitware APT repository were found at
+# <https://apt.kitware.com>
+
+name: KLEE Test
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "main" ]
+  workflow_dispatch:
+jobs:
+  klee:
+    runs-on: ubuntu-latest
+    container:
+      image: klee/klee:2.3
+      options: -u 0 --ulimit="stack=-1:-1"
+    steps:
+      - name: Get the Kitware APT repository signing key
+        run: |
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+      - name: Add Kitware repository
+        run: |
+          CODENAME=$(lsb_release -c | sed -n -e 's/Codename:[[:space:]]*//gp')
+          echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $CODENAME main" | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+          sudo apt-get update
+
+      - name: Install the kitware-archive-keyring package
+        run: |
+          sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+          sudo apt-get install kitware-archive-keyring
+
+      - name: Install cmake, Ninja, & libc++
+        run: |
+          sudo apt-get install -y cmake ninja-build libc++-11-dev libc++abi-11-dev
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: 'True'
+
+      - name: Create the Build Environment
+        run: cmake -E make_directory "${{ runner.workspace }}/build"
+
+      - name: Configure
+        run: |
+          cmake -G Ninja                           \
+                -B "${{ runner.workspace }}/build" \
+                -S "$GITHUB_WORKSPACE"             \
+                -D CMAKE_BUILD_TYPE=Release        \
+                -D CMAKE_CXX_COMPILER=clang++-11   \
+                -D CMAKE_C_COMPILER=clang-11       \
+                -D PEEJAY_CXX17=Yes                \
+                -D LIBCXX=Yes                      \
+                -D WERROR=Yes
+
+      - name: Build and Test
+        run: |
+          cmake --build "${{ runner.workspace }}/build" --target klee-all

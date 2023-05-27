@@ -181,13 +181,8 @@ if (TARGET gtest)
   )
 endif ()
 
-
-add_executable (main-klee main_klee.cpp)
-target_link_libraries (main-klee PUBLIC peejay)
-setup_target (main-klee)
-
 add_subdirectory (tools)
-
+add_subdirectory (klee)
 
 include (GNUInstallDirs)
 install (

@@ -1,0 +1,12 @@
+#!/bin/bash
+exe="$1"
+shift
+for f in "$@"; do
+    ktest-tool $f
+    KTEST_FILE=$f "$exe"
+    if [ $? -ne 0 ]; then
+        echo "*** Test failure $1"
+        exit 1
+    fi
+done
+
