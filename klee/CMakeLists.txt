@@ -92,6 +92,7 @@ function (add_klee_target)
 
     COMMAND klee
             --libc=uclibc
+            --libcxx
             --posix-runtime
             --output-dir=${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}
             --watchdog
@@ -120,6 +121,11 @@ if (klee_available)
   add_custom_target (klee-all)
 
   # Calls to add_klee_target of the form:
-  #
-  add_klee_target (TARGET klee_number SOURCES number.cpp)
+  set (TESTS quote)
+  foreach (T ${TESTS})
+    message(STATUS "Adding KLEE test ${T}")
+    add_klee_target (TARGET klee-${T} SOURCES ${T}.cpp)
+endforeach()
+
+
 endif ()
