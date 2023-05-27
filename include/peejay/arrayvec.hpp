@@ -645,8 +645,7 @@ auto arrayvec<T, Size>::insert (const_iterator const pos, size_type const count,
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
     -> iterator {
-  auto const e = end ();
-  if (pos == e) {
+  if (auto const e = end (); pos == e) {
     // Fast path for appending an element.
     push_back (value);
     assert (iterator{data () + (pos - data ())} == e);
