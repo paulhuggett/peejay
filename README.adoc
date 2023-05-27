@@ -5,6 +5,8 @@ JSON Parser for C++
 image:https://github.com/paulhuggett/peejay/actions/workflows/ci.yaml/badge.svg[CI Build & Test,link=https://github.com/paulhuggett/peejay/actions/workflows/ci.yaml]
 image:https://sonarcloud.io/api/project_badges/measure?project=paulhuggett_peejay&metric=alert_status[Quality Gate, link=https://sonarcloud.io/summary/new_code?id=paulhuggett_peejay]
 image:https://app.codacy.com/project/badge/Grade/a37157bbd85c440daadd8039cda137b2[Codacy Badge, link=https://www.codacy.com/gh/paulhuggett/peejay/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=paulhuggett/peejay&amp;utm_campaign=Badge_Grade]
+image:https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml/badge.svg[KLEE Tests,link=https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml]
+
 
 == Introduction
 
