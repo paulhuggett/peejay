@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <type_traits>
 
@@ -67,7 +68,7 @@ constexpr T *construct_at (T *p, Args &&...args) {
 
 // forward iterator
 // ~~~~~~~~~~~~~~~~
-#ifdef PEEJAY_HAVE_CONCEPTS
+#if PEEJAY_HAVE_CONCEPTS
 template <typename Iterator, typename T>
 concept forward_iterator = std::forward_iterator<Iterator>;
 #else
