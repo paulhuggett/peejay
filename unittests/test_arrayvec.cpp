@@ -16,6 +16,7 @@
 #include "peejay/arrayvec.hpp"
 
 // standard library
+#include <forward_list>
 #include <numeric>
 
 // 3rd party
@@ -560,11 +561,11 @@ public:
     }
   }
   trackee (trackee const &rhs) : t_{rhs.t_}, v_{rhs.v_} {
-    assert (rhs.init_);
+    assert (rhs.init_ && "Source object must have been initialized");
     t_->actions.emplace_back (v_, rhs.v_, action::copy_ctor);
   }
   trackee (trackee &&rhs) noexcept : t_{rhs.t_}, v_{rhs.v_} {
-    assert (rhs.init_);
+    assert (rhs.init_ && "Source object must have been initialized");
     t_->actions.emplace_back (v_, rhs.v_, action::move_ctor);
     if (rhs.v_ > 0) {
       rhs.v_ = -rhs.v_;
@@ -581,7 +582,8 @@ public:
   }
 
   trackee &operator= (trackee const &rhs) {
-    assert (init_);
+    assert (init_ && rhs.init_ &&
+            "Both destination and source object must have been initialized");
     if (this != &rhs) {
       t_->actions.emplace_back (v_, rhs.v_, action::copy_assign);
       t_ = rhs.t_;
@@ -590,7 +592,8 @@ public:
     return *this;
   }
   trackee &operator= (trackee &&rhs) noexcept {
-    assert (init_);
+    assert (init_ && rhs.init_ &&
+            "Both destination and source object must have been initialized");
     t_->actions.emplace_back (v_, rhs.v_, action::move_assign);
     t_ = rhs.t_;
     v_ = rhs.v_;
@@ -600,12 +603,12 @@ public:
     return *this;
   }
 
-  constexpr int get () const noexcept {
-    assert (init_);
+  [[nodiscard]] constexpr int get () const noexcept {
+    assert (init_ && "Object must have been initialized");
     return v_;
   }
-  constexpr tracker const *owner () const noexcept {
-    assert (init_);
+  [[nodiscard]] constexpr tracker const *owner () const noexcept {
+    assert (init_ && "Object must have been initialized");
     return t_;
   }
 
@@ -952,7 +955,7 @@ TEST (ArrayVec, TrackedInsertRValueAtEnd) {
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, TrackedInsertRange) {
+TEST (ArrayVec, TrackedInsertRangeWithRandomAccessIterator) {
   tracker t;
   arrayvec<trackee, 8> v;
   v.emplace_back (&t, 1);
@@ -971,6 +974,62 @@ TEST (ArrayVec, TrackedInsertRange) {
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 4),
                                         trackee (&t, 5), trackee (&t, 2),
                                         trackee (&t, 3)));
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedInsertRangeWithForwardIterator) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  std::forward_list<trackee> x{trackee{&t, 4}, trackee{&t, 5}};
+  t.actions.clear ();
+  // Use a forward iterator.
+  v.insert (v.begin () + 1, x.begin (), x.end ());
+  EXPECT_EQ (5U, v.size ());
+  EXPECT_THAT (t.actions, testing::ElementsAre (
+                              std::make_tuple (2, 2, action::move_ctor),
+                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (-2, 4, action::copy_assign),
+                              std::make_tuple (-3, 5, action::copy_assign)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 4),
+                                        trackee (&t, 5), trackee (&t, 2),
+                                        trackee (&t, 3)));
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, InsertRangeWithInputIterator) {
+  arrayvec<int, 8> v{1, 2, 3};
+  std::istringstream is{"4 5"};
+  // Use an input iterator.
+  arrayvec<int, 8>::iterator const r =
+      v.insert (v.begin () + 1, std::istream_iterator<int>{is},
+                std::istream_iterator<int>{});
+  EXPECT_EQ (r, v.begin () + 1);
+  EXPECT_EQ (5U, v.size ());
+  EXPECT_THAT (v, testing::ElementsAre (1, 4, 5, 2, 3));
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedInsertRangeAtEnd) {
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  std::array<trackee, 2> x{trackee{&t, 4}, trackee{&t, 5}};
+  t.actions.clear ();
+  v.insert (v.end (), std::begin (x), std::end (x));
+  EXPECT_EQ (5U, v.size ());
+  EXPECT_THAT (t.actions, testing::ElementsAre (
+                              std::make_tuple (4, 4, action::copy_ctor),
+                              std::make_tuple (5, 5, action::copy_ctor)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 2),
+                                        trackee (&t, 3), trackee (&t, 4),
+                                        trackee (&t, 5)));
 }
 
 // NOLINTNEXTLINE
