@@ -78,13 +78,103 @@ constexpr bool forward_iterator = std::is_convertible_v<
     std::forward_iterator_tag>;
 #endif  // PEEJAY_HAVE_CONCEPTS
 
+class arrayvec_base {
+protected:
+  template <bool IsMove, typename SrcType, typename DestType>
+  static std::size_t operator_assign (
+      std::pair<SrcType *, std::size_t> dest,
+      std::pair<DestType *, std::size_t> src) noexcept (IsMove);
+
+  template <typename T, typename... Args>
+  static std::size_t resize_impl (T *data, std::size_t const size,
+                                  std::size_t const new_size, Args &&...args);
+
+  template <typename Iterator>
+  static void move_range (Iterator const from, Iterator const end,
+                          Iterator const to) noexcept;
+};
+
+// operator assign
+// ~~~~~~~~~~~~~~~
+template <bool IsMove, typename SrcType, typename DestType>
+std::size_t arrayvec_base::operator_assign (
+    std::pair<SrcType *, std::size_t> const dest,
+    std::pair<DestType *, std::size_t> const src) noexcept (IsMove) {
+  auto *src_ptr = src.first;
+  auto *dest_ptr = dest.first;
+  // Step 1: where both source and destination arrays have constructed members
+  // we can just use assignment.
+  // [ Wierd () to avoid std::min() clashing with the MSVC min macros. ]
+  auto *const uninit_end = dest_ptr + (std::min) (dest.second, src.second);
+  for (; dest_ptr < uninit_end; ++src_ptr, ++dest_ptr) {
+    if constexpr (IsMove) {
+      *dest_ptr = std::move (*src_ptr);
+    } else {
+      *dest_ptr = *src_ptr;
+    }
+  }
+  // Step 2: target memory does not contain constructed members.
+  for (; dest_ptr < dest.first + src.second; ++src_ptr, ++dest_ptr) {
+    if constexpr (IsMove) {
+      construct_at (&*dest_ptr, std::move (*src_ptr));
+    } else {
+      construct_at (&*dest_ptr, *src_ptr);
+    }
+  }
+  // Step 3: The 'other' array is shorter than this object so release any extra
+  // members.
+  for (; dest_ptr < dest.first + dest.second; ++dest_ptr) {
+    std::destroy_at (&*dest_ptr);
+  }
+  return src.second;
+}
+
+// resize impl
+// ~~~~~~~~~~~
+template <typename T, typename... Args>
+std::size_t arrayvec_base::resize_impl (T *const data, std::size_t const size,
+                                        std::size_t const new_size,
+                                        Args &&...args) {
+  auto *const end = data + size;
+  auto *const new_end = data + new_size;
+  if (new_size < size) {
+    std::for_each (new_end, end, [] (T &t) { std::destroy_at (&t); });
+  } else {
+    for (auto *it = end; it != new_end; ++it) {
+      construct_at (to_address (it), std::forward<Args> (args)...);
+    }
+  }
+  return new_size;
+}
+
+// move range
+// ~~~~~~~~~~
+template <typename Iterator>
+void arrayvec_base::move_range (Iterator const from, Iterator const end,
+                                Iterator const to) noexcept {
+  assert (end >= from && to >= from);
+  auto const dist = to - from;  // how far to move.
+  Iterator const new_end = end + dist;
+  auto const num_to_move = end - from;
+  auto const num_uninit =
+      (std::min) (num_to_move, new_end - end);  // the number past the end.
+
+  Iterator dest = new_end - num_uninit;
+  for (Iterator src = end - num_uninit; src < end; ++src) {
+    construct_at (to_address (dest), std::move (*src));
+    ++dest;
+  }
+  std::move_backward (from, from + num_to_move - num_uninit,
+                      new_end - num_uninit);
+}
+
 //*                                     *
 //*  __ _ _ _ _ _ __ _ _  ___ _____ __  *
 //* / _` | '_| '_/ _` | || \ V / -_) _| *
 //* \__,_|_| |_| \__,_|\_, |\_/\___\__| *
 //*                    |__/             *
 template <typename T, std::size_t Size = 256 / sizeof (T)>
-class arrayvec {
+class arrayvec : public arrayvec_base {
 public:
   static_assert (!std::is_move_constructible_v<T> ||
                      std::is_nothrow_move_constructible_v<T>,
@@ -113,9 +203,9 @@ public:
   arrayvec () noexcept = default;
   arrayvec (std::initializer_list<T> init)
       : arrayvec (std::begin (init), std::end (init)) {}
-  template <typename ForwardIterator>
-  PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
-  arrayvec (ForwardIterator first, ForwardIterator last);
+  template <typename InputIterator>
+  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+  arrayvec (InputIterator first, InputIterator last);
   arrayvec (size_type count, const_reference value = T ());
 
   arrayvec (arrayvec const &other)
@@ -126,13 +216,25 @@ public:
 
   arrayvec &operator= (arrayvec const &other) {
     if (&other != this) {
-      operator_assign<false> (other);
+      std::size_t const new_size = arrayvec_base::operator_assign<false> (
+          std::make_pair (this->data (),
+                          static_cast<std::size_t> (this->size ())),
+          std::make_pair (other.data (),
+                          static_cast<std::size_t> (other.size ())));
+      assert (new_size <= this->max_size ());
+      size_ = static_cast<size_type> (new_size);
     }
     return *this;
   }
   arrayvec &operator= (arrayvec &&other) noexcept {
     if (&other != this) {
-      operator_assign<true> (other);
+      std::size_t const new_size = arrayvec_base::operator_assign<true> (
+          std::make_pair (this->data (),
+                          static_cast<std::size_t> (this->size ())),
+          std::make_pair (other.data (),
+                          static_cast<std::size_t> (other.size ())));
+      assert (new_size <= this->max_size ());
+      size_ = static_cast<size_type> (new_size);
     }
     return *this;
   }
@@ -145,30 +247,18 @@ public:
   constexpr T *data () noexcept { return pointer_cast<T *> (data_.data ()); }
 
   constexpr const_reference operator[] (size_type n) const noexcept {
-    assert (n < max_size ());
-    return *(data () + n);
+    assert (n < this->size ());
+    return *(this->data () + n);
   }
   constexpr reference operator[] (size_type n) noexcept {
-    assert (n < max_size ());
-    return *(data () + n);
+    assert (n < this->size ());
+    return *(this->data () + n);
   }
 
-  constexpr reference front () noexcept {
-    assert (size_ > 0);
-    return *data ();
-  }
-  constexpr const_reference front () const noexcept {
-    assert (size_ > 0);
-    return *data ();
-  }
-  constexpr reference back () noexcept {
-    assert (size_ > 0);
-    return *(data () + size_ - 1U);
-  }
-  constexpr const_reference back () const noexcept {
-    assert (size_ > 0);
-    return *(data () + size_ - 1U);
-  }
+  constexpr reference front () noexcept;
+  constexpr const_reference front () const noexcept;
+  constexpr reference back () noexcept;
+  constexpr const_reference back () const noexcept;
 
   ///@}
 
@@ -230,14 +320,10 @@ public:
   }
 
   /// Returns an iterator to the end of the container.
-  iterator end () noexcept {
-    // (Curious parentheses to avoid a clash with MSVC min macro.)
-    return begin () + (std::min) (size (), max_size ());
-  }
+  iterator end () noexcept { return this->begin () + this->size (); }
   const_iterator end () const noexcept { return cend (); }
   const_iterator cend () const noexcept {
-    // (Curious parentheses to avoid a clash with MSVC min macro.)
-    return begin () + (std::min) (size (), max_size ());
+    return this->begin () + this->size ();
   }
   reverse_iterator rend () noexcept { return reverse_iterator{this->begin ()}; }
   const_reverse_iterator rend () const noexcept { return rcend (); }
@@ -297,14 +383,14 @@ public:
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
     --size_;
-    std::destroy_at (data () + size_);
+    std::destroy_at (this->end ());
   }
 
   /// Inserts \p value before \p pos.
   ///
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param value  Element value to insert.
-  /// \returns An iterator pointing to the new element.
+  /// \returns  An iterator pointing to the new element.
   iterator insert (const_iterator pos, const_reference value);
   /// Inserts \p value before \p pos.
   ///
@@ -371,13 +457,8 @@ public:
   ///@}
 
 private:
-  template <bool IsMove, typename OtherVec>
-  void operator_assign (OtherVec &other) noexcept (IsMove);
-
   template <typename... Args>
   void resize_impl (size_type count, Args &&...args);
-
-  void move_range (iterator from, iterator to) noexcept;
 
   /// Converts the const-iterator \p pos, which must be an iterator reference
   /// to this container, to a non-const iterator referencing the same element.
@@ -395,35 +476,41 @@ private:
       data_;
 };
 
-template <typename T, std::size_t Size>
-bool operator== (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+template <typename T, std::size_t LhsSize, std::size_t RhsSize>
+bool operator== (arrayvec<T, LhsSize> const &lhs,
+                 arrayvec<T, RhsSize> const &rhs) {
   return lhs.size () == rhs.size () &&
          std::equal (std::begin (lhs), std::end (lhs), std::begin (rhs));
 }
 
-template <typename T, std::size_t Size>
-bool operator!= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+template <typename T, std::size_t LhsSize, std::size_t RhsSize>
+bool operator!= (arrayvec<T, LhsSize> const &lhs,
+                 arrayvec<T, RhsSize> const &rhs) {
   return !operator== (lhs, rhs);
 }
 
-template <typename T, std::size_t Size>
-bool operator< (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+template <typename T, std::size_t LhsSize, std::size_t RhsSize>
+bool operator< (arrayvec<T, LhsSize> const &lhs,
+                arrayvec<T, RhsSize> const &rhs) {
   return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (),
                                        rhs.end ());
 }
 
-template <typename T, std::size_t Size>
-bool operator<= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+template <typename T, std::size_t LhsSize, std::size_t RhsSize>
+bool operator<= (arrayvec<T, LhsSize> const &lhs,
+                 arrayvec<T, RhsSize> const &rhs) {
   return !(rhs < lhs);
 }
 
-template <typename T, std::size_t Size>
-bool operator> (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+template <typename T, std::size_t LhsSize, std::size_t RhsSize>
+bool operator> (arrayvec<T, LhsSize> const &lhs,
+                arrayvec<T, RhsSize> const &rhs) {
   return rhs < lhs;
 }
 
-template <typename T, std::size_t Size>
-bool operator>= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
+template <typename T, std::size_t LhsSize, std::size_t RhsSize>
+bool operator>= (arrayvec<T, LhsSize> const &lhs,
+                 arrayvec<T, RhsSize> const &rhs) {
   return !(lhs < rhs);
 }
 
@@ -431,27 +518,28 @@ bool operator>= (arrayvec<T, Size> const &lhs, arrayvec<T, Size> const &rhs) {
 // ~~~~~~
 template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept {
-  auto dest = begin ();
+  auto *dest = this->data ();
   for (auto src = other.begin (), src_end = other.end (); src != src_end;
        ++src) {
-    construct_at (&*dest, std::move (*src));
+    construct_at (to_address (dest), std::move (*src));
     ++dest;
+    ++size_;
   }
-  size_ = other.size_;
-  other.size_ = 0;
 }
 
 template <typename T, std::size_t Size>
-template <typename ForwardIterator>
-PEEJAY_CXX20REQUIRES ((std::forward_iterator<ForwardIterator>))
-arrayvec<T, Size>::arrayvec (ForwardIterator first, ForwardIterator last) {
-  auto out = begin ();
-  for (; first != last; ++size_, ++first, ++out) {
+template <typename InputIterator>
+PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
+  auto out = this->begin ();
+  for (; first != last; ++first) {
     if (size_ == Size) {
       assert (false && "arrayvec container overflow");
       return;
     }
-    construct_at (&*out, *first);
+    construct_at (to_address (out), *first);
+    ++size_;
+    ++out;
   }
 }
 
@@ -463,42 +551,30 @@ arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
   }
 }
 
-// operator assign
-// ~~~~~~~~~~~~~~~
+// front
+// ~~~~~
 template <typename T, std::size_t Size>
-template <bool IsMove, typename OtherVec>
-void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept (IsMove) {
-  assert (&other != this);
-  auto const p = this->begin ();
-  auto src = other.begin ();
-  auto dest = p;
-  // Step 1: where both *this and other have constructed members we can just use
-  // assignment.
-  // [ Wierd () to avoid std::min() clashing with the MSVC min macros. ]
-  auto end = dest + (std::min) (size_, other.size_);
-  for (; dest < end; ++src, ++dest) {
-    if constexpr (IsMove) {
-      *dest = std::move (*src);
-    } else {
-      *dest = *src;
-    }
-  }
-  // Step 2: target memory does not contain constructed members.
-  end = p + other.size_;
-  for (; dest < end; ++src, ++dest) {
-    if constexpr (IsMove) {
-      construct_at (&*dest, std::move (*src));
-    } else {
-      construct_at (&*dest, *src);
-    }
-  }
-  // Step 3: The 'other' array is shorter than this object so release any extra
-  // members.
-  end = p + size_;
-  for (; dest < end; ++dest) {
-    std::destroy_at (&*dest);
-  }
-  size_ = other.size_;
+constexpr auto arrayvec<T, Size>::front () noexcept -> reference {
+  assert (size_ > 0);
+  return *this->data ();
+}
+template <typename T, std::size_t Size>
+constexpr auto arrayvec<T, Size>::front () const noexcept -> const_reference {
+  assert (size_ > 0);
+  return *this->data ();
+}
+
+// back
+// ~~~~
+template <typename T, std::size_t Size>
+constexpr auto arrayvec<T, Size>::back () noexcept -> reference {
+  assert (this->size () > 0U);
+  return *(this->end () - 1);
+}
+template <typename T, std::size_t Size>
+constexpr auto arrayvec<T, Size>::back () const noexcept -> const_reference {
+  assert (this->size () > 0U);
+  return *(this->end () - 1);
 }
 
 // to non const iterator
@@ -506,9 +582,9 @@ void arrayvec<T, Size>::operator_assign (OtherVec &other) noexcept (IsMove) {
 template <typename T, std::size_t Size>
 constexpr auto arrayvec<T, Size>::to_non_const_iterator (
     const_iterator pos) noexcept -> iterator {
-  assert (pos >= begin () && pos <= end () &&
+  assert (pos >= this->begin () && pos <= this->end () &&
           "Iterator argument is out of range");
-  auto *const d = data ();
+  auto *const d = this->data ();
   return iterator{d + (pos - d)};
 }
 
@@ -516,7 +592,8 @@ constexpr auto arrayvec<T, Size>::to_non_const_iterator (
 // ~~~~~
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::clear () noexcept {
-  std::for_each (begin (), end (), [] (reference t) { std::destroy_at (&t); });
+  std::for_each (this->begin (), this->end (),
+                 [] (reference t) { std::destroy_at (&t); });
   size_ = 0;
 }
 
@@ -525,43 +602,39 @@ void arrayvec<T, Size>::clear () noexcept {
 template <typename T, std::size_t Size>
 template <typename... Args>
 void arrayvec<T, Size>::resize_impl (size_type count, Args &&...args) {
-  assert (count <= Size);
-  // Wierd () to avoid std::min() clash with the MSVC min macros.
-  count = (std::min) (count, max_size ());
-  if (count < size_) {
-    std::for_each (begin () + count, end (),
-                   [] (reference t) { std::destroy_at (&t); });
-  } else {
-    for (auto it = end (), e = begin () + count; it != e; ++it) {
-      construct_at (to_address (it), std::forward<Args> (args)...);
-    }
-  }
-  size_ = count;
+  assert (count <= this->max_size ());
+  // Wierd () around the call to std::min() to avoid clashing with the MSVC
+  // 'min' macro.
+  std::size_t const new_size = arrayvec_base::resize_impl (
+      this->data (), this->size (), (std::min) (count, this->max_size ()),
+      std::forward<Args> (args)...);
+  assert (new_size <= this->max_size ());
+  size_ = static_cast<size_type> (new_size);
 }
 
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::resize (size_type count) {
-  return resize_impl (count);
+  return this->resize_impl (count);
 }
 
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::resize (size_type count, const_reference value) {
-  return resize_impl (count, value);
+  return this->resize_impl (count, value);
 }
 
 // push back
 // ~~~~~~~~~
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back (const_reference value) {
-  assert (size () < max_size ());
-  construct_at (data () + size_, value);
+  assert (this->size () < this->max_size ());
+  construct_at (to_address (this->end ()), value);
   ++size_;
 }
 
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back (T &&value) {
-  assert (size () < max_size ());
-  construct_at (data () + size_, std::move (value));
+  assert (this->size () < this->max_size ());
+  construct_at (to_address (this->end ()), std::move (value));
   ++size_;
 }
 
@@ -570,8 +643,8 @@ void arrayvec<T, Size>::push_back (T &&value) {
 template <typename T, std::size_t Size>
 template <typename... Args>
 void arrayvec<T, Size>::emplace_back (Args &&...args) {
-  assert (size () < max_size ());
-  construct_at (data () + size_, std::forward<Args> (args)...);
+  assert (this->size () < this->max_size ());
+  construct_at (to_address (this->end ()), std::forward<Args> (args)...);
   ++size_;
 }
 
@@ -579,6 +652,7 @@ void arrayvec<T, Size>::emplace_back (Args &&...args) {
 // ~~~~~~
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::assign (size_type count, const_reference value) {
+  // TODO: this would be better done in a single pass.
   this->clear ();
   for (; count > 0; --count) {
     this->push_back (value);
@@ -589,6 +663,7 @@ template <typename T, std::size_t Size>
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
+  // TODO: this would be better done in a single pass.
   this->clear ();
   this->append (first, last);
 }
@@ -618,35 +693,13 @@ auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
     -> iterator {
-  assert (first >= begin () && first <= last && last <= cend () &&
+  assert (first >= this->begin () && first <= last && last <= this->cend () &&
           "Iterator range to erase() is invalid");
-  auto *const p = data () + (first - begin ());
+  auto *const p = this->data () + std::distance (this->cbegin (), first);
   auto new_end = std::move (iterator{p + (last - first)}, this->end (), p);
   std::for_each (new_end, end (), [] (reference v) { std::destroy_at (&v); });
   size_ -= static_cast<size_type> (last - first);
   return iterator{p};
-}
-
-// move range
-// ~~~~~~~~~~
-template <typename T, std::size_t Size>
-void arrayvec<T, Size>::move_range (iterator const from,
-                                    iterator const to) noexcept {
-  iterator e = this->end ();
-  assert (e >= from && to >= from);
-  difference_type const dist = to - from;  // how far to move.
-  iterator const new_end = e + dist;
-  difference_type const num_to_move = e - from;
-  difference_type const num_uninit =
-      (std::min) (num_to_move, new_end - e);  // the number past the end.
-
-  iterator dest = new_end - num_uninit;
-  for (iterator src = e - num_uninit; src < e; ++src) {
-    construct_at (to_address (dest), std::move (*src));
-    ++dest;
-  }
-  std::move_backward (from, from + num_to_move - num_uninit,
-                      new_end - num_uninit);
 }
 
 // insert
@@ -654,7 +707,7 @@ void arrayvec<T, Size>::move_range (iterator const from,
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator const pos, size_type const count,
                                 const_reference value) -> iterator {
-  assert (size () + count < max_size () && "Insert will overflow");
+  assert (this->size () + count < this->max_size () && "Insert will overflow");
 
   iterator const from = this->to_non_const_iterator (pos);
   auto const to = from + count;
@@ -690,26 +743,24 @@ template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
     -> iterator {
   if (auto const e = this->end (); pos == e) {
-    // Fast path for appending an element.
-    push_back (value);
-    assert (this->to_non_const_iterator (pos) == e);
+    this->push_back (value);  // Fast path for appending an element.
     return e;
   }
-
   return insert (pos, size_type{1}, value);
 }
 
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
-  assert (size () < max_size () && "Insert will cause overflow");
+  assert (this->size () < this->max_size () && "Insert will cause overflow");
+  iterator const e = this->end ();
   iterator const r = this->to_non_const_iterator (pos);
-  if (r == this->end ()) {
-    emplace_back (std::move (value));
+  if (r == e) {
+    this->emplace_back (std::move (value));
     return r;
   }
-  move_range (r, r + 1);
+  arrayvec_base::move_range (r, e, r + 1);
   size_ += 1;
-  *r = std::move (value);
+  *r = std::move (value);  // FIXME: into uninitialized space?
   return r;
 }
 
@@ -736,8 +787,9 @@ auto arrayvec<T, Size>::insert (const_iterator pos, Iterator first,
     // need to worry about leaving the container in an invalid state if a ctor
     // throws.
     if (pos + n <= e) {
-      assert (n <= max_size () - size ());
-      move_range (r, r + n);
+      assert (n <= this->max_size () - this->size () &&
+              "Container size overflow");
+      arrayvec_base::move_range (r, e, r + n);
       size_ += static_cast<size_type> (n);
       std::copy (first, last, r);
       return r;
@@ -745,12 +797,13 @@ auto arrayvec<T, Size>::insert (const_iterator pos, Iterator first,
 
     // TODO: Add an additional optimization path for random-access iterators.
     // 1. Construct any objects in uninitialized space.
-    // 2. Move objects from initialized to uninitialize space after the objects
+    // 2. Move objects from initialized to uninitialized space following the
+    // objects
     //    created in step 1.
     // 3. Construct objects in initialized space.
   }
 
-  // A single-pass fallback algorith for input iterators.
+  // A single-pass fallback algorithm for input iterators.
   while (first != last) {
     this->insert (pos, *first);
     ++first;
@@ -765,17 +818,19 @@ template <typename T, std::size_t Size>
 template <typename... Args>
 auto arrayvec<T, Size>::emplace (const_iterator pos, Args &&...args)
     -> iterator {
-  assert (size () < max_size () && pos >= begin () && pos <= end ());
+  assert (this->size () < this->max_size () &&
+          "Cannot emplace(), container is full");
+  assert (pos >= this->begin () && pos <= this->end () &&
+          "Insert position is invalid");
 
-  auto *const d = data ();
-  auto const e = end ();
-  auto r = iterator{d + (pos - d)};
-  if (pos == e) {
-    emplace_back (std::forward<Args> (args)...);
+  iterator const e = this->end ();
+  iterator const r = this->to_non_const_iterator (pos);
+  if (r == e) {
+    this->emplace_back (std::forward<Args> (args)...);
     return r;
   }
 
-  move_range (r, r + 1);
+  arrayvec_base::move_range (r, e, r + 1);
   if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
     // After destroying the object at 'r', we can construct in-place.
     auto *const p = to_address (r);

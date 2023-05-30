@@ -51,6 +51,15 @@ TEST (ArrayVec, CtorCopy) {
   EXPECT_THAT (c, ElementsAre (3, 5));
 }
 
+// NOLINTNEXTLINE
+TEST (ArrayVec, CtorInputIterator) {
+  // Use an input iterator.
+  std::istringstream is{"1 2"};
+  arrayvec<int, 3> a (std::istream_iterator<int>{is},
+                      std::istream_iterator<int>{});
+  EXPECT_THAT (a, ElementsAre (1, 2));
+}
+
 namespace {
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
@@ -180,6 +189,13 @@ TEST (ArrayVec, AssignCopySmallToLarge) {
   arrayvec<no_move, 3> c{no_move{7}, no_move{9}};
   c = b;
   EXPECT_THAT (c, ElementsAre (no_move{5}));
+}
+
+TEST (ArrayVec, Front) {
+  arrayvec<int, 2> a{3};
+  EXPECT_EQ (a.front (), 3);
+  a.front () = 5;
+  EXPECT_EQ (a.front (), 5);
 }
 
 // NOLINTNEXTLINE
@@ -381,68 +397,68 @@ TEST (ArrayVec, NoDefaultEmplace) {
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, Eq) {
-  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} == arrayvec<int, 2>{1, 2}));
-  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} == arrayvec<int, 2>{1, 2}));
-  EXPECT_FALSE ((arrayvec<int, 2>{1} == arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} == arrayvec<int, 3>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} == arrayvec<int, 3>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1} == arrayvec<int, 3>{1, 2}));
   EXPECT_TRUE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} ==
-                arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+                arrayvec<char, 5>{'a', 'b', 'c', 'd'}));
   EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} ==
-                 arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+                 arrayvec<char, 5>{'c', 'b', 'd', 'a'}));
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, Neq) {
-  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} != arrayvec<int, 2>{1, 2}));
-  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} != arrayvec<int, 2>{1, 2}));
-  EXPECT_TRUE ((arrayvec<int, 2>{1} != arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} != arrayvec<int, 3>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} != arrayvec<int, 3>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1} != arrayvec<int, 3>{1, 2}));
   EXPECT_FALSE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} !=
-                 arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+                 arrayvec<char, 5>{'a', 'b', 'c', 'd'}));
   EXPECT_TRUE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} !=
-                arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+                arrayvec<char, 5>{'c', 'b', 'd', 'a'}));
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, Ge) {
-  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} >= arrayvec<int, 2>{1, 2}));
-  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} >= arrayvec<int, 2>{1, 2}));
-  EXPECT_FALSE ((arrayvec<int, 2>{1} >= arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} >= arrayvec<int, 3>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} >= arrayvec<int, 3>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1} >= arrayvec<int, 3>{1, 2}));
   EXPECT_TRUE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} >=
-                arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+                arrayvec<char, 5>{'a', 'b', 'c', 'd'}));
   EXPECT_TRUE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} >=
-                arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+                arrayvec<char, 5>{'c', 'b', 'd', 'a'}));
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, Gt) {
-  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} > arrayvec<int, 2>{1, 2}));
-  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} > arrayvec<int, 2>{1, 2}));
-  EXPECT_FALSE ((arrayvec<int, 2>{1} > arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} > arrayvec<int, 3>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 3} > arrayvec<int, 3>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1} > arrayvec<int, 3>{1, 2}));
   EXPECT_FALSE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} >
-                 arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+                 arrayvec<char, 5>{'a', 'b', 'c', 'd'}));
   EXPECT_TRUE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} >
-                arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+                arrayvec<char, 5>{'c', 'b', 'd', 'a'}));
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, Le) {
-  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} <= arrayvec<int, 2>{1, 2}));
-  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} <= arrayvec<int, 2>{1, 2}));
-  EXPECT_TRUE ((arrayvec<int, 2>{1} <= arrayvec<int, 2>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1, 2} <= arrayvec<int, 3>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} <= arrayvec<int, 3>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1} <= arrayvec<int, 3>{1, 2}));
   EXPECT_TRUE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} <=
-                arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+                arrayvec<char, 5>{'a', 'b', 'c', 'd'}));
   EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} <=
-                 arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+                 arrayvec<char, 5>{'c', 'b', 'd', 'a'}));
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, Lt) {
-  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} < arrayvec<int, 2>{1, 2}));
-  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} < arrayvec<int, 2>{1, 2}));
-  EXPECT_TRUE ((arrayvec<int, 2>{1} < arrayvec<int, 2>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 2} < arrayvec<int, 3>{1, 2}));
+  EXPECT_FALSE ((arrayvec<int, 2>{1, 3} < arrayvec<int, 3>{1, 2}));
+  EXPECT_TRUE ((arrayvec<int, 2>{1} < arrayvec<int, 3>{1, 2}));
   EXPECT_FALSE ((arrayvec<char, 4>{'a', 'b', 'c', 'd'} <
-                 arrayvec<char, 4>{'a', 'b', 'c', 'd'}));
+                 arrayvec<char, 5>{'a', 'b', 'c', 'd'}));
   EXPECT_FALSE ((arrayvec<char, 4>{'d', 'a', 'b', 'c'} <
-                 arrayvec<char, 4>{'c', 'b', 'd', 'a'}));
+                 arrayvec<char, 5>{'c', 'b', 'd', 'a'}));
 }
 
 // NOLINTNEXTLINE
@@ -562,11 +578,11 @@ public:
   }
   trackee (trackee const &rhs) : t_{rhs.t_}, v_{rhs.v_} {
     assert (rhs.init_ && "Source object must have been initialized");
-    t_->actions.emplace_back (v_, rhs.v_, action::copy_ctor);
+    t_->actions.emplace_back (v_, 0, action::copy_ctor);
   }
   trackee (trackee &&rhs) noexcept : t_{rhs.t_}, v_{rhs.v_} {
     assert (rhs.init_ && "Source object must have been initialized");
-    t_->actions.emplace_back (v_, rhs.v_, action::move_ctor);
+    t_->actions.emplace_back (v_, 0, action::move_ctor);
     if (rhs.v_ > 0) {
       rhs.v_ = -rhs.v_;
     }
@@ -650,9 +666,9 @@ TEST (ArrayVec, TrackedCopyInsert) {
                testing::ElementsAre (std::make_tuple (1, 0, action::added),
                                      std::make_tuple (2, 0, action::added),
                                      std::make_tuple (3, 0, action::added),
-                                     std::make_tuple (1, 1, action::copy_ctor),
-                                     std::make_tuple (2, 2, action::copy_ctor),
-                                     std::make_tuple (3, 3, action::copy_ctor),
+                                     std::make_tuple (1, 0, action::copy_ctor),
+                                     std::make_tuple (2, 0, action::copy_ctor),
+                                     std::make_tuple (3, 0, action::copy_ctor),
                                      std::make_tuple (3, 0, action::deleted),
                                      std::make_tuple (2, 0, action::deleted),
                                      std::make_tuple (1, 0, action::deleted)));
@@ -839,8 +855,8 @@ TEST (ArrayVec, TrackedResizeLarger) {
   EXPECT_FALSE (v.empty ());
   EXPECT_THAT (t.actions,
                testing::ElementsAre (std::make_tuple (4, 0, action::added),
-                                     std::make_tuple (4, 4, action::copy_ctor),
-                                     std::make_tuple (4, 4, action::copy_ctor),
+                                     std::make_tuple (4, 0, action::copy_ctor),
+                                     std::make_tuple (4, 0, action::copy_ctor),
                                      std::make_tuple (4, 0, action::deleted)));
 }
 
@@ -857,7 +873,7 @@ TEST (ArrayVec, TrackedInsert1) {
   v.insert (v.begin (), x);
   EXPECT_EQ (4U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (3, 0, action::move_ctor),
                               std::make_tuple (-3, 2, action::move_assign),
                               std::make_tuple (-2, 1, action::move_assign),
                               std::make_tuple (-1, 4, action::copy_assign)));
@@ -878,7 +894,7 @@ TEST (ArrayVec, TrackedInsert1AtSecondIndex) {
   v.insert (v.begin () + 1, x);
   EXPECT_EQ (4U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (3, 0, action::move_ctor),
                               std::make_tuple (-3, 2, action::move_assign),
                               std::make_tuple (-2, 4, action::copy_assign)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 4),
@@ -928,7 +944,7 @@ TEST (ArrayVec, TrackedInsertRValue) {
   v.insert (v.begin (), std::move (x));
   EXPECT_EQ (4U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (3, 0, action::move_ctor),
                               std::make_tuple (-3, 2, action::move_assign),
                               std::make_tuple (-2, 1, action::move_assign),
                               std::make_tuple (-1, 4, action::move_assign)));
@@ -949,13 +965,13 @@ TEST (ArrayVec, TrackedInsertRValueAtEnd) {
   v.insert (v.end (), std::move (x));
   EXPECT_EQ (4U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (4, 4, action::move_ctor)));
+                              std::make_tuple (4, 0, action::move_ctor)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 2),
                                         trackee (&t, 3), trackee (&t, 4)));
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, TrackedInsertRangeWithRandomAccessIterator) {
+TEST (ArrayVec, TrackedInsertRangeWithRandomAccessIterator1) {
   tracker t;
   arrayvec<trackee, 8> v;
   v.emplace_back (&t, 1);
@@ -967,13 +983,43 @@ TEST (ArrayVec, TrackedInsertRangeWithRandomAccessIterator) {
   v.insert (v.begin () + 1, std::begin (x), std::end (x));
   EXPECT_EQ (5U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (2, 2, action::move_ctor),
-                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (2, 0, action::move_ctor),
+                              std::make_tuple (3, 0, action::move_ctor),
                               std::make_tuple (-2, 4, action::copy_assign),
                               std::make_tuple (-3, 5, action::copy_assign)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 4),
                                         trackee (&t, 5), trackee (&t, 2),
                                         trackee (&t, 3)));
+}
+
+// NOLINTNEXTLINE
+TEST (ArrayVec, TrackedInsertRangeWithRandomAccessIterator2) {
+  // In this test, one of the inserted elements must be copy-constructed
+  // (rather than simply copied), and two two existing elements must be moved
+  // into uninitialized space.
+  tracker t;
+  arrayvec<trackee, 8> v;
+  v.emplace_back (&t, 1);
+  v.emplace_back (&t, 2);
+  v.emplace_back (&t, 3);
+
+  std::array<trackee, 3> x{trackee{&t, 4}, trackee{&t, 5}, trackee{&t, 6}};
+  t.actions.clear ();
+  v.insert (v.begin () + 1, std::begin (x), std::end (x));
+  EXPECT_EQ (6U, v.size ());
+  EXPECT_THAT (t.actions,
+               ElementsAre (std::make_tuple (3, 0, action::move_ctor),
+                            std::make_tuple (-3, 2, action::move_assign),
+                            std::make_tuple (-2, 4, action::copy_assign),
+                            std::make_tuple (3, 0, action::move_ctor),
+                            std::make_tuple (-3, 2, action::move_assign),
+                            std::make_tuple (-2, 5, action::copy_assign),
+                            std::make_tuple (3, 0, action::move_ctor),
+                            std::make_tuple (-3, 2, action::move_assign),
+                            std::make_tuple (-2, 6, action::copy_assign)));
+  EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 4),
+                                        trackee (&t, 5), trackee (&t, 6),
+                                        trackee (&t, 2), trackee (&t, 3)));
 }
 
 // NOLINTNEXTLINE
@@ -990,8 +1036,8 @@ TEST (ArrayVec, TrackedInsertRangeWithForwardIterator) {
   v.insert (v.begin () + 1, x.begin (), x.end ());
   EXPECT_EQ (5U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (2, 2, action::move_ctor),
-                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (2, 0, action::move_ctor),
+                              std::make_tuple (3, 0, action::move_ctor),
                               std::make_tuple (-2, 4, action::copy_assign),
                               std::make_tuple (-3, 5, action::copy_assign)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 4),
@@ -1025,8 +1071,8 @@ TEST (ArrayVec, TrackedInsertRangeAtEnd) {
   v.insert (v.end (), std::begin (x), std::end (x));
   EXPECT_EQ (5U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (4, 4, action::copy_ctor),
-                              std::make_tuple (5, 5, action::copy_ctor)));
+                              std::make_tuple (4, 0, action::copy_ctor),
+                              std::make_tuple (5, 0, action::copy_ctor)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 1), trackee (&t, 2),
                                         trackee (&t, 3), trackee (&t, 4),
                                         trackee (&t, 5)));
@@ -1047,7 +1093,7 @@ TEST (ArrayVec, TrackedEmplace1) {
   EXPECT_THAT (
       t.actions,
       testing::ElementsAre (
-          std::make_tuple (3, 3, action::move_ctor),
+          std::make_tuple (3, 0, action::move_ctor),
           std::make_tuple (-3, 2, action::move_assign),
           std::make_tuple (-2, 1, action::move_assign),
           std::make_tuple (4, 0,
@@ -1073,7 +1119,7 @@ TEST (ArrayVec, TrackedEmplaceNoexcept) {
   v.emplace (v.begin (), &t, 4, std::nullopt);
   EXPECT_EQ (4U, v.size ());
   EXPECT_THAT (t.actions, testing::ElementsAre (
-                              std::make_tuple (3, 3, action::move_ctor),
+                              std::make_tuple (3, 0, action::move_ctor),
                               std::make_tuple (-3, 2, action::move_assign),
                               std::make_tuple (-2, 1, action::move_assign),
                               std::make_tuple (-1, 0, action::deleted),
