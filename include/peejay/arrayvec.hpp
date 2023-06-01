@@ -21,13 +21,11 @@
 #include <cassert>
 #include <cstddef>
 #include <initializer_list>
-#include <iterator>
 #include <limits>
 #include <memory>
 #include <type_traits>
 
 #include "peejay/portab.hpp"
-#include "peejay/to_address.hpp"
 #include "peejay/uinteger.hpp"
 
 #if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
@@ -35,48 +33,6 @@
 #endif
 
 namespace peejay {
-
-// pointer cast
-// ~~~~~~~~~~~~
-#if PEEJAY_HAVE_CONCEPTS
-template <typename To, typename From>
-  requires (std::is_trivial_v<To> && std::is_trivial_v<From>)
-#else
-template <typename To, typename From,
-          typename = typename std::enable_if_t<std::is_trivial_v<To> &&
-                                               std::is_trivial_v<From>>>
-#endif
-constexpr To pointer_cast (From p) noexcept {
-#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
-  return std::bit_cast<To> (p);
-#else
-  return reinterpret_cast<To> (p);
-#endif
-}
-
-// construct at
-// ~~~~~~~~~~~~
-#if PEEJAY_CXX20
-using std::construct_at;
-#else
-/// Creates a T object initialized with arguments args... at given address p.
-template <typename T, typename... Args>
-constexpr T *construct_at (T *p, Args &&...args) {
-  return ::new (p) T (std::forward<Args> (args)...);
-}
-#endif  // PEEJAY_CXX20
-
-// forward iterator
-// ~~~~~~~~~~~~~~~~
-#if PEEJAY_HAVE_CONCEPTS
-template <typename Iterator, typename T>
-concept forward_iterator = std::forward_iterator<Iterator>;
-#else
-template <typename Iterator, typename T>
-constexpr bool forward_iterator = std::is_convertible_v<
-    typename std::iterator_traits<Iterator>::iterator_category,
-    std::forward_iterator_tag>;
-#endif  // PEEJAY_HAVE_CONCEPTS
 
 //*                                      _                   *
 //*  __ _ _ _ _ _ __ _ _  ___ _____ __  | |__  __ _ ___ ___  *
@@ -127,15 +83,15 @@ std::size_t arrayvec_base::operator_assign (
   // Step 2: target memory does not contain constructed members.
   for (; dest_ptr < dest.first + src.second; ++src_ptr, ++dest_ptr) {
     if constexpr (IsMove) {
-      construct_at (&*dest_ptr, std::move (*src_ptr));
+      construct_at (dest_ptr, std::move (*src_ptr));
     } else {
-      construct_at (&*dest_ptr, *src_ptr);
+      construct_at (dest_ptr, *src_ptr);
     }
   }
   // Step 3: The 'other' array is shorter than this object so release any extra
   // members.
   for (; dest_ptr < dest.first + dest.second; ++dest_ptr) {
-    std::destroy_at (&*dest_ptr);
+    std::destroy_at (dest_ptr);
   }
   return src.second;
 }
@@ -156,7 +112,7 @@ std::size_t arrayvec_base::resize (T *const data, std::size_t const size,
   auto *const end = data + size;
   auto *const new_end = data + new_size;
   if (new_size < size) {
-    std::for_each (new_end, end, [] (T &t) { std::destroy_at (&t); });
+    arrayvec_base::clear (new_end, end);
   } else {
     for (auto *it = end; it != new_end; ++it) {
       construct_at (to_address (it), std::forward<Args> (args)...);
@@ -411,7 +367,7 @@ public:
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
     --size_;
-    std::destroy_at (this->end ());
+    std::destroy_at (to_address (this->end ()));
   }
 
   /// Inserts \p value before \p pos.

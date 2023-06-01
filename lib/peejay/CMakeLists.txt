@@ -28,7 +28,6 @@ add_library (peejay STATIC
   "${include_dir}/peejay/null.hpp"
   "${include_dir}/peejay/portab.hpp"
   "${include_dir}/peejay/stack.hpp"
-  "${include_dir}/peejay/to_address.hpp"
   "${include_dir}/peejay/uinteger.hpp"
   emit.cpp
   "${CPRUN_HPP}"

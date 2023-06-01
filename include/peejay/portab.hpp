@@ -16,6 +16,8 @@
 #ifndef PEEJAY_PORTAB_HPP
 #define PEEJAY_PORTAB_HPP
 
+#include <iterator>
+
 #if __cplusplus >= 202002L
 #define PEEJAY_CXX20 (1)
 #elif defined(_MSVC_LANG) && _MSVC_LANG >= 202002L
@@ -73,5 +75,70 @@
 #ifndef PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE
 #define PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE
 #endif
+
+namespace peejay {
+
+// to address
+// ~~~~~~~~~~
+#if defined(__cpp_lib_to_address)
+template <typename T>
+constexpr auto to_address (T&& p) noexcept {
+  return std::to_address (std::forward<T> (p));
+}
+#else
+template <typename T>
+constexpr T* to_address (T* const p) noexcept {
+  static_assert (!std::is_function_v<T>);
+  return p;
+}
+template <typename T>
+constexpr auto to_address (T const& p) noexcept {
+  return to_address (p.operator->());
+}
+#endif  // defined(__cpp_lib_to_address)
+
+// pointer cast
+// ~~~~~~~~~~~~
+#if PEEJAY_HAVE_CONCEPTS
+template <typename To, typename From>
+  requires (std::is_trivial_v<To> && std::is_trivial_v<From>)
+#else
+template <typename To, typename From,
+          typename = typename std::enable_if_t<std::is_trivial_v<To> &&
+                                               std::is_trivial_v<From>>>
+#endif
+constexpr To pointer_cast (From p) noexcept {
+#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
+  return std::bit_cast<To> (p);
+#else
+  return reinterpret_cast<To> (p);
+#endif
+}
+
+// construct at
+// ~~~~~~~~~~~~
+#if PEEJAY_CXX20
+using std::construct_at;
+#else
+/// Creates a T object initialized with arguments args... at given address p.
+template <typename T, typename... Args>
+constexpr T* construct_at (T* const p, Args&&... args) {
+  return ::new (p) T (std::forward<Args> (args)...);
+}
+#endif  // PEEJAY_CXX20
+
+// forward iterator
+// ~~~~~~~~~~~~~~~~
+#if PEEJAY_HAVE_CONCEPTS
+template <typename Iterator, typename T>
+concept forward_iterator = std::forward_iterator<Iterator>;
+#else
+template <typename Iterator, typename T>
+constexpr bool forward_iterator = std::is_convertible_v<
+    typename std::iterator_traits<Iterator>::iterator_category,
+    std::forward_iterator_tag>;
+#endif  // PEEJAY_HAVE_CONCEPTS
+
+}  // end namespace peejay
 
 #endif  // PEEJAY_PORTAB_HPP
