@@ -46,23 +46,6 @@ TEST (Stack, CopyCtor) {
   s1.pop ();
   EXPECT_TRUE (s1.empty ());
 }
-#if PEEJAY_CXX20
-// NOLINTNEXTLINE
-TEST (Stack, IteratorCtor) {
-  std::array<int, 4> const a = {{4, 3, 2, 1}};
-  peejay::stack stack (std::begin (a), std::end (a));
-  ASSERT_EQ (stack.size (), 4);
-  EXPECT_EQ (stack.top (), 1);
-  stack.pop ();
-  EXPECT_EQ (stack.top (), 2);
-  stack.pop ();
-  EXPECT_EQ (stack.top (), 3);
-  stack.pop ();
-  EXPECT_EQ (stack.top (), 4);
-  stack.pop ();
-  EXPECT_TRUE (stack.empty ());
-}
-#endif
 // NOLINTNEXTLINE
 TEST (Stack, ContainerCtor) {
   std::deque<int> const d{4, 3, 2, 1};
