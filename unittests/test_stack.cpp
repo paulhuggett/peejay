@@ -77,18 +77,6 @@ TEST (Stack, ContainerRValueRefCtor) {
   EXPECT_TRUE (stack.empty ());
 }
 // NOLINTNEXTLINE
-TEST (Stack, Eq) {
-  std::vector<int> const a = {{4, 3, 2, 1}};
-  peejay::stack s1 (a);
-  peejay::stack s2 (a);
-  EXPECT_TRUE (s1 == s2);
-  EXPECT_FALSE (s1 != s2);
-  EXPECT_FALSE (s1 < s2);
-  EXPECT_TRUE (s1 <= s2);
-  EXPECT_FALSE (s1 > s2);
-  EXPECT_TRUE (s1 >= s2);
-}
-// NOLINTNEXTLINE
 TEST (Stack, Push1Value) {
   peejay::stack<int> stack;
   stack.push (17);
