@@ -78,28 +78,39 @@ constexpr bool forward_iterator = std::is_convertible_v<
     std::forward_iterator_tag>;
 #endif  // PEEJAY_HAVE_CONCEPTS
 
+//*                                      _                   *
+//*  __ _ _ _ _ _ __ _ _  ___ _____ __  | |__  __ _ ___ ___  *
+//* / _` | '_| '_/ _` | || \ V / -_) _| | '_ \/ _` (_-</ -_) *
+//* \__,_|_| |_| \__,_|\_, |\_/\___\__| |_.__/\__,_/__/\___| *
+//*                    |__/                                  *
 class arrayvec_base {
 protected:
   template <bool IsMove, typename SrcType, typename DestType>
   static std::size_t operator_assign (
-      std::pair<SrcType *, std::size_t> dest,
-      std::pair<DestType *, std::size_t> src) noexcept (IsMove);
+      std::pair<SrcType *, std::size_t> const &dest,
+      std::pair<DestType *, std::size_t> const &src) noexcept (IsMove);
+
+  template <typename Iterator>
+  static void clear (Iterator first, Iterator last) noexcept;
 
   template <typename T, typename... Args>
-  static std::size_t resize_impl (T *data, std::size_t const size,
-                                  std::size_t const new_size, Args &&...args);
+  static std::size_t resize (T *data, std::size_t const size,
+                             std::size_t const new_size, Args &&...args);
 
   template <typename Iterator>
   static void move_range (Iterator const from, Iterator const end,
                           Iterator const to) noexcept;
+
+  template <typename Iterator>
+  static std::size_t erase (Iterator pos, Iterator end, std::size_t size);
 };
 
 // operator assign
 // ~~~~~~~~~~~~~~~
 template <bool IsMove, typename SrcType, typename DestType>
 std::size_t arrayvec_base::operator_assign (
-    std::pair<SrcType *, std::size_t> const dest,
-    std::pair<DestType *, std::size_t> const src) noexcept (IsMove) {
+    std::pair<SrcType *, std::size_t> const &dest,
+    std::pair<DestType *, std::size_t> const &src) noexcept (IsMove) {
   auto *src_ptr = src.first;
   auto *dest_ptr = dest.first;
   // Step 1: where both source and destination arrays have constructed members
@@ -129,12 +140,19 @@ std::size_t arrayvec_base::operator_assign (
   return src.second;
 }
 
-// resize impl
-// ~~~~~~~~~~~
+// clear
+// ~~~~~
+template <typename Iterator>
+void arrayvec_base::clear (Iterator first, Iterator last) noexcept {
+  using T = typename std::iterator_traits<Iterator>::value_type;
+  std::for_each (first, last, [] (T &value) { std::destroy_at (&value); });
+}
+
+// resize
+// ~~~~~~
 template <typename T, typename... Args>
-std::size_t arrayvec_base::resize_impl (T *const data, std::size_t const size,
-                                        std::size_t const new_size,
-                                        Args &&...args) {
+std::size_t arrayvec_base::resize (T *const data, std::size_t const size,
+                                   std::size_t const new_size, Args &&...args) {
   auto *const end = data + size;
   auto *const new_end = data + new_size;
   if (new_size < size) {
@@ -166,6 +184,16 @@ void arrayvec_base::move_range (Iterator const from, Iterator const end,
   }
   std::move_backward (from, from + num_to_move - num_uninit,
                       new_end - num_uninit);
+}
+
+// erase
+// ~~~~~
+template <typename Iterator>
+std::size_t arrayvec_base::erase (Iterator pos, Iterator end,
+                                  std::size_t size) {
+  std::move (pos + 1, end, pos);
+  std::destroy_at (&*(end - 1));
+  return size - 1;
 }
 
 //*                                     *
@@ -212,7 +240,7 @@ public:
       : arrayvec (std::begin (other), std::end (other)) {}
   arrayvec (arrayvec &&other) noexcept;
 
-  ~arrayvec () noexcept { clear (); }
+  ~arrayvec () noexcept { this->clear (); }
 
   arrayvec &operator= (arrayvec const &other) {
     if (&other != this) {
@@ -592,8 +620,7 @@ constexpr auto arrayvec<T, Size>::to_non_const_iterator (
 // ~~~~~
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::clear () noexcept {
-  std::for_each (this->begin (), this->end (),
-                 [] (reference t) { std::destroy_at (&t); });
+  arrayvec_base::clear (this->begin (), this->end ());
   size_ = 0;
 }
 
@@ -605,7 +632,7 @@ void arrayvec<T, Size>::resize_impl (size_type count, Args &&...args) {
   assert (count <= this->max_size ());
   // Wierd () around the call to std::min() to avoid clashing with the MSVC
   // 'min' macro.
-  std::size_t const new_size = arrayvec_base::resize_impl (
+  std::size_t const new_size = arrayvec_base::resize (
       this->data (), this->size (), (std::min) (count, this->max_size ()),
       std::forward<Args> (args)...);
   assert (new_size <= this->max_size ());
@@ -683,11 +710,10 @@ void arrayvec<T, Size>::append (InputIterator first, InputIterator last) {
 // ~~~~~
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
-  auto const r = this->to_non_const_iterator (pos);
-  std::move (r + 1, this->end (), r);
-  std::destroy_at (&this->back ());
-  --size_;
-  return r;
+  iterator const p = this->to_non_const_iterator (pos);
+  size_ =
+      static_cast<size_type> (arrayvec_base::erase (p, this->end (), size_));
+  return p;
 }
 
 template <typename T, std::size_t Size>
