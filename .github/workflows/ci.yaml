@@ -88,14 +88,6 @@ jobs:
             options: -DPEEJAY_CXX17=Yes -DWERROR=Yes -DLIBCXX=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
             os: ubuntu-22.04
 
-          - name: Ubuntu-22.04/clang-16/Release
-            apt_install: clang-16 cmake ninja-build
-            build_type: Release
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-16 -DCMAKE_C_COMPILER=clang-16
-            generator: Ninja
-            options: -DWERROR=Yes -DLIBCXX=Yes
-            os: ubuntu-22.04
-
           # Windows builds
           # ~~~~~~~~~~~~~~
           - name: Windows-latest/VS2022/Debug
