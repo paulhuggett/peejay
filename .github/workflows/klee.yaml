@@ -50,12 +50,12 @@ jobs:
           submodules: 'True'
 
       - name: Create the Build Environment
-        run: cmake -E make_directory "${{ runner.workspace }}/build"
+        run: cmake -E make_directory "${{ github.workspace }}/build"
 
       - name: Configure
         run: |
           cmake -G Ninja                           \
-                -B "${{ runner.workspace }}/build" \
+                -B "${{ github.workspace }}/build" \
                 -S "$GITHUB_WORKSPACE"             \
                 -D CMAKE_BUILD_TYPE=Release        \
                 -D CMAKE_CXX_COMPILER=clang++-11   \
@@ -66,4 +66,4 @@ jobs:
 
       - name: Build and Test
         run: |
-          cmake --build "${{ runner.workspace }}/build" --target klee-all
+          cmake --build "${{ github.workspace }}/build" --target klee-all
