@@ -1,0 +1,71 @@
+name: Coverity Scan
+on: workflow_dispatch
+jobs:
+  coverity:
+    name: Coverity Scan
+    runs-on: ubuntu-latest
+    env:
+      COVURL: "scan.coverity.com"
+      OWNER: "paulhuggett"
+      REPOSITORY: "peejay"
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'True'
+
+      - name: Apt Update
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+
+      - name: Download the Coverity Build Tool
+        run: |
+          mkdir -p "$HOME/coverity"
+          cd "$HOME/coverity"
+          PROJECT="${{ env.OWNER }}/${{ env.REPOSITORY }}"
+          curl                                                          \
+            --data-urlencode "project=$PROJECT"                         \
+            --data-urlencode "token=${{ secrets.COVERITY_SCAN_TOKEN }}" \
+            --location                                                  \
+            --output coverity_tool.tgz                                  \
+            "https://${{ env.COVURL }}/download/linux64"
+
+      - name: Unpack the Coverity Build Tool
+        run: |
+          cd "$HOME/coverity"
+          tar xzvf coverity_tool.tgz
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get install -y cmake
+
+      - name: Configure
+        run: |
+          rm -f -r ./build
+          cmake                         \
+            -S .                        \
+            -B ./build                  \
+            -D CMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+            $(find "$HOME/coverity" -name cov-build) \
+            --dir cov-int                            \
+            cmake --build ./build --config Release
+
+      - name: Compress Results
+        run: |
+          tar czvf ./peejay.tgz cov-int
+
+      - name: Submit Results
+        run: |
+          VERSION=$(git rev-parse --short HEAD)
+          PROJECT="${{ env.OWNER }}%2f${{ env.REPOSITORY }}"
+          curl                                                \
+            --form "token=${{ secrets.COVERITY_SCAN_TOKEN }}" \
+            --form "email=${{ secrets.COVERITY_SCAN_EMAIL }}" \
+            --form file=@./peejay.tgz                         \
+            --form "version=$VERSION"                         \
+            --form description=""                             \
+            "https://${{ env.COVURL }}/builds?project=$PROJECT"
