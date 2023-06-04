@@ -33,12 +33,12 @@ jobs:
           # prevent the llvm.sh script hanging.
           sed -ie "/^add-apt-repository/ s/$/ --yes/" llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh $CLANG_VERSION all
+          sudo ./llvm.sh "$CLANG_VERSION" all
 
       - name: Download the codacy-clang-tidy tool
         run: |
           mkdir -p "$HOME/cct"
-          CCT_DOWNLOAD_URL="https://github.com/codacy/codacy-clang-tidy/releases/download/$CCT_VERSION/$CCT
+          CCT_DOWNLOAD_URL="https://github.com/codacy/codacy-clang-tidy/releases/download/$CCT_VERSION/$CCT"
           curl \
             -L \
             "$CCT_DOWNLOAD_URL" \
@@ -52,13 +52,13 @@ jobs:
       - name: Configure
         run: |
           rm -f -r "$BUILD"
-          cmake                                          \
-            -S .                                         \
-            -B "$BUILD"                                  \
-            -G Ninja                                     \
-            -D CMAKE_BUILD_TYPE=Release                  \
-            -D CMAKE_CXX_COMPILER=clang++-$CLANG_VERSION \
-            -D CMAKE_C_COMPILER=clang-$CLANG_VERSION     \
+          cmake                                            \
+            -S .                                           \
+            -B "$BUILD"                                    \
+            -G Ninja                                       \
+            -D CMAKE_BUILD_TYPE=Release                    \
+            -D "CMAKE_CXX_COMPILER=clang++-$CLANG_VERSION" \
+            -D "CMAKE_C_COMPILER=clang-$CLANG_VERSION"     \
             -D CMAKE_EXPORT_COMPILE_COMMANDS=Yes
 
       - name: Build
@@ -67,7 +67,7 @@ jobs:
       - name: Run clang-tidy
         run: |
           SRC="$(find . -name \*.\?pp -not -path "$BUILD\*/\*" -not -path ./systemtests/\*)"
-          clang-tidy-$CLANG_VERSION            \
+          "clang-tidy-$CLANG_VERSION"          \
             -p="$BUILD/compile_commands.json"  \
             $SRC                               \
             --                                 \
@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload to the Codacy server
         run: |
-          COMMIT=$(git rev-parse HEAD)
+          COMMIT="$(git rev-parse HEAD)"
           # Send the results to Codacy
           curl                                                      \
             -XPOST                                                  \
@@ -93,11 +93,11 @@ jobs:
             -H "project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}" \
             -H "Content-type: application/json"                     \
             -d "@$CCT_OUT"                                          \
-            "$CODACY_URL/2.0/commit/${COMMIT}/issuesRemoteResults"
+            "$CODACY_URL/2.0/commit/$COMMIT/issuesRemoteResults"
           # Signal that Codacy can use the sent results and start a new analysis
           curl                                                      \
             -XPOST                                                  \
             -L                                                      \
             -H "project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}" \
             -H "Content-type: application/json"                     \
-            "$CODACY_URL/2.0/commit/${COMMIT}/resultsFinal"
+            "$CODACY_URL/2.0/commit/$COMMIT/resultsFinal"
