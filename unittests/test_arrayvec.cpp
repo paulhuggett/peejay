@@ -348,19 +348,6 @@ TEST (ArrayVec, PushBack) {
   EXPECT_THAT (a, ElementsAre (1, 2, 3, 4));
 }
 
-// NOLINTNEXTLINE
-TEST (ArrayVec, AppendIteratorRange) {
-  arrayvec<int, 8> a (std::size_t{4}, int{});
-  std::iota (std::begin (a), std::end (a), 0);
-
-  std::array<int, 4> extra{};
-  std::iota (std::begin (extra), std::end (extra), 100);
-
-  a.append (std::begin (extra), std::end (extra));
-
-  EXPECT_THAT (a, ElementsAre (0, 1, 2, 3, 100, 101, 102, 103));
-}
-
 namespace {
 
 class no_default_ctor {

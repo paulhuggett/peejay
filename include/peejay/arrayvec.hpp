@@ -355,14 +355,6 @@ public:
     this->assign (std::begin (ilist), std::end (ilist));
   }
 
-  /// Add the specified range to the end of the vector.
-  template <typename InputIterator>
-  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
-  void append (InputIterator first, InputIterator last);
-  void append (std::initializer_list<T> ilist) {
-    this->append (std::begin (ilist), std::end (ilist));
-  }
-
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
     --size_;
@@ -647,18 +639,7 @@ PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
   // TODO: this would be better done in a single pass.
   this->clear ();
-  this->append (first, last);
-}
-
-// append
-// ~~~~~~
-template <typename T, std::size_t Size>
-template <typename InputIterator>
-PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
-void arrayvec<T, Size>::append (InputIterator first, InputIterator last) {
-  for (; first != last; ++first) {
-    this->emplace_back (*first);
-  }
+  this->insert (this->end (), first, last);
 }
 
 // erase
