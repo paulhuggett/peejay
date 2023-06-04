@@ -50,12 +50,11 @@ protected:
   static void clear (Iterator first, Iterator last) noexcept;
 
   template <typename T, typename... Args>
-  static std::size_t resize (T *data, std::size_t const size,
-                             std::size_t const new_size, Args &&...args);
+  static std::size_t resize (T *data, std::size_t size, std::size_t new_size,
+                             Args &&...args);
 
   template <typename Iterator>
-  static void move_range (Iterator const from, Iterator const end,
-                          Iterator const to) noexcept;
+  static void move_range (Iterator from, Iterator end, Iterator to) noexcept;
 
   template <typename Iterator>
   static std::size_t erase (Iterator pos, Iterator end, std::size_t size);
