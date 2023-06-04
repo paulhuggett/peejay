@@ -626,7 +626,7 @@ void arrayvec<T, Size>::emplace_back (Args &&...args) {
 // ~~~~~~
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::assign (size_type count, const_reference value) {
-  // TODO: this would be better done in a single pass.
+  // TODO(paul): this would be better done in a single pass.
   this->clear ();
   for (; count > 0; --count) {
     this->push_back (value);
@@ -637,7 +637,7 @@ template <typename T, std::size_t Size>
 template <typename InputIterator>
 PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
 void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
-  // TODO: this would be better done in a single pass.
+  // TODO(paul): this would be better done in a single pass.
   this->clear ();
   this->insert (this->end (), first, last);
 }
@@ -671,11 +671,13 @@ auto arrayvec<T, Size>::insert (const_iterator const pos, size_type const count,
                                 const_reference value) -> iterator {
   assert (this->size () + count < this->max_size () && "Insert will overflow");
 
+  // NOLINTNEXTLINE(misc-misplaced-const)
   iterator const from = this->to_non_const_iterator (pos);
   auto const to = from + count;
   auto const current_end = this->end ();
   assert (current_end >= from && to >= from);
 
+  // NOLINTNEXTLINE(misc-misplaced-const)
   iterator const new_end = current_end + (to - from);
   difference_type const num_to_move = current_end - from;
   difference_type const num_uninit =
@@ -714,7 +716,9 @@ auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
   assert (this->size () < this->max_size () && "Insert will cause overflow");
+  // NOLINTNEXTLINE(misc-misplaced-const)
   iterator const e = this->end ();
+  // NOLINTNEXTLINE(misc-misplaced-const)
   iterator const r = this->to_non_const_iterator (pos);
   if (r == e) {
     this->emplace_back (std::move (value));
@@ -731,7 +735,9 @@ template <typename Iterator>
 PEEJAY_CXX20REQUIRES ((std::input_iterator<Iterator>))
 auto arrayvec<T, Size>::insert (const_iterator pos, Iterator first,
                                 Iterator last) -> iterator {
+  // NOLINTNEXTLINE(misc-misplaced-const)
   iterator const r = this->to_non_const_iterator (pos);
+  // NOLINTNEXTLINE(misc-misplaced-const)
   iterator const e = this->end ();
 
   if (pos == e) {
@@ -757,7 +763,8 @@ auto arrayvec<T, Size>::insert (const_iterator pos, Iterator first,
       return r;
     }
 
-    // TODO: Add an additional optimization path for random-access iterators.
+    // TODO(paul): Add an additional optimization path for random-access
+    // iterators.
     // 1. Construct any objects in uninitialized space.
     // 2. Move objects from initialized to uninitialized space following the
     // objects
