@@ -8,88 +8,89 @@ on:
 jobs:
   sonar:
     name: Build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
-      SONAR_SCANNER_VERSION: 4.7.0.2747 # Find the latest version on this page:
-                                        # https://docs.sonarcloud.io/advanced-setup/ci-based-analysis/sonarscanner-cli/
       SONAR_SERVER_URL: "https://sonarcloud.io"
+      BUILD_DIR: ./build
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
-      SONAR_CACHE_DIR: build_cache_dir
       CLANG_VERSION: 14
+
     steps:
+      - name: Install clang
+        run: |
+          if ! command -v clang++-${{ env.CLANG_VERSION}}
+          then
+            wget https://apt.llvm.org/llvm.sh
+            # Force --yes to the end of the add-apt-repository command to
+            # prevent the llvm.sh script hanging.
+            sed -ie "/^add-apt-repository/ s/$/ --yes/" llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh $CLANG_VERSION all
+          fi
+
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
           submodules: 'True'
 
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          distribution: 'zulu'
-          java-version: '11'
-
       - name: Install libc++, libc++abc, and ninja
-        run: sudo apt-get install libc++-dev libc++abi-dev ninja-build
-
-      - name: Cache SonarCloud packages and analysis
-        uses: actions/cache@v3
-        with:
-          key: ${{ runner.os }}-sonar
-          path: |
-            ~/.sonar/cache
-            ${{ env.SONAR_CACHE_DIR }}
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Download and set up sonar-scanner
-        env:
-          SONAR_SCANNER_DOWNLOAD_URL: https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
         run: |
-          mkdir -p "$HOME/.sonar"
-          curl -sSLo "$HOME/.sonar/sonar-scanner.zip" "${{ env.SONAR_SCANNER_DOWNLOAD_URL }}"
-          unzip -o "$HOME/.sonar/sonar-scanner.zip" -d "$HOME/.sonar/"
-          echo "$HOME/.sonar/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            libc++-dev \
+            libc++abi-dev \
+            ninja-build
 
-      - name: Download and set up build-wrapper
-        env:
-          BUILD_WRAPPER_DOWNLOAD_URL: ${{ env.SONAR_SERVER_URL }}/static/cpp/build-wrapper-linux-x86.zip
-        run: |
-          curl -sSLo "$HOME/.sonar/build-wrapper-linux-x86.zip" "${{ env.BUILD_WRAPPER_DOWNLOAD_URL }}"
-          unzip -o "$HOME/.sonar/build-wrapper-linux-x86.zip" -d "$HOME/.sonar/"
-          echo "$HOME/.sonar/build-wrapper-linux-x86" >> "$GITHUB_PATH"
+      - name: Install sonar-scanner and build-wrapper
+        uses: SonarSource/sonarcloud-github-c-cpp@v1
 
-      - name: Perform build
+      - name: Configure build
         run: |
-          mkdir build
-          cmake -G Ninja                                           \
-                -S .                                               \
-                -B build                                           \
-                -D COVERAGE=Yes                                    \
-                -D PEEJAY_CXX17=Yes                                \
-                -D LIBCXX=Yes                                      \
-                -D CMAKE_C_COMPILER=clang-${{ env.CLANG_VERSION }} \
-                -D CMAKE_CXX_COMPILER=clang++-${{ env.CLANG_VERSION }}
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
+          mkdir "$BUILD_DIR"
+          cmake                                          \
+            -G Ninja                                     \
+            -S .                                         \
+            -B "$BUILD_DIR"                              \
+            -D COVERAGE=Yes                              \
+            -D PEEJAY_CXX17=Yes                          \
+            -D LIBCXX=Yes                                \
+            -D CMAKE_C_COMPILER=clang-$CLANG_VERSION     \
+            -D CMAKE_CXX_COMPILER=clang++-$CLANG_VERSION \
+            -D CMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
+
+      - name: Build
+        run: |
+          build-wrapper-linux-x86-64           \
+            --out-dir "$BUILD_WRAPPER_OUT_DIR" \
+            cmake --build "$BUILD_DIR"
 
       - name: Index the raw profile
         run: |
-          llvm-profdata-${{ env.CLANG_VERSION }} merge -sparse build/default.profraw -o build/merged.profdata
+          llvm-profdata-$CLANG_VERSION merge \
+            --sparse                         \
+            "$BUILD_DIR/default.profraw"     \
+            -o "$BUILD_DIR/merged.profdata"
 
       - name: Collect the coverage
         run: |
-           llvm-cov-${{ env.CLANG_VERSION }} show --instr-profile build/merged.profdata build/unittests/pj-unittests > coverage.txt
+          llvm-cov-$CLANG_VERSION show \
+            --instr-profile "$BUILD_DIR/merged.profdata" \
+            "$BUILD_DIR/unittests/pj-unittests" > coverage.txt
 
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          sonar-scanner -X \
-                        --define sonar.host.url="${{ env.SONAR_SERVER_URL }}"                          \
-                        --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
-                        --define sonar.cfamily.llvm-cov.reportPath=coverage.txt                        \
-                        --define sonar.projectVersion="$(git rev-parse HEAD)"                          \
-                        --define sonar.projectKey=paulhuggett_peejay                                   \
-                        --define sonar.python.version=3                                                \
-                        --define sonar.organization=paulhuggett-github                                 \
-                        --define sonar.sourceEncoding=UTF-8                                            \
-                        --define sonar.exclusions='build/**/*','docs/**/*'
+          sonar-scanner \
+            -X                                                                   \
+            --define sonar.cfamily.build-wrapper-output="$BUILD_WRAPPER_OUT_DIR" \
+            --define sonar.cfamily.llvm-cov.reportPath=coverage.txt              \
+            --define sonar.exclusions="$BUILD_DIR/**/*","docs/**/*"              \
+            --define sonar.host.url="$SONAR_SERVER_URL"                          \
+            --define sonar.organization=paulhuggett-github                       \
+            --define sonar.projectKey=paulhuggett_peejay                         \
+            --define sonar.projectVersion="$(git rev-parse HEAD)"                \
+            --define sonar.python.version=3                                      \
+            --define sonar.sourceEncoding=UTF-8
