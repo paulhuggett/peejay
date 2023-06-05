@@ -97,6 +97,12 @@
 #define ICUBABY_REQUIRES(x)
 #endif  // __cpp_concepts
 
+#if ICUBABY_CXX20
+#define ICUBABY_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#else
+#define ICUBABY_NO_UNIQUE_ADDRESS
+#endif
+
 namespace icubaby {
 
 namespace details {
@@ -297,13 +303,14 @@ public:
   [[nodiscard]] constexpr Transcoder* transcoder () noexcept {
     return transcoder_;
   }
+  /// Accesses the underlying transcoder.
   [[nodiscard]] constexpr Transcoder const* transcoder () const noexcept {
     return transcoder_;
   }
 
 private:
   Transcoder* transcoder_;
-  PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE OutputIterator it_;
+  ICUBABY_NO_UNIQUE_ADDRESS OutputIterator it_;
 };
 
 template <typename Transcoder, typename OutputIterator>
