@@ -17,6 +17,7 @@
 #define PEEJAY_PORTAB_HPP
 
 #include <iterator>
+#include <memory>
 
 #if __cplusplus >= 202002L
 #define PEEJAY_CXX20 (1)
