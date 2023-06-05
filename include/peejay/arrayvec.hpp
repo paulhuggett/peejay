@@ -156,6 +156,17 @@ std::size_t arrayvec_base::erase (Iterator pos, Iterator end,
 //* / _` | '_| '_/ _` | || \ V / -_) _| *
 //* \__,_|_| |_| \__,_|\_, |\_/\___\__| *
 //*                    |__/             *
+/// arrayvec is a sequence container that encapsulates dynamic size arrays
+/// within a fixed size container.
+///
+/// The elements are stored contiguously, which means that elements can be
+/// accessed not only through iterators, but also using offsets to regular
+/// pointers to elements. This means that a pointer to an element of an
+/// arrayvec may be passed to any function that expects a pointer to an element
+/// of an array.
+///
+/// The storage of the arrayvec is a fixed-size array contained within the body
+/// of the object.
 template <typename T, std::size_t Size = 256 / sizeof (T)>
 class arrayvec : public arrayvec_base {
 public:
@@ -167,11 +178,16 @@ public:
       !std::is_move_assignable_v<T> || std::is_nothrow_move_assignable_v<T>,
       "If the member type can be move-assigned, the operation must be nothrow");
 
+  /// The type of an element in this container.
   using value_type = T;
 
+  /// A reference to arrayvec::value_type.
   using reference = value_type &;
+  /// A constant reference to arrayvec::value_type.
   using const_reference = value_type const &;
+  /// A pointer to arrayvec::value_type.
   using pointer = value_type *;
+  /// A pointer to constant arrayvec::value_type.
   using const_pointer = value_type const *;
 
   using size_type = uinteger_t<bits_required (Size)>;
@@ -184,12 +200,29 @@ public:
 
   /// Constructs the container with an initial size of 0.
   arrayvec () noexcept = default;
+  /// Constructs the container with the contents of the initializer list \p init
+  ///
+  /// \param init  An initializer list with which to initialize the elements of
+  ///   the container.
   arrayvec (std::initializer_list<T> init)
       : arrayvec (std::begin (init), std::end (init)) {}
+  /// Constructs the container with the contents of the range [\p first, \p
+  /// last).
+  ///
+  /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
+  /// \param first  The start of the range from which to copy the elements.
+  /// \param last  The end of the range from which to copy the elements.
   template <typename InputIterator>
   PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
   arrayvec (InputIterator first, InputIterator last);
-  arrayvec (size_type count, const_reference value = T ());
+  /// Constructs the container with \p count copies of elements with value
+  /// \p value.
+  ///
+  /// \param count  The number of elements to be initialized. This must be less
+  ///   than or equal to max_size().
+  /// \param value  The value with which to initialize elements of the
+  ///   container.
+  arrayvec (size_type count, const_reference value);
 
   arrayvec (arrayvec const &other)
       : arrayvec (std::begin (other), std::end (other)) {}
@@ -197,30 +230,8 @@ public:
 
   ~arrayvec () noexcept { this->clear (); }
 
-  arrayvec &operator= (arrayvec const &other) {
-    if (&other != this) {
-      std::size_t const new_size = arrayvec_base::operator_assign<false> (
-          std::make_pair (this->data (),
-                          static_cast<std::size_t> (this->size ())),
-          std::make_pair (other.data (),
-                          static_cast<std::size_t> (other.size ())));
-      assert (new_size <= this->max_size ());
-      size_ = static_cast<size_type> (new_size);
-    }
-    return *this;
-  }
-  arrayvec &operator= (arrayvec &&other) noexcept {
-    if (&other != this) {
-      std::size_t const new_size = arrayvec_base::operator_assign<true> (
-          std::make_pair (this->data (),
-                          static_cast<std::size_t> (this->size ())),
-          std::make_pair (other.data (),
-                          static_cast<std::size_t> (other.size ())));
-      assert (new_size <= this->max_size ());
-      size_ = static_cast<size_type> (new_size);
-    }
-    return *this;
-  }
+  arrayvec &operator= (arrayvec const &other);
+  arrayvec &operator= (arrayvec &&other) noexcept;
 
   /// \name Element access
   ///@{
@@ -238,9 +249,21 @@ public:
     return *(this->data () + n);
   }
 
+  /// \brief Access the first element.
+  ///
+  /// The effect of calling front() on a zero-sized arrayvec is undefined.
   constexpr reference front () noexcept;
+  /// \brief Access the first element.
+  ///
+  /// The effect of calling front() on a zero-sized arrayvec is undefined.
   constexpr const_reference front () const noexcept;
+  /// \brief Access the last element.
+  ///
+  /// The effect of calling back() on a zero-sized arrayvec is undefined.
   constexpr reference back () noexcept;
+  /// \brief Access the last element.
+  ///
+  /// The effect of calling back() on a zero-sized arrayvec is undefined.
   constexpr const_reference back () const noexcept;
 
   ///@}
@@ -287,10 +310,16 @@ public:
 
   /// \name Iterators
   ///@{
-  /// Returns an iterator to the beginning of the container.
+
+  /// \brief Returns an iterator to the beginning of the container.
+  ///
+  /// If the arrayvec is empty, the returned iterator will be equal to end().
   [[nodiscard]] constexpr const_iterator begin () const noexcept {
     return data ();
   }
+  /// \brief Returns an iterator to the beginning of the container.
+  ///
+  /// If the arrayvec is empty, the returned iterator will be equal to end().
   [[nodiscard]] constexpr iterator begin () noexcept { return data (); }
   const_iterator cbegin () const noexcept { return data (); }
   /// Returns a reverse iterator to the first element of the reversed
@@ -524,6 +553,36 @@ arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
   for (; count > 0; --count) {
     this->emplace_back (value);
   }
+}
+
+// operator=
+// ~~~~~~~~~
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
+  if (&other != this) {
+    std::size_t const new_size = arrayvec_base::operator_assign<false> (
+        std::make_pair (this->data (),
+                        static_cast<std::size_t> (this->size ())),
+        std::make_pair (other.data (),
+                        static_cast<std::size_t> (other.size ())));
+    assert (new_size <= this->max_size ());
+    size_ = static_cast<size_type> (new_size);
+  }
+  return *this;
+}
+
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::operator= (arrayvec &&other) noexcept -> arrayvec & {
+  if (&other != this) {
+    std::size_t const new_size = arrayvec_base::operator_assign<true> (
+        std::make_pair (this->data (),
+                        static_cast<std::size_t> (this->size ())),
+        std::make_pair (other.data (),
+                        static_cast<std::size_t> (other.size ())));
+    assert (new_size <= this->max_size ());
+    size_ = static_cast<size_type> (new_size);
+  }
+  return *this;
 }
 
 // front

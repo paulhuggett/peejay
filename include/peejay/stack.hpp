@@ -26,6 +26,9 @@
 
 namespace peejay {
 
+/// The stack class is a clone of std::stack but adds the capability of using
+/// iterators to examine the contents of the underlying container, in addition
+/// to the strictly stack-based members.
 template <typename T, typename Container = std::deque<T>>
 class stack : public std::stack<T, Container> {
 public:
@@ -38,9 +41,12 @@ public:
 
   /// \name Iterators
   ///@{
-  /// Returns an iterator to the beginning of the container.
+
+  /// Returns an stack::iterator to the beginning of the container.
   constexpr const_iterator begin () const noexcept { return this->c.begin (); }
+  /// Returns an stack::iterator to the beginning of the container.
   constexpr iterator begin () noexcept { return this->c.begin (); }
+  /// Returns a stack::const_iterator to the beginning of the container.
   const_iterator cbegin () noexcept { return this->c.cbegin (); }
   /// Returns a reverse iterator to the first element of the reversed
   /// container. It corresponds to the last element of the non-reversed

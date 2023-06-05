@@ -1567,13 +1567,15 @@ private:
   uint_least16_t hex_ = 0U;
 };
 
-///{@
-/// The hex_consumer<> template class impleements the handling of UTF-16
+/// \name hex_consumer<> states
+/// The hex_consumer<> template class implements the handling of UTF-16
 /// hexadecimal escape codes for both string and identifier productions. To
 /// minimize our code size, it's useful to ensure that the template arguments
 /// for its instantiations are the same. To acheive this, we predefine the
 /// expected first and last hex states for the state machines here. We later
 /// statically assert that the values used are consistent.
+
+///{@
 constexpr auto first_hex_state = 2;
 constexpr auto last_hex_state = 5;
 constexpr auto post_hex_state = 6;
