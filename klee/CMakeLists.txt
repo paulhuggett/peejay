@@ -121,7 +121,12 @@ if (klee_available)
   add_custom_target (klee-all)
 
   # Calls to add_klee_target of the form:
-  set (TESTS quote)
+  set (TESTS
+      av_assign_count
+      av_assign_range
+      av_insert_range
+      quote
+  )
   foreach (T ${TESTS})
     message(STATUS "Adding KLEE test ${T}")
     add_klee_target (TARGET klee-${T} SOURCES ${T}.cpp)

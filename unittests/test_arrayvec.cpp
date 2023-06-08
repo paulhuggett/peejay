@@ -163,10 +163,25 @@ TEST (ArrayVec, MoveAssign2) {
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, AssignCount) {
+TEST (ArrayVec, AssignCountLarger) {
   arrayvec<int, 3> b{1};
-  b.assign (size_t{3}, 7);
+  b.assign (3, 7);
   EXPECT_THAT (b, ElementsAre (7, 7, 7));
+}
+TEST (ArrayVec, AssignCountSmaller) {
+  arrayvec<int, 3> b{1, 3};
+  b.assign (1, 7);
+  EXPECT_THAT (b, ElementsAre (7));
+}
+TEST (ArrayVec, AssignCountUnchanged) {
+  arrayvec<int, 3> b{1, 3};
+  b.assign (2, 5);
+  EXPECT_THAT (b, ElementsAre (5, 5));
+}
+TEST (ArrayVec, AssignCountZero) {
+  arrayvec<int, 3> b{1, 3};
+  b.assign (0, 7);
+  EXPECT_THAT (b, ElementsAre ());
 }
 // NOLINTNEXTLINE
 TEST (ArrayVec, AssignInitializerList) {
@@ -642,6 +657,18 @@ constexpr bool operator!= (int lhs, trackee const &rhs) {
 
 static std::ostream &operator<< (std::ostream &os, trackee const &t) {
   return os << t.get ();
+}
+
+TEST (ArrayVec, TrackedAssignCountSmaller) {
+  tracker t;
+  arrayvec<trackee, 3> b{trackee{&t, 1}, trackee{&t, 3}};
+  trackee c{&t, 7};
+  t.actions.clear ();
+  b.assign (size_t{1}, c);
+  EXPECT_THAT (t.actions, testing::ElementsAre (
+                              std::make_tuple (1, 7, action::copy_assign),
+                              std::make_tuple (3, 0, action::deleted)));
+  EXPECT_THAT (b, ElementsAre (trackee{&t, 7}));
 }
 
 // NOLINTNEXTLINE

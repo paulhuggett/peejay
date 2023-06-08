@@ -26,6 +26,7 @@ add_library (peejay STATIC
   "${include_dir}/peejay/json.hpp"
   "${include_dir}/peejay/json_error.hpp"
   "${include_dir}/peejay/null.hpp"
+  "${include_dir}/peejay/pointer_based_iterator.hpp"
   "${include_dir}/peejay/portab.hpp"
   "${include_dir}/peejay/stack.hpp"
   "${include_dir}/peejay/uinteger.hpp"

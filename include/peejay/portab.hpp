@@ -96,6 +96,10 @@ template <typename T>
 constexpr auto to_address (T const& p) noexcept {
   return to_address (p.operator->());
 }
+template <typename T>
+constexpr auto to_address (T& p) noexcept {
+  return to_address (p.operator->());
+}
 #endif  // defined(__cpp_lib_to_address)
 
 // pointer cast
