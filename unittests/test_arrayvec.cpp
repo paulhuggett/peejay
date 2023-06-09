@@ -165,24 +165,39 @@ TEST (ArrayVec, MoveAssign2) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, AssignCountLarger) {
   arrayvec<int, 3> b{1};
-  b.assign (3, 7);
+  using size_type = decltype (b)::size_type;
+  int const v = 7;
+  b.assign (size_type{3}, v);
   EXPECT_THAT (b, ElementsAre (7, 7, 7));
 }
 TEST (ArrayVec, AssignCountSmaller) {
   arrayvec<int, 3> b{1, 3};
-  b.assign (1, 7);
+  using size_type = decltype (b)::size_type;
+  int const v = 7;
+  b.assign (size_type{1}, v);
   EXPECT_THAT (b, ElementsAre (7));
 }
 TEST (ArrayVec, AssignCountUnchanged) {
   arrayvec<int, 3> b{1, 3};
-  b.assign (2, 5);
+  using size_type = decltype (b)::size_type;
+  int const v = 5;
+  b.assign (size_type{2}, v);
   EXPECT_THAT (b, ElementsAre (5, 5));
 }
 TEST (ArrayVec, AssignCountZero) {
   arrayvec<int, 3> b{1, 3};
-  b.assign (0, 7);
+  using size_type = decltype (b)::size_type;
+  int const v = 7;
+  b.assign (size_type{0}, v);
   EXPECT_THAT (b, ElementsAre ());
 }
+TEST (ArrayVec, AssignRange) {
+  arrayvec<int, 3> b{1, 3};
+  std::array<int, 2> c{{5, 7}};
+  b.assign (c.begin (), c.end ());
+  EXPECT_THAT (b, ElementsAre (5, 7));
+}
+
 // NOLINTNEXTLINE
 TEST (ArrayVec, AssignInitializerList) {
   arrayvec<int, 3> b{1, 2, 3};
