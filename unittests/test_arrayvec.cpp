@@ -149,7 +149,6 @@ TEST (ArrayVec, MoveAssign) {
   EXPECT_EQ (b[1], no_copy{3});
   EXPECT_EQ (b[2], no_copy{5});
 }
-
 // NOLINTNEXTLINE
 TEST (ArrayVec, MoveAssign2) {
   arrayvec<no_copy, 2> a;
@@ -161,7 +160,6 @@ TEST (ArrayVec, MoveAssign2) {
   EXPECT_EQ (b.size (), size_t{1});
   EXPECT_EQ (b[0], no_copy{2});
 }
-
 // NOLINTNEXTLINE
 TEST (ArrayVec, AssignCountLarger) {
   arrayvec<int, 3> b{1};
@@ -170,6 +168,7 @@ TEST (ArrayVec, AssignCountLarger) {
   b.assign (size_type{3}, v);
   EXPECT_THAT (b, ElementsAre (7, 7, 7));
 }
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignCountSmaller) {
   arrayvec<int, 3> b{1, 3};
   using size_type = decltype (b)::size_type;
@@ -177,6 +176,7 @@ TEST (ArrayVec, AssignCountSmaller) {
   b.assign (size_type{1}, v);
   EXPECT_THAT (b, ElementsAre (7));
 }
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignCountUnchanged) {
   arrayvec<int, 3> b{1, 3};
   using size_type = decltype (b)::size_type;
@@ -184,6 +184,7 @@ TEST (ArrayVec, AssignCountUnchanged) {
   b.assign (size_type{2}, v);
   EXPECT_THAT (b, ElementsAre (5, 5));
 }
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignCountZero) {
   arrayvec<int, 3> b{1, 3};
   using size_type = decltype (b)::size_type;
@@ -191,6 +192,7 @@ TEST (ArrayVec, AssignCountZero) {
   b.assign (size_type{0}, v);
   EXPECT_THAT (b, ElementsAre ());
 }
+// NOLINTNEXTLINE
 TEST (ArrayVec, AssignRange) {
   arrayvec<int, 3> b{1, 3};
   std::array<int, 2> c{{5, 7}};
@@ -221,6 +223,7 @@ TEST (ArrayVec, AssignCopySmallToLarge) {
   EXPECT_THAT (c, ElementsAre (no_move{5}));
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, Front) {
   arrayvec<int, 2> a{3};
   EXPECT_EQ (a.front (), 3);
@@ -674,6 +677,7 @@ static std::ostream &operator<< (std::ostream &os, trackee const &t) {
   return os << t.get ();
 }
 
+// NOLINTNEXTLINE
 TEST (ArrayVec, TrackedAssignCountSmaller) {
   tracker t;
   arrayvec<trackee, 3> b{trackee{&t, 1}, trackee{&t, 3}};
