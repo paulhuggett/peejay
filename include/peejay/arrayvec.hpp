@@ -227,8 +227,8 @@ public:
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
-  template <typename InputIterator>
-  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+  template <typename InputIterator,
+            typename = std::enable_if_t<input_iterator<InputIterator>>>
   arrayvec (InputIterator first, InputIterator last);
   /// Constructs the container with \p count copies of elements with value
   /// \p value.
@@ -392,13 +392,13 @@ public:
   /// Replaces the contents with copies of those in the range [first, last). The
   /// behavior is undefined if either argument is an iterator into *this.
   ///
-  /// \tparam Iterator An iterator which will produce the elements to be
+  /// \tparam InputIterator  An iterator which will produce the elements to be
   ///   inserted. Must meet the requirements of LegacyInputIterator.
-  /// \param first The first of the range from which elements are to be copied.
-  /// \param last The last of the range from which elements are to be copied.
-  template <typename Iterator>
-  PEEJAY_CXX20REQUIRES ((std::input_iterator<Iterator>))
-  void assign (Iterator first, Iterator last);
+  /// \param first  The first of the range from which elements are to be copied.
+  /// \param last  The last of the range from which elements are to be copied.
+  template <typename InputIterator,
+            typename = std::enable_if_t<input_iterator<InputIterator>>>
+  void assign (InputIterator first, InputIterator last);
   /// Replaces the contents with the elements from the initializer list \p ilist
   ///
   /// \param ilist Initializer list from which elements are to be copied.
@@ -448,8 +448,8 @@ public:
   ///   be an iterator into the container for which insert() is called.
   /// \returns  Iterator pointing to the first element inserted, or \p pos
   ///   if \p first == \p last.
-  template <typename InputIterator>
-  PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+  template <typename InputIterator,
+            typename = std::enable_if_t<input_iterator<InputIterator>>>
   iterator insert (const_iterator pos, InputIterator first, InputIterator last);
   /// Inserts elements from the initializer list \p ilist before \p pos.
   ///
@@ -554,8 +554,7 @@ arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept {
 }
 
 template <typename T, std::size_t Size>
-template <typename InputIterator>
-PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+template <typename InputIterator, typename>
 arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
   auto out = this->begin ();
   for (; first != last; ++first) {
@@ -720,8 +719,7 @@ void arrayvec<T, Size>::assign (size_type count, const_reference value) {
 }
 
 template <typename T, std::size_t Size>
-template <typename InputIterator>
-PEEJAY_CXX20REQUIRES ((std::input_iterator<InputIterator>))
+template <typename InputIterator, typename>
 void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
   // TODO(paul): this would be better done in a single pass.
   this->clear ();
@@ -816,10 +814,9 @@ auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
 }
 
 template <typename T, std::size_t Size>
-template <typename Iterator>
-PEEJAY_CXX20REQUIRES ((std::input_iterator<Iterator>))
-auto arrayvec<T, Size>::insert (const_iterator pos, Iterator first,
-                                Iterator last) -> iterator {
+template <typename InputIterator, typename>
+auto arrayvec<T, Size>::insert (const_iterator pos, InputIterator first,
+                                InputIterator last) -> iterator {
   iterator r = this->to_non_const_iterator (pos);
   iterator const e = this->end ();  // NOLINT(misc-misplaced-const)
 
@@ -831,7 +828,7 @@ auto arrayvec<T, Size>::insert (const_iterator pos, Iterator first,
     return r;
   }
 
-  if constexpr (forward_iterator<Iterator, T>) {
+  if constexpr (forward_iterator<InputIterator>) {
     // A forward iterator can be used with multi-pass algorithms such as this...
     auto const n = std::distance (first, last);
     // If all the new objects land on existing, initialized, elements we don't

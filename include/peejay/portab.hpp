@@ -100,6 +100,10 @@ template <typename T>
 constexpr auto to_address (T& p) noexcept {
   return to_address (p.operator->());
 }
+template <typename T>
+constexpr auto to_address (T&& p) noexcept {
+  return to_address (p.operator->());
+}
 #endif  // defined(__cpp_lib_to_address)
 
 // pointer cast
@@ -135,13 +139,25 @@ constexpr T* construct_at (T* const p, Args&&... args) {
 // forward iterator
 // ~~~~~~~~~~~~~~~~
 #if PEEJAY_HAVE_CONCEPTS
-template <typename Iterator, typename T>
+template <typename Iterator>
 concept forward_iterator = std::forward_iterator<Iterator>;
 #else
-template <typename Iterator, typename T>
+template <typename Iterator>
 constexpr bool forward_iterator = std::is_convertible_v<
     typename std::iterator_traits<Iterator>::iterator_category,
     std::forward_iterator_tag>;
+#endif  // PEEJAY_HAVE_CONCEPTS
+
+// input iterator
+// ~~~~~~~~~~~~~~
+#if PEEJAY_HAVE_CONCEPTS
+template <typename Iterator>
+concept input_iterator = std::input_iterator<Iterator>;
+#else
+template <typename Iterator>
+constexpr bool input_iterator = std::is_convertible_v<
+    typename std::iterator_traits<Iterator>::iterator_category,
+    std::input_iterator_tag>;
 #endif  // PEEJAY_HAVE_CONCEPTS
 
 }  // end namespace peejay
