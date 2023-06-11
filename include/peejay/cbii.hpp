@@ -21,6 +21,15 @@
 
 namespace peejay {
 
+/// checked_back_insert_iterator<> is an output iterator that appends elements
+/// to a container for which it was constructed. The container must provide
+/// \p size(), \p max_size(), and \p push_back() member functions. Once the
+/// number of elements in the container exceeds max_size(), the \p overflow
+/// value is set to true and \p push_back() is no longer called.
+///
+/// The container's push_back() member function is called when the iterator
+/// (whether dereferenced or not) is assigned to unless an overflow is
+/// detected. Incrementing the checked_back_insert_iterator is a no-op.
 template <typename Container>
 class checked_back_insert_iterator {
 public:
@@ -33,7 +42,11 @@ public:
 
   constexpr checked_back_insert_iterator (Container *const container,
                                           bool *const overflow) noexcept
-      : container_{container}, overflow_{overflow} {}
+      : container_{container}, overflow_{overflow} {
+    if (container_->size () > container_->max_size ()) {
+      *overflow_ = true;
+    }
+  }
 
   constexpr checked_back_insert_iterator &operator= (
       typename Container::value_type const &value) {

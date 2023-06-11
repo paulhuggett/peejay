@@ -14,6 +14,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// \file null.hpp
+/// \brief Provides peejay::null, a backend for the PJ JSON parser which simply
+///   discards all of its input.
+
 #ifndef PEEJAY_NULL_HPP
 #define PEEJAY_NULL_HPP
 

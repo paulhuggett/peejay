@@ -13,6 +13,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file dom.hpp
+/// \brief Provides a simple document-object-module backend for the PJ JSON
+///   parser.
 #ifndef PEEJAY_DOM_HPP
 #define PEEJAY_DOM_HPP
 
