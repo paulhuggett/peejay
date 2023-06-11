@@ -16,7 +16,6 @@
 #include <gmock/gmock.h>
 
 #include "peejay/dom.hpp"
-#include "peejay/json.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
