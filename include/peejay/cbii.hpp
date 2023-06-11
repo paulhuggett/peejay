@@ -13,6 +13,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file cbii.hpp
+/// \brief Provides peejay::checked_back_insert_iterator is an output
+///   iterator that appends elements to a container.
 #ifndef PEEJAY_CBII_HPP
 #define PEEJAY_CBII_HPP
 
@@ -21,7 +24,7 @@
 
 namespace peejay {
 
-/// checked_back_insert_iterator<> is an output iterator that appends elements
+/// checked_back_insert_iterator is an output iterator that appends elements
 /// to a container for which it was constructed. The container must provide
 /// \p size(), \p max_size(), and \p push_back() member functions. Once the
 /// number of elements in the container exceeds max_size(), the \p overflow

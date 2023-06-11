@@ -20,7 +20,8 @@
 //
 //===----------------------------------------------------------------------===//
 /// \file pointer_based_iterator.hpp
-/// \brief Provides pointer_based_iterator<> an iterator wrapper for pointers.
+/// \brief Provides peejay::pointer_based_iterator: an iterator wrapper for
+///   pointers.
 ///
 /// Pointers to an array make perfectly good random access iterators. However
 /// there are a few of minor niggles with their usage.

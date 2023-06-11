@@ -13,6 +13,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file stack.hpp
+/// \brief Provides peejay::stack, a clone of std::stack but with iterator
+///   access.
 #ifndef PEEJAY_STACK_HPP
 #define PEEJAY_STACK_HPP
 
@@ -27,8 +30,7 @@
 namespace peejay {
 
 /// The stack class is a clone of std::stack but adds the capability of using
-/// iterators to examine the contents of the underlying container, in addition
-/// to the strictly stack-based members.
+/// iterators to examine the contents of the underlying container.
 template <typename T, typename Container = std::deque<T>>
 class stack : public std::stack<T, Container> {
 public:
@@ -48,19 +50,30 @@ public:
   constexpr iterator begin () noexcept { return this->c.begin (); }
   /// Returns a stack::const_iterator to the beginning of the container.
   const_iterator cbegin () noexcept { return this->c.cbegin (); }
-  /// Returns a reverse iterator to the first element of the reversed
-  /// container. It corresponds to the last element of the non-reversed
+  /// \brief Returns a reverse iterator to the first element of the reversed
+  ///   container.
+  ///
+  /// The returned iterator corresponds to the last element of the non-reversed
   /// container.
   reverse_iterator rbegin () noexcept { return this->c.rbegin (); }
+  /// \brief Returns a reverse iterator to the first element of the reversed
+  ///   container.
   const_reverse_iterator rbegin () const noexcept { return this->c.rbegin (); }
+  /// \brief Returns a reverse iterator to the first element of the reversed
+  ///   container.
   const_reverse_iterator rcbegin () noexcept { return this->c.rcbegin (); }
 
   /// Returns an iterator to the end of the container.
   const_iterator end () const noexcept { return this->c.end (); }
+  /// Returns an iterator to the end of the container.
   iterator end () noexcept { return this->c.end (); }
+  /// Returns an iterator to the end of the container.
   const_iterator cend () noexcept { return this->c.end (); }
+  /// Returns a reverse iterator to the end of the reversed container.
   reverse_iterator rend () noexcept { return this->c.rend (); }
+  /// Returns a reverse iterator to the end of the reversed container.
   const_reverse_iterator rend () const noexcept { return this->c.rend (); }
+  /// Returns a reverse iterator to the end of the reversed container.
   const_reverse_iterator rcend () noexcept { return this->c.rcend (); }
   ///@}
 };
