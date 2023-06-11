@@ -13,6 +13,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file arrayvec.hpp
+/// \brief Provides a a sequence container that encapsulates dynamically size
+///   arrays within a fixed size container.
 #ifndef PEEJAY_ARRAYVEC_HPP
 #define PEEJAY_ARRAYVEC_HPP
 
@@ -201,14 +204,16 @@ public:
   /// A pointer to constant arrayvec::value_type.
   using const_pointer = value_type const *;
 
-  /// An unsigned integer type which is sufficiently wide to hold a maximum
+  /// \brief An unsigned integer type which is sufficiently wide to hold a maximum
   /// value of \p Size.
   using size_type = uinteger_t<bits_required (Size)>;
-  /// A signed integer typed which can represent the difference between the
+  /// \brief A signed integer typed which can represent the difference between the
   /// addresses of any two elements in the container.
   using difference_type = std::ptrdiff_t;
 
+  /// A random-access and contiguous iterator to value_type.
   using iterator = pointer_based_iterator<value_type>;
+  /// A random-access and contiguous iterator to const value_type.
   using const_iterator = pointer_based_iterator<value_type const>;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
@@ -251,15 +256,31 @@ public:
   /// \name Element access
   ///@{
 
+  /// Direct access to the underlying array.
   constexpr T const *data () const noexcept {
     return pointer_cast<T const *> (data_.data ());
   }
+  /// Direct access to the underlying array.
   constexpr T *data () noexcept { return pointer_cast<T *> (data_.data ()); }
 
+  /// Access the specified element.
+  ///
+  /// Returns a reference to the element at specified location \p n. No bounds
+  /// checking is performed.
+  ///
+  /// \param n  Position of the element to return.
+  /// \returns  A reference to the requested element.
   constexpr const_reference operator[] (size_type n) const noexcept {
     assert (n < this->size ());
     return *(this->data () + n);
   }
+  /// Access the specified element.
+  ///
+  /// Returns a reference to the element at specified location \p n. No bounds
+  /// checking is performed.
+  ///
+  /// \param n  Position of the element to return.
+  /// \returns  A reference to the requested element.
   constexpr reference operator[] (size_type n) noexcept {
     assert (n < this->size ());
     return *(this->data () + n);
@@ -286,7 +307,8 @@ public:
 
   /// \name Capacity
   ///@{
-  /// Returns the number of elements.
+
+  /// Returns the number of elements held by the container.
   [[nodiscard]] constexpr size_type size () const noexcept { return size_; }
 
   /// Checks whether the container is empty.

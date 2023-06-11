@@ -13,6 +13,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file uinteger.hpp
+/// \brief Provides peejay::uinteger which yields the smallest unsigned
+///   integral type with at least \p N bits
 #ifndef PEEJAY_UINTEGER_HPP
 #define PEEJAY_UINTEGER_HPP
 

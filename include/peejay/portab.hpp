@@ -13,6 +13,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file portab.hpp
+/// \brief A collection of definitions which provide portability between
+///   compilers and C++ language versions.
 #ifndef PEEJAY_PORTAB_HPP
 #define PEEJAY_PORTAB_HPP
 

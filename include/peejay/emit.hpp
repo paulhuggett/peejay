@@ -13,6 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file emit.hpp
+/// \brief  peejay::emit() writes a peejay::element DOM as JSON.
 #ifndef PEEJAY_EMIT_HPP
 #define PEEJAY_EMIT_HPP
 
