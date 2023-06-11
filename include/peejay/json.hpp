@@ -58,21 +58,6 @@ using u8string_view = icubaby::u8string_view;
 template <typename... T>
 [[maybe_unused]] constexpr bool always_false = false;
 
-#ifdef __GNUC__  // GCC 4.8+, Clang, Intel and other compilers
-[[noreturn]] inline __attribute__ ((always_inline)) void unreachable () {
-  __builtin_unreachable ();
-}
-#elif defined(_MSC_VER)
-[[noreturn, maybe_unused]] __forceinline void unreachable () {
-  __assume (false);
-}
-#else
-// Unknown compiler so no extension is used, Undefined behavior is still raised
-// by an empty function body and the noreturn attribute.
-[[noreturn, maybe_unused]] inline void unreachable () {
-}
-#endif
-
 #if PEEJAY_HAVE_CONCEPTS
 template <typename Policy>
 concept policy = std::is_integral_v<decltype (Policy::max_length)> &&
