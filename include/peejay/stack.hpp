@@ -29,8 +29,8 @@
 
 namespace peejay {
 
-/// The stack class is a clone of std::stack but adds the capability of using
-/// iterators to examine the contents of the underlying container.
+/// \brief A clone of std::stack but adds the capability of using iterators to
+///   examine the contents of the underlying container.
 template <typename T, typename Container = std::deque<T>>
 class stack : public std::stack<T, Container> {
 public:

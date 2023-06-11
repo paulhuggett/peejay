@@ -29,6 +29,7 @@
 
 namespace peejay {
 
+/// A PJ JSON parser backend which simply discards all of its input.
 class null {
 public:
   static constexpr void result () noexcept {

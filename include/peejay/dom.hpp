@@ -57,6 +57,8 @@ struct element : variant {
   using variant::variant;
 };
 
+/// \brief A PJ JSON parser backend which constructs a DOM using instances of
+///   peejay::element.
 template <size_t StackSize>
 class dom {
 public:
