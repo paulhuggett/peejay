@@ -35,17 +35,24 @@ namespace peejay {
 
 namespace emit_details {
 
+// to char pointer
+// ~~~~~~~~~~~~~~~
 template <typename T>
 constexpr char const* to_char_pointer (T&& x) noexcept {
   return pointer_cast<char const*> (
       to_address (std::forward<T> (x)));
 }
 
+// ident
+// ~~~~~
 class indent {
 public:
   constexpr indent () noexcept = default;
   explicit constexpr indent (size_t const depth) noexcept : depth_{depth} {}
 
+  /// Writes the indentation sequence to the output stream \p os.
+  /// \param os  An output stream instance.
+  /// \returns \p os.
   template <typename OStream>
   OStream& write (OStream& os) const {
     static std::array<char const, 2> whitespace{{' ', ' '}};
@@ -54,6 +61,7 @@ public:
     }
     return os;
   }
+  /// Returns an increased indentation instance.
   [[nodiscard]] constexpr indent next () const noexcept {
     return indent{depth_ + 1U};
   }
@@ -66,6 +74,8 @@ inline std::ostream& operator<< (std::ostream& os, indent const& i) {
   return i.write (os);
 }
 
+// to hex
+// ~~~~~~
 constexpr char to_hex (unsigned v) noexcept {
   assert (v < 0x10 && "Individual hex values must be < 0x10");
   constexpr auto letter_threshold = 10;
@@ -73,6 +83,8 @@ constexpr char to_hex (unsigned v) noexcept {
       v + ((v < letter_threshold) ? '0' : 'A' - letter_threshold));
 }
 
+// break char
+// ~~~~~~~~~~
 inline u8string_view::const_iterator break_char (
     u8string_view::const_iterator first,
     u8string_view::const_iterator last) noexcept {
@@ -83,6 +95,8 @@ inline u8string_view::const_iterator break_char (
   });
 }
 
+// convu8
+// ~~~~~~
 inline std::string convu8 (u8string const& str) {
   std::string result;
   result.reserve (str.size ());
@@ -96,6 +110,8 @@ inline std::string convu8 (u8string const& str) {
   return result;
 }
 
+// emit object
+// ~~~~~~~~~~~
 template <typename OStream>
 void emit_object (OStream& os, indent i, object const& obj) {
   assert (obj);
@@ -114,6 +130,8 @@ void emit_object (OStream& os, indent i, object const& obj) {
   os << '\n' << i << "}";
 }
 
+// emit array
+// ~~~~~~~~~~
 template <typename OStream>
 void emit_array (OStream& os, indent i, array const& arr) {
   assert (arr);
@@ -132,6 +150,8 @@ void emit_array (OStream& os, indent i, array const& arr) {
   os << '\n' << i << "]";
 }
 
+// emit string view
+// ~~~~~~~~~~~~~~~~
 template <typename OStream>
 OStream& emit_string_view (OStream& os, u8string_view const& str) {
   os << '"';
@@ -182,6 +202,8 @@ struct overloaded : Ts... {
 template <typename... Ts>
 overloaded (Ts...) -> overloaded<Ts...>;
 
+// emit
+// ~~~~
 template <typename OStream>
 OStream& emit (OStream& os, indent const i, element const& el) {
   std::visit (
