@@ -18,11 +18,6 @@
 #ifndef PEEJAY_EMIT_HPP
 #define PEEJAY_EMIT_HPP
 
-#include <array>
-#include <cstddef>
-#include <iterator>
-#include <memory>
-
 #if PEEJAY_HAVE_SPAN
 #include <span>
 #endif
@@ -49,27 +44,42 @@ constexpr char const* to_char_pointer (T&& x) noexcept {
 // ~~~~~
 class indent {
 public:
-  constexpr indent () noexcept = default;
-  explicit constexpr indent (size_t const depth) noexcept : depth_{depth} {}
+  /// \brief Constructs an indent instance with zero indentation.
+  /// \param spaces  The number of spaces making up one indentation level.
+  constexpr explicit indent (unsigned const spaces) noexcept
+      : spaces_{spaces} {}
 
   /// Writes the indentation sequence to the output stream \p os.
   /// \param os  An output stream instance.
   /// \returns \p os.
   template <typename OStream>
   OStream& write (OStream& os) const {
-    static std::array<char const, 2> whitespace{{' ', ' '}};
+    static std::array<char const, 4> whitespace{{' ', ' ', ' ', ' '}};
     for (auto ctr = size_t{0}; ctr < depth_; ++ctr) {
-      os.write (whitespace.data (), whitespace.size ());
+      std::size_t s = spaces_;
+      while (s > 0) {
+        auto const v = (std::min) (whitespace.size (), s);
+        os.write (whitespace.data (), s);
+        s -= v;
+      }
     }
     return os;
   }
   /// Returns an increased indentation instance.
   [[nodiscard]] constexpr indent next () const noexcept {
-    return indent{depth_ + 1U};
+    return indent{spaces_, depth_ + 1U};
   }
 
 private:
-  size_t depth_ = 0;
+  /// \brief Constructs an indent instance which represents an indentation of
+  ///   \p depth stops.
+  /// \param spaces  The number of spaces making up one indentation level.
+  /// \param depth  The indentation depth.
+  constexpr indent (unsigned const spaces, unsigned const depth) noexcept
+      : spaces_{spaces}, depth_{depth} {}
+
+  unsigned spaces_ = 2;
+  unsigned depth_ = 0;  ///< The indentation depth.
 };
 
 inline std::ostream& operator<< (std::ostream& os, indent const& i) {
@@ -224,10 +234,21 @@ OStream& emit (OStream& os, indent const i, element const& el) {
 
 }  // namespace emit_details
 
+/// Writes the DOM tree given by \p root to the output stream \p os.
+///
+/// \tparam OStream  A type which implements write() and operator<< for
+///   strings, integers, and doubles.
+/// \param os  The output stream to which output will be written.
+/// \param root  An optional peejay::element which contains the DOM tree to be
+///   emitted.
+/// \param spaces  The number of space characters that make up an indentation
+///   level.
+/// \returns  \p os.
 template <typename OStream>
-OStream& emit (OStream& os, std::optional<element> const& root) {
+OStream& emit (OStream& os, std::optional<element> const& root,
+               unsigned spaces = 8) {
   if (root) {
-    emit (os, emit_details::indent{}, *root);
+    emit (os, emit_details::indent{spaces}, *root);
   }
   os << '\n';
   return os;
