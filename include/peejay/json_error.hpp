@@ -48,11 +48,18 @@ enum class error : int {
 // ******************
 // * error category *
 // ******************
+/// The error category object for PJ errors
 class error_category final : public std::error_category {
 public:
-  char const* name () const noexcept override {
-    return "PJ JSON parser category";
-  }
+  /// Returns a pointer to a C string naming the error category.
+  ///
+  /// \returns The string "PJ JSON Parser".
+  char const* name () const noexcept override { return "PJ JSON Parser"; }
+  /// Returns a string describing the given error in the PJ category.
+  ///
+  /// \param err  An error number which should be one of the values in the
+  ///   peejay::error enumeration.
+  /// \returns  The message that corresponds to the error \p err.
   std::string message (int const err) const override {
     switch (static_cast<error> (err)) {
     case error::none: return "none";
@@ -79,10 +86,16 @@ public:
     case error::string_too_long: return "string too long";
     }
     assert (false && "bad error code");
-    return "unknown PJ error_category error";
+    return "unknown PJ error code";
   }
 };
 
+// make error code
+// ~~~~~~~~~~~~~~~
+/// Converts a peejay::error value to a std::error_code.
+///
+/// \param e  The peejay::error value to be converted.
+/// \returns  A std::error_code which encapsulates the error \p e.
 inline std::error_code make_error_code (error const e) noexcept {
   static error_category const cat;
   return {static_cast<int> (e), cat};
