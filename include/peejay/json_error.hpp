@@ -13,6 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file json_error.hpp
+/// \brief Defines the errors that can be returned from the PJ library.
 #ifndef PEEJAY_JSON_ERROR_HPP
 #define PEEJAY_JSON_ERROR_HPP
 

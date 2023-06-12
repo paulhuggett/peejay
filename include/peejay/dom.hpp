@@ -16,6 +16,9 @@
 /// \file dom.hpp
 /// \brief Provides a simple document-object-module backend for the PJ JSON
 ///   parser.
+///
+/// The Document Object Model (DOM) is a data representation of the objects
+/// that comprise the structure and content of a JSON document.
 #ifndef PEEJAY_DOM_HPP
 #define PEEJAY_DOM_HPP
 
