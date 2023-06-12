@@ -1558,7 +1558,7 @@ private:
 /// expected first and last hex states for the state machines here. We later
 /// statically assert that the values used are consistent.
 
-///{@
+///@{
 constexpr auto first_hex_state = 2;
 constexpr auto last_hex_state = 5;
 constexpr auto post_hex_state = 6;
