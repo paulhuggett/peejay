@@ -46,7 +46,7 @@ class indent {
 public:
   /// \brief Constructs an indent instance with zero indentation.
   /// \param spaces  The number of spaces making up one indentation level.
-  constexpr explicit indent (unsigned const spaces) noexcept
+  constexpr explicit indent (std::streamsize spaces) noexcept
       : spaces_{spaces} {}
 
   /// Writes the indentation sequence to the output stream \p os.
@@ -55,13 +55,12 @@ public:
   template <typename OStream>
   OStream& write (OStream& os) const {
     static std::array<char const, 4> whitespace{{' ', ' ', ' ', ' '}};
-    for (auto ctr = size_t{0}; ctr < depth_; ++ctr) {
-      std::size_t s = spaces_;
-      while (s > 0) {
-        auto const v = (std::min) (whitespace.size (), s);
-        os.write (whitespace.data (), s);
-        s -= v;
-      }
+    assert (spaces_ <= std::numeric_limits<std::streamsize>::max ());
+    auto s = depth_ * spaces_;
+    while (s > 0) {
+      auto const v = (std::min) (static_cast<std::streamsize> (whitespace.size ()), s);
+      os.write (whitespace.data (), v);
+      s -= v;
     }
     return os;
   }
@@ -75,10 +74,10 @@ private:
   ///   \p depth stops.
   /// \param spaces  The number of spaces making up one indentation level.
   /// \param depth  The indentation depth.
-  constexpr indent (unsigned const spaces, unsigned const depth) noexcept
+  constexpr indent (std::streamsize const spaces, unsigned const depth) noexcept
       : spaces_{spaces}, depth_{depth} {}
 
-  unsigned spaces_ = 2;
+  std::streamsize spaces_ = 2;
   unsigned depth_ = 0;  ///< The indentation depth.
 };
 
@@ -246,7 +245,7 @@ OStream& emit (OStream& os, indent const i, element const& el) {
 /// \returns  \p os.
 template <typename OStream>
 OStream& emit (OStream& os, std::optional<element> const& root,
-               unsigned spaces = 8) {
+               std::streamsize spaces = 2) {
   if (root) {
     emit (os, emit_details::indent{spaces}, *root);
   }
