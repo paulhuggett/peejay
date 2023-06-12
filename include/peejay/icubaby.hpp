@@ -69,8 +69,9 @@
 #include <string_view>
 #include <type_traits>
 
-// Define ICUBABY_CXX20 which has value 1 when compiling with C++ 20 or later
-// and 0 otherwise.
+/// \brief ICUBABY_CXX20 has value 1 when compiling with C++ 20 or later and 0
+///   otherwise.
+/// \hideinitializer
 #if __cplusplus >= 202002L
 #define ICUBABY_CXX20 (1)
 #elif defined(_MSVC_LANG) && _MSVC_LANG >= 202002L
@@ -90,6 +91,9 @@
 #include <concepts>
 #endif
 
+/// \brief Defined as `requires x` if concepts are supported and as nothing
+///   otherwise.
+/// \hideinitializer
 #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ICUBABY_REQUIRES(x) requires x
@@ -97,6 +101,9 @@
 #define ICUBABY_REQUIRES(x)
 #endif  // __cpp_concepts
 
+/// \brief Defined as `[[no_unique_address]]` if the attribute is supported and
+///   as nothing otherwise.
+/// \hideinitializer
 #if ICUBABY_CXX20
 #define ICUBABY_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #else
@@ -112,9 +119,15 @@ namespace icubaby {
 namespace details {
 template <typename... Types>
 struct type_list;
+
+/// \brief A compile-time list of types.
+///
+/// This specialization defines the end of the list.
 template <>
 struct type_list<> {};
 
+/// \brief A compile-time list of types.
+///
 /// An instance of type_list represents an element in a list. It is somewhat
 /// like a cons cell in Lisp: it has two slots, and each slot holds a type.
 ///
@@ -126,8 +139,8 @@ struct type_list<> {};
 /// contains no members.
 template <typename First, typename Rest>
 struct type_list<First, Rest> {
-  using first = First;
-  using rest = Rest;
+  using first = First;  ///< The first member of a list of types.
+  using rest = Rest;    ///< The remaining members of the list of types.
 };
 
 /// An element in a type list must contain member types names 'first' and
@@ -141,79 +154,133 @@ concept is_type_list = requires {
                        } || std::is_same_v<T, type_list<>>;
 #endif
 
-/// Constructs a type_list from a template parameter pack.
 template <typename... Types>
 struct make;
+/// Constructs an empty icubaby::type_list.
 template <>
 struct make<> {
-  using type = type_list<>;
+  using type = type_list<>;  ///< An empty type list.
 };
+/// Constructs a icubaby::type_list from a template parameter pack.
 template <typename T, typename... Ts>
 struct make<T, Ts...> {
+  /// A list of types.
+  ///
+  /// The first element of the list is type \p T: the remaining members
+  /// are \p Ts.
   using type = type_list<T, typename make<Ts...>::type>;
 };
+/// A helper template for icubaby::make.
 template <typename... Types>
 using make_t = typename make<Types...>::type;
 
-/// Yields true if the type list contains a type matching Element and false
-/// otherwise.
+/// \brief Yields true if the type list contains a type matching \p Element
+///   and false otherwise.
 template <typename TypeList, typename Element>
 ICUBABY_REQUIRES (is_type_list<TypeList>)
 struct contains
     : std::bool_constant<std::is_same_v<Element, typename TypeList::first> ||
                          contains<typename TypeList::rest, Element>::value> {};
+/// \brief Yields false: the empty type list does not contains a type matching
+///   \p Element.
 template <typename Element>
 struct contains<type_list<>, Element> : std::bool_constant<false> {};
 
+/// A helper variable template for icubaby::contains.
 template <typename TypeList, typename Element>
 inline constexpr bool contains_v = contains<TypeList, Element>::value;
 
 }  // end namespace details
 
+/// The type of a UTF-8 code unit.
 #if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
 using char8 = char8_t;
 #else
 using char8 = char;
 #endif
 
+/// A UTF-8 string.
 using u8string = std::basic_string<char8>;
+/// A UTF-8 string_view.
 using u8string_view = std::basic_string_view<char8>;
 
 /// A constant for U+FFFD REPLACEMENT CHARACTER
 inline constexpr auto replacement_char = char32_t{0xFFFD};
 
 /// \brief The number of bits required to represent a code point.
+///
 /// Starting with Unicode 2.0, characters are encoded in the range
 /// U+0000..U+10FFFF, which amounts to a 21-bit code space.
 inline constexpr auto code_point_bits = 21U;
 
+/// The code point of the first UTF-16 high surrogate.
 inline constexpr auto first_high_surrogate = char32_t{0xD800};
+/// The code point of the last UTF-16 high surrogate.
 inline constexpr auto last_high_surrogate = char32_t{0xDBFF};
+/// The code point of the first UTF-16 low surrogate.
 inline constexpr auto first_low_surrogate = char32_t{0xDC00};
+/// The code point of the last UTF-16 low surrogate.
 inline constexpr auto last_low_surrogate = char32_t{0xDFFF};
+
+/// The number of the last code point.
 inline constexpr auto max_code_point = char32_t{0x10FFFF};
 static_assert (uint_least32_t{1} << code_point_bits > max_code_point);
 
 namespace details {
+
+/// A list of the character types used for UTF-8 UTF-16, and UTF-32 encoded
+/// text.
 using character_types = make_t<char8, char16_t, char32_t>;
+
 }  // end namespace details
 
+/// \brief Returns true if the code point \p c represents a UTF-16 high
+///   surrogate.
+///
+/// \param c  The code point to be tested.
+/// \returns true if the code point \p c represents a UTF-16 high surrogate.
 constexpr bool is_high_surrogate (char32_t c) noexcept {
   return c >= first_high_surrogate && c <= last_high_surrogate;
 }
+/// \brief Returns true if the code point \p c represents a UTF-16 low
+///   surrogate.
+///
+/// \param c  The code point to be tested.
+/// \returns true if the code point \p c represents a UTF-16 low surrogate.
 constexpr bool is_low_surrogate (char32_t c) noexcept {
   return c >= first_low_surrogate && c <= last_low_surrogate;
 }
+/// \brief Returns true if the code point \p c represents a UTF-16 low or high
+///   surrogate.
+///
+/// \param c  The code point to be tested.
+/// \returns true if the code point \p c represents a UTF-16 high or low
+///   surrogate.
 constexpr bool is_surrogate (char32_t c) noexcept {
   return is_high_surrogate (c) || is_low_surrogate (c);
 }
 
+/// \brief Returns true if \p c represents the start of a multi-byte UTF-8
+///   sequence.
+///
+/// \param c  The UTF-8 code unit to be tested.
+/// \returns true if \p c represents the start of a multi-byte UTF-8 sequence.
 constexpr bool is_code_point_start (char8 c) noexcept {
   return (static_cast<std::make_unsigned_t<decltype (c)>> (c) & 0xC0U) != 0x80U;
 }
+/// \brief Returns true if \p c represents the start of a UTF-16 high, low
+///   surrogate pair.
+///
+/// \param c  The UTF-16 code unit to be tested.
+/// \returns  true if \p c represents the start of a UTF-16 high, low surrogate
+///   pair.
 constexpr bool is_code_point_start (char16_t c) noexcept {
   return !is_low_surrogate (c);
 }
+/// \brief Returns true if \p c represents a valid UTF-32 code point.
+///
+/// \param c  The UTF-32 code unit to be tested.
+/// \returns  true if \p c represents a valid UTF-32 code point.
 constexpr bool is_code_point_start (char32_t c) noexcept {
   return !is_surrogate (c) && c <= max_code_point;
 }
@@ -270,6 +337,28 @@ concept is_transcoder = requires (T t) {
 template <typename From, typename To>
 class transcoder;
 
+/// An output iterator which passes code units being output through a
+/// transcoder.
+///
+/// This iterator simplifies the job of converting unicode representation and
+/// storing the results of that conversion. Each time that a code point is
+/// recovered from the sequence written to this class, the equivalent
+/// sequence is written to the iterator with which the object was constructed.
+///
+/// For example, a function to convert a UTF-16 string to UTF-8 becomes very
+/// simple:
+/// ~~~
+/// std::u8string utf16_to_8_demo (std::u16string u16) {
+///   std::u8string u8;
+///   icubaby::t16_8 t;
+///   icubaby::iterator out{&t, std::back_inserter(u8)};
+///   t.end_cp (std::copy (u16.begin(), u16.end(), out));
+///   return u8;
+/// }
+/// ~~~
+///
+/// \tparam Transcoder  A transcoder type.
+/// \tparam OutputIterator  An output iterator type.
 template <typename Transcoder, typename OutputIterator>
 ICUBABY_REQUIRES (
     (is_transcoder<Transcoder> &&
@@ -321,6 +410,7 @@ template <typename Transcoder, typename OutputIterator>
 iterator (Transcoder& t, OutputIterator it)
     -> iterator<Transcoder, OutputIterator>;
 
+/// Takes a sequence of UTF-32 code units and converts them to UTF-8.
 template <>
 class transcoder<char32_t, char8> {
 public:
@@ -418,6 +508,7 @@ private:
   }
 };
 
+/// Takes a sequence of UTF-8 code units and converts them to UTF-32.
 template <>
 class transcoder<char8, char32_t> {
 public:
@@ -530,6 +621,7 @@ private:
   uint_least32_t state_ : 8;
 };
 
+/// Takes a sequence of UTF-32 code units and converts them to UTF-16.
 template <>
 class transcoder<char32_t, char16_t> {
 public:
@@ -588,6 +680,7 @@ private:
   bool well_formed_ = true;
 };
 
+/// Takes a sequence of UTF-16 code units and converts them to UTF-32.
 template <>
 class transcoder<char16_t, char32_t> {
 public:
@@ -712,6 +805,13 @@ public:
     return copy (begin, to_inter_ (c, begin), dest);
   }
 
+  /// Call once the entire input sequence has been fed to operator(). This
+  /// function ensures that the sequence did not end with a partial code point.
+  ///
+  /// \tparam OutputIterator  An output iterator type to which value of type
+  ///   output_type can be written.
+  /// \param dest  An output iterator to which the output sequence is written.
+  /// \returns  Iterator one past the last element assigned.
   template <typename OutputIterator>
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   OutputIterator end_cp (OutputIterator dest) {
@@ -721,6 +821,13 @@ public:
     return copy (begin, to_inter_.end_cp (begin), dest);
   }
 
+  /// Call once the entire input sequence has been fed to operator(). This
+  /// function ensures that the sequence did not end with a partial code point.
+  ///
+  /// \tparam OutputIterator  An output iterator type to which value of type
+  ///   output_type can be written.
+  /// \param dest  An output iterator to which the output sequence is written.
+  /// \returns  Iterator one past the last element assigned.
   template <typename OutputIterator>
   ICUBABY_REQUIRES ((std::output_iterator<OutputIterator, output_type>))
   constexpr iterator<transcoder<From, To>, OutputIterator> end_cp (
@@ -730,10 +837,13 @@ public:
     return {t, t->end_cp (dest.base ())};
   }
 
+  /// Returns true if the input passed to operator() was valid.
   [[nodiscard]] constexpr bool well_formed () const noexcept {
     return to_inter_.well_formed () && to_out_.well_formed ();
   }
 
+  /// Returns true if a partial code-unit has been passed to operator() and
+  /// false otherwise.
   [[nodiscard]] constexpr bool partial () const noexcept {
     return to_inter_.partial ();
   }
@@ -753,18 +863,23 @@ private:
 
 }  // end namespace details
 
+/// Takes a sequence of UTF-8 code units and converts them to UTF-16.
 template <>
 class transcoder<char8, char16_t>
     : public details::double_transcoder<char8, char16_t> {};
+/// Takes a sequence of UTF-16 code units and converts them to UTF-8.
 template <>
 class transcoder<char16_t, char8>
     : public details::double_transcoder<char16_t, char8> {};
+/// Takes a sequence of UTF-8 code units and converts them to UTF-8.
 template <>
 class transcoder<char8, char8>
     : public details::double_transcoder<char8, char8> {};
+/// Takes a sequence of UTF-16 code units and converts them to UTF-16.
 template <>
 class transcoder<char16_t, char16_t>
     : public details::double_transcoder<char16_t, char16_t> {};
+/// Takes a sequence of UTF-32 code units and converts them to UTF-32.
 template <>
 class transcoder<char32_t, char32_t> {
 public:
