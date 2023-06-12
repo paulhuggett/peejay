@@ -29,7 +29,6 @@
 #undef ICUBABY_INSIDE_NS
 
 // Standard library
-#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstring>
