@@ -501,13 +501,14 @@ protected:
 
   static peejay::u8string utf8_sequence (std::vector<char32_t> const& in) {
     peejay::u8string out;
-    icubaby::t32_8 utf_32_to_8;
+    peejay::icubaby::t32_8 utf_32_to_8;
 #if __cpp_lib_ranges
     std::ranges::copy (
-        in, icubaby::iterator{&utf_32_to_8, std::back_inserter (out)});
+        in, peejay::icubaby::iterator{&utf_32_to_8, std::back_inserter (out)});
 #else
-    std::copy (std::begin (in), std::end (in),
-               icubaby::iterator{&utf_32_to_8, std::back_inserter (out)});
+    std::copy (
+        std::begin (in), std::end (in),
+        peejay::icubaby::iterator{&utf_32_to_8, std::back_inserter (out)});
 #endif
     return out;
   }

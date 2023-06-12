@@ -103,6 +103,10 @@
 #define ICUBABY_NO_UNIQUE_ADDRESS
 #endif
 
+#ifdef ICUBABY_INSIDE_NS
+namespace ICUBABY_INSIDE_NS {
+#endif
+
 namespace icubaby {
 
 namespace details {
@@ -838,5 +842,9 @@ using t32_16 = transcoder<char32_t, char16_t>;
 using t32_32 = transcoder<char32_t, char32_t>;
 
 }  // end namespace icubaby
+
+#ifdef ICUBABY_INSIDE_NS
+} // end namespace ICUBABY_INSIDE_NS
+#endif
 
 #endif  // ICUBABY_ICUBABY_HPP
