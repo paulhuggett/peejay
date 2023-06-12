@@ -21,10 +21,6 @@
 #ifndef PEEJAY_NULL_HPP
 #define PEEJAY_NULL_HPP
 
-#include <cstdint>
-#include <string_view>
-#include <system_error>
-
 #include "peejay/json.hpp"
 
 namespace peejay {

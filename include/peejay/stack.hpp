@@ -20,8 +20,6 @@
 #define PEEJAY_STACK_HPP
 
 #include <deque>
-#include <iterator>
-#include <memory>
 #include <stack>
 #include <type_traits>
 

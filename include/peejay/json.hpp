@@ -13,6 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/// \file json.hpp
+/// \brief  Implements the PJ JSON Parser.
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
@@ -20,7 +22,6 @@
 #include "peejay/cbii.hpp"
 #include "peejay/cprun.hpp"
 #include "peejay/json_error.hpp"
-#include "peejay/portab.hpp"
 #include "peejay/stack.hpp"
 
 #define ICUBABY_INSIDE_NS peejay
@@ -32,10 +33,8 @@
 #include <cctype>
 #include <cmath>
 #include <cstring>
-#include <memory>
 #include <optional>
 #include <ostream>
-#include <string>
 #include <tuple>
 #include <variant>
 

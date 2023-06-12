@@ -19,19 +19,10 @@
 #ifndef PEEJAY_DOM_HPP
 #define PEEJAY_DOM_HPP
 
-#include <algorithm>
-#include <cstdint>
-#include <memory>
-#include <optional>
-#include <string_view>
-#include <system_error>
 #include <unordered_map>
-#include <variant>
 #include <vector>
 
-#include "peejay/arrayvec.hpp"
 #include "peejay/json.hpp"
-#include "peejay/stack.hpp"
 
 namespace peejay {
 

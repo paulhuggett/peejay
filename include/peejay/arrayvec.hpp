@@ -22,11 +22,8 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cstddef>
 #include <initializer_list>
 #include <limits>
-#include <memory>
-#include <type_traits>
 
 #include "peejay/pointer_based_iterator.hpp"
 #include "peejay/portab.hpp"
