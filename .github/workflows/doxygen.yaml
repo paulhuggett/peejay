@@ -1,0 +1,56 @@
+name: Doxygen
+on: workflow_dispatch
+jobs:
+  doxygen:
+    name: Build Doxygen Docs
+    runs-on: ubuntu-latest
+    env:
+      TOOL_DIR: "${{ github.workspace }}/doxygen-bin"
+      VERSION: 1.9.7
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'True'
+
+      - name: Install GraphViz
+        run: |
+          apt-get update
+          apt-get install -y graphviz
+
+      - name: Cache the Doxygen binary
+        id: cache-binary
+        uses: actions/cache@v3
+        with:
+          key: 'doxygen-${{ runner.os }}-${{ env.VERSION }}'
+          path: '${{ env.TOOL_DIR }}/doxygen.tgz'
+
+      - name: Download Doxygen binary
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        run: |
+          echo ${{ steps.cache-binary.outputs.cache-hit }}
+          mkdir -p "${{ env.TOOL_DIR }}"
+          curl \
+            --location \
+            --output "${{ env.TOOL_DIR }}/doxygen.tgz" \
+            "https://www.doxygen.nl/files/doxygen-${{ env.VERSION }}.linux.bin.tar.gz"
+
+      - name: Unpack Doxygen binary
+        run: |
+          cd "${{ env.TOOL_DIR }}"
+          tar xzf doxygen.tgz
+          ls
+
+      - name: Run Doxygen
+        run: |
+          "${{ env.TOOL_DIR }}/doxygen-${{ env.VERSION }}/bin/doxygen"
+
+      - name: Compress Documentation Directory
+        run: |
+          tar czf ./docs.tgz docs
+
+      - name: Upload Documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: ./docs.tgz
