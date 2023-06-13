@@ -42,6 +42,10 @@ constexpr char const* to_char_pointer (T&& x) noexcept {
 
 // ident
 // ~~~~~
+/// Represents an indentation.
+///
+/// An indentation has a specific depth (which starts at zero) and a specified
+/// number of spaces per level.
 class indent {
 public:
   /// \brief Constructs an indent instance with zero indentation.
@@ -50,6 +54,8 @@ public:
       : spaces_{spaces} {}
 
   /// Writes the indentation sequence to the output stream \p os.
+  /// \tparam OStream  A type which implements write() and operator<< for
+  ///   strings, integers, and doubles.
   /// \param os  An output stream instance.
   /// \returns \p os.
   template <typename OStream>
@@ -77,16 +83,29 @@ private:
   constexpr indent (std::streamsize const spaces, unsigned const depth) noexcept
       : spaces_{spaces}, depth_{depth} {}
 
+  /// The number of spaces to use for indentation.
   std::streamsize spaces_ = 2;
   unsigned depth_ = 0;  ///< The indentation depth.
 };
 
-inline std::ostream& operator<< (std::ostream& os, indent const& i) {
+/// \brief Writes an indent to an output stream.
+///
+/// \tparam OStream  A type which implements write() and operator<< for
+///   strings, integers, and doubles.
+/// \param os  The output stream to which an indent will be written.
+/// \param i  An indent.
+/// \returns  \p os.
+template <typename OStream>
+inline OStream& operator<< (OStream& os, indent const& i) {
   return i.write (os);
 }
 
 // to hex
 // ~~~~~~
+/// \brief Converts a value from 0..15 to its hexadecimal character equivalent
+///   '0'..'F'.
+/// \param v  The value to be converted must be less than 16.
+/// \return  The hexadecimal character corresponding to \p v.
 constexpr char to_hex (unsigned v) noexcept {
   assert (v < 0x10 && "Individual hex values must be < 0x10");
   constexpr auto letter_threshold = 10;
@@ -123,6 +142,16 @@ inline std::string convu8 (u8string const& str) {
 
 // emit object
 // ~~~~~~~~~~~
+/// \brief Writes a DOM object instance \p obj to output stream \p os.
+///
+/// The function writes the key and values of the object, including traversing
+/// any nested objects or arrays.
+///
+/// \tparam OStream  A type which implements write() and operator<< for
+///   strings, integers, and doubles.
+/// \param os  The output stream to which an indent will be written.
+/// \param i  An indent.
+/// \param obj  The object to be written.
 template <typename OStream>
 void emit_object (OStream& os, indent i, object const& obj) {
   assert (obj);
@@ -143,6 +172,16 @@ void emit_object (OStream& os, indent i, object const& obj) {
 
 // emit array
 // ~~~~~~~~~~
+/// \brief Writes a DOM array instance \p arr to output stream \p os.
+///
+/// The function writes the values of the array including traversing any
+/// nested objects or arrays.
+///
+/// \tparam OStream  A type which implements write() and operator<< for
+///   strings, integers, and doubles.
+/// \param os  The output stream to which an indent will be written.
+/// \param i  An indent.
+/// \param arr  The array to be written.
 template <typename OStream>
 void emit_array (OStream& os, indent i, array const& arr) {
   assert (arr);
@@ -163,8 +202,16 @@ void emit_array (OStream& os, indent i, array const& arr) {
 
 // emit string view
 // ~~~~~~~~~~~~~~~~
+/// \brief Writes a string \p str to output stream \p os.
+///
+/// Any necessary escaping is performed.
+///
+/// \tparam OStream  A type which implements write() and operator<< for
+///   strings, integers, and doubles.
+/// \param os  The output stream to which an indent will be written.
+/// \param str  The string to be written.
 template <typename OStream>
-OStream& emit_string_view (OStream& os, u8string_view const& str) {
+void emit_string_view (OStream& os, u8string_view const& str) {
   os << '"';
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto first = std::begin (str);
@@ -201,7 +248,6 @@ OStream& emit_string_view (OStream& os, u8string_view const& str) {
     os.write (to_char_pointer (first), std::distance (first, last));
   }
   os << '"';
-  return os;
 }
 
 // Helper type for the visitor
