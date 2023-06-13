@@ -2080,7 +2080,7 @@ INCLUDE_FILE_PATTERNS  =
 # recursively expanded use the := operator instead of the = operator.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-PREDEFINED             =
+PREDEFINED             = ICUBABY_INSIDE_NS=peejay
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The
@@ -2092,9 +2092,10 @@ PREDEFINED             =
 EXPAND_AS_DEFINED      = \
                        ICUBABY_CXX20 \
                        ICUBABY_REQUIRES \
-                       ICUBABY_INSIDE_NS \
                        PEEJAY_CXX20 \
                        PEEJAY_CXX20REQUIRES \
+                       PEEJAY_CONSTEXPR_CXX20 \
+                       PEEJAY_HAVE_CONCEPTS \
                        PEEJAY_NO_UNIQUE_ADDRESS_ATTRIBUTE
 
 # If the SKIP_FUNCTION_MACROS tag is set to YES then doxygen's preprocessor will
