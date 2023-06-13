@@ -19,6 +19,7 @@
 #ifndef PEEJAY_UINTEGER_HPP
 #define PEEJAY_UINTEGER_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 
@@ -34,13 +35,13 @@ constexpr unsigned bits_required (T value) {
 }
 
 /// \brief Yields the smallest unsigned integral type with at least \p N bits.
-template <size_t N, typename = typename std::enable_if_t<(N <= 64)>>
+template <std::size_t N, typename = typename std::enable_if_t<(N <= 64)>>
 struct uinteger {
   /// The type of an unsigned integral with at least \p N bits.
   using type = typename uinteger<N + 1>::type;
 };
 /// \brief A helper type for convenient use of uinteger<N>::type.
-template <size_t N>
+template <std::size_t N>
 using uinteger_t = typename uinteger<N>::type;
 /// \brief Yields an unsigned integral type of 8 bits or more.
 template <>
