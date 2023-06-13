@@ -60,6 +60,13 @@ TEST (ArrayVec, CtorInputIterator) {
   EXPECT_THAT (a, ElementsAre (1, 2));
 }
 
+// NOLINTNEXTLINE
+TEST (ArrayVec, CtorCount) {
+  using av = arrayvec<int, 4>;
+  av const a (av::size_type{3});
+  EXPECT_THAT (a, ElementsAre (0, 0, 0));
+}
+
 namespace {
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)

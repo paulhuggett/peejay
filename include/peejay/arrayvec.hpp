@@ -232,6 +232,16 @@ public:
   template <typename InputIterator,
             typename = std::enable_if_t<input_iterator<InputIterator>>>
   arrayvec (InputIterator first, InputIterator last);
+
+  /// \brief Constructs the container with \p count default-inserted instances
+  ///   of T.
+  ///
+  /// No copies are made.
+  ///
+  /// \param count  The number of elements to be initialized. This must be less
+  ///   than or equal to max_size().
+  explicit arrayvec (size_type count);
+
   /// Constructs the container with \p count copies of elements with value
   /// \p value.
   ///
@@ -584,6 +594,14 @@ arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
     construct_at (to_address (out), *first);
     ++size_;
     ++out;
+  }
+}
+
+template <typename T, std::size_t Size>
+arrayvec<T, Size>::arrayvec (size_type count) {
+  assert (count <= Size);
+  for (; count > 0; --count) {
+    this->emplace_back ();
   }
 }
 
