@@ -19,6 +19,8 @@
 #ifndef PEEJAY_EMIT_HPP
 #define PEEJAY_EMIT_HPP
 
+#include <ios>
+
 #if PEEJAY_HAVE_SPAN
 #include <span>
 #endif
