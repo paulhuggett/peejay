@@ -241,19 +241,6 @@ private:
 using line = coord::line;
 using column = coord::column;
 
-template <typename OStream>
-inline OStream &operator<< (OStream &os, line const l) {
-  return os << static_cast<unsigned> (l);
-}
-template <typename OStream>
-inline OStream &operator<< (OStream &os, column const c) {
-  return os << static_cast<unsigned> (c);
-}
-template <typename OStream>
-inline OStream &operator<< (OStream &os, coord const &c) {
-  return os << line (c) << ':' << column (c);
-}
-
 enum class extensions : unsigned {
   none = 0U,
   bash_comments = 1U << 0U,
