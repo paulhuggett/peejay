@@ -159,7 +159,8 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
 
 void report_error (pjparser const& p, std::string_view const& file_name) {
   auto const& pos = p.pos ();
-  std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
+  std::cerr << file_name << ':' << peejay::line (pos) << ':'
+            << peejay::column (pos) << ':'
             << " error: " << p.last_error ().message () << '\n';
 }
 

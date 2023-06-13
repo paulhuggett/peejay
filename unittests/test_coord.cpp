@@ -18,61 +18,67 @@
 // 3rd party includes
 #include <gtest/gtest.h>
 
-using peejay::column;
 using peejay::coord;
-using peejay::line;
 
 // NOLINTNEXTLINE
 TEST (Coord, DefaultCtor) {
   coord c;
-  EXPECT_EQ (c.line, 1U);
-  EXPECT_EQ (c.column, 1U);
+  EXPECT_EQ (coord::line (c), coord::line{1U});
+  EXPECT_EQ (coord::column (c), coord::column{1U});
 }
 
 // NOLINTNEXTLINE
 TEST (Coord, RowThenColumnInit) {
-  coord c{line{2U}, column{3U}};
-  EXPECT_EQ (c.line, 2U);
-  EXPECT_EQ (c.column, 3U);
+  coord c{coord::line{2U}, coord::column{3U}};
+  EXPECT_EQ (coord::line (c), coord::line{2U});
+  EXPECT_EQ (coord::column (c), coord::column{3U});
 }
 
 // NOLINTNEXTLINE
 TEST (Coord, ColumnThenRowInit) {
-  coord c{column{2U}, line{3U}};
-  EXPECT_EQ (c.line, 3U);
-  EXPECT_EQ (c.column, 2U);
+  coord c{coord::column{2U}, coord::line{3U}};
+  EXPECT_EQ (coord::line (c), coord::line{3U});
+  EXPECT_EQ (coord::column (c), coord::column{2U});
 }
 
 // NOLINTNEXTLINE
 TEST (Coord, Eq) {
-  coord lhs{column{2U}, line{3U}};
-  coord rhs{line{3U}, column{2U}};
+  coord lhs{coord::column{2U}, coord::line{3U}};
+  coord rhs{coord::line{3U}, coord::column{2U}};
   EXPECT_TRUE (lhs == rhs);
   EXPECT_FALSE (lhs != rhs);
 }
 
 // NOLINTNEXTLINE
 TEST (Coord, Neq) {
-  coord lhs{column{2U}, line{3U}};
-  coord rhs{line{5U}, column{7U}};
+  coord lhs{coord::column{2U}, coord::line{3U}};
+  coord rhs{coord::line{5U}, coord::column{7U}};
   EXPECT_TRUE (lhs != rhs);
   EXPECT_FALSE (lhs == rhs);
 }
 
 // NOLINTNEXTLINE
 TEST (Coord, Lt) {
-  EXPECT_TRUE ((coord{line{3U}, column{1U}} < coord{line{4U}, column{1U}}));
-  EXPECT_TRUE ((coord{line{3U}, column{2U}} < coord{line{4U}, column{1U}}));
-  EXPECT_TRUE ((coord{line{3U}, column{1U}} < coord{line{3U}, column{2U}}));
-  EXPECT_FALSE ((coord{line{4U}, column{1U}} < coord{line{3U}, column{2U}}));
+  EXPECT_TRUE ((coord{coord::line{3U}, coord::column{1U}} <
+                coord{coord::line{4U}, coord::column{1U}}));
+  EXPECT_TRUE ((coord{coord::line{3U}, coord::column{2U}} <
+                coord{coord::line{4U}, coord::column{1U}}));
+  EXPECT_TRUE ((coord{coord::line{3U}, coord::column{1U}} <
+                coord{coord::line{3U}, coord::column{2U}}));
+  EXPECT_FALSE ((coord{coord::line{4U}, coord::column{1U}} <
+                 coord{coord::line{3U}, coord::column{2U}}));
   EXPECT_FALSE (coord{} < coord{});
 }
 
 // NOLINTNEXTLINE
 TEST (Coord, LtEq) {
-  EXPECT_TRUE ((coord{line{3U}, column{1U}} <= coord{line{4U}, column{1U}}));
-  EXPECT_TRUE ((coord{line{3U}, column{2U}} <= coord{line{4U}, column{1U}}));
-  EXPECT_TRUE ((coord{line{3U}, column{1U}} <= coord{line{3U}, column{2U}}));
-  EXPECT_FALSE ((coord{line{4U}, column{1U}} <= coord{line{3U}, column{2U}}));
+  EXPECT_TRUE ((coord{coord::line{3U}, coord::column{1U}} <=
+                coord{coord::line{4U}, coord::column{1U}}));
+  EXPECT_TRUE ((coord{coord::line{3U}, coord::column{2U}} <=
+                coord{coord::line{4U}, coord::column{1U}}));
+  EXPECT_TRUE ((coord{coord::line{3U}, coord::column{1U}} <=
+                coord{coord::line{3U}, coord::column{2U}}));
+  EXPECT_FALSE ((coord{coord::line{4U}, coord::column{1U}} <=
+                 coord{coord::line{3U}, coord::column{2U}}));
   EXPECT_TRUE (coord{} <= coord{});
 }

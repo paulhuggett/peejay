@@ -167,8 +167,8 @@ std::size_t arrayvec_base::erase (Iterator pos, Iterator end,
 //* / _` | '_| '_/ _` | || \ V / -_) _| *
 //* \__,_|_| |_| \__,_|\_, |\_/\___\__| *
 //*                    |__/             *
-/// arrayvec is a sequence container that encapsulates dynamic size arrays
-/// within a fixed size container.
+/// \brief A sequence container that encapsulates dynamic size arrays
+///   within a fixed size container.
 ///
 /// The elements are stored contiguously, which means that elements can be
 /// accessed not only through iterators, but also using offsets to regular

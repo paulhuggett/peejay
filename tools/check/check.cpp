@@ -33,9 +33,13 @@ bool report_error (parser<Params...> const& p,
                    std::string_view const& file_name,
                    std::string_view const& line) {
   auto const& pos = p.pos ();
-  std::cerr << file_name << ':' << pos.line << ':' << pos.column << ':'
+  std::cerr << file_name << ':' << peejay::line (pos) << ':'
+            << peejay::column (pos) << ':'
             << " error: " << p.last_error ().message () << '\n'
-            << line << std::string (pos.column - 1U, ' ') << "^\n";
+            << line
+            << std::string (static_cast<unsigned> (peejay::column (pos)) - 1U,
+                            ' ')
+            << "^\n";
   return false;
 }
 

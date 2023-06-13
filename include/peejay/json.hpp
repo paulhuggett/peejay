@@ -147,21 +147,40 @@ struct iterator_produces {
 
 }  // end namespace details
 
-struct line {
-  explicit constexpr operator unsigned () const noexcept { return x; }
-  unsigned x;  // NOLINT
-};
-struct column {
-  explicit constexpr operator unsigned () const noexcept { return y; }
-  unsigned y;  // NOLINT
-};
+class coord {
+public:
+  class line {
+  public:
+    explicit constexpr line (unsigned x) noexcept : x_{x} {}
+    explicit constexpr operator unsigned () const noexcept { return x_; }
+    constexpr bool operator== (line const &rhs) const noexcept {
+      return x_ == rhs.x_;
+    }
+    constexpr bool operator!= (line const &rhs) const noexcept {
+      return !operator== (rhs);
+    }
 
-struct coord {
+  private:
+    unsigned x_;
+  };
+  class column {
+  public:
+    explicit constexpr column (unsigned y) noexcept : y_{y} {}
+    explicit constexpr operator unsigned () const noexcept { return y_; }
+    constexpr bool operator== (column const &rhs) const noexcept {
+      return y_ == rhs.y_;
+    }
+    constexpr bool operator!= (column const &rhs) const noexcept {
+      return !operator== (rhs);
+    }
+
+  private:
+    unsigned y_;
+  };
+
   constexpr coord () noexcept = default;
-  constexpr coord (struct column x, struct line y) noexcept
-      : line{y}, column{x} {}
-  constexpr coord (struct line y, struct column x) noexcept
-      : line{y}, column{x} {}
+  constexpr coord (column x, line y) noexcept : line_{y}, column_{x} {}
+  constexpr coord (line y, column x) noexcept : line_{y}, column_{x} {}
 
 #if defined(__cpp_impl_three_way_comparison) && \
     __cpp_impl_three_way_comparison >= 201907L
@@ -172,36 +191,64 @@ struct coord {
   _Pragma ("GCC diagnostic pop")
 #else
   constexpr bool operator== (coord const &rhs) const noexcept {
-    return std::make_pair (line, column) ==
-           std::make_pair (rhs.line, rhs.column);
+    return std::make_pair (line_, column_) ==
+           std::make_pair (rhs.line_, rhs.column_);
   }
   constexpr bool operator!= (coord const &rhs) const noexcept {
     return !operator== (rhs);
   }
   constexpr bool operator<(coord const &rhs) const noexcept {
-    return std::make_pair (line, column) <
-           std::make_pair (rhs.line, rhs.column);
+    return std::make_pair (line_, column_) <
+           std::make_pair (rhs.line_, rhs.column_);
   }
   constexpr bool operator<= (coord const &rhs) const noexcept {
-    return std::make_pair (line, column) <=
-           std::make_pair (rhs.line, rhs.column);
+    return std::make_pair (line_, column_) <=
+           std::make_pair (rhs.line_, rhs.column_);
   }
   constexpr bool operator> (coord const &rhs) const noexcept {
-    return std::make_pair (line, column) >
-           std::make_pair (rhs.line, rhs.column);
+    return std::make_pair (line_, column_) >
+           std::make_pair (rhs.line_, rhs.column_);
   }
   constexpr bool operator>= (coord const &rhs) const noexcept {
-    return std::make_pair (line, column) >=
-           std::make_pair (rhs.line, rhs.column);
+    return std::make_pair (line_, column_) >=
+           std::make_pair (rhs.line_, rhs.column_);
   }
 #endif  // __cpp_impl_three_way_comparison
 
-  unsigned line = 1U;    // NOLINT
-  unsigned column = 1U;  // NOLINT
+      constexpr
+      operator line () const noexcept {
+    return line{line_};
+  }
+  constexpr operator column () const noexcept { return column{column_}; }
+  void next_line () noexcept { ++line_; }
+  void next_column () noexcept { ++column_; }
+
+  void reset_column () noexcept {
+    // The column number is set to 0. This is because the outer parse loop
+    // automatically advances the column number for each character consumed.
+    // This happens after the row is advanced by a matcher's consume() function.
+    column_ = 0U;
+  }
+
+private:
+  unsigned line_ = 1U;
+  unsigned column_ = 1U;
 };
 
-inline std::ostream &operator<< (std::ostream &os, coord const &c) {
-  return os << c.line << ':' << c.column;
+using line = coord::line;
+using column = coord::column;
+
+template <typename OStream>
+inline OStream &operator<< (OStream &os, line const l) {
+  return os << static_cast<unsigned> (l);
+}
+template <typename OStream>
+inline OStream &operator<< (OStream &os, column const c) {
+  return os << static_cast<unsigned> (c);
+}
+template <typename OStream>
+inline OStream &operator<< (OStream &os, coord const &c) {
+  return os << line (c) << ':' << column (c);
 }
 
 enum class extensions : unsigned {
@@ -421,19 +468,19 @@ private:
   /// \brief Managing the column and row number (the "coordinate").
 
   /// Increments the column number.
-  void advance_column () noexcept { ++pos_.column; }
+  void advance_column () noexcept { pos_.next_column (); }
 
   /// Increments the row number and resets the column.
   void advance_row () noexcept {
     // The column number is set to 0. This is because the outer parse loop
     // automatically advances the column number for each character consumed.
     // This happens after the row is advanced by a matcher's consume() function.
-    pos_.column = 0U;
-    ++pos_.line;
+    this->reset_column ();
+    pos_.next_line ();
   }
 
   /// Resets the column count but does not affect the row number.
-  void reset_column () noexcept { pos_.column = 0U; }
+  void reset_column () noexcept { pos_.reset_column (); }
   ///@}
 
   /// Records an error for this parse. The parse will stop as soon as a non-zero
@@ -613,8 +660,8 @@ code_point_grammar_rule (char32_t const code_point) noexcept {
 //* | '  \/ _` |  _/ _| ' \/ -_) '_| *
 //* |_|_|_\__,_|\__\__|_||_\___|_|   *
 //*                                  *
-/// The base class for the various state machines ("matchers") which implement
-/// the various productions of the JSON grammar.
+/// \brief The base class for the various state machines ("matchers") which
+///   implement the productions of the JSON grammar.
 template <typename Backend, typename Policies>
 PEEJAY_CXX20REQUIRES (backend<Backend>)
 class matcher {
@@ -755,8 +802,8 @@ private:
 //* |  _/ _ \ / / -_) ' \  *
 //*  \__\___/_\_\___|_||_| *
 //*                        *
-/// A matcher which checks for a specific keyword such as "true", "false", or
-/// "null".
+/// \brief A matcher which checks for a specific keyword such as "true",
+///   "false", or "null".
 /// \tparam Backend  The parser callback structure.
 template <typename Backend, typename Policies, typename DoneFunction>
 PEEJAY_CXX20REQUIRES (
@@ -839,6 +886,7 @@ auto token_matcher<Backend, Policies, DoneFunction>::consume (
 //* |  _/ _` | (_-</ -_) |  _/ _ \ / / -_) ' \  *
 //* |_| \__,_|_/__/\___|  \__\___/_\_\___|_||_| *
 //*                                             *
+/// A function object invoked when the "false" token is matched.
 template <typename Backend, typename Policies>
 struct false_complete {
   std::error_code operator() (parser<Backend, Policies> &p) const {
@@ -846,6 +894,7 @@ struct false_complete {
   }
 };
 
+/// Matches a "false" token.
 template <typename Backend, typename Policies>
 class false_token_matcher
     : public token_matcher<Backend, Policies,
@@ -861,6 +910,7 @@ public:
 //* |  _| '_| || / -_) |  _/ _ \ / / -_) ' \  *
 //*  \__|_|  \_,_\___|  \__\___/_\_\___|_||_| *
 //*                                           *
+/// A function object invoked when the "true" token is matched.
 template <typename Backend, typename Policies>
 struct true_complete {
   std::error_code operator() (parser<Backend, Policies> &p) const {
@@ -868,6 +918,7 @@ struct true_complete {
   }
 };
 
+/// Matches a "true" token.
 template <typename Backend, typename Policies>
 class true_token_matcher
     : public token_matcher<Backend, Policies,
@@ -883,6 +934,7 @@ public:
 //* | ' \ || | | | |  _/ _ \ / / -_) ' \  *
 //* |_||_\_,_|_|_|  \__\___/_\_\___|_||_| *
 //*                                       *
+/// A function object invoked when the "null" token is matched.
 template <typename Backend, typename Policies>
 struct null_complete {
   std::error_code operator() (parser<Backend, Policies> &p) const {
@@ -890,6 +942,7 @@ struct null_complete {
   }
 };
 
+/// Matches a "null" token.
 template <typename Backend, typename Policies>
 class null_token_matcher
     : public token_matcher<Backend, Policies,
@@ -905,6 +958,7 @@ public:
 //* | | ' \|  _| | ' \| |  _| || | |  _/ _ \ / / -_) ' \  *
 //* |_|_||_|_| |_|_||_|_|\__|\_, |  \__\___/_\_\___|_||_| *
 //*                          |__/                         *
+/// A function object invoked when the "Infinity" token is matched.
 template <typename Backend, typename Policies>
 struct infinity_complete {
   std::error_code operator() (parser<Backend, Policies> &p) const {
@@ -912,6 +966,7 @@ struct infinity_complete {
   }
 };
 
+/// Matches an "Infinity" token.
 template <typename Backend, typename Policies>
 class infinity_token_matcher
     : public token_matcher<Backend, Policies,
@@ -927,6 +982,7 @@ public:
 //* | ' \/ _` | ' \  |  _/ _ \ / / -_) ' \  *
 //* |_||_\__,_|_||_|  \__\___/_\_\___|_||_| *
 //*                                         *
+/// A function object invoked when the "NaN" token is matched.
 template <typename Backend, typename Policies>
 struct nan_complete {
   std::error_code operator() (parser<Backend, Policies> &p) const {
@@ -935,6 +991,7 @@ struct nan_complete {
   }
 };
 
+/// Matches an "NaN" token.
 template <typename Backend, typename Policies>
 class nan_token_matcher
     : public token_matcher<Backend, Policies, nan_complete<Backend, Policies>> {
@@ -960,6 +1017,7 @@ public:
 //     minus = %x2D               ; -
 //     plus = %x2B                ; +
 //     zero = %x30                ; 0
+/// Matches a number.
 template <typename Backend, typename Policies>
 class number_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
@@ -1474,8 +1532,8 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
 //* | ' \/ -_) \ / / _/ _ \ ' \(_-< || | '  \/ -_) '_| *
 //* |_||_\___/_\_\ \__\___/_||_/__/\_,_|_|_|_\___|_|   *
 //*                                                    *
-/// Processing of the four hex digits for the UTF-16 escape sequence used by
-/// both string and identifier objects.
+/// \brief Processing of the four hex digits for the UTF-16 escape sequence
+///   used by both string and identifier objects.
 ///
 /// \tparam FirstHexState  The initial hex character state.
 /// \tparam LastHexState The final hex character state.
@@ -1569,6 +1627,7 @@ constexpr auto post_hex_state = 6;
 //* (_-<  _| '_| | ' \/ _` | *
 //* /__/\__|_| |_|_||_\__, | *
 //*                   |___/  *
+/// Matches a string.
 template <typename Backend, typename Policies>
 class string_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
@@ -1861,6 +1920,7 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
 //* | / _` / -_) ' \  _| |  _| / -_) '_| *
 //* |_\__,_\___|_||_\__|_|_| |_\___|_|   *
 //*                                      *
+/// Matches an identifier.
 template <typename Backend, typename Policies>
 class identifier_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
@@ -2019,6 +2079,7 @@ auto identifier_matcher<Backend, Policies>::consume (
 //* / _` | '_| '_/ _` | || | *
 //* \__,_|_| |_| \__,_|\_, | *
 //*                    |__/  *
+/// Matches an array.
 template <typename Backend, typename Policies>
 class array_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
@@ -2112,6 +2173,7 @@ void array_matcher<Backend, Policies>::end_array (parser_type &parser) {
 //* / _ \ '_ \| / -_) _|  _| *
 //* \___/_.__// \___\__|\__| *
 //*         |__/             *
+/// Matches an object.
 template <typename Backend, typename Policies>
 class object_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
@@ -2260,6 +2322,8 @@ void object_matcher<Backend, Policies>::end_object (parser_type &parser) {
 //* \ V  V / ' \| |  _/ -_|_-< '_ \/ _` / _/ -_) *
 //*  \_/\_/|_||_|_|\__\___/__/ .__/\__,_\__\___| *
 //*                          |_|                 *
+/// \brief Matches whitespace.
+///
 /// This matcher consumes whitespace and updates the row number in response to
 /// the various combinations of CR and LF. Supports #, //, and /* style comments
 /// as an extension.
@@ -2556,6 +2620,7 @@ whitespace_matcher<Backend, Policies>::multi_line_comment_body (
 //* / -_) _ \  _| *
 //* \___\___/_|   *
 //*               *
+/// Matches the end of the input.
 template <typename Backend, typename Policies>
 class eof_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
