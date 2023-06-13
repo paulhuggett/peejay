@@ -178,7 +178,8 @@ public:
     unsigned y_;
   };
 
-  constexpr coord () noexcept = default;
+  // (Using '{}' rather than '=default;' here to pacify clang-8.)
+  constexpr coord () noexcept {}
   constexpr coord (column x, line y) noexcept : line_{y}, column_{x} {}
   constexpr coord (line y, column x) noexcept : line_{y}, column_{x} {}
 
@@ -197,7 +198,7 @@ public:
   constexpr bool operator!= (coord const &rhs) const noexcept {
     return !operator== (rhs);
   }
-  constexpr bool operator<(coord const &rhs) const noexcept {
+  constexpr bool operator< (coord const &rhs) const noexcept {
     return std::make_pair (line_, column_) <
            std::make_pair (rhs.line_, rhs.column_);
   }
@@ -215,11 +216,13 @@ public:
   }
 #endif  // __cpp_impl_three_way_comparison
 
-      constexpr
-      operator line () const noexcept {
+  constexpr explicit operator line () const noexcept {
     return line{line_};
   }
-  constexpr operator column () const noexcept { return column{column_}; }
+  constexpr explicit operator column () const noexcept {
+    return column{column_};
+  }
+
   void next_line () noexcept { ++line_; }
   void next_column () noexcept { ++column_; }
 
