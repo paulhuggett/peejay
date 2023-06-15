@@ -37,7 +37,8 @@ jobs:
 
       - name: Install cmake, Ninja, & libc++
         run: |
-          sudo apt-get install -y cmake ninja-build libc++-11-dev libc++abi-11-dev
+          sudo apt-get install -y cmake ninja-build
+          sudo apt-get install -y libc++-11-dev libc++abi-11-dev
 
       - name: Upgrade git
         run: |
