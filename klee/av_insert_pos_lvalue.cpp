@@ -25,7 +25,7 @@ int main () {
 
     arrayvec_type::size_type pos;
     klee_make_symbolic (&pos, sizeof pos, "pos");
-    klee_assume (pos < size);
+    klee_assume (pos <= size);
 
     klee_make_symbolic (&member::throw_number, sizeof (member::throw_number),
                         "throw_number");
