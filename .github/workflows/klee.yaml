@@ -68,3 +68,13 @@ jobs:
       - name: Build and Test
         run: |
           cmake --build "${{ github.workspace }}/build" --target klee-all
+
+      - name: Compress Test Outputs
+        run |
+          tar czf ./kout.tgz "${{ github.workspace }}/build/klee/kout"
+
+      - name: Upload Test Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: kout.tgz
+          path: ./kout.tgz
