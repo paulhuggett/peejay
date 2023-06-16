@@ -18,14 +18,14 @@ jobs:
     steps:
       - name: Install clang
         run: |
-          if ! command -v clang++-${{ env.CLANG_VERSION}}
+          if ! command -v "clang++-${{ env.CLANG_VERSION }}"
           then
             wget https://apt.llvm.org/llvm.sh
             # Force --yes to the end of the add-apt-repository command to
             # prevent the llvm.sh script hanging.
             sed -ie "/^add-apt-repository/ s/$/ --yes/" llvm.sh
             chmod +x llvm.sh
-            sudo ./llvm.sh $CLANG_VERSION all
+            sudo ./llvm.sh "$CLANG_VERSION" all
           fi
 
       - uses: actions/checkout@v3
@@ -48,15 +48,15 @@ jobs:
       - name: Configure build
         run: |
           mkdir "$BUILD_DIR"
-          cmake                                          \
-            -G Ninja                                     \
-            -S .                                         \
-            -B "$BUILD_DIR"                              \
-            -D COVERAGE=Yes                              \
-            -D PEEJAY_CXX17=Yes                          \
-            -D LIBCXX=Yes                                \
-            -D CMAKE_C_COMPILER=clang-$CLANG_VERSION     \
-            -D CMAKE_CXX_COMPILER=clang++-$CLANG_VERSION \
+          cmake                                            \
+            -G Ninja                                       \
+            -S .                                           \
+            -B "$BUILD_DIR"                                \
+            -D COVERAGE=Yes                                \
+            -D PEEJAY_CXX17=Yes                            \
+            -D LIBCXX=Yes                                  \
+            -D CMAKE_C_COMPILER="clang-$CLANG_VERSION"     \
+            -D CMAKE_CXX_COMPILER="clang++-$CLANG_VERSION" \
             -D CMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
 
       - name: Build
@@ -67,14 +67,14 @@ jobs:
 
       - name: Index the raw profile
         run: |
-          llvm-profdata-$CLANG_VERSION merge \
+          "llvm-profdata-$CLANG_VERSION" merge \
             --sparse                         \
             "$BUILD_DIR/default.profraw"     \
             -o "$BUILD_DIR/merged.profdata"
 
       - name: Collect the coverage
         run: |
-          llvm-cov-$CLANG_VERSION show \
+          "llvm-cov-$CLANG_VERSION" show \
             --instr-profile "$BUILD_DIR/merged.profdata" \
             "$BUILD_DIR/unittests/pj-unittests" > coverage.txt
 
