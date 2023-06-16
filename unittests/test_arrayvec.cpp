@@ -594,22 +594,22 @@ struct tracker {
 class trackee {
 public:
   trackee (tracker *const t, int v) : t_{t}, v_{v} {
-    t_->actions.emplace_back (v_, 0, action::added);
+    this->record (v_, 0, action::added);
   }
   trackee (tracker *const t, int v, std::nullopt_t) noexcept : t_{t}, v_{v} {
     try {
-      t_->actions.emplace_back (v_, 0, action::added);
+      this->record (v_, 0, action::added);
     } catch (...) {
       std::abort ();
     }
   }
   trackee (trackee const &rhs) : t_{rhs.t_}, v_{rhs.v_} {
     assert (rhs.init_ && "Source object must have been initialized");
-    t_->actions.emplace_back (v_, 0, action::copy_ctor);
+    this->record (v_, 0, action::copy_ctor);
   }
   trackee (trackee &&rhs) noexcept : t_{rhs.t_}, v_{rhs.v_} {
     assert (rhs.init_ && "Source object must have been initialized");
-    t_->actions.emplace_back (v_, 0, action::move_ctor);
+    this->record (v_, 0, action::move_ctor);
     if (rhs.v_ > 0) {
       rhs.v_ = -rhs.v_;
     }
@@ -618,7 +618,7 @@ public:
   ~trackee () noexcept {
     init_ = false;
     try {
-      t_->actions.emplace_back (v_, 0, action::deleted);
+      this->record (v_, 0, action::deleted);
     } catch (...) {
       std::abort ();
     }
@@ -628,7 +628,7 @@ public:
     assert (init_ && rhs.init_ &&
             "Both destination and source object must have been initialized");
     if (this != &rhs) {
-      t_->actions.emplace_back (v_, rhs.v_, action::copy_assign);
+      this->record (v_, rhs.v_, action::copy_assign);
       t_ = rhs.t_;
       v_ = rhs.v_;
     }
@@ -637,7 +637,7 @@ public:
   trackee &operator= (trackee &&rhs) noexcept {
     assert (init_ && rhs.init_ &&
             "Both destination and source object must have been initialized");
-    t_->actions.emplace_back (v_, rhs.v_, action::move_assign);
+    this->record (v_, rhs.v_, action::move_assign);
     t_ = rhs.t_;
     v_ = rhs.v_;
     if (rhs.v_ > 0) {
@@ -656,6 +656,8 @@ public:
   }
 
 private:
+  void record (int l, int r, action op) { t_->actions.emplace_back (l, r, op); }
+
   bool init_ = true;
   tracker *t_;
   int v_;

@@ -216,7 +216,7 @@ public:
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   /// Constructs the container with an initial size of 0.
-  arrayvec () noexcept = default;
+  arrayvec () noexcept;
   /// Constructs the container with the contents of the initializer list \p init
   ///
   /// \param init  An initializer list with which to initialize the elements of
@@ -513,6 +513,15 @@ public:
   ///@}
 
 private:
+  void flood () noexcept {
+#ifndef NDEBUG
+    std::fill (
+        reinterpret_cast<std::byte *> (to_address (data_.begin () + size_)),
+        reinterpret_cast<std::byte *> (to_address (data_.end ())),
+        std::byte{0xFF});
+#endif
+  }
+
   template <typename... Args>
   void resize_impl (size_type count, Args &&...args);
 
@@ -573,7 +582,13 @@ bool operator>= (arrayvec<T, LhsSize> const &lhs,
 // (ctor)
 // ~~~~~~
 template <typename T, std::size_t Size>
+arrayvec<T, Size>::arrayvec () noexcept {
+  this->flood ();
+}
+
+template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept {
+  this->flood ();
   auto *dest = this->data ();
   for (auto src = other.begin (), src_end = other.end (); src != src_end;
        ++src) {
@@ -586,6 +601,7 @@ arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept {
 template <typename T, std::size_t Size>
 template <typename InputIterator, typename>
 arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
+  this->flood ();
   auto out = this->begin ();
   for (; first != last; ++first) {
     if (size_ == Size) {
@@ -600,6 +616,7 @@ arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
 
 template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count) {
+  this->flood ();
   assert (count <= Size);
   for (; count > 0; --count) {
     this->emplace_back ();
@@ -608,6 +625,7 @@ arrayvec<T, Size>::arrayvec (size_type count) {
 
 template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
+  this->flood ();
   assert (count <= Size);
   for (; count > 0; --count) {
     this->emplace_back (value);
@@ -771,6 +789,7 @@ auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
   iterator const p = this->to_non_const_iterator (pos);
   size_ =
       static_cast<size_type> (arrayvec_base::erase (p, this->end (), size_));
+  this->flood ();
   return p;
 }
 
@@ -783,6 +802,7 @@ auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
   auto new_end = std::move (iterator{b + (last - first)}, this->end (), b);
   std::for_each (new_end, end (), [] (reference v) { std::destroy_at (&v); });
   size_ -= static_cast<size_type> (last - first);
+  this->flood ();
   return iterator{b};
 }
 
@@ -847,7 +867,7 @@ auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
   }
   arrayvec_base::move_range (r, e, r + 1);
   size_ += 1;
-  *r = std::move (value);  // FIXME: into uninitialized space?
+  *r = std::move (value);
   return r;
 }
 
