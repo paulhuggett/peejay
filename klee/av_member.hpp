@@ -8,6 +8,10 @@ class member {
 public:
   static inline std::size_t throw_number;
 
+  member () {
+    throw_check ();
+    ++instances_;
+  }
   explicit member (int v) : v_{v} {
     throw_check ();
     ++instances_;
@@ -45,12 +49,15 @@ public:
 
 private:
   static inline std::size_t instances_ = 0;
+  static inline std::size_t operations_ = 0;
+
   int v_ = 0;
 
-  void throw_check () {
-    if (instances_ >= throw_number) {
+  static void throw_check () {
+    if (operations_ >= throw_number) {
       throw std::runtime_error{"error"};
     }
+    ++operations_;
   }
 };
 

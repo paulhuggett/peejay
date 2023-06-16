@@ -125,6 +125,8 @@ if (klee_available)
       av_assign_count
       av_assign_range
       av_insert_range
+      av_resize_count
+      av_resize_count_value
       quote
   )
   foreach (T ${TESTS})
