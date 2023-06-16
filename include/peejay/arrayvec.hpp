@@ -461,13 +461,6 @@ public:
   /// \returns  An iterator pointing to the first of the new elements or \p pos
   ///   if \p count == 0.
   iterator insert (const_iterator pos, size_type count, const_reference value);
-  /// Inserts a new element into the container directly before pos.
-  ///
-  /// \param pos  Iterator before which the new element will be constructed.
-  /// \param args Arguments to be forwarded to the element's constructor.
-  /// \returns  An iterator pointing to the emplaced element.
-  template <typename... Args>
-  iterator emplace (const_iterator pos, Args &&...args);
   /// Inserts elements from range [\p first, \p last) before \p pos.
   ///
   /// \param pos  Iterator before which the new element will be constructed.
@@ -489,6 +482,14 @@ public:
   iterator insert (const_iterator pos, std::initializer_list<T> ilist) {
     return insert (pos, std::begin (ilist), std::end (ilist));
   }
+
+  /// Inserts a new element into the container directly before pos.
+  ///
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param args Arguments to be forwarded to the element's constructor.
+  /// \returns  An iterator pointing to the emplaced element.
+  template <typename... Args>
+  iterator emplace (const_iterator pos, Args &&...args);
 
   /// Erases the specified element from the container. Invalidates iterators
   /// and references at or after the point of the erase, including the end()
