@@ -21,7 +21,6 @@ public:
     ++instances_;
   }
   member (member&& rhs) noexcept : v_{rhs.v_} {
-    throw_check ();
     ++instances_;
     rhs.v_ = 0;
   }
