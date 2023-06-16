@@ -124,6 +124,7 @@ if (klee_available)
   set (TESTS
       av_assign_count
       av_assign_range
+      av_insert_pos_lvalue
       av_insert_range
       av_resize_count
       av_resize_count_value
