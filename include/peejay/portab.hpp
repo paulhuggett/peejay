@@ -21,6 +21,7 @@
 
 #include <iterator>
 #include <memory>
+#include <new>
 
 #if __cplusplus >= 202002L
 #define PEEJAY_CXX20 (1)
@@ -86,26 +87,31 @@ namespace peejay {
 // ~~~~~~~~~~
 #if defined(__cpp_lib_to_address)
 template <typename T>
-constexpr auto to_address (T&& p) noexcept {
+[[nodiscard]] constexpr auto to_address (T&& p) noexcept {
   return std::to_address (std::forward<T> (p));
 }
 #else
+// True if std::pointer_traits<T>::to_address is available.
+template <typename T, typename = void>
+inline constexpr bool has_to_address = false;
 template <typename T>
-constexpr T* to_address (T* const p) noexcept {
-  static_assert (!std::is_function_v<T>);
+inline constexpr bool
+    has_to_address<T, std::void_t<decltype (std::pointer_traits<T>::to_address (
+                          declval<T const&> ()))>> = true;
+
+template <typename T>
+[[nodiscard]] constexpr T* to_address (T* const p) noexcept {
+  static_assert (!std::is_function_v<T>, "T must not be a function type");
   return p;
 }
 template <typename T>
-constexpr auto to_address (T const& p) noexcept {
-  return to_address (p.operator->());
-}
-template <typename T>
-constexpr auto to_address (T& p) noexcept {
-  return to_address (p.operator->());
-}
-template <typename T>
-constexpr auto to_address (T&& p) noexcept {
-  return to_address (p.operator->());
+[[nodiscard]] constexpr auto to_address (T&& p) noexcept {
+  using P = std::decay_t<T>;
+  if constexpr (has_to_address<P>) {
+    return std::pointer_traits<P>::to_address (std::forward<T> (p));
+  } else {
+    return to_address (p.operator->());
+  }
 }
 #endif  // defined(__cpp_lib_to_address)
 
@@ -135,6 +141,8 @@ using std::construct_at;
 /// Creates a T object initialized with arguments args... at given address p.
 template <typename T, typename... Args>
 constexpr T* construct_at (T* const p, Args&&... args) {
+  static_assert (!std::is_const_v<T>,
+                 "Can't construct an object in const memory!");
   return ::new (p) T (std::forward<Args> (args)...);
 }
 #endif  // PEEJAY_CXX20

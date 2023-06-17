@@ -515,10 +515,10 @@ public:
 private:
   void flood () noexcept {
 #ifndef NDEBUG
-    std::fill (
-        reinterpret_cast<std::byte *> (to_address (data_.begin () + size_)),
-        reinterpret_cast<std::byte *> (to_address (data_.end ())),
-        std::byte{0xFF});
+    T *const p = this->data ();
+    std::fill (pointer_cast<std::byte *> (p + this->size ()),
+               pointer_cast<std::byte *> (p + this->max_size ()),
+               std::byte{0xFF});
 #endif
   }
 
@@ -730,16 +730,14 @@ void arrayvec<T, Size>::resize (size_type count, const_reference value) {
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back (const_reference value) {
   assert (this->size () < this->max_size ());
-  iterator e = this->end ();
-  construct_at (to_address (e), value);
+  construct_at (to_address (this->end ()), value);
   ++size_;
 }
 
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back (T &&value) {
   assert (this->size () < this->max_size ());
-  iterator e = this->end ();
-  construct_at (to_address (e), std::move (value));
+  construct_at (to_address (this->end ()), std::move (value));
   ++size_;
 }
 
