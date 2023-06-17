@@ -22,6 +22,7 @@
 #include <iterator>
 #include <memory>
 #include <new>
+#include <utility>
 
 #if __cplusplus >= 202002L
 #define PEEJAY_CXX20 (1)
@@ -97,7 +98,7 @@ inline constexpr bool has_to_address = false;
 template <typename T>
 inline constexpr bool
     has_to_address<T, std::void_t<decltype (std::pointer_traits<T>::to_address (
-                          declval<T const&> ()))>> = true;
+                          std::declval<T const&> ()))>> = true;
 
 template <typename T>
 [[nodiscard]] constexpr T* to_address (T* const p) noexcept {
