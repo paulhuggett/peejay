@@ -45,7 +45,7 @@ int main () {
       return EXIT_FAILURE;
     }
 #endif  // KLEE_RUN
-  } catch (...) {
+  } catch (memberex const&) {
   }
 #ifdef KLEE_RUN
   if (auto const inst = member::instances (); inst != 0) {

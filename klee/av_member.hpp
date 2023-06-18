@@ -5,6 +5,11 @@
 #include <cstddef>
 #include <stdexcept>
 
+class memberex : public std::runtime_error {
+public:
+  memberex () : std::runtime_error ("memberex") {}
+};
+
 class member {
 public:
   static inline std::size_t throw_number;
@@ -66,7 +71,7 @@ private:
 
   static void throw_check () {
     if (operations_ >= throw_number) {
-      throw std::runtime_error{"error"};
+      throw memberex{};
     }
     ++operations_;
   }

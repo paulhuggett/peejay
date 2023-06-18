@@ -60,6 +60,10 @@ protected:
 
   template <typename Iterator>
   static std::size_t erase (Iterator pos, Iterator end, std::size_t size);
+
+  template <typename T>
+  static std::size_t erase (T *data, T const *first, T const *last,
+                            std::size_t size);
 };
 
 // operator assign
@@ -160,6 +164,20 @@ std::size_t arrayvec_base::erase (Iterator pos, Iterator end,
   std::move (pos + 1, end, pos);
   std::destroy_at (&*(end - 1));
   return size - 1;
+}
+
+template <typename T>
+std::size_t arrayvec_base::erase (T *data, T const *first, T const *last,
+                                  std::size_t size) {
+  assert (first >= data);
+  assert (last <= data + size);
+  assert (first <= last);
+  auto const delta = static_cast<std::size_t> (last - first);
+  auto const b = data + (first - data);
+  auto const end = data + size;
+  auto new_end = std::move (b + delta, end, b);
+  std::for_each (new_end, end, [] (T &v) { std::destroy_at (&v); });
+  return size - delta;
 }
 
 //*                                     *
@@ -798,12 +816,10 @@ auto arrayvec<T, Size>::erase (const_iterator first, const_iterator last)
     -> iterator {
   assert (first >= this->begin () && first <= last && last <= this->cend () &&
           "Iterator range to erase() is invalid");
-  auto const b = this->begin () + std::distance (this->cbegin (), first);
-  auto new_end = std::move (iterator{b + (last - first)}, this->end (), b);
-  std::for_each (new_end, end (), [] (reference v) { std::destroy_at (&v); });
-  size_ -= static_cast<size_type> (last - first);
-  this->flood ();
-  return iterator{b};
+
+  size_ = static_cast<size_type> (arrayvec_base::erase<T> (
+      this->data (), to_address (first), to_address (last), size_));
+  return to_non_const_iterator (first);
 }
 
 // insert
