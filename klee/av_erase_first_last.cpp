@@ -54,6 +54,7 @@ int main () {
 #ifdef KLEE_RUN
     std::vector<member> v;
     populate (v, size);
+
     // A mirror call to std::vector<>::insert for comparison.
     v.erase (v.begin () + first, v.begin () + last);
 
