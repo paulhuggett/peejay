@@ -784,9 +784,9 @@ void arrayvec<T, Size>::assign (InputIterator first, InputIterator last) {
 // ~~~~~
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::erase (const_iterator pos) -> iterator {
-  iterator const p = this->to_non_const_iterator (pos);
-  size_ =
-      static_cast<size_type> (arrayvec_base::erase (p, this->end (), size_));
+  assert (pos >= this->begin () && pos < this->cend() && "erase() iterator pos is invalid");
+  auto const p = this->to_non_const_iterator (pos);
+  size_ = static_cast<size_type> (arrayvec_base::erase (p, this->end (), size_));
   this->flood ();
   return p;
 }
