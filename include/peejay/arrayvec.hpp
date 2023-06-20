@@ -64,6 +64,16 @@ protected:
   template <typename T>
   static std::size_t erase (T *data, T const *first, T const *last,
                             std::size_t size);
+
+  /// \param data  The start of the array data.
+  /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param count The number of copies to insert.
+  /// \param value  Element value to insert.
+  template <typename T, typename SizeType>
+  void insert (pointer_based_iterator<T> data, SizeType *const size,
+               pointer_based_iterator<T> pos, SizeType const count,
+               T const &value);
 };
 
 // operator assign
@@ -178,6 +188,43 @@ std::size_t arrayvec_base::erase (T *data, T const *first, T const *last,
   auto new_end = std::move (b + delta, end, b);
   std::for_each (new_end, end, [] (T &v) { std::destroy_at (&v); });
   return size - delta;
+}
+
+// insert
+// ~~~~~~
+template <typename T, typename SizeType>
+void arrayvec_base::insert (pointer_based_iterator<T> data,
+                            SizeType *const size, pointer_based_iterator<T> pos,
+                            SizeType const count, T const &value) {
+  assert (pos >= data && pos <= data + *size &&
+          "pos must lie within the allocated array");
+  auto const to = pos + count;
+  auto const current_end = data + *size;
+  assert (current_end >= pos);
+  assert (to >= pos);
+
+  auto const new_end = current_end + (to - pos);
+  auto const num_to_move = current_end - pos;
+  auto const num_uninit = std::min (num_to_move, new_end - current_end);
+
+  // Copy-construct into uninitialized elements.
+  for (auto it = current_end; it < to; ++it) {
+    construct_at (to_address (it), value);
+    ++(*size);
+  }
+  // Move existing elements into uninitialized space.
+  auto dest = new_end - num_uninit;
+  for (auto src = current_end - num_uninit; src < current_end; ++src) {
+    construct_at (to_address (dest), std::move (*src));
+    ++dest;
+    ++(*size);
+  }
+  // Move elements between the initialized elements.
+  // T * const p = data + (pos - data);
+  std::move_backward (pos, pos + num_to_move - num_uninit,
+                      new_end - num_uninit);
+  // Copy into initialized elements.
+  std::fill (pos, pos + count, value);
 }
 
 //*                                     *
@@ -828,36 +875,8 @@ template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator const pos, size_type const count,
                                 const_reference value) -> iterator {
   assert (this->size () + count <= this->max_size () && "Insert will overflow");
-
-  // NOLINTNEXTLINE(misc-misplaced-const)
-  iterator const from = this->to_non_const_iterator (pos);
-  auto const to = from + count;
-  auto const current_end = this->end ();
-  assert (current_end >= from && to >= from);
-
-  // NOLINTNEXTLINE(misc-misplaced-const)
-  iterator const new_end = current_end + (to - from);
-  difference_type const num_to_move = current_end - from;
-  difference_type const num_uninit =
-      (std::min) (num_to_move, new_end - current_end);
-
-  // Copy-construct into uninitialized elements.
-  for (auto it = current_end; it < to; ++it) {
-    construct_at (to_address (it), value);
-    ++size_;
-  }
-  // Move existing elements into uninitialized space.
-  iterator dest = new_end - num_uninit;
-  for (iterator src = current_end - num_uninit; src < current_end; ++src) {
-    construct_at (to_address (dest), std::move (*src));
-    ++dest;
-    ++size_;
-  }
-  // Move elements between the initialized elements.
-  std::move_backward (from, from + num_to_move - num_uninit,
-                      new_end - num_uninit);
-  // Copy into initialized elements.
-  std::fill (from, to, value);
+  auto const from = this->to_non_const_iterator (pos);
+  arrayvec_base::insert (this->begin (), &size_, from, count, value);
   return from;
 }
 
