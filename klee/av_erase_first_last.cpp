@@ -13,7 +13,7 @@
 
 namespace {
 constexpr std::size_t av_size = 8;
-std::array<int, av_size> primes{{2, 3, 5, 7, 11, 13, 17, 19}};
+inline std::array<int, av_size> const primes{{2, 3, 5, 7, 11, 13, 17, 19}};
 }  // namespace
 
 template <typename Container>
@@ -34,7 +34,6 @@ int main () {
 
     std::size_t size;
     MAKE_SYMBOLIC (size);
-    klee_assume (size > 0);
     klee_assume (size <= av_size);
 
     arrayvec_type::size_type first;
