@@ -17,7 +17,8 @@ set (include_dir "${PEEJAY_ROOT}/include")
 
 set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
 
-add_library (peejay STATIC
+add_library (
+  peejay STATIC
   "${include_dir}/peejay/arrayvec.hpp"
   "${include_dir}/peejay/cbii.hpp"
   "${include_dir}/peejay/dom.hpp"
@@ -33,7 +34,9 @@ add_library (peejay STATIC
   dummy.cpp
   "${CPRUN_HPP}"
 )
-target_include_directories (peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>)
+target_include_directories (
+  peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>
+)
 
 setup_target (peejay)
 
@@ -42,16 +45,18 @@ set (UNICODE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/../../cprun/UnicodeData.txt")
 
 # Look for python 3.10. The parse.py program uses some features from typing that
 # were introduced in that version of Python.
-find_package(Python3 3.10)
+find_package (Python3 3.10)
 if (NOT Python3_FOUND)
-  message(WARNING "Python 3.10 was not found: cprun generation is disabled")
-else()
-  # Run the gencprun utility to create cprun.hpp. Uncomment the
-  # second COMMAND to see the contents of the file in the build transcript.
+  message (WARNING "Python 3.10 was not found: cprun generation is disabled")
+else ()
+  # Run the gencprun utility to create cprun.hpp. Uncomment the second COMMAND
+  # to see the contents of the file in the build transcript.
   add_custom_command (
     COMMENT "Generating cprun header file '${CPRUN_HPP}'"
-    COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA} --hpp --include-guard=PEEJAY_CPRUN_HPP > ${CPRUN_HPP}
-    #COMMAND ${Python3_EXECUTABLE} -c "with open('${CPRUN_HPP}') as f: print(f.read())"
+    COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA}
+            --hpp --include-guard=PEEJAY_CPRUN_HPP > ${CPRUN_HPP}
+    # COMMAND ${Python3_EXECUTABLE} -c "with open('${CPRUN_HPP}') as f:
+    # print(f.read())"
     OUTPUT ${CPRUN_HPP}
     VERBATIM
   )
@@ -59,18 +64,13 @@ endif ()
 
 include (GNUInstallDirs)
 install (
-   TARGETS peejay
-   EXPORT peejay
-   PUBLIC_HEADER
-     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
-     COMPONENT peejay
-   LIBRARY
-     DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
-     COMPONENT peejay
-   ARCHIVE
-     DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
-     COMPONENT peejay
-   INCLUDES
-     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  TARGETS peejay
+  EXPORT peejay
+  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
+                COMPONENT peejay
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay" COMPONENT peejay
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay" COMPONENT peejay
+  INCLUDES
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 add_dependencies (install-peejay peejay)

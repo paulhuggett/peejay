@@ -13,7 +13,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 #===----------------------------------------------------------------------===//
-add_executable (pj-unittests
+add_executable (
+  pj-unittests
   harness.cpp
   callbacks.hpp
   test_array.cpp
@@ -34,16 +35,13 @@ add_executable (pj-unittests
 setup_target (pj-unittests)
 target_link_libraries (pj-unittests PRIVATE peejay gtest gmock)
 
-set (clang_options
-  -Wno-global-constructors
-  -Wno-used-but-marked-unused
-)
-set (gcc_options
-)
-set (msvc_options
-)
-target_compile_options (pj-unittests PRIVATE
-  $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
-  $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
-  $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
+set (clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
+set (gcc_options)
+set (msvc_options)
+target_compile_options (
+  pj-unittests
+  PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
+    $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
+    $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
 )
