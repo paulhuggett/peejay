@@ -53,19 +53,18 @@ protected:
                      pointer_based_iterator<T> last) noexcept;
 
   template <typename SizeType, typename... Args>
-  static void resize (pointer_based_iterator<T> const begin,
-                      SizeType *const size, std::size_t const new_size,
-                      Args &&...args);
+  static void resize (pointer_based_iterator<T> begin, SizeType *const size,
+                      std::size_t new_size, Args &&...args);
 
-  static void move_range (pointer_based_iterator<T> const from,
-                          pointer_based_iterator<T> const end,
-                          pointer_based_iterator<T> const to) noexcept;
+  static void move_range (pointer_based_iterator<T> from,
+                          pointer_based_iterator<T> end,
+                          pointer_based_iterator<T> to) noexcept;
 
   static std::size_t erase (pointer_based_iterator<T> pos,
                             pointer_based_iterator<T> end, std::size_t size);
 
-  static std::size_t erase (pointer_based_iterator<T> const first,
-                            pointer_based_iterator<T> const last,
+  static std::size_t erase (pointer_based_iterator<T> first,
+                            pointer_based_iterator<T> last,
                             pointer_based_iterator<T> end, std::size_t size);
 
   /// \param data  The start of the array data.
@@ -75,7 +74,7 @@ protected:
   /// \param value  Element value to insert.
   template <typename SizeType>
   static void insert (pointer_based_iterator<T> data, SizeType *const size,
-                      pointer_based_iterator<T> pos, SizeType const count,
+                      pointer_based_iterator<T> pos, SizeType count,
                       T const &value);
 };
 
