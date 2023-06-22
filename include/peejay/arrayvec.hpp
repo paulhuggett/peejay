@@ -56,6 +56,25 @@ protected:
   static void resize (pointer_based_iterator<T> begin, SizeType *const size,
                       std::size_t new_size, Args &&...args);
 
+  template <typename SizeType>
+  void assign (pointer_based_iterator<T> begin, SizeType *const size,
+               std::size_t count, T const &value) {
+    auto const end_actual = begin + *size;
+    auto const end_desired = begin + count;
+    auto const end_inited = (std::min) (end_desired, end_actual);
+
+    std::fill (begin, end_inited, value);
+    if (end_desired < end_actual) {
+      *size = static_cast<SizeType> (
+          arrayvec_base::erase (end_desired, end_actual, end_actual, *size));
+      return;
+    }
+    for (auto pos = end_actual; pos < end_desired; ++pos) {
+      construct_at (to_address (pos), value);
+      ++(*size);
+    }
+  }
+
   static void move_range (pointer_based_iterator<T> from,
                           pointer_based_iterator<T> end,
                           pointer_based_iterator<T> to) noexcept;
@@ -830,20 +849,7 @@ void arrayvec<T, Size>::emplace_back (Args &&...args) {
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::assign (size_type count, const_reference value) {
   assert (count <= this->max_size ());
-  auto b = this->begin ();
-  auto const end_actual = this->end ();
-  auto const end_desired = b + count;
-  auto const end_inited = (std::min) (end_desired, end_actual);
-
-  std::fill (b, end_inited, value);
-  if (end_desired < end_actual) {
-    this->erase (end_desired, end_actual);
-    return;
-  }
-  for (auto pos = end_actual; pos < end_desired; ++pos) {
-    assert (pos == this->end ());
-    this->push_back (value);
-  }
+  arrayvec_base<T>::assign (this->begin (), &size_, count, value);
 }
 
 template <typename T, std::size_t Size>
