@@ -704,14 +704,19 @@ template <typename InputIterator, typename>
 arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
   this->flood ();
   auto out = this->begin ();
-  for (; first != last; ++first) {
-    if (size_ == Size) {
-      assert (false && "arrayvec container overflow");
-      return;
+  try {
+    for (; first != last; ++first) {
+      if (size_ == Size) {
+        assert (false && "arrayvec container overflow");
+        return;
+      }
+      construct_at (to_address (out), *first);
+      ++size_;
+      ++out;
     }
-    construct_at (to_address (out), *first);
-    ++size_;
-    ++out;
+  } catch (...) {
+    this->clear ();
+    throw;
   }
 }
 
@@ -719,8 +724,13 @@ template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count) {
   this->flood ();
   assert (count <= Size);
-  for (; count > 0; --count) {
-    this->emplace_back ();
+  try {
+    for (; count > 0; --count) {
+      this->emplace_back ();
+    }
+  } catch (...) {
+    this->clear ();
+    throw;
   }
 }
 
@@ -728,8 +738,13 @@ template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
   this->flood ();
   assert (count <= Size);
-  for (; count > 0; --count) {
-    this->emplace_back (value);
+  try {
+    for (; count > 0; --count) {
+      this->emplace_back (value);
+    }
+  } catch (...) {
+    this->clear ();
+    throw;
   }
 }
 
