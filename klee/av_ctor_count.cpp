@@ -15,7 +15,6 @@
 namespace {
 
 constexpr std::size_t av_size = 8;
-inline std::array<int, av_size> const primes{{2, 3, 5, 7, 11, 13, 17, 19}};
 
 }  // namespace
 
@@ -23,18 +22,14 @@ int main () {
   try {
     MAKE_SYMBOLIC (member::throw_number);
 
-    std::size_t first;
-    std::size_t last;
-    MAKE_SYMBOLIC (first);
-    MAKE_SYMBOLIC (last);
-    klee_assume (last <= av_size);
-    klee_assume (first <= last);
+    peejay::arrayvec<member, av_size>::size_type count;
+    MAKE_SYMBOLIC (count);
+    klee_assume (count <= av_size);
 
-    auto const b = primes.begin ();
-    peejay::arrayvec<member, av_size> av{b + first, b + last};
+    peejay::arrayvec<member, av_size> av{count};
 
 #ifdef KLEE_RUN
-    std::vector<member> v{b + first, b + last};
+    std::vector<member> v{count};
 
     if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
       std::cerr << "** Fail!\n";

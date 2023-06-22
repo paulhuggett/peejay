@@ -117,6 +117,7 @@ if (klee_available)
     TESTS
     av_assign_count
     av_assign_range
+    av_ctor_count
     av_ctor_first_last
     av_erase_pos
     av_erase_first_last
