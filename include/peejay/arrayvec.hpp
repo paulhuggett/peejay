@@ -71,15 +71,26 @@ protected:
                             pointer_based_iterator<T> last,
                             pointer_based_iterator<T> end, std::size_t size);
 
+  /// \param begin  The start of the array data.
+  /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param value  Element value to insert.
+  template <typename SizeType>
+  static pointer_based_iterator<T> insert (pointer_based_iterator<T> begin,
+                                           SizeType *const size,
+                                           pointer_based_iterator<T> pos,
+                                           T &&value);
+
   /// \param data  The start of the array data.
   /// \param size  On entry, the original size of the container. On exit, the new container size.
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param count The number of copies to insert.
   /// \param value  Element value to insert.
   template <typename SizeType>
-  static void insert (pointer_based_iterator<T> data, SizeType *const size,
-                      pointer_based_iterator<T> pos, SizeType count,
-                      T const &value);
+  static pointer_based_iterator<T> insert (pointer_based_iterator<T> data,
+                                           SizeType *const size,
+                                           pointer_based_iterator<T> pos,
+                                           SizeType count, T const &value);
 };
 
 // operator assign
@@ -228,10 +239,9 @@ std::size_t arrayvec_base<T>::erase (pointer_based_iterator<T> const first,
 // ~~~~~~
 template <typename T>
 template <typename SizeType>
-void arrayvec_base<T>::insert (pointer_based_iterator<T> const data,
-                               SizeType *const size,
-                               pointer_based_iterator<T> const pos,
-                               SizeType const count, T const &value) {
+pointer_based_iterator<T> arrayvec_base<T>::insert (
+    pointer_based_iterator<T> const data, SizeType *const size,
+    pointer_based_iterator<T> const pos, SizeType const count, T const &value) {
   assert (pos >= data && pos <= data + *size &&
           "pos must lie within the allocated array");
   auto const to = pos + count;
@@ -261,6 +271,23 @@ void arrayvec_base<T>::insert (pointer_based_iterator<T> const data,
                       new_end - num_uninit);
   // Copy into initialized elements.
   std::fill (pos, pos + count, value);
+  return pos;
+}
+
+template <typename T>
+template <typename SizeType>
+pointer_based_iterator<T> arrayvec_base<T>::insert (
+    pointer_based_iterator<T> begin, SizeType *const size,
+    pointer_based_iterator<T> pos, T &&value) {
+  auto const end = begin + *size;
+  if (pos == end) {
+    construct_at (to_address (pos), std::move (value));
+  } else {
+    arrayvec_base<T>::move_range (pos, end, pos + 1);
+    *pos = std::move (value);
+  }
+  ++(*size);
+  return pos;
 }
 
 //*                                     *
@@ -914,9 +941,8 @@ template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator const pos, size_type const count,
                                 const_reference value) -> iterator {
   assert (this->size () + count <= this->max_size () && "Insert will overflow");
-  auto const from = this->to_non_const_iterator (pos);
-  arrayvec_base<T>::insert (this->begin (), &size_, from, count, value);
-  return from;
+  return arrayvec_base<T>::insert (
+      this->begin (), &size_, this->to_non_const_iterator (pos), count, value);
 }
 
 template <typename T, std::size_t Size>
@@ -932,17 +958,9 @@ auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
   assert (this->size () < this->max_size () && "Insert will cause overflow");
-
-  iterator const e = this->end ();  // NOLINT(misc-misplaced-const)
-  iterator r = this->to_non_const_iterator (pos);
-  if (r == e) {
-    this->emplace_back (std::move (value));
-    return r;
-  }
-  arrayvec_base<T>::move_range (r, e, r + 1);
-  size_ += 1;
-  *r = std::move (value);
-  return r;
+  return arrayvec_base<T>::insert (this->begin (), &size_,
+                                   this->to_non_const_iterator (pos),
+                                   std::move (value));
 }
 
 template <typename T, std::size_t Size>
