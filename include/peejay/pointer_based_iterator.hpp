@@ -133,11 +133,13 @@ public:
     return prev;
   }
 
-  pointer_based_iterator &operator+= (difference_type const n) noexcept {
+  template <typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
+  pointer_based_iterator &operator+= (U const n) noexcept {
     pos_ += n;
     return *this;
   }
-  pointer_based_iterator &operator-= (difference_type const n) noexcept {
+  template <typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
+  pointer_based_iterator &operator-= (U const n) noexcept {
     pos_ -= n;
     return *this;
   }
@@ -168,40 +170,66 @@ private:
 };
 
 /// Move an iterator \p i forwards by distance \p n. \p n can be both positive
-/// or negative. \param i  The iterator to be moved.
+/// or negative.
+///
+/// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T>
-inline pointer_based_iterator<T> operator+ (
-    pointer_based_iterator<T> const i,
-    typename pointer_based_iterator<T>::difference_type const n) noexcept {
+template <typename T, typename U,
+          typename = std::enable_if_t<std::is_integral_v<U>>>
+inline pointer_based_iterator<T> operator+ (pointer_based_iterator<T> const i,
+                                            U const n) noexcept {
   auto temp = i;
   return temp += n;
 }
+
 /// Move an iterator \p i forwards by distance \p n. \p n can be both positive
-/// or negative. \param i  The iterator to be moved.
+/// or negative.
+///
+/// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T>
+template <typename T, typename U,
+          typename = std::enable_if_t<std::is_integral_v<U>>>
 inline pointer_based_iterator<T> operator+ (
-    typename pointer_based_iterator<T>::difference_type const n,
-    pointer_based_iterator<T> const i) noexcept {
+    U const n, pointer_based_iterator<T> const i) noexcept {
   auto temp = i;
   return temp += n;
 }
 
 /// Move an iterator \p i backwards by distance \p n. \p n can be both positive
-/// or negative. \param i  The iterator to be moved.
+/// or negative.
+///
+/// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T>
-inline pointer_based_iterator<T> operator- (
-    pointer_based_iterator<T> const i,
-    typename pointer_based_iterator<T>::difference_type const n) noexcept {
+template <typename T, typename U,
+          typename = std::enable_if_t<std::is_integral_v<U>>>
+inline pointer_based_iterator<T> operator- (pointer_based_iterator<T> const i,
+                                            U const n) noexcept {
   auto temp = i;
   return temp -= n;
 }
 
+/// Move an iterator \p i backwards by distance \p n. \p n can be both positive
+/// or negative.
+///
+/// \param i  The iterator to be moved.
+/// \param n  The distance by which iterator \p i should be moved.
+/// \returns  The new iterator.
+template <typename T, typename U,
+          typename = std::enable_if_t<std::is_integral_v<U>>>
+inline pointer_based_iterator<T> operator- (
+    U const n, pointer_based_iterator<T> const i) noexcept {
+  auto temp = i;
+  return temp -= n;
+}
+
+/// Returns the distance between two iterators \p b - \p a.
+///
+/// \param b  The first iterator.
+/// \param a  The second iterator.
+/// \returns  distance between two iterators \p b - \p a.
 template <typename LhsT, typename RhsT,
           typename = std::enable_if_t<std::is_same_v<
               std::remove_const_t<LhsT>, std::remove_const_t<RhsT>>>>
