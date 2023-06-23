@@ -234,18 +234,6 @@ struct cprun {{
     print('\n} // end namespace peejay')
     print('#endif // {0}'.format (include_guard))
 
-def emit_source (db: DbDict, entries:Sequence[OutputRow], header_file:pathlib.Path) -> None:
-    """Emits a C++ source file which defines of the array variable. The members
-    are a sequence of cprun instances sorted in code point order.
-
-    :param db: The unicode database dictionary.
-    :param entries: A sequence of OutputRow instances sorted by code point.
-    :param header_file: The path of the header file to be included by this cpp
-                        file.
-    :result: None
-    """
-    pass
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog = 'ProgramName',
                                      description = 'Generates C++ source and header files which map Unicode code points to ECMAScript grammar rules')
@@ -255,8 +243,6 @@ if __name__ == '__main__':
     parser.add_argument('--include-guard', help='the name of header file include guard macro', default='CPRUN_HPP')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--hpp', help='emit the header file', action='store_true', dest='emit_header')
-    group.add_argument('-c', '--cpp', help='emit the source file', action='store_false', dest='emit_header')
     group.add_argument('-d', '--dump', help='dump the Unicode code point database', action='store_true')
 
     args = parser.parse_args()
@@ -266,7 +252,5 @@ if __name__ == '__main__':
     else:
         db = patch_special_code_points(db)
         entries = code_run_array(db)
-        if args.emit_header:
-            emit_header(entries, args.include_guard)
-        else:
-            emit_source(db, entries, args.header_file)
+        emit_header(entries, args.include_guard)
+

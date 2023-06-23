@@ -54,9 +54,7 @@ else ()
   add_custom_command (
     COMMENT "Generating cprun header file '${CPRUN_HPP}'"
     COMMAND ${Python3_EXECUTABLE} ${GENCPRUN} --unicode-data=${UNICODE_DATA}
-            --hpp --include-guard=PEEJAY_CPRUN_HPP > ${CPRUN_HPP}
-    # COMMAND ${Python3_EXECUTABLE} -c "with open('${CPRUN_HPP}') as f:
-    # print(f.read())"
+            --include-guard=PEEJAY_CPRUN_HPP > ${CPRUN_HPP}
     OUTPUT ${CPRUN_HPP}
     VERBATIM
   )
