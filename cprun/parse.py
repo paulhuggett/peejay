@@ -267,10 +267,6 @@ if __name__ == '__main__':
                         help='the path of the UnicodeData.txt file',
                         default='./UnicodeData.txt',
                         type=pathlib.Path)
-    parser.add_argument('-f',
-                        '--header-file',
-                        help='the name of the cprun header file',
-                        default='cprun.hpp')
     parser.add_argument('--include-guard',
                         help='the name of header file include guard macro',
                         default='CPRUN_HPP')
