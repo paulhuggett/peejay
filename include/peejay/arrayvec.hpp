@@ -43,18 +43,17 @@ namespace peejay {
 template <typename T>
 class arrayvec_base {
 protected:
-  arrayvec_base () noexcept = default;
-
   template <typename SizeType>
-  arrayvec_base (T *first, SizeType *const size, SizeType count) {
+  void init (pointer_based_iterator<T> first, SizeType *const size,
+             SizeType count) {
     try {
-      auto const last = first + *size;
+      auto const last = first + count;
       for (; first != last; ++first) {
-        construct_at (first);
+        construct_at (to_address (first));
         ++(*size);
       }
     } catch (...) {
-      this->clear ();
+      arrayvec_base<T>::clear (size, first, first + *size);
       throw;
     }
   }
@@ -764,9 +763,9 @@ arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
 }
 
 template <typename T, std::size_t Size>
-arrayvec<T, Size>::arrayvec (size_type count)
-    : arrayvec_base<T> (this->data (), &size_, count) {
+arrayvec<T, Size>::arrayvec (size_type count) {
   assert (count <= Size);
+  arrayvec_base<T>::init (this->begin (), &size_, count);
   this->flood ();
 }
 
