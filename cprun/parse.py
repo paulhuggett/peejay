@@ -27,10 +27,12 @@ import pathlib
 
 from unicode_data import CodePoint, CodePointValueDict, DbDict, GeneralCategory, MAX_CODE_POINT, read_unicode_data
 
-CodePointBitsType = Annotated[int, 'The number of bits used to represent a code point']
+CodePointBitsType = Annotated[
+    int, 'The number of bits used to represent a code point']
 CODE_POINT_BITS: CodePointBitsType = 21
 
-RunLengthBitsType = Annotated[int, 'The number of bits used to represent a run length']
+RunLengthBitsType = Annotated[
+    int, 'The number of bits used to represent a run length']
 RUN_LENGTH_BITS: RunLengthBitsType = 9
 MAX_RUN_LENGTH = pow(2, RUN_LENGTH_BITS) - 1
 
@@ -38,42 +40,47 @@ RuleBitsType = Annotated[int, 'The number of bits used to represent a rule']
 RULE_BITS: RuleBitsType = 2
 MAX_RULE = pow(2, RULE_BITS) - 1
 
+
 class GrammarRule(Enum):
     whitespace = 0
     identifier_start = 1
     identifier_part = 2
     none = 4
 
+
 CATEGORY_TO_GRAMMAR_RULE: dict[GeneralCategory, GrammarRule] = {
-    GeneralCategory.Spacing_Mark         : GrammarRule.identifier_part,
+    GeneralCategory.Spacing_Mark: GrammarRule.identifier_part,
     GeneralCategory.Connector_Punctuation: GrammarRule.identifier_part,
-    GeneralCategory.Decimal_Number       : GrammarRule.identifier_part,
-    GeneralCategory.Letter_Number        : GrammarRule.identifier_start,
-    GeneralCategory.Lowercase_Letter     : GrammarRule.identifier_start,
-    GeneralCategory.Modifier_Letter      : GrammarRule.identifier_start,
-    GeneralCategory.Nonspacing_Mark      : GrammarRule.identifier_part,
-    GeneralCategory.Space_Separator      : GrammarRule.whitespace,
-    GeneralCategory.Other_Letter         : GrammarRule.identifier_start,
-    GeneralCategory.Titlecase_Letter     : GrammarRule.identifier_start,
-    GeneralCategory.Uppercase_Letter     : GrammarRule.identifier_start,
+    GeneralCategory.Decimal_Number: GrammarRule.identifier_part,
+    GeneralCategory.Letter_Number: GrammarRule.identifier_start,
+    GeneralCategory.Lowercase_Letter: GrammarRule.identifier_start,
+    GeneralCategory.Modifier_Letter: GrammarRule.identifier_start,
+    GeneralCategory.Nonspacing_Mark: GrammarRule.identifier_part,
+    GeneralCategory.Space_Separator: GrammarRule.whitespace,
+    GeneralCategory.Other_Letter: GrammarRule.identifier_start,
+    GeneralCategory.Titlecase_Letter: GrammarRule.identifier_start,
+    GeneralCategory.Uppercase_Letter: GrammarRule.identifier_start,
 }
+
 
 class OutputRow:
     """An individual output row representing a run of unicode code points
     which all belong to the same rule."""
 
-    def __init__(self, code_point: CodePoint, length: int, category: GrammarRule):
-        assert code_point < pow(2,CODE_POINT_BITS)
+    def __init__(self, code_point: CodePoint, length: int,
+                 category: GrammarRule):
+        assert code_point < pow(2, CODE_POINT_BITS)
         self.__code_point: CodePoint = code_point
         assert length < pow(2, RUN_LENGTH_BITS)
         self.__length: int = length
         assert category.value < pow(2, RULE_BITS)
         self.__category: GrammarRule = category
 
-    def as_str (self, db: DbDict) -> str:
+    def as_str(self, db: DbDict) -> str:
         return '{{ 0x{0:04x}, {1}, {2} }}, // {3} ({4})'\
             .format(self.__code_point, self.__length, self.__category.value,
                     db[self.__code_point]['Name'], self.__category.name)
+
 
 class CRAState:
     """A class used to model the state of code_run_array() as it processes
@@ -85,7 +92,8 @@ class CRAState:
         self.__max_length: int = 0
         self.__cat: Optional[GrammarRule] = None
 
-    def new_run(self, code_point: CodePoint, mc: Optional[GrammarRule]) -> None:
+    def new_run(self, code_point: CodePoint,
+                mc: Optional[GrammarRule]) -> None:
         """Start a new potential run of contiguous code points.
 
         :param code_point: The code point at which the run may start.
@@ -97,7 +105,7 @@ class CRAState:
         self.__cat = mc
         self.__length = int(mc is not None)
 
-    def extend_run (self, mc: Optional[GrammarRule]) -> bool:
+    def extend_run(self, mc: Optional[GrammarRule]) -> bool:
         """Adds a code point to the current run or indicates that a new run
         should be started.
 
@@ -110,11 +118,13 @@ class CRAState:
             if self.__length > MAX_RUN_LENGTH:
                 return False
             self.__length += 1
-            self.__max_length = max (self.__max_length, self.__length)
+            self.__max_length = max(self.__max_length, self.__length)
             return True
         return False
 
-    def end_run (self, result: MutableSequence[OutputRow]) -> MutableSequence[OutputRow]:
+    def end_run(
+            self,
+            result: MutableSequence[OutputRow]) -> MutableSequence[OutputRow]:
         """Call at the end of a contiguous run of entries. If there are new
         values, a new Entry will be appended to the 'result' sequence.
 
@@ -129,9 +139,10 @@ class CRAState:
             result.append(OutputRow(self.__first, self.__length, self.__cat))
         return result
 
-    def max_run (self) -> int:
+    def max_run(self) -> int:
         """The length of the longest contiguous run that has been encountered."""
         return self.__max_length
+
 
 def all_code_points() -> Generator[CodePoint, None, None]:
     """A generator which yields all of the valid Unicode code points in
@@ -141,6 +152,7 @@ def all_code_points() -> Generator[CodePoint, None, None]:
     while code_point <= MAX_CODE_POINT:
         yield code_point
         code_point = CodePoint(code_point + 1)
+
 
 def code_run_array(db: DbDict) -> list[OutputRow]:
     """Produces an array of code runs from the Unicode database dictionary.
@@ -163,7 +175,8 @@ def code_run_array(db: DbDict) -> list[OutputRow]:
     state.end_run(code_runs)
     return code_runs
 
-def patch_special_code_points (db: DbDict) -> DbDict:
+
+def patch_special_code_points(db: DbDict) -> DbDict:
     """The ECMAScript grammar rules assigns meaning to some individual Unicode
     code points as well as to entire categories of code point. This function
     ensures that the individual code points belong to categories that will in
@@ -175,9 +188,12 @@ def patch_special_code_points (db: DbDict) -> DbDict:
 
     # Check that the GeneralCategory enumerations will be eventually mapped to
     # the grammar_rule value we expect.
-    assert CATEGORY_TO_GRAMMAR_RULE[GeneralCategory.Space_Separator] == GrammarRule.whitespace
-    assert CATEGORY_TO_GRAMMAR_RULE[GeneralCategory.Other_Letter] == GrammarRule.identifier_start
-    assert CATEGORY_TO_GRAMMAR_RULE[GeneralCategory.Spacing_Mark] == GrammarRule.identifier_part
+    assert CATEGORY_TO_GRAMMAR_RULE[
+        GeneralCategory.Space_Separator] == GrammarRule.whitespace
+    assert CATEGORY_TO_GRAMMAR_RULE[
+        GeneralCategory.Other_Letter] == GrammarRule.identifier_start
+    assert CATEGORY_TO_GRAMMAR_RULE[
+        GeneralCategory.Spacing_Mark] == GrammarRule.identifier_part
     special_code_points = {
         CodePoint(0x0009): GeneralCategory.Space_Separator,
         CodePoint(0x000A): GeneralCategory.Space_Separator,
@@ -196,11 +212,13 @@ def patch_special_code_points (db: DbDict) -> DbDict:
         db[cp]['General_Category'] = cat
     return db
 
+
 def dump_db(db: DbDict) -> None:
     for k, v in db.items():
         print('U+{0:04x} {1}'.format(k, v))
 
-def emit_header(entries:Sequence[OutputRow], include_guard: str) -> None:
+
+def emit_header(entries: Sequence[OutputRow], include_guard: str) -> None:
     """Emits a C++ header file which declares the array variable along with the
     necessary types.
 
@@ -209,8 +227,8 @@ def emit_header(entries:Sequence[OutputRow], include_guard: str) -> None:
     :return: None
     """
     print('// This file was auto-generated. DO NOT EDIT!')
-    print('#ifndef {0}'.format (include_guard))
-    print('#define {0}'.format (include_guard))
+    print('#ifndef {0}'.format(include_guard))
+    print('#define {0}'.format(include_guard))
     print('''
 #include <array>
 #include <cstdint>
@@ -218,7 +236,8 @@ def emit_header(entries:Sequence[OutputRow], include_guard: str) -> None:
 namespace peejay {
 
 enum class grammar_rule {''')
-    print(',\n'.join(['  {0} = {1}'.format(x.name, x.value) for x in GrammarRule]))
+    print(',\n'.join(
+        ['  {0} = {1}'.format(x.name, x.value) for x in GrammarRule]))
     print('''}};
 struct cprun {{
   std::uint_least32_t code_point: {0};
@@ -227,23 +246,40 @@ struct cprun {{
 }};'''.format(CODE_POINT_BITS, RUN_LENGTH_BITS, RULE_BITS))
     assert CODE_POINT_BITS + RUN_LENGTH_BITS + RULE_BITS <= 32
 
-    print('inline std::array<cprun, {0}> const code_point_runs = {{{{'.format(len(entries)))
+    print('inline std::array<cprun, {0}> const code_point_runs = {{{{'.format(
+        len(entries)))
     for x in entries:
         print('  {0}'.format(x.as_str(db)))
     print('}};')
     print('\n} // end namespace peejay')
-    print('#endif // {0}'.format (include_guard))
+    print('#endif // {0}'.format(include_guard))
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(prog = 'ProgramName',
-                                     description = 'Generates C++ source and header files which map Unicode code points to ECMAScript grammar rules')
+    parser = argparse.ArgumentParser(
+        prog='ProgramName',
+        description=
+        'Generates C++ source and header files which map Unicode code points to ECMAScript grammar rules'
+    )
     parser.set_defaults(emit_header=True)
-    parser.add_argument('-u', '--unicode-data', help='the path of the UnicodeData.txt file', default='./UnicodeData.txt', type=pathlib.Path)
-    parser.add_argument('-f', '--header-file', help='the name of the cprun header file', default='cprun.hpp')
-    parser.add_argument('--include-guard', help='the name of header file include guard macro', default='CPRUN_HPP')
+    parser.add_argument('-u',
+                        '--unicode-data',
+                        help='the path of the UnicodeData.txt file',
+                        default='./UnicodeData.txt',
+                        type=pathlib.Path)
+    parser.add_argument('-f',
+                        '--header-file',
+                        help='the name of the cprun header file',
+                        default='cprun.hpp')
+    parser.add_argument('--include-guard',
+                        help='the name of header file include guard macro',
+                        default='CPRUN_HPP')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-d', '--dump', help='dump the Unicode code point database', action='store_true')
+    group.add_argument('-d',
+                       '--dump',
+                       help='dump the Unicode code point database',
+                       action='store_true')
 
     args = parser.parse_args()
     db = read_unicode_data(args.unicode_data)
@@ -253,4 +289,3 @@ if __name__ == '__main__':
         db = patch_special_code_points(db)
         entries = code_run_array(db)
         emit_header(entries, args.include_guard)
-
