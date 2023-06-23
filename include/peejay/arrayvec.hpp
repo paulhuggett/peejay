@@ -43,20 +43,14 @@ namespace peejay {
 template <typename T>
 class arrayvec_base {
 protected:
+  template <typename SizeType, typename InputIterator,
+            typename = std::enable_if_t<input_iterator<InputIterator>>>
+  void init (pointer_based_iterator<T> begin, SizeType *const size,
+             InputIterator first, InputIterator last);
+
   template <typename SizeType>
-  void init (pointer_based_iterator<T> first, SizeType *const size,
-             SizeType count) {
-    try {
-      auto const last = first + count;
-      for (; first != last; ++first) {
-        construct_at (to_address (first));
-        ++(*size);
-      }
-    } catch (...) {
-      arrayvec_base<T>::clear (size, first, first + *size);
-      throw;
-    }
-  }
+  void init (pointer_based_iterator<T> begin, SizeType *const size,
+             SizeType count);
 
   template <bool IsMove, typename SizeType, typename SrcType>
   static void operator_assign (
@@ -107,6 +101,42 @@ protected:
                                            pointer_based_iterator<T> pos,
                                            SizeType count, T const &value);
 };
+
+// init
+// ~~~~
+template <typename T>
+template <typename SizeType, typename InputIterator, typename>
+void arrayvec_base<T>::init (pointer_based_iterator<T> begin,
+                             SizeType *const size, InputIterator first,
+                             InputIterator last) {
+  auto out = begin;
+  try {
+    for (; first != last; ++first) {
+      construct_at (to_address (out), *first);
+      ++(*size);
+      ++out;
+    }
+  } catch (...) {
+    arrayvec_base<T>::clear (size, begin, begin + *size);
+    throw;
+  }
+}
+
+template <typename T>
+template <typename SizeType>
+void arrayvec_base<T>::init (pointer_based_iterator<T> begin,
+                             SizeType *const size, SizeType count) {
+  try {
+    auto const end = begin + count;
+    for (; begin != end; ++begin) {
+      construct_at (to_address (begin));
+      ++(*size);
+    }
+  } catch (...) {
+    arrayvec_base<T>::clear (size, begin, begin + *size);
+    throw;
+  }
+}
 
 // operator assign
 // ~~~~~~~~~~~~~~~
@@ -745,28 +775,14 @@ template <typename T, std::size_t Size>
 template <typename InputIterator, typename>
 arrayvec<T, Size>::arrayvec (InputIterator first, InputIterator last) {
   this->flood ();
-  auto out = this->begin ();
-  try {
-    for (; first != last; ++first) {
-      if (size_ == Size) {
-        assert (false && "arrayvec container overflow");
-        return;
-      }
-      construct_at (to_address (out), *first);
-      ++size_;
-      ++out;
-    }
-  } catch (...) {
-    this->clear ();
-    throw;
-  }
+  arrayvec_base<T>::init (this->begin (), &size_, first, last);
 }
 
 template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count) {
+  this->flood ();
   assert (count <= Size);
   arrayvec_base<T>::init (this->begin (), &size_, count);
-  this->flood ();
 }
 
 template <typename T, std::size_t Size>
