@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SONAR_SERVER_URL: "https://sonarcloud.io"
-      BUILD_DIR: ./build
+      BUILD_DIR: build
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
       CLANG_VERSION: 14
 
