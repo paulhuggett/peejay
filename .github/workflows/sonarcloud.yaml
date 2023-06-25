@@ -87,7 +87,7 @@ jobs:
             -X                                                                   \
             --define sonar.cfamily.build-wrapper-output="$BUILD_WRAPPER_OUT_DIR" \
             --define sonar.cfamily.llvm-cov.reportPath=coverage.txt              \
-            --define sonar.exclusions="$BUILD_DIR/**/*","docs/**/*"              \
+            --define sonar.exclusions="$BUILD_DIR/**/*","docs/**/*","klee/**"  \
             --define sonar.host.url="$SONAR_SERVER_URL"                          \
             --define sonar.organization=paulhuggett-github                       \
             --define sonar.projectKey=paulhuggett_peejay                         \
