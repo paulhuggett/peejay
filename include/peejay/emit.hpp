@@ -39,8 +39,7 @@ namespace emit_details {
 // ~~~~~~~~~~~~~~~
 template <typename T>
 constexpr char const* to_char_pointer (T&& x) noexcept {
-  return pointer_cast<char const*> (
-      to_address (std::forward<T> (x)));
+  return pointer_cast<char const> (to_address (std::forward<T> (x)));
 }
 
 // ident

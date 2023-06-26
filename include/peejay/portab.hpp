@@ -118,19 +118,12 @@ template <typename T>
 
 // pointer cast
 // ~~~~~~~~~~~~
-#if PEEJAY_HAVE_CONCEPTS
 template <typename To, typename From>
-  requires (std::is_trivial_v<To> && std::is_trivial_v<From>)
-#else
-template <typename To, typename From,
-          typename = typename std::enable_if_t<std::is_trivial_v<To> &&
-                                               std::is_trivial_v<From>>>
-#endif
-constexpr To pointer_cast (From p) noexcept {
+constexpr To* pointer_cast (From* const p) noexcept {
 #if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
-  return std::bit_cast<To> (p);
+  return std::bit_cast<To*> (p);
 #else
-  return reinterpret_cast<To> (p);
+  return reinterpret_cast<To*> (p);
 #endif
 }
 

@@ -438,10 +438,10 @@ public:
 
   /// Direct access to the underlying array.
   constexpr T const *data () const noexcept {
-    return pointer_cast<T const *> (data_.data ());
+    return pointer_cast<T const> (data_.data ());
   }
   /// Direct access to the underlying array.
-  constexpr T *data () noexcept { return pointer_cast<T *> (data_.data ()); }
+  constexpr T *data () noexcept { return pointer_cast<T> (data_.data ()); }
 
   /// Access the specified element.
   ///
@@ -689,8 +689,8 @@ private:
   void flood () noexcept {
 #ifndef NDEBUG
     T *const p = this->data ();
-    std::fill (pointer_cast<std::byte *> (p + this->size ()),
-               pointer_cast<std::byte *> (p + this->max_size ()),
+    std::fill (pointer_cast<std::byte> (p + this->size ()),
+               pointer_cast<std::byte> (p + this->max_size ()),
                std::byte{0xFF});
 #endif
   }
