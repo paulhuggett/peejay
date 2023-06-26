@@ -863,7 +863,7 @@ TEST (ArrayVec, TrackedEraseRangeSecondToEnd) {
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, TrackedSizeAfterResizeSame) {
+TEST (ArrayVec, TrackedSizeAfterResizeValueSame) {
   tracker t;
   arrayvec<trackee, 8> v;
   v.emplace_back (&t, 1);
@@ -882,7 +882,7 @@ TEST (ArrayVec, TrackedSizeAfterResizeSame) {
 }
 
 // NOLINTNEXTLINE
-TEST (ArrayVec, TrackedResizeLarger) {
+TEST (ArrayVec, TrackedResizeValueLarger) {
   tracker t;
   arrayvec<trackee, 8> v;
   v.emplace_back (&t, 1);
