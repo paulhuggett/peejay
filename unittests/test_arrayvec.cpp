@@ -18,6 +18,7 @@
 // standard library
 #include <forward_list>
 #include <numeric>
+#include <stdexcept>
 
 // 3rd party
 #include <gmock/gmock.h>
@@ -1168,4 +1169,97 @@ TEST (ArrayVec, TrackedEmplaceNoexcept) {
                               std::make_tuple (4, 0, action::added)));
   EXPECT_THAT (v, testing::ElementsAre (trackee (&t, 4), trackee (&t, 1),
                                         trackee (&t, 2), trackee (&t, 3)));
+}
+
+class member {
+public:
+  class exception : public std::runtime_error {
+  public:
+    exception () : std::runtime_error ("memberex") {}
+  };
+
+  static inline std::size_t throw_number = 0;
+  static inline std::size_t instances = 0;
+  static inline std::size_t operations = 0;
+
+  member () {
+    throw_check ();
+    ++instances;
+  }
+  explicit member (int v) : v_{v} {
+    // The memory underlying arrayvec<> is initialized to 0xFF therefore we can
+    // check that we're not using uninitialized stored by checking that the
+    // values stored by instances of 'member' are not less than 0.
+    assert (v >= 0);
+    throw_check ();
+    ++instances;
+  }
+  member (member const &rhs) : v_{rhs.v_} {
+    assert (rhs.v_ >= 0);
+    throw_check ();
+    ++instances;
+  }
+  member (member &&rhs) noexcept : v_{rhs.v_} {
+    assert (rhs.v_ >= 0);
+    ++instances;
+    rhs.v_ = 0;
+  }
+
+  ~member () noexcept {
+    assert (v_ >= 0);
+    --instances;
+  }
+
+  member &operator= (member const &rhs) {
+    assert (v_ >= 0 && rhs.v_ >= 0);
+    if (&rhs != this) {
+      v_ = rhs.v_;
+      throw_check ();
+    }
+    return *this;
+  }
+  member &operator= (member &&rhs) noexcept {
+    assert (v_ >= 0 && rhs.v_ >= 0);
+    if (&rhs != this) {
+      v_ = rhs.v_;
+      rhs.v_ = 0;
+    }
+    return *this;
+  }
+  constexpr bool operator== (member const &rhs) const noexcept {
+    return v_ == rhs.v_;
+  }
+  constexpr bool operator== (int const &rhs) const noexcept {
+    return v_ == rhs;
+  }
+  constexpr bool operator!= (member const &rhs) const noexcept {
+    return v_ != rhs.v_;
+  }
+  constexpr bool operator!= (int const &rhs) const noexcept {
+    return v_ != rhs;
+  }
+
+private:
+  int v_ = 0;
+
+  static void throw_check () {
+    if (operations >= throw_number) {
+      throw_number = std::numeric_limits<decltype (throw_number)>::max ();
+      throw exception{};
+    }
+    ++operations;
+  }
+};
+
+// Verify the strong exception guarantee provided by arrayvec::rezize().
+// NOLINTNEXTLINE
+TEST (ArrayVec, ResizeCountEx) {
+  member::instances = 0;
+  member::operations = 0;
+  member::throw_number = 3;
+  arrayvec<member, 8> v;
+  v.emplace_back (23);
+  EXPECT_THROW (v.resize (4), member::exception);
+  EXPECT_THAT (v, ElementsAre (23));
+  EXPECT_EQ (member::instances, 1U);
 }

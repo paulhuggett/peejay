@@ -49,8 +49,11 @@ protected:
              InputIterator first, InputIterator last);
 
   template <typename SizeType>
-  void init (pointer_based_iterator<T> begin, SizeType *const size,
-             SizeType count);
+  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+                    SizeType count);
+  template <typename SizeType>
+  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+                    SizeType count, T const &value);
 
   template <bool IsMove, typename SizeType, typename SrcType>
   static void operator_assign (
@@ -125,17 +128,26 @@ void arrayvec_base<T>::init (pointer_based_iterator<T> begin,
 template <typename T>
 template <typename SizeType>
 void arrayvec_base<T>::init (pointer_based_iterator<T> begin,
-                             SizeType *const size, SizeType count) {
+                             SizeType *const size, SizeType count,
+                             T const &value) {
+  *size = 0;
   try {
-    auto const end = begin + count;
-    for (; begin != end; ++begin) {
-      construct_at (to_address (begin));
+    for (auto it = begin, end = begin + count; it != end; ++it) {
+      construct_at (to_address (it), value);
       ++(*size);
     }
   } catch (...) {
     arrayvec_base<T>::clear (size, begin, begin + *size);
+    assert (*size == 0);
     throw;
   }
+}
+
+template <typename T>
+template <typename SizeType>
+void arrayvec_base<T>::init (pointer_based_iterator<T> begin,
+                             SizeType *const size, SizeType count) {
+  arrayvec_base<T>::init (begin, size, count, T{});
 }
 
 // operator assign
@@ -204,11 +216,19 @@ void arrayvec_base<T>::resize (pointer_based_iterator<T> const begin,
   auto const new_end = begin + new_size;
   if (new_size < *size) {
     arrayvec_base::clear (size, new_end, end);
-  } else {
-    for (auto it = end; it != new_end; ++it) {
+    return;
+  }
+  auto it = end;
+  try {
+    for (; it != new_end; ++it) {
       construct_at (to_address (it), std::forward<Args> (args)...);
       (*size)++;
     }
+  } catch (...) {
+    // strong exception guarantee means removing any objects that we
+    // constructed.
+    arrayvec_base::clear (size, end, it);
+    throw;
   }
 }
 
@@ -789,14 +809,7 @@ template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
   this->flood ();
   assert (count <= Size);
-  try {
-    for (; count > 0; --count) {
-      this->emplace_back (value);
-    }
-  } catch (...) {
-    this->clear ();
-    throw;
-  }
+  arrayvec_base<T>::init (this->begin (), &size_, count, value);
 }
 
 // operator=
