@@ -23,7 +23,7 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 cmake_policy (SET CMP0077 NEW)
 option (WERROR "Compiler warnings are errors")
-option (PEEJAY_CXX17 "Use C++17 (rather than the default C++20")
+option (PEEJAY_CXX17 "Use C++17 (rather than C++20" Yes)
 option (LIBCXX "Use libc++ rather than libstdc++ (clang only)")
 option (COVERAGE "Generate LLVM Source-based Coverage")
 
