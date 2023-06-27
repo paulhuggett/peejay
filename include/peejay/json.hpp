@@ -1876,8 +1876,8 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
   case hex3_state:
   case hex4_state: {
     bool overflow = false;
-    auto out = checked_back_insert_iterator{str_, &overflow};
-    auto v = hex_.consume (state_, c, out);
+    auto const v =
+        hex_.consume (state_, c, checked_back_insert_iterator{str_, &overflow});
     if (std::holds_alternative<std::error_code> (v)) {
       assert (v.index () == 0);
       this->set_error (parser, std::get<std::error_code> (v));
