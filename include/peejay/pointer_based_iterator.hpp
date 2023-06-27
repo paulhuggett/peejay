@@ -1,4 +1,4 @@
-//===- include/pstore/adt/pointer_based_iterator.hpp ------*- mode: C++ -*-===//
+//===- include/peejay/pointer_based_iterator.hpp ----------*- mode: C++ -*-===//
 //*              _       _              _                        _  *
 //*  _ __   ___ (_)_ __ | |_ ___ _ __  | |__   __ _ ___  ___  __| | *
 //* | '_ \ / _ \| | '_ \| __/ _ \ '__| | '_ \ / _` / __|/ _ \/ _` | *
@@ -13,10 +13,10 @@
 //*                                     *
 //===----------------------------------------------------------------------===//
 //
-// Part of the pstore project, under the Apache License v2.0 with LLVM
-// Exceptions. See https://github.com/paulhuggett/pstore/blob/master/LICENSE.txt
-// for license information. SPDX-License-Identifier: Apache-2.0 WITH
-// LLVM-exception
+// Distributed under the Apache License v2.0.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
+// SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 /// \file pointer_based_iterator.hpp

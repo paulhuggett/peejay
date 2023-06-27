@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "peejay/json.hpp"
+#include "peejay/small_vector.hpp"
 
 namespace peejay {
 
@@ -44,7 +45,7 @@ struct mark {
 #endif  // !PEEJAY_CXX20
 };
 using object = std::shared_ptr<std::unordered_map<u8string, element>>;
-using array = std::shared_ptr<std::vector<element>>;
+using array = std::shared_ptr<small_vector<element, 16>>;
 using variant = std::variant<int64_t, uint64_t, double, bool, null, u8string,
                              array, object, mark>;
 struct element : variant {

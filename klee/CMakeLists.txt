@@ -1,4 +1,18 @@
-# Checks that the 'klee' tool is on the path and that the C++ compiler is clang.
+#===- klee/CMakeLists.txt -------------------------------------------------===//
+#*   ____ __  __       _        _     _     _        *
+#*  / ___|  \/  | __ _| | _____| |   (_)___| |_ ___  *
+#* | |   | |\/| |/ _` | |/ / _ \ |   | / __| __/ __| *
+#* | |___| |  | | (_| |   <  __/ |___| \__ \ |_\__ \ *
+#*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
+#*                                                   *
+#===----------------------------------------------------------------------===//
+#
+# Distributed under the Apache License v2.0.
+# See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+# for license information.
+# SPDX-License-Identifier: Apache-2.0
+#
+#===----------------------------------------------------------------------===//
 function (klee_is_available result)
   find_program (KLEE_PATH klee)
   if ((CMAKE_CXX_COMPILER_ID MATCHES "Clang$") AND (NOT "${KLEE_PATH}" STREQUAL

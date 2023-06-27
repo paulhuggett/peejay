@@ -29,6 +29,7 @@ add_library (
   "${include_dir}/peejay/null.hpp"
   "${include_dir}/peejay/pointer_based_iterator.hpp"
   "${include_dir}/peejay/portab.hpp"
+  "${include_dir}/peejay/small_vector.hpp"
   "${include_dir}/peejay/stack.hpp"
   "${include_dir}/peejay/uinteger.hpp"
   dummy.cpp
