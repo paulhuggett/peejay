@@ -58,10 +58,12 @@ function (setup_target target)
     -Wno-undef
     -Wno-weak-vtables
   )
-  set (gcc_options -Wall -Wextra -pedantic)
-  set (msvc_options
-       -W4 -wd4068 # 1. unknown pragma
-       -wd4324 # 1. structure was padded due to alignment specifier
+  set (gcc_options -Wall -Wextra -pedantic -Wno-maybe-uninitialized)
+  set (
+    msvc_options
+    -W4 # enable lots of warnings
+    -wd4068 # unknown pragma
+    -wd4324 # structure was padded due to alignment specifier
   )
 
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
