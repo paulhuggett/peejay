@@ -81,16 +81,16 @@ public:
   const_reference operator[] (std::size_t n) const noexcept {
     return std::visit (
         [n] (auto const &a) -> const_reference {
-          return a[static_cast<typename std::decay_t<decltype (a)>::size_type> (
-              n)];
+          using asize = typename std::decay_t<decltype (a)>::size_type;
+          return a[static_cast<asize> (n)];
         },
         arr_);
   }
   reference operator[] (std::size_t n) noexcept {
     return std::visit (
         [n] (auto &a) -> reference {
-          return a[static_cast<typename std::decay_t<decltype (a)>::size_type> (
-              n)];
+          using asize = typename std::decay_t<decltype (a)>::size_type;
+          return a[static_cast<asize> (n)];
         },
         arr_);
   }
@@ -148,9 +148,17 @@ public:
   /// \note Calling this function invalidates the contents of the buffer and
   ///   any iterators.
   ///
-  /// \param new_elements The number of elements that the buffer is to
-  ///                     accommodate.
-  void resize (std::size_t new_elements);
+  /// \param count  The number of elements that the buffer is to accommodate.
+  void resize (std::size_t count);
+  /// Resizes the container so that it is large enough for accommodate the
+  /// given number of elements.
+  ///
+  /// \note Calling this function invalidates the contents of the buffer and
+  ///   any iterators.
+  ///
+  /// \param count  The number of elements that the buffer is to accommodate.
+  /// \param value  The value with which to initialize the new elements.
+  void resize (size_type count, const_reference value);
   ///@}
 
   /// \name Iterators
@@ -281,7 +289,7 @@ private:
   using large_type = std::vector<ElementType>;
   std::variant<small_type, large_type> arr_;
 
-  large_type *to_large ();
+  large_type &to_large ();
 
   template <typename... Args>
   void emplace_back_small_to_big (small_type const &s, Args &&...args);
@@ -314,14 +322,14 @@ small_vector<ElementType, BodyElements>::small_vector (
 }
 
 template <typename ElementType, std::size_t BodyElements>
-auto small_vector<ElementType, BodyElements>::to_large () -> large_type * {
+auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
   assert (std::holds_alternative<small_type> (arr_));
   if (auto const *const sm = std::get_if<small_type> (&arr_)) {
     // Switch from small to large.
     std::vector<ElementType> vec{std::begin (*sm), std::end (*sm)};
     arr_.template emplace<large_type> (std::move (vec));
   }
-  return &std::get<large_type> (arr_);
+  return std::get<large_type> (arr_);
 }
 
 // reserve
@@ -342,19 +350,24 @@ void small_vector<ElementType, BodyElements>::reserve (
 // resize
 // ~~~~~~
 template <typename ElementType, std::size_t BodyElements>
-void small_vector<ElementType, BodyElements>::resize (
-    std::size_t const new_elements) {
+void small_vector<ElementType, BodyElements>::resize (size_type count) {
+  this->resize (count, ElementType{});
+}
+
+template <typename ElementType, std::size_t BodyElements>
+void small_vector<ElementType, BodyElements>::resize (size_type count,
+                                                      const_reference value) {
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
-    vec->resize (new_elements);
+    vec->resize (count, value);
     return;
   }
 
   auto &arr = std::get<small_type> (arr_);
-  if (new_elements <= BodyElements) {
-    arr.resize (static_cast<typename small_type::size_type> (
-        new_elements));  // Resize entirely within the small buffer.
+  if (count <= BodyElements) {
+    arr.resize (static_cast<typename small_type::size_type> (count),
+                value);  // Resize entirely within the small buffer.
   } else {
-    to_large ()->resize (new_elements);
+    to_large ().resize (count, value);
   }
 }
 
