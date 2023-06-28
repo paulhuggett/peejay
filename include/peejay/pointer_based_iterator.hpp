@@ -49,6 +49,7 @@
 #include <cstddef>
 #include <iterator>
 #include <type_traits>
+#include <version>
 
 namespace peejay {
 
@@ -60,7 +61,11 @@ public:
   using pointer = value_type *;
   using reference = value_type &;
   using iterator_category = std::random_access_iterator_tag;
+#if __cpp_lib_concepts
+  using iterator_concept = std::contiguous_iterator_tag;
+#endif  // __cpp_lib_concepts
 
+  explicit constexpr pointer_based_iterator () noexcept = default;
   explicit constexpr pointer_based_iterator (std::nullptr_t) noexcept {}
 
   /// Copy constructor. Allows for implicit conversion from a regular iterator
@@ -102,10 +107,8 @@ public:
     return *this;
   }
 
-  constexpr value_type *operator->() noexcept { return pos_; }
-  constexpr value_type const *operator->() const noexcept { return pos_; }
-  constexpr value_type &operator* () noexcept { return *pos_; }
-  constexpr value_type const &operator* () const noexcept { return *pos_; }
+  constexpr pointer operator->() const noexcept { return pos_; }
+  constexpr reference operator* () const noexcept { return *pos_; }
 
   constexpr value_type &operator[] (std::size_t const n) noexcept {
     return *(pos_ + n);

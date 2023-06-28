@@ -20,6 +20,10 @@
 #include <numeric>
 #include <stdexcept>
 
+#if __cpp_lib_ranges
+#include <ranges>
+#endif
+
 // 3rd party
 #include <gmock/gmock.h>
 
@@ -1263,3 +1267,13 @@ TEST (ArrayVec, ResizeCountEx) {
   EXPECT_THAT (v, ElementsAre (23));
   EXPECT_EQ (member::instances, 1U);
 }
+
+#if __cpp_lib_ranges
+// Verify that we can use arrayvec<> with ranges algorithms.
+// NOLINTNEXTLINE
+TEST (ArrayVec, RangeReverse) {
+  arrayvec<int, 8> av{1, 2, 3};
+  std::ranges::reverse (av);
+  EXPECT_THAT (av, ElementsAre (3, 2, 1));
+}
+#endif

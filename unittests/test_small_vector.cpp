@@ -19,6 +19,9 @@
 #include <numeric>
 
 #include "peejay/small_vector.hpp"
+#if __cpp_lib_ranges
+#include <ranges>
+#endif
 
 TEST (SmallVector, DefaultCtor) {
   peejay::small_vector<int, 8> b;
@@ -333,6 +336,16 @@ TEST (SmallVector, PopBack) {
   b.pop_back ();
   EXPECT_TRUE (b.empty ());
 }
+
+#if __cpp_lib_ranges
+// Verify that we can use small_vector<> with ranges algorithms.
+// NOLINTNEXTLINE
+TEST (SmallVector, RangeReverse) {
+  peejay::small_vector<int, 3> sv{1, 2, 3};
+  std::ranges::reverse (sv);
+  EXPECT_THAT (sv, testing::ElementsAre (3, 2, 1));
+}
+#endif
 
 template <typename TypeParam>
 class SmallVectorErase : public testing::Test {};

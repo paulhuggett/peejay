@@ -552,38 +552,42 @@ public:
   /// \brief Returns an iterator to the beginning of the container.
   ///
   /// If the arrayvec is empty, the returned iterator will be equal to end().
-  [[nodiscard]] constexpr const_iterator begin () const noexcept {
-    return const_iterator{this->data ()};
-  }
-  /// \brief Returns an iterator to the beginning of the container.
-  ///
-  /// If the arrayvec is empty, the returned iterator will be equal to end().
   [[nodiscard]] constexpr iterator begin () noexcept {
     return iterator{this->data ()};
   }
-  const_iterator cbegin () const noexcept {
+  [[nodiscard]] constexpr const_iterator begin () const noexcept {
     return const_iterator{this->data ()};
   }
-  /// Returns a reverse iterator to the first element of the reversed
-  /// container. It corresponds to the last element of the non-reversed
-  /// container.
-  reverse_iterator rbegin () noexcept {
+  [[nodiscard]] constexpr const_iterator cbegin () const noexcept {
+    return const_iterator{this->data ()};
+  }
+  [[nodiscard]] constexpr reverse_iterator rbegin () noexcept {
     return reverse_iterator{iterator{this->end ()}};
   }
-  const_reverse_iterator rbegin () const noexcept { return rcbegin (); }
-  const_reverse_iterator rcbegin () const noexcept {
+  [[nodiscard]] constexpr const_reverse_iterator rbegin () const noexcept {
+    return rcbegin ();
+  }
+  [[nodiscard]] constexpr const_reverse_iterator rcbegin () const noexcept {
     return const_reverse_iterator{this->end ()};
   }
 
   /// Returns an iterator to the end of the container.
-  iterator end () noexcept { return this->begin () + this->size (); }
-  const_iterator end () const noexcept { return cend (); }
-  const_iterator cend () const noexcept {
+  [[nodiscard]] constexpr iterator end () noexcept {
+    return iterator{this->begin () + size_};
+  }
+  [[nodiscard]] constexpr const_iterator end () const noexcept {
+    return cend ();
+  }
+  [[nodiscard]] constexpr const_iterator cend () const noexcept {
     return this->begin () + this->size ();
   }
-  reverse_iterator rend () noexcept { return reverse_iterator{this->begin ()}; }
-  const_reverse_iterator rend () const noexcept { return rcend (); }
-  const_reverse_iterator rcend () const noexcept {
+  [[nodiscard]] constexpr reverse_iterator rend () noexcept {
+    return reverse_iterator{this->begin ()};
+  }
+  [[nodiscard]] constexpr const_reverse_iterator rend () const noexcept {
+    return rcend ();
+  }
+  [[nodiscard]] constexpr const_reverse_iterator rcend () const noexcept {
     return const_reverse_iterator{this->begin ()};
   }
   ///@}
