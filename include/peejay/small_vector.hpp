@@ -233,19 +233,7 @@ public:
   /// \p pos Iterator to the element to remove.
   /// \returns Iterator following the last removed element. If \p pos refers
   ///   to the last element, then the end() iterator is returned.
-  iterator erase (const_iterator pos) {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit (
-        [this, pos] (auto &v) {
-          // Convert 'pos' to an iterator in v.
-          auto const vpos = v.begin () + (to_address (pos) - data ());
-          // Do the erase itself.
-          auto const it = v.erase (vpos);
-          // convert the result into an iterator in this.
-          return iterator{data () + (it - v.begin ())};
-        },
-        arr_);
-  }
+  iterator erase (const_iterator pos);
   /// Erases the elements in the range [\p first, \p last). Invalidates
   /// iterators and references at or after the point of the erase, including
   /// the end() iterator.
@@ -255,21 +243,7 @@ public:
   /// \returns Iterator following the last removed element. If last == end()
   ///   prior to removal, then the updated end() iterator is returned. If
   ///   [\p first, \p last) is an empty range, then last is returned.
-  iterator erase (const_iterator first, const_iterator last) {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit (
-        [this, first, last] (auto &v) {
-          auto b = v.begin ();
-          auto *const d = data ();
-          auto const vfirst = b + (to_address (first) - d);
-          auto const vlast = b + (to_address (last) - d);
-
-          auto const it = v.erase (vfirst, vlast);
-          // convert the result into an iterator in this.
-          return iterator{data () + (it - v.begin ())};
-        },
-        arr_);
-  }
+  iterator erase (const_iterator first, const_iterator last);
 
   /// Adds an element to the end.
   void push_back (ElementType const &v);
@@ -371,18 +345,18 @@ void small_vector<ElementType, BodyElements>::resize (size_type count) {
 template <typename ElementType, std::size_t BodyElements>
 void small_vector<ElementType, BodyElements>::resize (size_type count,
                                                       const_reference value) {
+  assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
     vec->resize (count, value);
     return;
   }
-
-  auto &arr = std::get<small_type> (arr_);
   if (count <= BodyElements) {
-    arr.resize (static_cast<typename small_type::size_type> (count),
-                value);  // Resize entirely within the small buffer.
-  } else {
-    to_large ().resize (count, value);
+    // Resize entirely within the small buffer.
+    std::get<small_type> (arr_).resize (
+        static_cast<typename small_type::size_type> (count), value);
+    return;
   }
+  to_large ().resize (count, value);
 }
 
 // push back
@@ -456,6 +430,43 @@ void small_vector<ElementType, BodyElements>::append (Iterator first,
   for (; first != last; ++first) {
     this->push_back (*first);
   }
+}
+
+// erase
+// ~~~~~
+template <typename ElementType, std::size_t BodyElements>
+auto small_vector<ElementType, BodyElements>::erase (const_iterator pos)
+    -> iterator {
+  assert (!arr_.valueless_by_exception ());
+  return std::visit (
+      [this, pos] (auto &v) {
+        // Convert 'pos' to an iterator in v.
+        auto const vpos = v.begin () + (to_address (pos) - data ());
+        // Do the erase itself.
+        auto const it = v.erase (vpos);
+        // convert the result into an iterator in this.
+        return iterator{data () + (it - v.begin ())};
+      },
+      arr_);
+}
+
+template <typename ElementType, std::size_t BodyElements>
+auto small_vector<ElementType, BodyElements>::erase (const_iterator first,
+                                                     const_iterator last)
+    -> iterator {
+  assert (!arr_.valueless_by_exception ());
+  return std::visit (
+      [this, first, last] (auto &v) {
+        auto b = v.begin ();
+        auto *const d = data ();
+        auto const vfirst = b + (to_address (first) - d);
+        auto const vlast = b + (to_address (last) - d);
+
+        auto const it = v.erase (vfirst, vlast);
+        // convert the result into an iterator in this.
+        return iterator{data () + (it - v.begin ())};
+      },
+      arr_);
 }
 
 template <typename ElementType, std::size_t LhsBodyElements,
