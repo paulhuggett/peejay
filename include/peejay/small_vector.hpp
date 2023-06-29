@@ -317,8 +317,6 @@ template <typename ElementType, std::size_t BodyElements>
 small_vector<ElementType, BodyElements>::small_vector (
     std::size_t const required_elements) {
   if (required_elements <= BodyElements) {
-    small_type s (
-        static_cast<typename small_type::size_type> (required_elements));
     arr_.template emplace<small_type> (
         static_cast<typename small_type::size_type> (required_elements));
   } else {
