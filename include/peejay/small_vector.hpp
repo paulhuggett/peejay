@@ -72,13 +72,16 @@ public:
   /// \name Element access
   ///@{
   const_pointer data () const noexcept {
+    assert (!arr_.valueless_by_exception ());
     return std::visit ([] (auto const &a) { return std::data (a); }, arr_);
   }
   pointer data () noexcept {
+    assert (!arr_.valueless_by_exception ());
     return std::visit ([] (auto &a) { return std::data (a); }, arr_);
   }
 
   const_reference operator[] (std::size_t n) const noexcept {
+    assert (!arr_.valueless_by_exception ());
     return std::visit (
         [n] (auto const &a) -> const_reference {
           using asize = typename std::decay_t<decltype (a)>::size_type;
@@ -87,6 +90,7 @@ public:
         arr_);
   }
   reference operator[] (std::size_t n) noexcept {
+    assert (!arr_.valueless_by_exception ());
     return std::visit (
         [n] (auto &a) -> reference {
           using asize = typename std::decay_t<decltype (a)>::size_type;
@@ -96,10 +100,12 @@ public:
   }
 
   const_reference back () const {
+    assert (!arr_.valueless_by_exception ());
     return std::visit (
         [] (auto const &a) -> const_reference { return a.back (); }, arr_);
   }
   reference back () {
+    assert (!arr_.valueless_by_exception ());
     return std::visit ([] (auto &a) -> reference { return a.back (); }, arr_);
   }
 
@@ -109,6 +115,7 @@ public:
   ///@{
   /// Returns the number of elements.
   std::size_t size () const noexcept {
+    assert (!arr_.valueless_by_exception ());
     return std::visit (
         [] (auto const &a) { return static_cast<std::size_t> (std::size (a)); },
         arr_);
@@ -128,6 +135,11 @@ public:
       big_cap = big_arr->capacity ();
     }
     return std::max (BodyElements, big_cap);
+  }
+
+  /// The number of elements stored within the body of the object.
+  static constexpr std::size_t body_elements () noexcept {
+    return BodyElements;
   }
 
   /// Increase the capacity of the vector to a value that's greater or equal to
@@ -210,6 +222,7 @@ public:
   /// Invalidates any references, pointers, or iterators referring to contained
   /// elements. Any past-the-end iterators are also invalidated.
   void clear () noexcept {
+    assert (!arr_.valueless_by_exception ());
     std::visit ([] (auto &a) { a.clear (); }, arr_);
   }
 
@@ -221,10 +234,11 @@ public:
   /// \returns Iterator following the last removed element. If \p pos refers
   ///   to the last element, then the end() iterator is returned.
   iterator erase (const_iterator pos) {
+    assert (!arr_.valueless_by_exception ());
     return std::visit (
         [this, pos] (auto &v) {
           // Convert 'pos' to an iterator in v.
-          auto const vpos = v.begin () + (pos.operator->() - data ());
+          auto const vpos = v.begin () + (to_address (pos) - data ());
           // Do the erase itself.
           auto const it = v.erase (vpos);
           // convert the result into an iterator in this.
@@ -242,12 +256,13 @@ public:
   ///   prior to removal, then the updated end() iterator is returned. If
   ///   [\p first, \p last) is an empty range, then last is returned.
   iterator erase (const_iterator first, const_iterator last) {
+    assert (!arr_.valueless_by_exception ());
     return std::visit (
         [this, first, last] (auto &v) {
           auto b = v.begin ();
           auto *const d = data ();
-          auto const vfirst = b + (first.operator->() - d);
-          auto const vlast = b + (last.operator->() - d);
+          auto const vfirst = b + (to_address (first) - d);
+          auto const vlast = b + (to_address (last) - d);
 
           auto const it = v.erase (vfirst, vlast);
           // convert the result into an iterator in this.
@@ -276,6 +291,7 @@ public:
   }
 
   void pop_back () {
+    assert (!arr_.valueless_by_exception ());
     std::visit ([] (auto &v) { v.pop_back (); }, arr_);
   }
   ///@}

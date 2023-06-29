@@ -413,3 +413,25 @@ TYPED_TEST (SmallVectorErase, RangeSecondToEnd) {
   EXPECT_EQ (last, first);
   EXPECT_THAT (b, testing::ElementsAre (1));
 }
+
+struct throws_on_cast_to_int {
+  class ex : public std::runtime_error {
+  public:
+    ex () : std::runtime_error{"test exception"} {}
+  };
+  operator int () { throw ex{}; }
+};
+
+TEST (SmallVector, VariantIsValuelessByException) {
+  peejay::small_vector<int, 4> sv{1, 2, 3, 4};
+  EXPECT_EQ (sv.size (), sv.body_elements ())
+      << "The 'small' container is full";
+  try {
+    // During the switch from 'small' to 'large', we will throw an exception
+    // from the object being inserted. Ensure that the container state remains
+    // valid in this case.
+    sv.emplace_back (throws_on_cast_to_int{});
+  } catch (throws_on_cast_to_int::ex const&) {
+  }
+  EXPECT_THAT (sv, testing::ElementsAre (1, 2, 3, 4));
+}
