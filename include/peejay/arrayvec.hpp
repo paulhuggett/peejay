@@ -45,8 +45,8 @@ class arrayvec_base {
 protected:
   template <typename SizeType, typename InputIterator,
             typename = std::enable_if_t<input_iterator<InputIterator>>>
-  void init (pointer_based_iterator<T> begin, SizeType *const size,
-             InputIterator first, InputIterator last);
+  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+                    InputIterator first, InputIterator last);
 
   template <typename SizeType>
   static void init (pointer_based_iterator<T> begin, SizeType *const size,
