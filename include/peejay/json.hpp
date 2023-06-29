@@ -3019,40 +3019,46 @@ void parser<Backend, Policies>::reseat_stack_after_move (
 
   auto pos = std::begin (stack_);
   auto last = std::end (stack_);
+  if (pos == last) {
+    return;
+  }
+
+  // We know that there is at least one object on the stack.
+  std::advance (last, -1);
+
+  // First matcher on the stack is always the EOF checker.
+  assert (pos->get () == &rhs.singletons_.eof);
+  *pos = pointer (&singletons_.eof, d);
+  ++pos;
+
   if (pos != last) {
-    // We know that there is at least one object on the stack.
-    std::advance (last, -1);
-
-    // First matcher on the stack is always the EOF checker.
-    assert (pos->get () == &rhs.singletons_.eof);
-    *pos = pointer (&singletons_.eof, d);
+    // Next is the "trailing whitespace" matcher.
+    assert (pos->get () == &rhs.singletons_.trailing_ws);
+    *pos = pointer (&singletons_.trailing_ws, d);
     ++pos;
-
-    if (pos != last) {
-      // Next is the "trailing whitespace" matcher.
-      assert (pos->get () == &rhs.singletons_.trailing_ws);
-      *pos = pointer (&singletons_.trailing_ws, d);
-      ++pos;
-    }
+  }
 
 #ifndef NDEBUG
-    // Check that none of the intermediate stack entries point into the
-    // singletons object.
-    for (auto it2 = pos; it2 != last; ++it2) {
-      assert (it2->get () != &rhs.singletons_.eof &&
-              it2->get () != &rhs.singletons_.trailing_ws &&
-              it2->get () != &rhs.singletons_.root);
+  // Check that none of the intermediate stack entries point into the
+  // singletons object.
+  for (auto it2 = pos; it2 != last; ++it2) {
+    assert (it2->get () != &rhs.singletons_.eof &&
+            it2->get () != &rhs.singletons_.trailing_ws &&
+            it2->get () != &rhs.singletons_.root);
+    if (!rhs.singletons_.terminals.valueless_by_exception ()) {
       std::visit ([&it2] (auto &v) { assert (it2->get () != &v); },
                   rhs.singletons_.terminals);
     }
+  }
 #endif
 
-    auto &top = stack_.top ();
-    if (top.get () == &rhs.singletons_.root) {
-      top = pointer (&singletons_.root, d);
-    } else {
-      assert (top.get () != &rhs.singletons_.eof &&
-              top.get () != &rhs.singletons_.trailing_ws);
+  auto &top = stack_.top ();
+  if (top.get () == &rhs.singletons_.root) {
+    top = pointer (&singletons_.root, d);
+  } else {
+    assert (top.get () != &rhs.singletons_.eof &&
+            top.get () != &rhs.singletons_.trailing_ws);
+    if (!rhs.singletons_.terminals.valueless_by_exception ()) {
       std::visit (
           [&top, d, this] (auto &v) {
             if (top.get () == &v) {
