@@ -38,7 +38,8 @@ target_link_libraries (pj-unittests PRIVATE peejay gtest gmock)
 
 set (clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
 set (gcc_options)
-set (msvc_options)
+set (msvc_options -wd4702) # unreachable code.
+
 target_compile_options (
   pj-unittests
   PRIVATE
