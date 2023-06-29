@@ -72,10 +72,10 @@ public:
   /// \name Element access
   ///@{
   const_pointer data () const noexcept {
-    return std::visit ([] (auto const &a) { return a.data (); }, arr_);
+    return std::visit ([] (auto const &a) { return std::data (a); }, arr_);
   }
   pointer data () noexcept {
-    return std::visit ([] (auto &a) { return a.data (); }, arr_);
+    return std::visit ([] (auto &a) { return std::data (a); }, arr_);
   }
 
   const_reference operator[] (std::size_t n) const noexcept {
@@ -110,11 +110,11 @@ public:
   /// Returns the number of elements.
   std::size_t size () const noexcept {
     return std::visit (
-        [] (auto const &a) { return static_cast<std::size_t> (a.size ()); },
+        [] (auto const &a) { return static_cast<std::size_t> (std::size (a)); },
         arr_);
   }
   std::size_t size_bytes () const noexcept {
-    return size () * sizeof (ElementType);
+    return this->size () * sizeof (ElementType);
   }
 
   /// Checks whether the container is empty.
