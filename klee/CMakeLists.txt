@@ -143,6 +143,7 @@ if (klee_available)
     av_resize_count
     av_resize_count_value
 
+    sv_ctor_count
     sv_resize_count
     sv_resize_count_value
 
