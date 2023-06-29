@@ -130,11 +130,11 @@ public:
   /// Returns the number of elements that can be held in currently allocated
   /// storage.
   std::size_t capacity () const noexcept {
-    size_t big_cap = 0;
-    if (auto const *const big_arr = std::get_if<large_type> (&arr_)) {
-      big_cap = big_arr->capacity ();
+    size_t large_cap = 0;
+    if (auto const *const large_arr = std::get_if<large_type> (&arr_)) {
+      large_cap = large_arr->capacity ();
     }
-    return std::max (BodyElements, big_cap);
+    return std::max (BodyElements, large_cap);
   }
 
   /// The number of elements stored within the body of the object.
@@ -308,7 +308,7 @@ private:
   large_type &to_large ();
 
   template <typename... Args>
-  void emplace_back_small_to_big (small_type const &s, Args &&...args);
+  void emplace_back_small_to_large (small_type const &s, Args &&...args);
 };
 
 // (ctor)
@@ -421,16 +421,16 @@ inline void small_vector<ElementType, BodyElements>::emplace_back (
   if (arr.size () < BodyElements) {
     arr.emplace_back (std::forward<Args> (args)...);
   } else {
-    emplace_back_small_to_big (arr, std::forward<Args> (args)...);
+    emplace_back_small_to_large (arr, std::forward<Args> (args)...);
   }
 }
 
-// emplace back small to big
-// ~~~~~~~~~~~~~~~~~~~~~~~~~
-// The "slow" path for emplace_back which inserts into the "big" vector.
+// emplace back small to large
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// The "slow" path for emplace_back which inserts into the "large" vector.
 template <typename ElementType, std::size_t BodyElements>
 template <typename... Args>
-void small_vector<ElementType, BodyElements>::emplace_back_small_to_big (
+void small_vector<ElementType, BodyElements>::emplace_back_small_to_large (
     small_type const &s, Args &&...args) {
   std::vector<ElementType> vec{std::begin (s), std::end (s)};
   vec.emplace_back (std::forward<Args> (args)...);
