@@ -46,6 +46,15 @@ TEST (SmallVector, ExplicitCtor0) {
   EXPECT_TRUE (b.empty ());
 }
 
+TEST (SmallVector, CtorCountValueInBody) {
+  peejay::small_vector<int, 4> const v (std::size_t{4}, 23);
+  EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23));
+}
+TEST (SmallVector, CtorCountValueLarge) {
+  peejay::small_vector<int, 4> const v (std::size_t{5}, 23);
+  EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23, 23));
+}
+
 TEST (SmallVector, ExplicitCtorGreaterThanStackBuffer) {
   peejay::small_vector<int, 8> const b (std::size_t{10});
   EXPECT_EQ (10U, b.size ());

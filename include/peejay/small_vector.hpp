@@ -59,6 +59,13 @@ public:
   small_vector () noexcept = default;
   /// Constructs the buffer with the given initial number of elements.
   explicit small_vector (std::size_t required_elements);
+  /// Constructs the container with \p count copies of elements with value
+  /// \p value.
+  ///
+  /// \param count  The number of elements to be initialized.
+  /// \param value  The value with which to initialize elements of the
+  ///   container.
+  small_vector (size_type count, const_reference value);
   /// Constructs the buffer with a given initial collection of values.
   small_vector (std::initializer_list<ElementType> init);
   small_vector (small_vector const &rhs) = default;
@@ -295,6 +302,17 @@ small_vector<ElementType, BodyElements>::small_vector (
         static_cast<typename small_type::size_type> (required_elements));
   } else {
     arr_.template emplace<large_type> (required_elements);
+  }
+}
+
+template <typename ElementType, std::size_t BodyElements>
+small_vector<ElementType, BodyElements>::small_vector (size_type count,
+                                                       const_reference value) {
+  if (count <= BodyElements) {
+    arr_.template emplace<small_type> (
+        static_cast<typename small_type::size_type> (count), value);
+  } else {
+    arr_.template emplace<large_type> (count, value);
   }
 }
 
