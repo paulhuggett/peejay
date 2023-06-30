@@ -145,6 +145,7 @@ if (klee_available)
 
     sv_ctor_count
     sv_ctor_count_value
+    sv_ctor_first_last
     sv_resize_count
     sv_resize_count_value
 

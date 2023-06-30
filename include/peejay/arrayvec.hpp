@@ -1012,10 +1012,10 @@ auto arrayvec<T, Size>::insert (const_iterator pos, InputIterator first,
   iterator const e = this->end ();  // NOLINT(misc-misplaced-const)
 
   if (pos == e) {
-    // Insert at the end can be efficiently mapped to a series of push_back()
+    // Insert at the end can be efficiently mapped to a series of emplace_back()
     // calls.
     std::for_each (first, last,
-                   [this] (value_type const &v) { this->push_back (v); });
+                   [this] (auto const &v) { this->emplace_back (v); });
     return r;
   }
 

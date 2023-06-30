@@ -6,8 +6,10 @@
 
 #define MAKE_SYMBOLIC(x) klee_make_symbolic (&(x), sizeof (x), #x)
 
-constexpr std::size_t av_size = 8;
-inline std::array<int, av_size> const primes{{2, 3, 5, 7, 11, 13, 17, 19}};
+constexpr std::size_t av_size = 20;
+inline std::array<int, av_size> const primes{{2,  3,  5,  7,  11, 13, 17,
+                                              19, 23, 29, 31, 37, 41, 43,
+                                              47, 53, 59, 61, 67, 71}};
 
 template <typename Container>
 Container& populate (Container& c, std::size_t n) {

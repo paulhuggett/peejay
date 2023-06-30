@@ -17,6 +17,7 @@
 #include <gmock/gmock.h>
 
 #include <numeric>
+#include <sstream>
 
 #include "peejay/small_vector.hpp"
 #if __cpp_lib_ranges
@@ -46,10 +47,39 @@ TEST (SmallVector, ExplicitCtor0) {
   EXPECT_TRUE (b.empty ());
 }
 
+// NOLINTNEXTLINE
+TEST (SmallVector, CtorCountFirstLastFowardIteratorInBody) {
+  std::array<int, 4> src{{2, 3, 5, 7}};
+  peejay::small_vector<int, 4> const v (std::begin (src), std::end (src));
+  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CtorCountFirstLastInputIteratorInBody) {
+  std::istringstream src ("2 3 5 7");
+  peejay::small_vector<int, 4> const v{std::istream_iterator<int>{src},
+                                       std::istream_iterator<int>{}};
+  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CtorCountFirstLastFowardIteratorLarge) {
+  std::array<int, 4> src{{2, 3, 5, 7}};
+  peejay::small_vector<int, 2> const v (std::begin (src), std::end (src));
+  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CtorCountFirstLastInputIteratorLarge) {
+  std::istringstream src ("2 3 5 7");
+  peejay::small_vector<int, 2> const v{std::istream_iterator<int>{src},
+                                       std::istream_iterator<int>{}};
+  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+}
+
+// NOLINTNEXTLINE
 TEST (SmallVector, CtorCountValueInBody) {
   peejay::small_vector<int, 4> const v (std::size_t{4}, 23);
   EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23));
 }
+// NOLINTNEXTLINE
 TEST (SmallVector, CtorCountValueLarge) {
   peejay::small_vector<int, 4> const v (std::size_t{5}, 23);
   EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23, 23));

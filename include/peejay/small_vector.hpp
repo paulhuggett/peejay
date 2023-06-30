@@ -57,6 +57,15 @@ public:
 
   /// Constructs the buffer with an initial size of 0.
   small_vector () noexcept = default;
+  /// Constructs the container with the contents of the range [\p first, \p
+  /// last).
+  ///
+  /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
+  /// \param first  The start of the range from which to copy the elements.
+  /// \param last  The end of the range from which to copy the elements.
+  template <typename InputIterator,
+            typename = std::enable_if_t<input_iterator<InputIterator>>>
+  small_vector (InputIterator first, InputIterator last);
   /// Constructs the buffer with the given initial number of elements.
   explicit small_vector (std::size_t required_elements);
   /// Constructs the container with \p count copies of elements with value
@@ -294,6 +303,26 @@ private:
 
 // (ctor)
 // ~~~~~~
+template <typename ElementType, std::size_t BodyElements>
+template <typename InputIterator, typename>
+small_vector<ElementType, BodyElements>::small_vector (InputIterator first,
+                                                       InputIterator last) {
+  if constexpr (forward_iterator<InputIterator>) {
+    if (auto const count = std::distance (first, last);
+        count >= 0 && static_cast<std::make_unsigned_t<decltype (count)>> (
+                          count) <= BodyElements) {
+      arr_.template emplace<small_type> (first, last);
+    } else {
+      arr_.template emplace<large_type> (first, last);
+    }
+    return;
+  }
+
+  // A single-pass fallback algorithm for input iterators.
+  std::for_each (first, last,
+                 [this] (auto const &v) { this->emplace_back (v); });
+}
+
 template <typename ElementType, std::size_t BodyElements>
 small_vector<ElementType, BodyElements>::small_vector (
     std::size_t const required_elements) {
