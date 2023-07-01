@@ -474,3 +474,26 @@ TEST (SmallVector, VariantIsValuelessByException) {
   }
   EXPECT_THAT (sv, testing::ElementsAre (1, 2, 3, 4));
 }
+
+// NOLINTNEXTLINE
+TEST (SmallVector, Insert1AtSecondIndex) {
+  peejay::small_vector<int, 8> v{1, 2, 3};
+  int x = 4;
+  v.insert (v.begin () + 1, 1, x);
+  EXPECT_THAT (v, testing::ElementsAre (1, 4, 2, 3));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, InsertN) {
+  peejay::small_vector<int, 8> v{1, 2};
+  int x = 3;
+  v.insert (v.begin () + 1, 3, x);  // insert 3 copies of 'x' at [1].
+  EXPECT_THAT (v, testing::ElementsAre (1, 3, 3, 3, 2));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, InsertNAtEnd) {
+  peejay::small_vector<int, 8> v{1, 2};
+
+  int x = 3;
+  v.insert (v.end (), 3, x);  // append 3 copies of 'x'.
+  EXPECT_THAT (v, testing::ElementsAre (1, 2, 3, 3, 3));
+}

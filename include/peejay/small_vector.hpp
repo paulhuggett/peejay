@@ -280,6 +280,13 @@ public:
     this->append (std::begin (ilist), std::end (ilist));
   }
 
+  /// \param pos  Iterator before which the new elements will be constructed.
+  /// \param count  The number of copies to be inserted.
+  /// \param value  Element value to insert.
+  /// \returns  An iterator pointing to the first of the new elements or \p pos
+  ///   if \p count == 0.
+  iterator insert (const_iterator pos, size_type count, const_reference value);
+
   void pop_back () {
     assert (!arr_.valueless_by_exception ());
     std::visit ([] (auto &v) { v.pop_back (); }, arr_);
@@ -511,6 +518,34 @@ auto small_vector<ElementType, BodyElements>::erase (const_iterator first,
 
         auto const it = v.erase (vfirst, vlast);
         // convert the result into an iterator in this.
+        return iterator{data () + (it - v.begin ())};
+      },
+      arr_);
+}
+
+// insert
+// ~~~~~~
+template <typename ElementType, std::size_t BodyElements>
+auto small_vector<ElementType, BodyElements>::insert (const_iterator pos,
+                                                      size_type count,
+                                                      const_reference value)
+    -> iterator {
+  assert (!arr_.valueless_by_exception ());
+
+  auto const index = to_address (pos) - this->data ();
+
+  if (auto const *const sm = std::get_if<small_type> (&arr_)) {
+    if (sm->capacity () + count > BodyElements) {
+      to_large ();
+    }
+  }
+
+  return std::visit (
+      [this, index, count, &value] (auto &v) {
+        using T = std::decay_t<decltype (v)>;
+        auto const it =
+            v.insert (std::begin (v) + index,
+                      static_cast<typename T::size_type> (count), value);
         return iterator{data () + (it - v.begin ())};
       },
       arr_);

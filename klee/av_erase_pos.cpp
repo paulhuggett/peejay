@@ -24,20 +24,7 @@
 
 #include "av_member.hpp"
 #include "peejay/arrayvec.hpp"
-
-namespace {
-constexpr std::size_t av_size = 8;
-std::array<int, av_size> primes{{2, 3, 5, 7, 11, 13, 17, 19}};
-}  // namespace
-
-template <typename Container>
-void populate (Container& c, std::size_t n) {
-  for (auto ctr = std::size_t{0}; ctr < n; ++ctr) {
-    c.emplace_back (primes[ctr]);
-  }
-}
-
-#define MAKE_SYMBOLIC(x) klee_make_symbolic (&(x), sizeof (x), #x)
+#include "vcommon.hpp"
 
 int main () {
   try {
@@ -50,10 +37,12 @@ int main () {
     klee_assume (size > 0);
     klee_assume (size <= av_size);
 
-    arrayvec_type::size_type pos;
+    arrayvec_type::difference_type pos;
     MAKE_SYMBOLIC (pos);
     // (The end iterator is not valid for erase().)
-    klee_assume (pos < size);
+    klee_assume (pos >= 0);
+    klee_assume (static_cast<std::make_unsigned_t<decltype (pos)>> (pos) <
+                 size);
 
     arrayvec_type av;
     populate (av, size);
