@@ -108,7 +108,13 @@ function (add_klee_target)
     COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/kout
     COMMAND rm -r -f ${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}
     COMMAND
-      klee --libc=uclibc --libcxx --posix-runtime
+      klee --libc=uclibc --libcxx --posix-runtime --exit-on-error-type=Abort
+      --exit-on-error-type=Assert --exit-on-error-type=BadVectorAccess
+      --exit-on-error-type=Execution --exit-on-error-type=External
+      --exit-on-error-type=Free --exit-on-error-type=Model
+      --exit-on-error-type=Overflow --exit-on-error-type=Ptr
+      --exit-on-error-type=ReadOnly --exit-on-error-type=ReportError
+      --exit-on-error-type=User
       --output-dir=${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base} --watchdog
       --max-time=1000 ${link_llvm_lib} $<TARGET_OBJECTS:${bitcode_target}>
     COMMAND
@@ -142,7 +148,6 @@ if (klee_available)
     av_insert_range
     av_resize_count
     av_resize_count_value
-
     sv_ctor_count
     sv_ctor_count_value
     sv_ctor_first_last
@@ -150,7 +155,6 @@ if (klee_available)
     sv_insert_pos_count_lvalue
     sv_resize_count
     sv_resize_count_value
-
     quote
   )
   foreach (T ${TESTS})
