@@ -40,7 +40,7 @@ int main () {
     populate (sv, size);
     assert (sv.size () == size);
 
-    member value{11};
+    member value{43};
 
     // Call the function under test.
     sv.insert (sv.begin () + pos, count, value);
