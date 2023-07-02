@@ -155,6 +155,7 @@ if (klee_available)
     sv_insert_pos_count_lvalue
     sv_resize_count
     sv_resize_count_value
+    keyword
     quote
   )
   foreach (T ${TESTS})
