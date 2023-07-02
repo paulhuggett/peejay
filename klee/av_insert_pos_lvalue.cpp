@@ -30,41 +30,48 @@
 
 #include "av_member.hpp"
 #include "peejay/arrayvec.hpp"
-
-template <typename Container>
-void populate (Container& c) {
-  c.emplace_back (1);
-  c.emplace_back (3);
-  c.emplace_back (5);
-}
+#include "vcommon.hpp"
 
 int main () {
   try {
-    constexpr std::size_t av_size = 8;
-    constexpr std::size_t size = 3;
-    using arrayvec_type = peejay::arrayvec<member, av_size>;
+    constexpr std::size_t max_elements = 7;
+    static_assert (max_elements <= av_size);
+    using arrayvec_type = peejay::arrayvec<member, max_elements>;
 
+    MAKE_SYMBOLIC (member::throw_number);
+
+    // The size of the initial array.
+    std::size_t size;
+    MAKE_SYMBOLIC (size);
+    // less-than max_elements to ensure room for a new element.
+    klee_assume (size < max_elements);
+
+    // Insert position.
     arrayvec_type::size_type pos;
-    klee_make_symbolic (&pos, sizeof pos, "pos");
+    MAKE_SYMBOLIC (pos);
     klee_assume (pos <= size);
 
-    klee_make_symbolic (&member::throw_number, sizeof (member::throw_number),
-                        "throw_number");
-
     arrayvec_type av;
-    populate (av);
-    assert (av.size () == size);
+    populate (av, size);
 
-    member value{11};
+    member value{43};
 
     // Call the function under test.
-    av.insert (av.begin () + pos, value);
-
+    arrayvec_type::iterator const avit = av.insert (av.begin () + pos, value);
+    (void)avit;  // Don't warn unused.
+    assert (avit >= av.begin () && avit < av.end ());
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v);
+    populate (v, size);
     // A mirror call to std::vector<>::insert for comparison.
-    v.insert (v.begin () + pos, value);
+    std::vector<member>::iterator const vit =
+        v.insert (v.begin () + pos, value);
+
+    // Compare the return of the two functions.
+    if (vit - v.begin () != avit - av.begin ()) {
+      std::cerr << "** Fail!\n";
+      return EXIT_FAILURE;
+    }
 
     if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
       std::cerr << "** Fail!\n";
