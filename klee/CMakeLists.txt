@@ -108,7 +108,8 @@ function (add_klee_target)
     COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/kout
     COMMAND rm -r -f ${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}
     COMMAND
-      klee --libc=uclibc --libcxx --posix-runtime --exit-on-error-type=Abort
+      klee --only-output-states-covering-new
+      --libc=uclibc --libcxx --posix-runtime --exit-on-error-type=Abort
       --exit-on-error-type=Assert --exit-on-error-type=BadVectorAccess
       --exit-on-error-type=Execution --exit-on-error-type=External
       --exit-on-error-type=Free --exit-on-error-type=Model
@@ -151,6 +152,7 @@ if (klee_available)
     sv_ctor_count
     sv_ctor_count_value
     sv_ctor_first_last
+    sv_assign_count
     sv_erase_pos
     sv_insert_pos_count_lvalue
     sv_resize_count
