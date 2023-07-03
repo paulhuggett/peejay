@@ -61,7 +61,7 @@ protected:
       std::pair<SrcType *, std::size_t> const &src) noexcept (IsMove);
 
   template <typename SizeType>
-  static void clear (SizeType *const size, pointer_based_iterator<T> first,
+  static void clear (SizeType *size, pointer_based_iterator<T> first,
                      pointer_based_iterator<T> last) noexcept;
 
   template <typename SizeType, typename... Args>
@@ -89,7 +89,7 @@ protected:
   /// \param value  Element value to insert.
   template <typename SizeType>
   static pointer_based_iterator<T> insert (pointer_based_iterator<T> begin,
-                                           SizeType *const size,
+                                           SizeType *size,
                                            pointer_based_iterator<T> pos,
                                            T &&value);
 
@@ -100,7 +100,7 @@ protected:
   /// \param value  Element value to insert.
   template <typename SizeType>
   static pointer_based_iterator<T> insert (pointer_based_iterator<T> data,
-                                           SizeType *const size,
+                                           SizeType *size,
                                            pointer_based_iterator<T> pos,
                                            SizeType count, T const &value);
 };
@@ -344,8 +344,7 @@ template <typename SizeType>
 pointer_based_iterator<T> arrayvec_base<T>::insert (
     pointer_based_iterator<T> begin, SizeType *const size,
     pointer_based_iterator<T> pos, T &&value) {
-  auto const end = begin + *size;
-  if (pos == end) {
+  if (auto const end = begin + *size; pos == end) {
     construct_at (to_address (pos), std::move (value));
   } else {
     arrayvec_base<T>::move_range (pos, end, pos + 1);
