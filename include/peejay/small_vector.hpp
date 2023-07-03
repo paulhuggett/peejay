@@ -266,6 +266,11 @@ public:
   template <typename... Args>
   void emplace_back (Args &&...args);
 
+  /// Replaces the contents with \p count copies of value \p value.
+  ///
+  /// \param count The new size of the container.
+  /// \param value The value with which to initialize elements of the container.
+  void assign (size_type count, const_reference value);
   template <typename InputIt>
   void assign (InputIt first, InputIt last);
 
@@ -467,6 +472,17 @@ void small_vector<ElementType, BodyElements>::emplace_back_small_to_large (
 
 // assign
 // ~~~~~~
+template <typename ElementType, std::size_t BodyElements>
+void small_vector<ElementType, BodyElements>::assign (size_type count,
+                                                      const_reference value) {
+  if (count <= BodyElements) {
+    arr_.template emplace<small_type> (
+        static_cast<typename small_type::size_type> (count), value);
+  } else {
+    arr_.template emplace<large_type> (count, value);
+  }
+}
+
 template <typename ElementType, std::size_t BodyElements>
 template <typename InputIt>
 void small_vector<ElementType, BodyElements>::assign (InputIt first,

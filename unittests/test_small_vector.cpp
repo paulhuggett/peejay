@@ -24,6 +24,9 @@
 #include <ranges>
 #endif
 
+using peejay::small_vector;
+using testing::ElementsAre;
+
 TEST (SmallVector, DefaultCtor) {
   peejay::small_vector<int, 8> b;
   EXPECT_EQ (0U, b.size ())
@@ -137,6 +140,36 @@ TEST (SmallVector, AssignCopy) {
   peejay::small_vector<int, 3> c;
   c = b;
   EXPECT_THAT (c, ::testing::ElementsAre (5, 7));
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountLarger) {
+  small_vector<int, 3> b{1};
+  int const v = 7;
+  b.assign (std::size_t{5}, v);
+  EXPECT_THAT (b, ElementsAre (7, 7, 7, 7, 7));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountSmaller) {
+  small_vector<int, 3> b{1, 3};
+  int const v = 7;
+  b.assign (std::size_t{1}, v);
+  EXPECT_THAT (b, ElementsAre (7));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountUnchanged) {
+  small_vector<int, 3> b{1, 3};
+  int const v = 5;
+  b.assign (std::size_t{2}, v);
+  EXPECT_THAT (b, ElementsAre (5, 5));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountZero) {
+  small_vector<int, 3> b{1, 3};
+  using size_type = decltype (b)::size_type;
+  int const v = 7;
+  b.assign (size_type{0}, v);
+  EXPECT_THAT (b, ElementsAre ());
 }
 
 TEST (SmallVector, SizeAfterResizeLarger) {
