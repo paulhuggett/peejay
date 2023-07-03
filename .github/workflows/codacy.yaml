@@ -47,7 +47,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y cmake ninja-build
+          sudo apt-get install -y cmake
 
       - name: Configure
         run: |
@@ -55,21 +55,17 @@ jobs:
           cmake                                            \
             -S .                                           \
             -B "$BUILD"                                    \
-            -G Ninja                                       \
             -D CMAKE_BUILD_TYPE=Release                    \
             -D "CMAKE_CXX_COMPILER=clang++-$CLANG_VERSION" \
             -D "CMAKE_C_COMPILER=clang-$CLANG_VERSION"     \
             -D CMAKE_EXPORT_COMPILE_COMMANDS=Yes
 
-      - name: Build
-        run: cmake --build "$BUILD" --config Release
-
       - name: Run clang-tidy
         run: |
-          SRC="$(find . -name \*.\?pp -not -path "$BUILD\*/\*" -not -path ./systemtests/\*)"
+          SRC="$(find . -name \*.\?pp -not -path "$BUILD*/*" -not -path ./klee/\* -not -path ./systemtests/\*)"
           "clang-tidy-$CLANG_VERSION"          \
             -p="$BUILD/compile_commands.json"  \
-            "$SRC"                             \
+            $SRC                               \
             --                                 \
             -std=c++20                         \
             -I ./include                       \
