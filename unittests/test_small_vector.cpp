@@ -27,6 +27,7 @@
 using peejay::small_vector;
 using testing::ElementsAre;
 
+// NOLINTNEXTLINE
 TEST (SmallVector, DefaultCtor) {
   peejay::small_vector<int, 8> b;
   EXPECT_EQ (0U, b.size ())
@@ -35,6 +36,7 @@ TEST (SmallVector, DefaultCtor) {
   EXPECT_TRUE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, ExplicitCtorLessThanStackBuffer) {
   peejay::small_vector<int, 8> const b (std::size_t{5});
   EXPECT_EQ (5U, b.size ());
@@ -42,6 +44,7 @@ TEST (SmallVector, ExplicitCtorLessThanStackBuffer) {
   EXPECT_EQ (5U * sizeof (int), b.size_bytes ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, ExplicitCtor0) {
   peejay::small_vector<int, 8> const b (std::size_t{0});
   EXPECT_EQ (0U, b.size ());
@@ -88,6 +91,7 @@ TEST (SmallVector, CtorCountValueLarge) {
   EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23, 23));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, ExplicitCtorGreaterThanStackBuffer) {
   peejay::small_vector<int, 8> const b (std::size_t{10});
   EXPECT_EQ (10U, b.size ());
@@ -95,6 +99,7 @@ TEST (SmallVector, ExplicitCtorGreaterThanStackBuffer) {
   EXPECT_EQ (10 * sizeof (int), b.size_bytes ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, CtorInitializerList) {
   peejay::small_vector<int, 8> const b{1, 2, 3};
   EXPECT_EQ (3U, b.size ());
@@ -102,11 +107,13 @@ TEST (SmallVector, CtorInitializerList) {
   EXPECT_THAT (b, ::testing::ElementsAre (1, 2, 3));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, CtorInitializerList2) {
   peejay::small_vector<int, 2> b{1, 2, 3, 4};
   EXPECT_THAT (b, ::testing::ElementsAre (1, 2, 3, 4));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, CtorCopy) {
   peejay::small_vector<int, 3> const b{3, 5};
   peejay::small_vector<int, 3> c = b;
@@ -114,6 +121,7 @@ TEST (SmallVector, CtorCopy) {
   EXPECT_THAT (c, ::testing::ElementsAre (3, 5));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, CtorCopy2) {
   peejay::small_vector<int, 3> const b{3, 5, 7, 11, 13};
   peejay::small_vector<int, 3> c = b;
@@ -121,6 +129,7 @@ TEST (SmallVector, CtorCopy2) {
   EXPECT_THAT (c, ::testing::ElementsAre (3, 5, 7, 11, 13));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, MoveCtor) {
   peejay::small_vector<int, 4> a (std::size_t{4});
   std::iota (a.begin (), a.end (), 0);  // fill with increasing values
@@ -129,12 +138,14 @@ TEST (SmallVector, MoveCtor) {
   EXPECT_THAT (b, ::testing::ElementsAre (0, 1, 2, 3));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, AssignInitializerList) {
   peejay::small_vector<int, 3> b{1, 2, 3};
   b.assign ({4, 5, 6, 7});
   EXPECT_THAT (b, ::testing::ElementsAre (4, 5, 6, 7));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, AssignCopy) {
   peejay::small_vector<int, 3> const b{5, 7};
   peejay::small_vector<int, 3> c;
@@ -172,6 +183,7 @@ TEST (SmallVector, AssignCountZero) {
   EXPECT_THAT (b, ElementsAre ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, SizeAfterResizeLarger) {
   peejay::small_vector<int, 4> b (std::size_t{4});
   std::size_t const size{10};
@@ -181,6 +193,7 @@ TEST (SmallVector, SizeAfterResizeLarger) {
       << "expected capacity to be at least " << size << " (the container size)";
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, ContentsAfterResizeLarger) {
   constexpr auto orig_size = std::size_t{8};
   constexpr auto new_size = std::size_t{10};
@@ -195,6 +208,7 @@ TEST (SmallVector, ContentsAfterResizeLarger) {
   EXPECT_THAT (actual, ::testing::ElementsAre (37, 38, 39, 40, 41, 42, 43, 44));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, SizeAfterResizeSmaller) {
   peejay::small_vector<int, 8> b (std::size_t{8});
   b.resize (5);
@@ -203,6 +217,7 @@ TEST (SmallVector, SizeAfterResizeSmaller) {
   EXPECT_FALSE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, SizeAfterResize0) {
   peejay::small_vector<int, 8> b (std::size_t{8});
   b.resize (0);
@@ -211,12 +226,14 @@ TEST (SmallVector, SizeAfterResize0) {
   EXPECT_TRUE (b.empty ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, DataAndConstDataMatch) {
   peejay::small_vector<int, 8> b (std::size_t{8});
   auto const* const bconst = &b;
   EXPECT_EQ (bconst->data (), b.data ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, IteratorNonConst) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
 
@@ -239,6 +256,7 @@ TEST (SmallVector, IteratorNonConst) {
   }
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, IteratorConstFromNonConstContainer) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
   std::iota (buffer.begin (), buffer.end (), 42);
@@ -256,6 +274,7 @@ TEST (SmallVector, IteratorConstFromNonConstContainer) {
   }
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, IteratorConstIteratorFromConstContainer) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
   std::iota (buffer.begin (), buffer.end (), 42);
@@ -265,6 +284,7 @@ TEST (SmallVector, IteratorConstIteratorFromConstContainer) {
   EXPECT_THAT (actual, ::testing::ElementsAre (42, 43, 44, 45));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, IteratorNonConstReverse) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
   std::iota (buffer.begin (), buffer.end (), 42);
@@ -279,6 +299,7 @@ TEST (SmallVector, IteratorNonConstReverse) {
   }
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, IteratorConstReverse) {
   // Wrap the buffer construction code in a lambda to hide the non-const
   // small_vector instance.
@@ -293,6 +314,7 @@ TEST (SmallVector, IteratorConstReverse) {
   EXPECT_THAT (actual, ::testing::ElementsAre (45, 44, 43, 42));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, ElementAccess) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
   int count = 42;
@@ -305,6 +327,7 @@ TEST (SmallVector, ElementAccess) {
                            std::begin (expected)));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, MoveSmall) {
   peejay::small_vector<int, 4> a (std::size_t{3});
   peejay::small_vector<int, 4> b (std::size_t{4});
@@ -315,6 +338,7 @@ TEST (SmallVector, MoveSmall) {
   EXPECT_THAT (a, ::testing::ElementsAre (73, 73, 73, 73));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, MoveLarge) {
   // The two containers start out with different sizes; one uses the small
   // buffer, the other, large.
@@ -327,6 +351,7 @@ TEST (SmallVector, MoveLarge) {
   EXPECT_THAT (a, ::testing::ElementsAre (73, 73, 73, 73));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, Clear) {
   // The two containers start out with different sizes; one uses the small
   // buffer, the other, large.
@@ -336,6 +361,7 @@ TEST (SmallVector, Clear) {
   EXPECT_EQ (0U, a.size ());
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, PushBack) {
   using ::testing::ElementsAre;
   peejay::small_vector<int, 2> a;
@@ -349,6 +375,7 @@ TEST (SmallVector, PushBack) {
   EXPECT_THAT (a, ElementsAre (1, 2, 3, 4));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, EmplaceBack) {
   using ::testing::ElementsAre;
   peejay::small_vector<int, 2> a;
@@ -362,6 +389,7 @@ TEST (SmallVector, EmplaceBack) {
   EXPECT_THAT (a, ElementsAre (1, 2, 3, 4));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, Back) {
   peejay::small_vector<int, 1> a;
   a.push_back (1);
@@ -370,6 +398,7 @@ TEST (SmallVector, Back) {
   EXPECT_EQ (a.back (), 2);
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, AppendIteratorRange) {
   peejay::small_vector<int, 4> a (std::size_t{4});
   std::iota (std::begin (a), std::end (a), 0);
@@ -382,6 +411,7 @@ TEST (SmallVector, AppendIteratorRange) {
   EXPECT_THAT (a, ::testing::ElementsAre (0, 1, 2, 3, 100, 101, 102, 103));
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, CapacityReserve) {
   peejay::small_vector<int, 4> a;
   EXPECT_EQ (a.capacity (), 4U);
@@ -393,6 +423,7 @@ TEST (SmallVector, CapacityReserve) {
   EXPECT_EQ (a.capacity (), 10U);
 }
 
+// NOLINTNEXTLINE
 TEST (SmallVector, PopBack) {
   peejay::small_vector<int, 2> a{1, 2};
   a.pop_back ();
@@ -494,6 +525,7 @@ struct throws_on_cast_to_int {
   operator int () { throw ex{}; }
 };
 
+// NOLINTNEXTLINE
 TEST (SmallVector, VariantIsValuelessByException) {
   peejay::small_vector<int, 4> sv{1, 2, 3, 4};
   EXPECT_EQ (sv.size (), sv.body_elements ())
