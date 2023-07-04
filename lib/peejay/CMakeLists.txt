@@ -21,6 +21,7 @@ add_library (
   peejay STATIC
   "${include_dir}/peejay/arrayvec.hpp"
   "${include_dir}/peejay/cbii.hpp"
+  "${include_dir}/peejay/details/avbase.hpp"
   "${include_dir}/peejay/dom.hpp"
   "${include_dir}/peejay/emit.hpp"
   "${include_dir}/peejay/icubaby.hpp"
