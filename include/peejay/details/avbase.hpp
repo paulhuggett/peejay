@@ -108,6 +108,36 @@ protected:
                                            SizeType *size,
                                            pointer_based_iterator<T> pos,
                                            SizeType count, T const &value);
+
+  template <typename SizeType, typename... Args>
+  static pointer_based_iterator<T> emplace (pointer_based_iterator<T> end,
+                                            SizeType *size,
+                                            pointer_based_iterator<T> pos,
+                                            Args &&...args) {
+    if (pos == end) {
+      construct_at (to_address (pos), std::forward<Args> (args)...);
+      ++(*size);
+      return pos;
+    }
+
+    if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
+      avbase::move_range (pos, end, pos + 1);
+      // After destroying the object at 'pos', we can construct in-place.
+      auto *const p = to_address (pos);
+      std::destroy_at (p);
+      construct_at (p, std::forward<Args> (args)...);
+    } else {
+      // Constructing the object might throw and the location is already
+      // occupied by an element so we first make a temporary instance then
+      // move-assign it to the required location.
+      T new_element{std::forward<Args> (args)...};
+      // Make space for the new element.
+      avbase::move_range (pos, end, pos + 1);
+      *pos = std::move (new_element);
+    }
+    *size += 1;
+    return pos;
+  }
 };
 
 // init

@@ -141,6 +141,7 @@ if (klee_available)
     av_ctor_count
     av_ctor_count_value
     av_ctor_first_last
+    av_emplace_pos_args
     av_erase_first_last
     av_erase_pos
     av_insert_pos_count_lvalue

@@ -665,6 +665,9 @@ auto arrayvec<T, Size>::insert (const_iterator const pos, size_type const count,
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
     -> iterator {
+  assert (this->size () < this->max_size () && "Insert will overflow");
+  assert (pos >= this->begin () && pos <= this->end () &&
+          "Insert position is invalid");
   if (auto const e = this->end (); pos == e) {
     this->push_back (value);  // Fast path for appending an element.
     return e;
@@ -675,6 +678,8 @@ auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
   assert (this->size () < this->max_size () && "Insert will cause overflow");
+  assert (pos >= this->begin () && pos <= this->end () &&
+          "Insert position is invalid");
   return details::avbase<T>::insert (this->begin (), &size_,
                                      this->to_non_const_iterator (pos),
                                      std::move (value));
@@ -684,6 +689,8 @@ template <typename T, std::size_t Size>
 template <typename InputIterator, typename>
 auto arrayvec<T, Size>::insert (const_iterator pos, InputIterator first,
                                 InputIterator last) -> iterator {
+  assert (pos >= this->begin () && pos <= this->end () &&
+          "Insert position is invalid");
   return details::avbase<T>::insert (
       this->begin (), &size_, this->to_non_const_iterator (pos), first, last);
 }
@@ -698,29 +705,9 @@ auto arrayvec<T, Size>::emplace (const_iterator pos, Args &&...args)
           "Cannot emplace(), container is full");
   assert (pos >= this->begin () && pos <= this->end () &&
           "Insert position is invalid");
-
-  iterator const e = this->end ();
-  iterator r = this->to_non_const_iterator (pos);
-  if (r == e) {
-    this->emplace_back (std::forward<Args> (args)...);
-    return r;
-  }
-
-  details::avbase<T>::move_range (r, e, r + 1);
-  if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
-    // After destroying the object at 'r', we can construct in-place.
-    auto *const p = to_address (r);
-    std::destroy_at (p);
-    construct_at (p, std::forward<Args> (args)...);
-  } else {
-    // Constructing the object might throw and the location is already occupied
-    // by an element so we first make a temporary instance then move-assign it
-    // to the required location.
-    T t{std::forward<Args> (args)...};
-    *r = std::move (t);
-  }
-  size_ += 1;
-  return r;
+  return details::avbase<T>::emplace (this->end (), &size_,
+                                      this->to_non_const_iterator (pos),
+                                      std::forward<Args> (args)...);
 }
 
 }  // end namespace peejay
