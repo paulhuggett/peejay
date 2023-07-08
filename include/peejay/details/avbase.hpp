@@ -109,35 +109,15 @@ protected:
                                            pointer_based_iterator<T> pos,
                                            SizeType count, T const &value);
 
+  /// \param end  The end of the array data.
+  /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param pos  Iterator before which the new elements will be constructed.
+  /// \param args  Arguments forwarded to the T constructor.
   template <typename SizeType, typename... Args>
   static pointer_based_iterator<T> emplace (pointer_based_iterator<T> end,
                                             SizeType *size,
                                             pointer_based_iterator<T> pos,
-                                            Args &&...args) {
-    if (pos == end) {
-      construct_at (to_address (pos), std::forward<Args> (args)...);
-      ++(*size);
-      return pos;
-    }
-
-    if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
-      avbase::move_range (pos, end, pos + 1);
-      // After destroying the object at 'pos', we can construct in-place.
-      auto *const p = to_address (pos);
-      std::destroy_at (p);
-      construct_at (p, std::forward<Args> (args)...);
-    } else {
-      // Constructing the object might throw and the location is already
-      // occupied by an element so we first make a temporary instance then
-      // move-assign it to the required location.
-      T new_element{std::forward<Args> (args)...};
-      // Make space for the new element.
-      avbase::move_range (pos, end, pos + 1);
-      *pos = std::move (new_element);
-    }
-    *size += 1;
-    return pos;
-  }
+                                            Args &&...args);
 };
 
 // init
@@ -435,6 +415,35 @@ pointer_based_iterator<T> avbase<T>::insert (
     ++pos;
   }
   return r;
+}
+
+template <typename T>
+template <typename SizeType, typename... Args>
+pointer_based_iterator<T> avbase<T>::emplace (pointer_based_iterator<T> end,
+                                              SizeType *const size,
+                                              pointer_based_iterator<T> pos,
+                                              Args &&...args) {
+  if (pos == end) {
+    construct_at (to_address (pos), std::forward<Args> (args)...);
+  } else {
+    if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
+      avbase::move_range (pos, end, pos + 1);
+      // After destroying the object at 'pos', we can construct in-place.
+      auto *const p = to_address (pos);
+      std::destroy_at (p);
+      construct_at (p, std::forward<Args> (args)...);
+    } else {
+      // Constructing the object might throw and the location is already
+      // occupied by an element so we first make a temporary instance then
+      // move-assign it to the required location.
+      T new_element{std::forward<Args> (args)...};
+      // Make space for the new element.
+      avbase::move_range (pos, end, pos + 1);
+      *pos = std::move (new_element);
+    }
+  }
+  ++(*size);
+  return pos;
 }
 
 }  // end namespace peejay::details
