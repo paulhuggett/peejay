@@ -684,48 +684,8 @@ template <typename T, std::size_t Size>
 template <typename InputIterator, typename>
 auto arrayvec<T, Size>::insert (const_iterator pos, InputIterator first,
                                 InputIterator last) -> iterator {
-  iterator r = this->to_non_const_iterator (pos);
-  iterator const e = this->end ();  // NOLINT(misc-misplaced-const)
-
-  if (pos == e) {
-    // Insert at the end can be efficiently mapped to a series of emplace_back()
-    // calls.
-    std::for_each (first, last,
-                   [this] (auto const &v) { this->emplace_back (v); });
-    return r;
-  }
-
-  if constexpr (forward_iterator<InputIterator>) {
-    // A forward iterator can be used with multi-pass algorithms such as this...
-    auto const n = std::distance (first, last);
-    // If all the new objects land on existing, initialized, elements we don't
-    // need to worry about leaving the container in an invalid state if a ctor
-    // throws.
-    if (pos + n <= e) {
-      assert (n <= this->max_size () - this->size () &&
-              "Container size overflow");
-      details::avbase<T>::move_range (r, e, r + n);
-      size_ += static_cast<size_type> (n);
-      std::copy (first, last, r);
-      return r;
-    }
-
-    // TODO(paul): Add an additional optimization path for random-access
-    // iterators.
-    // 1. Construct any objects in uninitialized space.
-    // 2. Move objects from initialized to uninitialized space following the
-    // objects
-    //    created in step 1.
-    // 3. Construct objects in initialized space.
-  }
-
-  // A single-pass fallback algorithm for input iterators.
-  while (first != last) {
-    this->insert (pos, *first);
-    ++first;
-    ++pos;
-  }
-  return r;
+  return details::avbase<T>::insert (
+      this->begin (), &size_, this->to_non_const_iterator (pos), first, last);
 }
 
 // emplace

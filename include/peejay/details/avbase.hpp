@@ -83,6 +83,21 @@ protected:
                                            pointer_based_iterator<T> pos,
                                            T &&value);
 
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
+  /// \param begin  The start of the array data.
+  /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param pos  Iterator before which the new element will be constructed.
+  /// \param first  The start of the range from which to copy the elements.
+  /// \param last  The end of the range from which to copy the elements.
+  template <typename SizeType, typename InputIterator,
+            typename = std::enable_if_t<input_iterator<InputIterator>>>
+  static pointer_based_iterator<T> insert (pointer_based_iterator<T> begin,
+                                           SizeType *size,
+                                           pointer_based_iterator<T> pos,
+                                           InputIterator first,
+                                           InputIterator last);
+
   /// \param data  The start of the array data.
   /// \param size  On entry, the original size of the container. On exit, the new container size.
   /// \param pos  Iterator before which the new element will be constructed.
@@ -340,6 +355,56 @@ pointer_based_iterator<T> avbase<T>::insert (pointer_based_iterator<T> begin,
   }
   ++(*size);
   return pos;
+}
+
+template <typename T>
+template <typename SizeType, typename InputIterator, typename>
+pointer_based_iterator<T> avbase<T>::insert (
+    pointer_based_iterator<T> const begin, SizeType *const size,
+    pointer_based_iterator<T> pos, InputIterator first, InputIterator last) {
+  assert (pos >= begin && pos <= begin + *size &&
+          "pos must lie within the allocated array");
+  pointer_based_iterator<T> end = begin + *size;
+  if (pos == end) {
+    // Insert at the end can be efficiently mapped to a series of emplace_back()
+    // calls.
+    std::for_each (first, last, [&end, size] (auto const &v) {
+      construct_at (to_address (end), v);
+      ++(*size);
+      ++end;
+    });
+    return pos;
+  }
+
+  if constexpr (forward_iterator<InputIterator>) {
+    // A forward iterator can be used with multi-pass algorithms such as this...
+    auto const n = std::distance (first, last);
+    // If all the new objects land on existing, initialized, elements we don't
+    // need to worry about leaving the container in an invalid state if a ctor
+    // throws.
+    if (pos + n <= end) {
+      details::avbase<T>::move_range (pos, end, pos + n);
+      *size += static_cast<SizeType> (n);
+      std::copy (first, last, pos);
+      return pos;
+    }
+
+    // TODO(paul): Add an additional optimization path for random-access
+    // iterators.
+    // 1. Construct any objects in uninitialized space.
+    // 2. Move objects from initialized to uninitialized space following the
+    //    objects created in step 1.
+    // 3. Construct objects in initialized space.
+  }
+
+  // A single-pass fallback algorithm for input iterators.
+  auto r = pos;
+  while (first != last) {
+    avbase::insert (begin, size, pos, SizeType{1}, *first);
+    ++first;
+    ++pos;
+  }
+  return r;
 }
 
 }  // end namespace peejay::details

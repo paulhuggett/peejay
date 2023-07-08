@@ -141,18 +141,19 @@ if (klee_available)
     av_ctor_count
     av_ctor_count_value
     av_ctor_first_last
-    av_erase_pos
     av_erase_first_last
+    av_erase_pos
+    av_insert_pos_count_lvalue
+    av_insert_pos_first_last
     av_insert_pos_lvalue
     av_insert_pos_rvalue
-    av_insert_pos_count_lvalue
     av_insert_range
     av_resize_count
     av_resize_count_value
+    sv_assign_count
     sv_ctor_count
     sv_ctor_count_value
     sv_ctor_first_last
-    sv_assign_count
     sv_erase_pos
     sv_insert_pos_count_lvalue
     sv_resize_count

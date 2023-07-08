@@ -1,24 +1,3 @@
-//===- klee/av_insert_pos_lvalue.cpp --------------------------------------===//
-//*                _                     _                      *
-//*   __ ___   __ (_)_ __  ___  ___ _ __| |_   _ __   ___  ___  *
-//*  / _` \ \ / / | | '_ \/ __|/ _ \ '__| __| | '_ \ / _ \/ __| *
-//* | (_| |\ V /  | | | | \__ \  __/ |  | |_  | |_) | (_) \__ \ *
-//*  \__,_| \_/   |_|_| |_|___/\___|_|   \__| | .__/ \___/|___/ *
-//*                                           |_|               *
-//*  _            _             *
-//* | |_   ____ _| |_   _  ___  *
-//* | \ \ / / _` | | | | |/ _ \ *
-//* | |\ V / (_| | | |_| |  __/ *
-//* |_| \_/ \__,_|_|\__,_|\___| *
-//*                             *
-//===----------------------------------------------------------------------===//
-//
-// Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
-// SPDX-License-Identifier: Apache-2.0
-//
-//===----------------------------------------------------------------------===//
 #include <cstddef>
 
 #ifdef KLEE_RUN
@@ -54,10 +33,20 @@ int main () {
     arrayvec_type av;
     populate (av, size);
 
-    member value{43};
+    std::array<member, max_elements> src{{member{419}, member{421}, member{431},
+                                          member{433}, member{439}, member{443},
+                                          member{449}}};
+    std::size_t first;
+    std::size_t last;
+    MAKE_SYMBOLIC (first);
+    MAKE_SYMBOLIC (last);
+    klee_assume (last <= max_elements);
+    klee_assume (first <= last);
+    klee_assume (last - first <= max_elements - size);
 
     // Call the function under test.
-    arrayvec_type::iterator const avit = av.insert (av.begin () + pos, value);
+    arrayvec_type::iterator const avit = av.insert (
+        av.begin () + pos, src.begin () + first, src.begin () + last);
     (void)avit;  // Don't warn unused.
     assert (avit >= av.begin () && avit <= av.end ());
 #ifdef KLEE_RUN
@@ -65,7 +54,7 @@ int main () {
     populate (v, size);
     // A mirror call to std::vector<>::insert for comparison.
     std::vector<member>::iterator const vit =
-        v.insert (v.begin () + pos, value);
+        v.insert (v.begin () + pos, src.begin () + first, src.begin () + last);
 
     // Compare the return of the two functions.
     if (vit - v.begin () != avit - av.begin ()) {
