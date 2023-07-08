@@ -1140,11 +1140,11 @@ TEST (ArrayVec, TrackedEmplace1) {
   EXPECT_THAT (
       t.actions,
       testing::ElementsAre (
+          std::make_tuple (4, 0,
+                           action::added),  // construct the internal temporary
           std::make_tuple (3, 0, action::move_ctor),
           std::make_tuple (-3, 2, action::move_assign),
           std::make_tuple (-2, 1, action::move_assign),
-          std::make_tuple (4, 0,
-                           action::added),  // construct the internal temporary
           std::make_tuple (
               -1, 4, action::move_assign),  // move the temporary into place
           std::make_tuple (-4, 0, action::deleted)  // destroy the temporary
