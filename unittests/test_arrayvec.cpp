@@ -1263,6 +1263,7 @@ TEST (ArrayVec, ResizeCountEx) {
   member::throw_number = 3;
   arrayvec<member, 8> v;
   v.emplace_back (23);
+  // NOLINTNEXTLINE
   EXPECT_THROW (v.resize (4), member::exception);
   EXPECT_THAT (v, ElementsAre (23));
   EXPECT_EQ (member::instances, 1U);

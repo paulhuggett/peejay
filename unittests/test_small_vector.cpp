@@ -116,6 +116,7 @@ TEST (SmallVector, CtorInitializerList2) {
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCopy) {
   peejay::small_vector<int, 3> const b{3, 5};
+  // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
   peejay::small_vector<int, 3> c = b;
   EXPECT_EQ (2U, c.size ());
   EXPECT_THAT (c, ::testing::ElementsAre (3, 5));
@@ -265,6 +266,7 @@ TEST (SmallVector, IteratorConstFromNonConstContainer) {
     // Manually copy the contents of the buffer to a new vector but use a
     /// const iterator to do it this time.
     std::vector<int> actual;
+    // NOLINTNEXTLINE(modernize-loop-convert)
     for (decltype (buffer)::const_iterator it = buffer.cbegin (),
                                            end = buffer.cend ();
          it != end; ++it) {
@@ -318,6 +320,7 @@ TEST (SmallVector, IteratorConstReverse) {
 TEST (SmallVector, ElementAccess) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
   int count = 42;
+  // NOLINTNEXTLINE(modernize-loop-convert)
   for (std::size_t index = 0, end = buffer.size (); index != end; ++index) {
     buffer[index] = count++;
   }
@@ -522,7 +525,8 @@ struct throws_on_cast_to_int {
   public:
     ex () : std::runtime_error{"test exception"} {}
   };
-  operator int () { throw ex{}; }
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  operator int () const { throw ex{}; }
 };
 
 // NOLINTNEXTLINE
