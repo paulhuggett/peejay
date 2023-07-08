@@ -152,6 +152,7 @@ if (klee_available)
     av_resize_count
     av_resize_count_value
     sv_assign_count
+    sv_assign_range
     sv_ctor_count
     sv_ctor_count_value
     sv_ctor_first_last
