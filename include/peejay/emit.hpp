@@ -66,7 +66,8 @@ public:
     assert (spaces_ <= std::numeric_limits<std::streamsize>::max ());
     auto s = depth_ * spaces_;
     while (s > 0) {
-      auto const v = (std::min) (static_cast<std::streamsize> (whitespace.size ()), s);
+      auto const v =
+          std::min (static_cast<std::streamsize> (whitespace.size ()), s);
       os.write (whitespace.data (), v);
       s -= v;
     }
