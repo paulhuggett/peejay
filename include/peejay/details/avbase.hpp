@@ -35,14 +35,14 @@ class avbase {
 protected:
   template <typename SizeType, typename InputIterator,
             typename = std::enable_if_t<input_iterator<InputIterator>>>
-  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+  static void init (pointer_based_iterator<T> begin, SizeType *size,
                     InputIterator first, InputIterator last);
 
   template <typename SizeType>
-  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+  static void init (pointer_based_iterator<T> begin, SizeType *size,
                     SizeType count);
   template <typename SizeType>
-  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+  static void init (pointer_based_iterator<T> begin, SizeType *size,
                     SizeType count, T const &value);
 
   template <bool IsMove, typename SizeType, typename SrcType>
@@ -55,11 +55,11 @@ protected:
                      pointer_based_iterator<T> last) noexcept;
 
   template <typename SizeType, typename... Args>
-  static void resize (pointer_based_iterator<T> begin, SizeType *const size,
+  static void resize (pointer_based_iterator<T> begin, SizeType *size,
                       std::size_t new_size, Args &&...args);
 
   template <typename SizeType>
-  static void assign (pointer_based_iterator<T> begin, SizeType *const size,
+  static void assign (pointer_based_iterator<T> begin, SizeType *size,
                       std::size_t count, T const &value);
 
   static void move_range (pointer_based_iterator<T> from,
