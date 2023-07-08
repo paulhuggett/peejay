@@ -15,4 +15,4 @@
 //===----------------------------------------------------------------------===//
 namespace peejay {
 inline int dummy;
-}
+} // end namespace peejay
