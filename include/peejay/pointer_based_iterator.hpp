@@ -61,7 +61,7 @@ public:
   using pointer = value_type *;
   using reference = value_type &;
   using iterator_category = std::random_access_iterator_tag;
-#if __cpp_lib_concepts
+#if defined(__cpp_lib_concepts) && __cpp_lib_concepts >= 202207L
   using iterator_concept = std::contiguous_iterator_tag;
 #endif  // __cpp_lib_concepts
 
