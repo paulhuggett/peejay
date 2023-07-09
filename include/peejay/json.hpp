@@ -627,8 +627,8 @@ constexpr std::optional<uint_least16_t> digit_offset (
   return std::nullopt;
 }
 
-PEEJAY_CONSTEXPR_CXX20 grammar_rule
-code_point_grammar_rule (char32_t const code_point) noexcept {
+PEEJAY_CONSTEXPR_CXX20 std::optional<grammar_rule> code_point_grammar_rule (
+    char32_t const code_point) noexcept {
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const end = std::end (code_point_runs);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
@@ -638,10 +638,11 @@ code_point_grammar_rule (char32_t const code_point) noexcept {
       [] (cprun const& cpr, cprun const& value) {
         return cpr.code_point + cpr.length < value.code_point;
       });
-  return (it != end && code_point >= it->code_point &&
-          code_point < static_cast<char32_t> (it->code_point + it->length))
-             ? static_cast<grammar_rule> (it->rule)
-             : grammar_rule::none;
+  if (it != end && code_point >= it->code_point &&
+      code_point < static_cast<char32_t> (it->code_point + it->length)) {
+    return static_cast<grammar_rule> (it->rule);
+  }
+  return {};
 }
 
 //*             _      _             *
@@ -773,9 +774,10 @@ public:
     // U+0080 Is where the Latin-1 supplement starts. Consult the table for
     // code points beyond this point.
     if (code_point >= 0x80) {
-      if (grammar_rule const rule = code_point_grammar_rule (code_point);
-          rule == grammar_rule::identifier_start ||
-          rule == grammar_rule::identifier_part) {
+      if ((static_cast<std::underlying_type_t<grammar_rule>> (
+               code_point_grammar_rule (code_point)
+                   .value_or (static_cast<grammar_rule> (0))) &
+           idmask) != 0U) {
         return true;
       }
     }
@@ -2007,7 +2009,11 @@ auto identifier_matcher<Backend, Policies>::consume (
     if (c == char_set::reverse_solidus) {
       return change_state (u_state);
     }
-    if (code_point_grammar_rule (c) != grammar_rule::identifier_start) {
+    if ((c < char_set::latin_capital_letter_a ||
+         c > char_set::latin_capital_letter_z) &&
+        (c < char_set::latin_small_letter_a ||
+         c > char_set::latin_small_letter_z) &&
+        code_point_grammar_rule (c) != grammar_rule::identifier_start) {
       return install_error (error::bad_identifier);
     }
     state_ = part_state;
@@ -2022,9 +2028,10 @@ auto identifier_matcher<Backend, Policies>::consume (
     if (hex_.partial ()) {
       return install_error (error::bad_unicode_code_point);
     }
-    if (grammar_rule const rule = code_point_grammar_rule (c);
-        rule != grammar_rule::identifier_start &&
-        rule != grammar_rule::identifier_part) {
+    if ((static_cast<std::underlying_type_t<grammar_rule>> (
+             code_point_grammar_rule (c).value_or (
+                 static_cast<grammar_rule> (0))) &
+         idmask) == 0U) {
       // This code point wasn't part of an identifier, so don't consume it.
       if (std::error_code const error = parser.backend ().key (
               u8string_view{str_->data (), str_->size ()})) {

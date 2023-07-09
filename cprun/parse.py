@@ -42,10 +42,9 @@ MAX_RULE = pow(2, RULE_BITS) - 1
 
 
 class GrammarRule(Enum):
-    whitespace = 0
-    identifier_start = 1
-    identifier_part = 2
-    none = 4
+    whitespace = 0b00
+    identifier_start = 0b01
+    identifier_part = 0b11
 
 
 CATEGORY_TO_GRAMMAR_RULE: dict[GeneralCategory, GrammarRule] = {
@@ -235,10 +234,11 @@ def emit_header(entries: Sequence[OutputRow], include_guard: str) -> None:
 
 namespace peejay {
 
-enum class grammar_rule {''')
+enum class grammar_rule : std::uint8_t {''')
     print(',\n'.join(
-        ['  {0} = {1}'.format(x.name, x.value) for x in GrammarRule]))
+        ['  {0} = 0b{1:0>2b}'.format(x.name, x.value) for x in GrammarRule]))
     print('''}};
+constexpr auto idmask = 0b01U;
 struct cprun {{
   std::uint_least32_t code_point: {0};
   std::uint_least32_t length: {1};
