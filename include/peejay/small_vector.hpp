@@ -107,7 +107,8 @@ public:
     return this->transfer_from (std::move (other));
   }
   small_vector &operator= (small_vector &&other) noexcept (
-      std::is_nothrow_move_assignable_v<ElementType>) = default;
+      std::is_nothrow_move_constructible_v<ElementType>
+          &&std::is_nothrow_move_assignable_v<ElementType>) = default;
 
   /// \name Element access
   ///@{
