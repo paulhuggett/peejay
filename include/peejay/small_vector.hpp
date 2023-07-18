@@ -39,6 +39,9 @@ namespace peejay {
 template <typename ElementType,
           std::size_t BodyElements = 256 / sizeof (ElementType)>
 class small_vector {
+  template <typename, std::size_t>
+  friend class small_vector;
+
 public:
   using value_type = ElementType;
 
@@ -55,7 +58,7 @@ public:
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  /// Constructs the buffer with an initial size of 0.
+  /// Constructs the container with an initial size of 0.
   small_vector () noexcept = default;
   /// Constructs the container with the contents of the range [\p first, \p
   /// last).
@@ -66,7 +69,7 @@ public:
   template <typename InputIterator,
             typename = std::enable_if_t<input_iterator<InputIterator>>>
   small_vector (InputIterator first, InputIterator last);
-  /// Constructs the buffer with the given initial number of elements.
+  /// Constructs the container with the given initial number of elements.
   explicit small_vector (std::size_t required_elements);
   /// Constructs the container with \p count copies of elements with value
   /// \p value.
@@ -75,54 +78,65 @@ public:
   /// \param value  The value with which to initialize elements of the
   ///   container.
   small_vector (size_type count, const_reference value);
-  /// Constructs the buffer with a given initial collection of values.
+  /// Constructs the container with a given initial collection of values.
   small_vector (std::initializer_list<ElementType> init);
+
+  template <std::size_t OtherSize>
+  small_vector (small_vector<ElementType, OtherSize> const &rhs) {
+    this->transfer_from (rhs);
+  }
   small_vector (small_vector const &rhs) = default;
-  small_vector (small_vector &&other) noexcept = default;
+
+  template <std::size_t OtherSize>
+  small_vector (small_vector<ElementType, OtherSize> &&rhs) noexcept {
+    this->transfer_from (std::move (rhs));
+  }
+  small_vector (small_vector &&rhs) noexcept (
+      std::is_nothrow_move_constructible_v<ElementType>) = default;
 
   ~small_vector () noexcept = default;
 
+  template <std::size_t OtherSize>
+  small_vector &operator= (small_vector<ElementType, OtherSize> const &other) {
+    return this->transfer_from (other);
+  }
   small_vector &operator= (small_vector const &other) = default;
-  small_vector &operator= (small_vector &&other) noexcept = default;
+
+  template <std::size_t OtherSize>
+  small_vector &operator= (small_vector<ElementType, OtherSize> &&other) {
+    return this->transfer_from (std::move (other));
+  }
+  small_vector &operator= (small_vector &&other) noexcept (
+      std::is_nothrow_move_assignable_v<ElementType>) = default;
 
   /// \name Element access
   ///@{
   const_pointer data () const noexcept {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit ([] (auto const &a) { return std::data (a); }, arr_);
+    return visit (*this, [] (auto const &a) { return std::data (a); });
   }
   pointer data () noexcept {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit ([] (auto &a) { return std::data (a); }, arr_);
+    return visit (*this, [] (auto &a) { return std::data (a); });
   }
 
   const_reference operator[] (std::size_t n) const noexcept {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit (
-        [n] (auto const &a) -> const_reference {
-          using asize = typename std::decay_t<decltype (a)>::size_type;
-          return a[static_cast<asize> (n)];
-        },
-        arr_);
+    return visit (*this, [n] (auto const &a) -> const_reference {
+      using asize = typename std::decay_t<decltype (a)>::size_type;
+      return a[static_cast<asize> (n)];
+    });
   }
   reference operator[] (std::size_t n) noexcept {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit (
-        [n] (auto &a) -> reference {
-          using asize = typename std::decay_t<decltype (a)>::size_type;
-          return a[static_cast<asize> (n)];
-        },
-        arr_);
+    return visit (*this, [n] (auto &a) -> reference {
+      using asize = typename std::decay_t<decltype (a)>::size_type;
+      return a[static_cast<asize> (n)];
+    });
   }
 
   const_reference back () const {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit (
-        [] (auto const &a) -> const_reference { return a.back (); }, arr_);
+    return visit (*this,
+                  [] (auto const &a) -> const_reference { return a.back (); });
   }
   reference back () {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit ([] (auto &a) -> reference { return a.back (); }, arr_);
+    return visit (*this, [] (auto &a) -> reference { return a.back (); });
   }
 
   ///@}
@@ -131,10 +145,9 @@ public:
   ///@{
   /// Returns the number of elements.
   std::size_t size () const noexcept {
-    assert (!arr_.valueless_by_exception ());
-    return std::visit (
-        [] (auto const &a) { return static_cast<std::size_t> (std::size (a)); },
-        arr_);
+    return visit (*this, [] (auto const &a) {
+      return static_cast<std::size_t> (std::size (a));
+    });
   }
   std::size_t size_bytes () const noexcept {
     return this->size () * sizeof (ElementType);
@@ -238,8 +251,7 @@ public:
   /// Invalidates any references, pointers, or iterators referring to contained
   /// elements. Any past-the-end iterators are also invalidated.
   void clear () noexcept {
-    assert (!arr_.valueless_by_exception ());
-    std::visit ([] (auto &a) { a.clear (); }, arr_);
+    visit (*this, [] (auto &a) { a.clear (); });
   }
 
   /// Erases the specified element from the container. Invalidates iterators
@@ -292,9 +304,13 @@ public:
   ///   if \p count == 0.
   iterator insert (const_iterator pos, size_type count, const_reference value);
 
+  /// \brief Removes the last element of the container.
+  ///
+  /// Calling pop_back() on an empty container results in undefined behavior.
+  /// Iterators and references to the last element, as well as the end()
+  /// iterator, are invalidated.
   void pop_back () {
-    assert (!arr_.valueless_by_exception ());
-    std::visit ([] (auto &v) { v.pop_back (); }, arr_);
+    visit (*this, [] (auto &v) { v.pop_back (); });
   }
   ///@}
 
@@ -307,10 +323,52 @@ private:
   using large_type = std::vector<ElementType>;
   std::variant<small_type, large_type> arr_;
 
-  large_type &to_large ();
+  template <typename T>
+  small_vector &transfer_from (T &&rhs);
 
-  template <typename... Args>
-  void emplace_back_small_to_large (small_type const &s, Args &&...args);
+  template <std::size_t Index, typename OtherVector>
+  void transfer_alternative_from (OtherVector &&rhs);
+
+  template <std::size_t Index, std::size_t OtherSize>
+  void transfer_from_same (small_vector<ElementType, OtherSize> const &rhs) {
+    std::get<Index> (arr_) = std::get<Index> (rhs.arr_);
+  }
+  template <std::size_t Index, std::size_t OtherSize>
+  void
+  transfer_from_same (small_vector<ElementType, OtherSize> &&rhs) noexcept (
+      std::is_rvalue_reference_v<decltype (rhs)>
+          &&std::is_nothrow_move_assignable_v<
+              std::variant_alternative_t<Index, decltype (arr_)>>) {
+    std::get<Index> (arr_) = std::move (std::get<Index> (rhs.arr_));
+  }
+
+  template <std::size_t OtherSize>
+  void transfer_from_different (
+      small_vector<ElementType, OtherSize> const &rhs) {
+    visit (*this,
+           [&rhs] (auto &v) { v.assign (std::begin (rhs), std::end (rhs)); });
+  }
+  template <std::size_t OtherSize>
+  void transfer_from_different (small_vector<ElementType, OtherSize> &&rhs) {
+    visit (*this, [&rhs] (auto &v) {
+      std::move (std::begin (rhs), std::end (rhs), std::back_inserter (v));
+    });
+  }
+
+  template <typename SmallVector, typename Visitor,
+            typename = std::enable_if_t<
+                std::is_same_v<SmallVector, small_vector> ||
+                std::is_same_v<SmallVector, small_vector const>>>
+  static decltype (auto) visit (SmallVector &sv, Visitor visitor) {
+    assert (!sv.arr_.valueless_by_exception ());
+    if (std::holds_alternative<small_type> (sv.arr_)) {
+      return visitor (std::get<small_type> (sv.arr_));
+    }
+    assert (std::holds_alternative<large_type> (sv.arr_));
+    return visitor (std::get<large_type> (sv.arr_));
+  }
+
+  large_type &to_large ();
 };
 
 // (ctor)
@@ -329,7 +387,6 @@ small_vector<ElementType, BodyElements>::small_vector (InputIterator first,
     }
     return;
   }
-
   // A single-pass fallback algorithm for input iterators.
   std::for_each (first, last,
                  [this] (auto const &v) { this->emplace_back (v); });
@@ -368,12 +425,15 @@ small_vector<ElementType, BodyElements>::small_vector (
   }
 }
 
+// to large
+// ~~~~~~~~
 template <typename ElementType, std::size_t BodyElements>
 auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
   assert (std::holds_alternative<small_type> (arr_));
   if (auto const *const sm = std::get_if<small_type> (&arr_)) {
     // Switch from small to large.
     std::vector<ElementType> vec{std::begin (*sm), std::end (*sm)};
+    static_assert (std::is_nothrow_move_constructible_v<large_type>);
     arr_.template emplace<large_type> (std::move (vec));
   }
   return std::get<large_type> (arr_);
@@ -386,7 +446,7 @@ void small_vector<ElementType, BodyElements>::reserve (
     std::size_t const new_cap) {
   if (auto const *const sm = std::get_if<small_type> (&arr_)) {
     if (sm->capacity () < new_cap) {
-      to_large ();
+      this->to_large ();
     }
   }
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
@@ -406,6 +466,7 @@ void small_vector<ElementType, BodyElements>::resize (size_type count,
                                                       const_reference value) {
   assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
+    // Resize entirely within the large buffer.
     vec->resize (count, value);
     return;
   }
@@ -413,9 +474,9 @@ void small_vector<ElementType, BodyElements>::resize (size_type count,
     // Resize entirely within the small buffer.
     std::get<small_type> (arr_).resize (
         static_cast<typename small_type::size_type> (count), value);
-    return;
+  } else {
+    this->to_large ().resize (count, value);
   }
-  to_large ().resize (count, value);
 }
 
 // push back
@@ -426,16 +487,11 @@ inline void small_vector<ElementType, BodyElements>::push_back (
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
     return vec->push_back (v);
   }
-
-  auto &arr = std::get<small_type> (arr_);
-  auto const new_elements = arr.size () + 1U;
-  if (new_elements <= BodyElements) {
-    arr.push_back (v);
+  auto &arv = std::get<small_type> (arr_);
+  if (arv.size () < BodyElements) {
+    arv.push_back (v);
   } else {
-    // Switch from small to large.
-    std::vector<ElementType> vec{std::begin (arr), std::end (arr)};
-    vec.push_back (v);
-    arr_.template emplace<large_type> (std::move (vec));
+    this->to_large ().push_back (v);
   }
 }
 
@@ -449,25 +505,12 @@ inline void small_vector<ElementType, BodyElements>::emplace_back (
     vec->emplace_back (std::forward<Args> (args)...);
     return;
   }
-
   auto &arr = std::get<small_type> (arr_);
   if (arr.size () < BodyElements) {
     arr.emplace_back (std::forward<Args> (args)...);
   } else {
-    emplace_back_small_to_large (arr, std::forward<Args> (args)...);
+    this->to_large ().emplace_back (std::forward<Args> (args)...);
   }
-}
-
-// emplace back small to large
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// The "slow" path for emplace_back which inserts into the "large" vector.
-template <typename ElementType, std::size_t BodyElements>
-template <typename... Args>
-void small_vector<ElementType, BodyElements>::emplace_back_small_to_large (
-    small_type const &s, Args &&...args) {
-  std::vector<ElementType> vec{std::begin (s), std::end (s)};
-  vec.emplace_back (std::forward<Args> (args)...);
-  arr_.template emplace<large_type> (std::move (vec));
 }
 
 // assign
@@ -507,36 +550,30 @@ void small_vector<ElementType, BodyElements>::append (Iterator first,
 template <typename ElementType, std::size_t BodyElements>
 auto small_vector<ElementType, BodyElements>::erase (const_iterator pos)
     -> iterator {
-  assert (!arr_.valueless_by_exception ());
-  return std::visit (
-      [this, pos] (auto &v) {
-        // Convert 'pos' to an iterator in v.
-        auto const vpos = v.begin () + (to_address (pos) - data ());
-        // Do the erase itself.
-        auto const it = v.erase (vpos);
-        // convert the result into an iterator in this.
-        return iterator{data () + (it - v.begin ())};
-      },
-      arr_);
+  return visit (*this, [this, pos] (auto &v) {
+    // Convert 'pos' to an iterator in v.
+    auto const vpos = v.begin () + (to_address (pos) - data ());
+    // Do the erase itself.
+    auto const it = v.erase (vpos);
+    // convert the result into an iterator in this.
+    return iterator{data () + (it - v.begin ())};
+  });
 }
 
 template <typename ElementType, std::size_t BodyElements>
 auto small_vector<ElementType, BodyElements>::erase (const_iterator first,
                                                      const_iterator last)
     -> iterator {
-  assert (!arr_.valueless_by_exception ());
-  return std::visit (
-      [this, first, last] (auto &v) {
-        auto b = v.begin ();
-        auto *const d = data ();
-        auto const vfirst = b + (to_address (first) - d);
-        auto const vlast = b + (to_address (last) - d);
+  return visit (*this, [this, first, last] (auto &v) {
+    auto b = v.begin ();
+    auto *const d = data ();
+    auto const vfirst = b + (to_address (first) - d);
+    auto const vlast = b + (to_address (last) - d);
 
-        auto const it = v.erase (vfirst, vlast);
-        // convert the result into an iterator in this.
-        return iterator{data () + (it - v.begin ())};
-      },
-      arr_);
+    auto const it = v.erase (vfirst, vlast);
+    // convert the result into an iterator in this.
+    return iterator{data () + (it - v.begin ())};
+  });
 }
 
 // insert
@@ -547,15 +584,13 @@ auto small_vector<ElementType, BodyElements>::insert (const_iterator pos,
                                                       const_reference value)
     -> iterator {
   assert (!arr_.valueless_by_exception ());
-
+  // Compute the index _before_ potentially converting the buffer to "large".
   auto const index = to_address (pos) - this->data ();
-
   if (auto const *const sm = std::get_if<small_type> (&arr_)) {
     if (sm->capacity () + count > BodyElements) {
-      to_large ();
+      this->to_large ();
     }
   }
-
   return std::visit (
       [this, index, count, &value] (auto &v) {
         using T = std::decay_t<decltype (v)>;
@@ -565,6 +600,55 @@ auto small_vector<ElementType, BodyElements>::insert (const_iterator pos,
         return iterator{data () + (it - v.begin ())};
       },
       arr_);
+}
+
+// transfer from
+// ~~~~~~~~~~~~~
+template <typename ElementType, std::size_t BodyElements>
+template <std::size_t Index, typename OtherVector>
+void small_vector<ElementType, BodyElements>::transfer_alternative_from (
+    OtherVector &&rhs) {
+  // Source and destination are both using the desired alternative, so we can
+  // copy/move directly between them.
+  if (arr_.index () == Index && rhs.arr_.index () == Index) {
+    this->transfer_from_same<Index> (std::forward<OtherVector> (rhs));
+  } else {
+    // Source and/or destination are not using the desired alternative.
+    using desired_alternative =
+        std::variant_alternative_t<Index, decltype (arr_)>;
+    static_assert (std::is_nothrow_default_constructible_v<desired_alternative>,
+                   "default ctor must be noexcept so that the variant cannot "
+                   "become valueless");
+    arr_.template emplace<desired_alternative> ();
+    this->transfer_from_different (std::forward<OtherVector> (rhs));
+  }
+}
+
+template <typename ElementType, std::size_t BodyElements>
+template <typename OtherVector>
+auto small_vector<ElementType, BodyElements>::transfer_from (OtherVector &&rhs)
+    -> small_vector & {
+  constexpr auto small_index = std::size_t{0};
+  constexpr auto large_index = std::size_t{1};
+  static_assert (
+      std::is_same_v<small_type, std::variant_alternative_t<small_index,
+                                                            decltype (arr_)>> &&
+          std::is_same_v<large_type, std::variant_alternative_t<
+                                         large_index, decltype (arr_)>>,
+      "small_index and/or large_index must be wrong");
+
+  // If the rhs container will fit into our "small" container then that's what
+  // we'll produce otherwise we must use the "large" alternative. Note that the
+  // 'rhs' container has a different value for BodyElements so it may be using
+  // either alternative.
+  if (rhs.size () <= BodyElements) {
+    this->transfer_alternative_from<small_index> (
+        std::forward<OtherVector> (rhs));
+  } else {
+    this->transfer_alternative_from<large_index> (
+        std::forward<OtherVector> (rhs));
+  }
+  return *this;
 }
 
 template <typename ElementType, std::size_t LhsBodyElements,

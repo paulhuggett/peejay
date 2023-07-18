@@ -222,14 +222,14 @@ TEST (ArrayVec, AssignInitializerList) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, AssignCopyLargeToSmall) {
   arrayvec<no_move, 3> const b{no_move{5}, no_move{7}};
-  arrayvec<no_move, 3> c{no_move{11}};
+  arrayvec<no_move, 2> c{no_move{11}};
   c = b;
   EXPECT_THAT (c, ElementsAre (no_move{5}, no_move{7}));
 }
 
 // NOLINTNEXTLINE
 TEST (ArrayVec, AssignCopySmallToLarge) {
-  arrayvec<no_move, 3> const b{no_move{5}};
+  arrayvec<no_move, 2> const b{no_move{5}};
   arrayvec<no_move, 3> c{no_move{7}, no_move{9}};
   c = b;
   EXPECT_THAT (c, ElementsAre (no_move{5}));
@@ -423,7 +423,7 @@ TEST (ArrayVec, NoDefaultPushBack) {
 // NOLINTNEXTLINE
 TEST (ArrayVec, NoDefaultEmplace) {
   arrayvec<no_default_ctor, 2> sv;
-  sv.emplace_back (7);
+  EXPECT_EQ (sv.emplace_back (7), no_default_ctor{7});
   EXPECT_THAT (sv, ElementsAre (no_default_ctor{7}));
 }
 
@@ -1267,6 +1267,17 @@ TEST (ArrayVec, ResizeCountEx) {
   EXPECT_THROW (v.resize (4), member::exception);
   EXPECT_THAT (v, ElementsAre (23));
   EXPECT_EQ (member::instances, 1U);
+}
+TEST (ArrayVec, InsertPosCountValueEx) {
+  member::instances = 0;
+  member::operations = 0;
+  member::throw_number = 3;
+  arrayvec<member, 4> v;
+  v.emplace_back (23);
+  // NOLINTNEXTLINE
+  EXPECT_THROW (v.insert (v.begin (), 2, member{27}), member::exception);
+  EXPECT_THAT (v, ElementsAre (27, 27, 23));
+  EXPECT_EQ (member::instances, 3U);
 }
 
 #if __cpp_lib_ranges

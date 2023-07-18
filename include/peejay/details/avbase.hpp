@@ -38,17 +38,16 @@ protected:
   static void init (pointer_based_iterator<T> begin, SizeType *size,
                     InputIterator first, InputIterator last);
 
-  template <typename SizeType>
-  static void init (pointer_based_iterator<T> begin, SizeType *size,
-                    SizeType count);
-  template <typename SizeType>
-  static void init (pointer_based_iterator<T> begin, SizeType *size,
-                    SizeType count, T const &value);
+  template <typename SizeType, typename... Args>
+  static void init (pointer_based_iterator<T> begin, SizeType *const size,
+                    SizeType count, Args &&...args);
 
   template <bool IsMove, typename SizeType, typename SrcType>
   static void operator_assign (
       T *destp, SizeType *destsize,
-      std::pair<SrcType *, std::size_t> const &src) noexcept (IsMove);
+      std::pair<SrcType *, std::size_t> const
+          &src) noexcept (IsMove &&std::is_nothrow_move_constructible_v<T>
+                              &&std::is_nothrow_move_assignable_v<T>);
 
   template <typename SizeType>
   static void clear (SizeType *size, pointer_based_iterator<T> first,
@@ -62,9 +61,11 @@ protected:
   static void assign (pointer_based_iterator<T> begin, SizeType *size,
                       std::size_t count, T const &value);
 
-  static void move_range (pointer_based_iterator<T> from,
-                          pointer_based_iterator<T> end,
-                          pointer_based_iterator<T> to) noexcept;
+  static void move_range (
+      pointer_based_iterator<T> from, pointer_based_iterator<T> end,
+      pointer_based_iterator<T>
+          to) noexcept (std::is_nothrow_move_constructible_v<T>
+                            &&std::is_nothrow_move_assignable_v<T>);
 
   static std::size_t erase (pointer_based_iterator<T> pos,
                             pointer_based_iterator<T> end, std::size_t size);
@@ -78,10 +79,11 @@ protected:
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param value  Element value to insert.
   template <typename SizeType>
-  static pointer_based_iterator<T> insert (pointer_based_iterator<T> begin,
-                                           SizeType *size,
-                                           pointer_based_iterator<T> pos,
-                                           T &&value);
+  static pointer_based_iterator<T> insert (
+      pointer_based_iterator<T> begin, SizeType *size,
+      pointer_based_iterator<T> pos,
+      T &&value) noexcept (std::is_nothrow_move_constructible_v<T>
+                               &&std::is_nothrow_move_assignable_v<T>);
 
   /// \tparam SizeType  The type of the array-vector size value.
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
@@ -140,13 +142,13 @@ void avbase<T>::init (pointer_based_iterator<T> begin, SizeType *const size,
 }
 
 template <typename T>
-template <typename SizeType>
+template <typename SizeType, typename... Args>
 void avbase<T>::init (pointer_based_iterator<T> begin, SizeType *const size,
-                      SizeType count, T const &value) {
+                      SizeType count, Args &&...args) {
   *size = 0;
   try {
     for (auto it = begin, end = begin + count; it != end; ++it) {
-      construct_at (to_address (it), value);
+      construct_at (to_address (it), args...);
       ++(*size);
     }
   } catch (...) {
@@ -156,20 +158,15 @@ void avbase<T>::init (pointer_based_iterator<T> begin, SizeType *const size,
   }
 }
 
-template <typename T>
-template <typename SizeType>
-void avbase<T>::init (pointer_based_iterator<T> begin, SizeType *const size,
-                      SizeType count) {
-  avbase<T>::init (begin, size, count, T{});
-}
-
 // operator assign
 // ~~~~~~~~~~~~~~~
 template <typename T>
 template <bool IsMove, typename SizeType, typename SrcType>
 void avbase<T>::operator_assign (
     T *const destp, SizeType *const destsize,
-    std::pair<SrcType *, std::size_t> const &src) noexcept (IsMove) {
+    std::pair<SrcType *, std::size_t> const
+        &src) noexcept (IsMove &&std::is_nothrow_move_constructible_v<T>
+                            &&std::is_nothrow_move_assignable_v<T>) {
   auto *src_ptr = src.first;
   auto *dest_ptr = destp;
   auto *const old_dest_end = destp + *destsize;
@@ -270,9 +267,11 @@ void avbase<T>::assign (pointer_based_iterator<T> begin, SizeType *const size,
 // move range
 // ~~~~~~~~~~
 template <typename T>
-void avbase<T>::move_range (pointer_based_iterator<T> const from,
-                            pointer_based_iterator<T> const end,
-                            pointer_based_iterator<T> const to) noexcept {
+void avbase<T>::move_range (
+    pointer_based_iterator<T> const from, pointer_based_iterator<T> const end,
+    pointer_based_iterator<T> const
+        to) noexcept (std::is_nothrow_move_constructible_v<T>
+                          &&std::is_nothrow_move_assignable_v<T>) {
   assert (end >= from && to >= from);
   auto const dist = to - from;  // how far to move.
   auto const new_end = end + dist;
@@ -319,6 +318,9 @@ template <typename SizeType>
 pointer_based_iterator<T> avbase<T>::insert (
     pointer_based_iterator<T> const data, SizeType *const size,
     pointer_based_iterator<T> const pos, SizeType const count, T const &value) {
+  static_assert (std::is_move_assignable_v<T>,
+                 "avbase::insert: type T must be move-assignable");
+
   assert (pos >= data && pos <= data + *size &&
           "pos must lie within the allocated array");
   auto const to = pos + count;
@@ -343,7 +345,6 @@ pointer_based_iterator<T> avbase<T>::insert (
     ++(*size);
   }
   // Move elements between the initialized elements.
-  // T * const p = data + (pos - data);
   std::move_backward (pos, pos + num_to_move - num_uninit,
                       new_end - num_uninit);
   // Copy into initialized elements.
@@ -353,10 +354,13 @@ pointer_based_iterator<T> avbase<T>::insert (
 
 template <typename T>
 template <typename SizeType>
-pointer_based_iterator<T> avbase<T>::insert (pointer_based_iterator<T> begin,
-                                             SizeType *const size,
-                                             pointer_based_iterator<T> pos,
-                                             T &&value) {
+pointer_based_iterator<T> avbase<T>::insert (
+    pointer_based_iterator<T> begin, SizeType *const size,
+    pointer_based_iterator<T> pos,
+    T &&value) noexcept (std::is_nothrow_move_constructible_v<T>
+                             &&std::is_nothrow_move_assignable_v<T>) {
+  static_assert (std::is_move_assignable_v<T>,
+                 "avbase::insert: type T must be move-constructible");
   if (auto const end = begin + *size; pos == end) {
     construct_at (to_address (pos), std::move (value));
   } else {
@@ -376,8 +380,6 @@ pointer_based_iterator<T> avbase<T>::insert (
           "pos must lie within the allocated array");
   pointer_based_iterator<T> end = begin + *size;
   if (pos == end) {
-    // Insert at the end can be efficiently mapped to a series of emplace_back()
-    // calls.
     std::for_each (first, last, [&end, size] (auto const &v) {
       construct_at (to_address (end), v);
       ++(*size);

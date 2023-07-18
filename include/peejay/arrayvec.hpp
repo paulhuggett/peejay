@@ -14,8 +14,8 @@
 //
 //===----------------------------------------------------------------------===//
 /// \file arrayvec.hpp
-/// \brief Provides a a sequence container that encapsulates dynamically size
-///   arrays within a fixed size container.
+/// \brief Provides a sequence container, arrayvec<>. that encapsulates
+///   dynamically sized arrays within a fixed size container.
 #ifndef PEEJAY_ARRAYVEC_HPP
 #define PEEJAY_ARRAYVEC_HPP
 
@@ -39,6 +39,10 @@ namespace peejay {
 /// \brief A sequence container that encapsulates dynamic size arrays
 ///   within a fixed size container.
 ///
+/// The elements of an arrayvec are stored within the body of the object
+/// itself, in constrast to std::vector<> which maintains a heap-allocated
+/// buffer to store its contents.
+///
 /// The elements are stored contiguously, which means that elements can be
 /// accessed not only through iterators, but also using offsets to regular
 /// pointers to elements. This means that a pointer to an element of an
@@ -47,17 +51,13 @@ namespace peejay {
 ///
 /// The storage of the arrayvec is a fixed-size array contained within the body
 /// of the object.
+///
+/// Most member functions offer the basic exception guarantee. Some functions
+/// have support the strong exception guarantee to leave the object in its
+/// original state in the event of an exception being thrown.
 template <typename T, std::size_t Size = 256 / sizeof (T)>
 class arrayvec : public details::avbase<T> {
 public:
-  static_assert (!std::is_move_constructible_v<T> ||
-                     std::is_nothrow_move_constructible_v<T>,
-                 "If the member type can be move-constructed, the operation "
-                 "must be nothrow");
-  static_assert (
-      !std::is_move_assignable_v<T> || std::is_nothrow_move_assignable_v<T>,
-      "If the member type can be move-assigned, the operation must be nothrow");
-
   /// The type of an element in this container.
   using value_type = T;
 
@@ -81,19 +81,22 @@ public:
   using iterator = pointer_based_iterator<value_type>;
   /// A random-access and contiguous iterator to const value_type.
   using const_iterator = pointer_based_iterator<value_type const>;
+  /// std::reverse_iterator<iterator>
   using reverse_iterator = std::reverse_iterator<iterator>;
+  /// std::reverse_iterator<const_iterator>
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   /// Constructs the container with an initial size of 0.
   arrayvec () noexcept;
-  /// Constructs the container with the contents of the initializer list \p init
+  /// \brief Constructs the container with the contents of the initializer list
+  ///   \p init
   ///
   /// \param init  An initializer list with which to initialize the elements of
   ///   the container.
   arrayvec (std::initializer_list<T> init)
       : arrayvec (std::begin (init), std::end (init)) {}
-  /// Constructs the container with the contents of the range [\p first, \p
-  /// last).
+  /// \brief Constructs the container with the contents of the range [\p first,
+  ///   \p last).
   ///
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param first  The start of the range from which to copy the elements.
@@ -111,8 +114,8 @@ public:
   ///   than or equal to max_size().
   explicit arrayvec (size_type count);
 
-  /// Constructs the container with \p count copies of elements with value
-  /// \p value.
+  /// \brief Constructs the container with \p count copies of elements with
+  ///   value \p value.
   ///
   /// \param count  The number of elements to be initialized. This must be less
   ///   than or equal to max_size().
@@ -122,12 +125,22 @@ public:
 
   arrayvec (arrayvec const &other)
       : arrayvec (std::begin (other), std::end (other)) {}
-  arrayvec (arrayvec &&other) noexcept;
+  arrayvec (arrayvec &&other) noexcept (
+      std::is_nothrow_move_constructible_v<T>);
 
   ~arrayvec () noexcept { this->clear (); }
 
+  template <std::size_t OtherSize>
+  arrayvec &operator= (arrayvec<T, OtherSize> const &other);
+  template <std::size_t OtherSize>
+  arrayvec &operator= (arrayvec<T, OtherSize> &&other) noexcept (
+      std::is_nothrow_move_constructible_v<T>
+          &&std::is_nothrow_move_assignable_v<T>);
+
   arrayvec &operator= (arrayvec const &other);
-  arrayvec &operator= (arrayvec &&other) noexcept;
+  arrayvec &operator= (arrayvec &&other) noexcept (
+      std::is_nothrow_move_constructible_v<T>
+          &&std::is_nothrow_move_assignable_v<T>);
 
   /// \name Element access
   ///@{
@@ -139,7 +152,7 @@ public:
   /// Direct access to the underlying array.
   constexpr T *data () noexcept { return pointer_cast<T> (data_.data ()); }
 
-  /// Access the specified element.
+  /// \brief Access the specified element.
   ///
   /// Returns a reference to the element at specified location \p n. No bounds
   /// checking is performed.
@@ -150,7 +163,7 @@ public:
     assert (n < this->size ());
     return *(this->data () + n);
   }
-  /// Access the specified element.
+  /// \brief Access the specified element.
   ///
   /// Returns a reference to the element at specified location \p n. No bounds
   /// checking is performed.
@@ -201,19 +214,27 @@ public:
     return Size;
   }
 
-  /// Resizes the container to contain \p count elements. If the current size is
-  /// less than \p count, the container is reduced to its first \p count
-  /// elements. If the current size is less than \p count, additional
-  /// default-inserted elements are appended.
+  /// \brief Resizes the container to contain \p count elements.
+  ///
+  /// If the current size is less than \p count, the container is reduced to
+  /// its first \p count elements. If the current size is less than \p count,
+  /// additional default-inserted elements are appended.
+  ///
+  /// If an exception is thrown, this function has no effect (strong exception
+  /// guarantee).
   ///
   /// \param count  The new number of elements in the container. Must be less
   ///               than or equal to Size.
   void resize (size_type count);
 
-  /// Resizes the container to contain count elements. If the current size is
-  /// greater than \p count, the container is reduced to its first \p count
-  /// elements. If the current size is less than \p count, additional
-  /// copies of \p value are appended.
+  /// \brief Resizes the container to contain count elements.
+  ///
+  /// If the current size is greater than \p count, the container is reduced to
+  /// its first \p count elements. If the current size is less than \p count,
+  /// additional copies of \p value are appended.
+  ///
+  /// If an exception is thrown, this function has no effect (strong exception
+  /// guarantee).
   ///
   /// \param count  The new number of elements in the container. Must be less
   ///               than or equal to Size.
@@ -231,18 +252,27 @@ public:
   [[nodiscard]] constexpr iterator begin () noexcept {
     return iterator{this->data ()};
   }
+  /// \brief Returns an iterator to the beginning of the container.
+  ///
+  /// If the arrayvec is empty, the returned iterator will be equal to end().
   [[nodiscard]] constexpr const_iterator begin () const noexcept {
     return const_iterator{this->data ()};
   }
+  /// \brief Returns an iterator to the beginning of the container.
+  ///
+  /// If the arrayvec is empty, the returned iterator will be equal to end().
   [[nodiscard]] constexpr const_iterator cbegin () const noexcept {
     return const_iterator{this->data ()};
   }
+  /// Returns a reverse iterator to the beginning of the container.
   [[nodiscard]] constexpr reverse_iterator rbegin () noexcept {
     return reverse_iterator{iterator{this->end ()}};
   }
+  /// Returns a reverse iterator to the beginning of the container.
   [[nodiscard]] constexpr const_reverse_iterator rbegin () const noexcept {
     return rcbegin ();
   }
+  /// Returns a reverse iterator to the beginning of the container.
   [[nodiscard]] constexpr const_reverse_iterator rcbegin () const noexcept {
     return const_reverse_iterator{this->end ()};
   }
@@ -251,18 +281,23 @@ public:
   [[nodiscard]] constexpr iterator end () noexcept {
     return iterator{this->begin () + size_};
   }
+  /// Returns an iterator to the end of the container.
   [[nodiscard]] constexpr const_iterator end () const noexcept {
     return cend ();
   }
+  /// Returns an iterator to the end of the container.
   [[nodiscard]] constexpr const_iterator cend () const noexcept {
     return this->begin () + this->size ();
   }
+  /// Returns a reverse iterator to the end of the container.
   [[nodiscard]] constexpr reverse_iterator rend () noexcept {
     return reverse_iterator{this->begin ()};
   }
+  /// Returns a reverse iterator to the end of the container.
   [[nodiscard]] constexpr const_reverse_iterator rend () const noexcept {
     return rcend ();
   }
+  /// Returns a reverse iterator to the end of the container.
   [[nodiscard]] constexpr const_reverse_iterator rcend () const noexcept {
     return const_reverse_iterator{this->begin ()};
   }
@@ -271,28 +306,52 @@ public:
   /// \name Modifiers
   ///@{
 
-  /// Removes all elements from the container.
+  /// \brief Removes all elements from the container.
+  ///
   /// Invalidates any references, pointers, or iterators referring to contained
   /// elements. Any past-the-end iterators are also invalidated.
   void clear () noexcept;
 
-  /// Adds an element to the end of the container.
+  /// \brief Adds an element to the end of the container.
+  ///
+  /// The new element is initialized as a copy of \p value.
+  ///
+  /// If an exception is thrown, this function has no effect (strong exception
+  /// guarantee).
+  ///
   /// \param value  The value of the element to append.
-  void push_back (const_reference value);
-  /// Adds an element to the end of the container.
+  void push_back (const_reference value) noexcept (
+      std::is_nothrow_copy_constructible_v<T>);
+  /// \brief Adds an element to the end of the container.
+  ///
+  /// \p value is moved into the new element.
+  ///
+  /// If an exception is thrown, this function has no effect (strong exception
+  /// guarantee).
+  ///
   /// \param value  The value of the element to append.
-  void push_back (T &&value);
-  /// Appends a new element to the end of the container.
+  void push_back (T &&value) noexcept (std::is_nothrow_move_constructible_v<T>);
+  /// \brief Appends a new element to the end of the container.
+  ///
+  /// The arguments \p args... are forwarded to the constructor as
+  /// `std::forward<Args>(args)....`.
+  ///
+  /// If an exception is thrown, this function has no effect (strong exception
+  /// guarantee).
+  ///
+  /// \param args	 Arguments to forward to the constructor of the element.
   template <typename... Args>
-  void emplace_back (Args &&...args);
+  reference emplace_back (Args &&...args);
 
-  /// Replaces the contents with \p count copies of value \p value.
+  /// \brief Replaces the contents with \p count copies of value \p value.
   ///
   /// \param count The new size of the container.
   /// \param value The value with which to initialize elements of the container.
   void assign (size_type count, const_reference value);
-  /// Replaces the contents with copies of those in the range [first, last). The
-  /// behavior is undefined if either argument is an iterator into *this.
+  /// \brief Replaces the contents with copies of those in the range [first,
+  ///   last).
+  ///
+  /// The behavior is undefined if either argument is an iterator into *this.
   ///
   /// \tparam InputIterator  An iterator which will produce the elements to be
   ///   inserted. Must meet the requirements of LegacyInputIterator.
@@ -301,32 +360,41 @@ public:
   template <typename InputIterator,
             typename = std::enable_if_t<input_iterator<InputIterator>>>
   void assign (InputIterator first, InputIterator last);
-  /// Replaces the contents with the elements from the initializer list \p ilist
+  /// \brief Replaces the contents with the elements from the initializer
+  ///   list \p ilist
   ///
   /// \param ilist Initializer list from which elements are to be copied.
   void assign (std::initializer_list<T> ilist) {
     this->assign (std::begin (ilist), std::end (ilist));
   }
 
+  /// \brief Removes the last element of the container.
+  ///
+  /// Calling pop_back() on an empty container results in undefined behavior.
+  /// Iterators and references to the last element, as well as the end()
+  /// iterator, are invalidated.
   void pop_back () {
     assert (size_ > 0U && "Attempt to use pop_back() with an empty container");
     --size_;
     std::destroy_at (to_address (this->end ()));
   }
 
-  /// Inserts \p value before \p pos.
+  /// \brief Inserts \p value before \p pos.
   ///
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param value  Element value to insert.
   /// \returns  An iterator pointing to the new element.
   iterator insert (const_iterator pos, const_reference value);
-  /// Inserts \p value before \p pos.
+  /// \brief Inserts \p value before \p pos.
   ///
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param value  Element value to insert.
   /// \returns  An iterator pointing to the new element.
-  iterator insert (const_iterator pos, T &&value);
-  /// Inserts \p count copies of \p value before \p pos.
+  iterator insert (const_iterator pos, T &&value) noexcept (
+      std::is_nothrow_move_constructible_v<T>
+          &&std::is_nothrow_move_assignable_v<T>);
+
+  /// \brief Inserts \p count copies of \p value before \p pos.
   ///
   /// \param pos  Iterator before which the new elements will be constructed.
   /// \param count  The number of copies to be inserted.
@@ -334,7 +402,7 @@ public:
   /// \returns  An iterator pointing to the first of the new elements or \p pos
   ///   if \p count == 0.
   iterator insert (const_iterator pos, size_type count, const_reference value);
-  /// Inserts elements from range [\p first, \p last) before \p pos.
+  /// \brief Inserts elements from range [\p first, \p last) before \p pos.
   ///
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param first  The beginning of the range of elements to be inserted.
@@ -346,7 +414,7 @@ public:
   template <typename InputIterator,
             typename = std::enable_if_t<input_iterator<InputIterator>>>
   iterator insert (const_iterator pos, InputIterator first, InputIterator last);
-  /// Inserts elements from the initializer list \p ilist before \p pos.
+  /// \brief Inserts elements from the initializer list \p ilist before \p pos.
   ///
   /// \param pos  The Iterator before which the new elements will be constructed.
   /// \param ilist  An initializer list from which to to insert the values.
@@ -356,7 +424,7 @@ public:
     return insert (pos, std::begin (ilist), std::end (ilist));
   }
 
-  /// Inserts a new element into the container directly before pos.
+  /// \brief Inserts a new element into the container directly before \p pos.
   ///
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param args Arguments to be forwarded to the element's constructor.
@@ -364,17 +432,19 @@ public:
   template <typename... Args>
   iterator emplace (const_iterator pos, Args &&...args);
 
-  /// Erases the specified element from the container. Invalidates iterators
-  /// and references at or after the point of the erase, including the end()
-  /// iterator.
+  /// \brief Erases the specified element from the container.
+  ///
+  /// Invalidates iterators and references at or after the point of the erase,
+  /// including the end() iterator.
   ///
   /// \param pos  Iterator to the element to remove.
   /// \returns  Iterator following the last removed element. If \p pos refers
   ///   to the last element, then the end() iterator is returned.
   iterator erase (const_iterator pos);
-  /// Erases the elements in the range [\p first, \p last). Invalidates
-  /// iterators and references at or after the point of the erase, including
-  /// the end() iterator.
+  /// \brief Erases the elements in the range [\p first, \p last).
+  ///
+  /// Invalidates iterators and references at or after the point of the erase,
+  /// including the end() iterator.
   ///
   /// \param first  The first of the range of elements to remove.
   /// \param last  The last of the range of elements to remove.
@@ -460,7 +530,8 @@ arrayvec<T, Size>::arrayvec () noexcept {
 }
 
 template <typename T, std::size_t Size>
-arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept {
+arrayvec<T, Size>::arrayvec (arrayvec &&other) noexcept (
+    std::is_nothrow_move_constructible_v<T>) {
   this->flood ();
   auto *dest = this->data ();
   for (auto src = other.begin (), src_end = other.end (); src != src_end;
@@ -495,19 +566,40 @@ arrayvec<T, Size>::arrayvec (size_type count, const_reference value) {
 // operator=
 // ~~~~~~~~~
 template <typename T, std::size_t Size>
-auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
-  if (&other != this) {
-    details::avbase<T>::template operator_assign<false> (
-        this->data (), &size_,
-        std::make_pair (other.data (),
-                        static_cast<std::size_t> (other.size ())));
-    assert (size_ <= this->max_size ());
-  }
+template <std::size_t OtherSize>
+auto arrayvec<T, Size>::operator= (arrayvec<T, OtherSize> const &other)
+    -> arrayvec & {
+  details::avbase<T>::template operator_assign<false> (
+      this->data (), &size_,
+      std::make_pair (other.data (), static_cast<std::size_t> (other.size ())));
+  assert (size_ <= this->max_size ());
   return *this;
 }
 
 template <typename T, std::size_t Size>
-auto arrayvec<T, Size>::operator= (arrayvec &&other) noexcept -> arrayvec & {
+auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
+  if (&other == this) {
+    return *this;
+  }
+  return this->operator=<Size> (other);
+}
+
+template <typename T, std::size_t Size>
+template <std::size_t OtherSize>
+auto arrayvec<T, Size>::operator= (arrayvec<T, OtherSize> &&other) noexcept (
+    std::is_nothrow_move_constructible_v<T>
+        &&std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
+  details::avbase<T>::template operator_assign<true> (
+      this->data (), &size_,
+      std::make_pair (other.data (), static_cast<std::size_t> (other.size ())));
+  assert (size_ <= this->max_size ());
+  return *this;
+}
+
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::operator= (arrayvec &&other) noexcept (
+    std::is_nothrow_move_constructible_v<T>
+        &&std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
   if (&other != this) {
     details::avbase<T>::template operator_assign<true> (
         this->data (), &size_,
@@ -588,14 +680,16 @@ void arrayvec<T, Size>::resize (size_type count, const_reference value) {
 // push back
 // ~~~~~~~~~
 template <typename T, std::size_t Size>
-void arrayvec<T, Size>::push_back (const_reference value) {
+void arrayvec<T, Size>::push_back (const_reference value) noexcept (
+    std::is_nothrow_copy_constructible_v<T>) {
   assert (this->size () < this->max_size ());
   construct_at (to_address (this->end ()), value);
   ++size_;
 }
 
 template <typename T, std::size_t Size>
-void arrayvec<T, Size>::push_back (T &&value) {
+void arrayvec<T, Size>::push_back (T &&value) noexcept (
+    std::is_nothrow_move_constructible_v<T>) {
   assert (this->size () < this->max_size ());
   construct_at (to_address (this->end ()), std::move (value));
   ++size_;
@@ -605,10 +699,12 @@ void arrayvec<T, Size>::push_back (T &&value) {
 // ~~~~~~~~~~~~
 template <typename T, std::size_t Size>
 template <typename... Args>
-void arrayvec<T, Size>::emplace_back (Args &&...args) {
+auto arrayvec<T, Size>::emplace_back (Args &&...args) -> reference {
   assert (this->size () < this->max_size ());
-  construct_at (to_address (this->end ()), std::forward<Args> (args)...);
+  auto pos = this->end ();
+  construct_at (to_address (pos), std::forward<Args> (args)...);
   ++size_;
+  return *pos;
 }
 
 // assign
@@ -672,14 +768,18 @@ auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
     this->push_back (value);  // Fast path for appending an element.
     return e;
   }
-  return insert (pos, size_type{1}, value);
+  return this->insert (pos, size_type{1}, value);
 }
 
 template <typename T, std::size_t Size>
-auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) -> iterator {
+auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) noexcept (
+    std::is_nothrow_move_constructible_v<T>
+        &&std::is_nothrow_move_assignable_v<T>) -> iterator {
   assert (this->size () < this->max_size () && "Insert will cause overflow");
   assert (pos >= this->begin () && pos <= this->end () &&
           "Insert position is invalid");
+  static_assert (std::is_move_constructible_v<T>,
+                 "T must be move-constructible");
   return details::avbase<T>::insert (this->begin (), &size_,
                                      this->to_non_const_iterator (pos),
                                      std::move (value));

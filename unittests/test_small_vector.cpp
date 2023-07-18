@@ -57,38 +57,38 @@ TEST (SmallVector, ExplicitCtor0) {
 TEST (SmallVector, CtorCountFirstLastFowardIteratorInBody) {
   std::array<int, 4> src{{2, 3, 5, 7}};
   peejay::small_vector<int, 4> const v (std::begin (src), std::end (src));
-  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+  EXPECT_THAT (v, ElementsAre (2, 3, 5, 7));
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCountFirstLastInputIteratorInBody) {
   std::istringstream src ("2 3 5 7");
   peejay::small_vector<int, 4> const v{std::istream_iterator<int>{src},
                                        std::istream_iterator<int>{}};
-  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+  EXPECT_THAT (v, ElementsAre (2, 3, 5, 7));
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCountFirstLastFowardIteratorLarge) {
   std::array<int, 4> src{{2, 3, 5, 7}};
   peejay::small_vector<int, 2> const v (std::begin (src), std::end (src));
-  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+  EXPECT_THAT (v, ElementsAre (2, 3, 5, 7));
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCountFirstLastInputIteratorLarge) {
   std::istringstream src ("2 3 5 7");
   peejay::small_vector<int, 2> const v{std::istream_iterator<int>{src},
                                        std::istream_iterator<int>{}};
-  EXPECT_THAT (v, testing::ElementsAre (2, 3, 5, 7));
+  EXPECT_THAT (v, ElementsAre (2, 3, 5, 7));
 }
 
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCountValueInBody) {
   peejay::small_vector<int, 4> const v (std::size_t{4}, 23);
-  EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23));
+  EXPECT_THAT (v, ElementsAre (23, 23, 23, 23));
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCountValueLarge) {
   peejay::small_vector<int, 4> const v (std::size_t{5}, 23);
-  EXPECT_THAT (v, testing::ElementsAre (23, 23, 23, 23, 23));
+  EXPECT_THAT (v, ElementsAre (23, 23, 23, 23, 23));
 }
 
 // NOLINTNEXTLINE
@@ -117,9 +117,9 @@ TEST (SmallVector, CtorInitializerList2) {
 TEST (SmallVector, CtorCopy) {
   peejay::small_vector<int, 3> const b{3, 5};
   // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-  peejay::small_vector<int, 3> c = b;
+  peejay::small_vector<int, 2> c = b;
   EXPECT_EQ (2U, c.size ());
-  EXPECT_THAT (c, ::testing::ElementsAre (3, 5));
+  EXPECT_THAT (c, ElementsAre (3, 5));
 }
 
 // NOLINTNEXTLINE
@@ -127,31 +127,163 @@ TEST (SmallVector, CtorCopy2) {
   peejay::small_vector<int, 3> const b{3, 5, 7, 11, 13};
   peejay::small_vector<int, 3> c = b;
   EXPECT_EQ (5U, c.size ());
-  EXPECT_THAT (c, ::testing::ElementsAre (3, 5, 7, 11, 13));
+  EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CtorCopyLargeToSmall) {
+  // The first of these vectors has too few in-body elements to accommodate its
+  // members and therefore uses a large buffer. It is assigned to a vector
+  // which _can_ hold those elements in-body.
+  peejay::small_vector<int, 3> const b{3, 5, 7, 11, 13};
+  peejay::small_vector<int, 5> c = b;
+  EXPECT_EQ (5U, c.size ());
+  EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignLargeToLarge) {
+  // The first of these vectors has too few in-body elements to accommodate its
+  // members and therefore uses a large buffer. It is assigned to a vector
+  // which _can_ hold those elements in-body.
+  peejay::small_vector<int, 3> const b{3, 5, 7, 11, 13};
+  peejay::small_vector<int, 2> c{17, 19, 23};
+  c = b;
+  EXPECT_EQ (5U, c.size ());
+  EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
+}
+
+struct copy_ctor_ex : public std::domain_error {
+  copy_ctor_ex () : std::domain_error{"copy ctor"} {}
+};
+struct copy_ctor_throws {
+  copy_ctor_throws () = default;
+  copy_ctor_throws (copy_ctor_throws const&) {
+    if (throws) {
+      throw copy_ctor_ex{};
+    }
+  }
+  copy_ctor_throws (copy_ctor_throws&&) noexcept = default;
+  copy_ctor_throws& operator= (const copy_ctor_throws&) = default;
+  copy_ctor_throws& operator= (copy_ctor_throws&&) noexcept = default;
+  bool throws = true;
+};
+
+struct move_ctor_ex : public std::domain_error {
+  move_ctor_ex () : std::domain_error{"move ctor"} {}
+};
+struct move_ctor_throws {
+  move_ctor_throws () = default;
+  move_ctor_throws (move_ctor_throws const&) = default;
+  move_ctor_throws (move_ctor_throws&&) {
+    if (throws) {
+      throw move_ctor_ex{};
+    }
+  }
+  move_ctor_throws& operator= (const move_ctor_throws&) = default;
+  move_ctor_throws& operator= (move_ctor_throws&&) noexcept = default;
+  bool throws = true;
+};
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsSmallToSmall) {
+  peejay::small_vector<copy_ctor_throws, 1> b{1};
+  peejay::small_vector<copy_ctor_throws, 2> c;
+  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_EQ (b.size (), 1);
+  EXPECT_EQ (c.size (), 0);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveAssignThrowsSmallToSmall) {
+  peejay::small_vector<move_ctor_throws, 1> b{1};
+  peejay::small_vector<move_ctor_throws, 2> c;
+  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_EQ (b.size (), 1);
+  EXPECT_EQ (c.size (), 0);
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsLargeToSmall) {
+  peejay::small_vector<copy_ctor_throws, 1> b{2};
+  peejay::small_vector<copy_ctor_throws, 2> c;
+  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_EQ (b.size (), 2);
+  EXPECT_EQ (c.size (), 0);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveAssignThrowsLargeToSmall) {
+  peejay::small_vector<move_ctor_throws, 1> b{2};
+  peejay::small_vector<move_ctor_throws, 2> c;
+  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_EQ (b.size (), 2);
+  EXPECT_EQ (c.size (), 0);
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsSmallToLarge) {
+  peejay::small_vector<copy_ctor_throws, 2> b{2};
+  peejay::small_vector<copy_ctor_throws, 1> c;
+  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_EQ (b.size (), 2);
+  EXPECT_EQ (c.size (), 0);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
+  peejay::small_vector<move_ctor_throws, 2> b{2};
+  peejay::small_vector<move_ctor_throws, 1> c;
+  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_EQ (b.size (), 2);
+  EXPECT_EQ (c.size (), 0);
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
+  peejay::small_vector<copy_ctor_throws, 2> b{3};
+  peejay::small_vector<copy_ctor_throws, 1> c;
+  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_EQ (b.size (), 3);
+  EXPECT_EQ (c.size (), 0);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveAssignThrowsLargeToLarge) {
+  peejay::small_vector<move_ctor_throws, 2> b{3};
+  peejay::small_vector<move_ctor_throws, 1> c;
+  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_EQ (b.size (), 3);
+  EXPECT_EQ (c.size (), 0);
 }
 
 // NOLINTNEXTLINE
 TEST (SmallVector, MoveCtor) {
   peejay::small_vector<int, 4> a (std::size_t{4});
   std::iota (a.begin (), a.end (), 0);  // fill with increasing values
-  peejay::small_vector<int, 4> const b (std::move (a));
+  peejay::small_vector<int, 3> const b (std::move (a));
 
-  EXPECT_THAT (b, ::testing::ElementsAre (0, 1, 2, 3));
+  EXPECT_THAT (b, ElementsAre (0, 1, 2, 3));
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveCtorLargeToLarge) {
+  peejay::small_vector<int, 3> a (std::size_t{4});
+  std::iota (a.begin (), a.end (), 0);  // fill with increasing values
+  peejay::small_vector<int, 2> const b (std::move (a));
+
+  EXPECT_THAT (b, ElementsAre (0, 1, 2, 3));
 }
 
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignInitializerList) {
   peejay::small_vector<int, 3> b{1, 2, 3};
   b.assign ({4, 5, 6, 7});
-  EXPECT_THAT (b, ::testing::ElementsAre (4, 5, 6, 7));
+  EXPECT_THAT (b, ElementsAre (4, 5, 6, 7));
 }
 
 // NOLINTNEXTLINE
-TEST (SmallVector, AssignCopy) {
+TEST (SmallVector, OperatorEqCopy) {
   peejay::small_vector<int, 3> const b{5, 7};
   peejay::small_vector<int, 3> c;
   c = b;
-  EXPECT_THAT (c, ::testing::ElementsAre (5, 7));
+  EXPECT_THAT (c, ElementsAre (5, 7));
 }
 
 // NOLINTNEXTLINE
@@ -338,7 +470,7 @@ TEST (SmallVector, MoveSmall) {
   std::fill (std::begin (b), std::end (b), 73);
 
   a = std::move (b);
-  EXPECT_THAT (a, ::testing::ElementsAre (73, 73, 73, 73));
+  EXPECT_THAT (a, ElementsAre (73, 73, 73, 73));
 }
 
 // NOLINTNEXTLINE
@@ -349,9 +481,9 @@ TEST (SmallVector, MoveLarge) {
   peejay::small_vector<int, 3> b (std::size_t{4});
   std::fill (std::begin (a), std::end (a), 0);
   std::fill (std::begin (b), std::end (b), 73);
-  a = std::move (b);
 
-  EXPECT_THAT (a, ::testing::ElementsAre (73, 73, 73, 73));
+  a = std::move (b);
+  EXPECT_THAT (a, ElementsAre (73, 73, 73, 73));
 }
 
 // NOLINTNEXTLINE
