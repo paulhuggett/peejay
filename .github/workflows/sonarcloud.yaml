@@ -67,9 +67,9 @@ jobs:
 
       - name: Index the raw profile
         run: |
-          "llvm-profdata-$CLANG_VERSION" merge \
-            --sparse                         \
-            "$BUILD_DIR/default.profraw"     \
+          "llvm-profdata-$CLANG_VERSION" merge   \
+            --sparse                             \
+            $(find "$BUILD_DIR" -name *.profraw) \
             -o "$BUILD_DIR/merged.profdata"
 
       - name: Collect the coverage
