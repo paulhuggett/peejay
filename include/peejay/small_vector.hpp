@@ -98,13 +98,15 @@ public:
 
   template <std::size_t OtherSize>
   small_vector &operator= (small_vector<ElementType, OtherSize> const &other) {
-    return this->transfer_from (other);
+    this->transfer_from (other);
+    return *this;
   }
   small_vector &operator= (small_vector const &other) = default;
 
   template <std::size_t OtherSize>
   small_vector &operator= (small_vector<ElementType, OtherSize> &&other) {
-    return this->transfer_from (std::move (other));
+    this->transfer_from (std::move (other));
+    return *this;
   }
   small_vector &operator= (small_vector &&other) noexcept (
       std::is_nothrow_move_constructible_v<ElementType>
@@ -325,7 +327,7 @@ private:
   std::variant<small_type, large_type> arr_;
 
   template <typename T>
-  small_vector &transfer_from (T &&rhs);
+  void transfer_from (T &&rhs);
 
   template <std::size_t Index, typename OtherVector>
   void transfer_alternative_from (OtherVector &&rhs);
@@ -627,8 +629,8 @@ void small_vector<ElementType, BodyElements>::transfer_alternative_from (
 
 template <typename ElementType, std::size_t BodyElements>
 template <typename OtherVector>
-auto small_vector<ElementType, BodyElements>::transfer_from (OtherVector &&rhs)
-    -> small_vector & {
+void small_vector<ElementType, BodyElements>::transfer_from (
+    OtherVector &&rhs) {
   constexpr auto small_index = std::size_t{0};
   constexpr auto large_index = std::size_t{1};
   static_assert (
@@ -649,7 +651,6 @@ auto small_vector<ElementType, BodyElements>::transfer_from (OtherVector &&rhs)
     this->transfer_alternative_from<large_index> (
         std::forward<OtherVector> (rhs));
   }
-  return *this;
 }
 
 template <typename ElementType, std::size_t LhsBodyElements,
