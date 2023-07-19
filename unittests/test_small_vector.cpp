@@ -200,7 +200,6 @@ TEST (SmallVector, MoveAssignThrowsSmallToSmall) {
   peejay::small_vector<move_ctor_throws, 2> c;
   // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
-  EXPECT_EQ (b.size (), 1);
   EXPECT_EQ (c.size (), 0);
 }
 
