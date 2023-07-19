@@ -578,10 +578,10 @@ auto arrayvec<T, Size>::operator= (arrayvec<T, OtherSize> const &other)
 
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
-  if (&other == this) {
-    return *this;
+  if (&other != this) {
+    this->operator=<Size> (other);
   }
-  return this->operator=<Size> (other);
+  return *this;
 }
 
 template <typename T, std::size_t Size>
