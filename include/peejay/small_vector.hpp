@@ -147,21 +147,21 @@ public:
   /// \name Capacity
   ///@{
   /// Returns the number of elements.
-  std::size_t size () const noexcept {
+  [[nodiscard]] std::size_t size () const noexcept {
     return visit (*this, [] (auto const &a) {
       return static_cast<std::size_t> (std::size (a));
     });
   }
-  std::size_t size_bytes () const noexcept {
+  [[nodiscard]] std::size_t size_bytes () const noexcept {
     return this->size () * sizeof (ElementType);
   }
 
   /// Checks whether the container is empty.
-  bool empty () const noexcept { return size () == 0U; }
+  [[nodiscard]] bool empty () const noexcept { return size () == 0U; }
 
   /// Returns the number of elements that can be held in currently allocated
   /// storage.
-  std::size_t capacity () const noexcept {
+  [[nodiscard]] std::size_t capacity () const noexcept {
     size_t large_cap = 0;
     if (auto const *const large_arr = std::get_if<large_type> (&arr_)) {
       large_cap = large_arr->capacity ();
@@ -170,7 +170,7 @@ public:
   }
 
   /// The number of elements stored within the body of the object.
-  static constexpr std::size_t body_elements () noexcept {
+  [[nodiscard]] static constexpr std::size_t body_elements () noexcept {
     return BodyElements;
   }
 
