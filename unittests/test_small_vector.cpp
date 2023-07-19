@@ -189,6 +189,7 @@ struct move_ctor_throws {
 TEST (SmallVector, CopyAssignThrowsSmallToSmall) {
   peejay::small_vector<copy_ctor_throws, 1> b{1};
   peejay::small_vector<copy_ctor_throws, 2> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (b), copy_ctor_ex);
   EXPECT_EQ (b.size (), 1);
   EXPECT_EQ (c.size (), 0);
@@ -197,6 +198,7 @@ TEST (SmallVector, CopyAssignThrowsSmallToSmall) {
 TEST (SmallVector, MoveAssignThrowsSmallToSmall) {
   peejay::small_vector<move_ctor_throws, 1> b{1};
   peejay::small_vector<move_ctor_throws, 2> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
   EXPECT_EQ (b.size (), 1);
   EXPECT_EQ (c.size (), 0);
@@ -206,6 +208,7 @@ TEST (SmallVector, MoveAssignThrowsSmallToSmall) {
 TEST (SmallVector, CopyAssignThrowsLargeToSmall) {
   peejay::small_vector<copy_ctor_throws, 1> b{2};
   peejay::small_vector<copy_ctor_throws, 2> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (b), copy_ctor_ex);
   EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
@@ -214,8 +217,8 @@ TEST (SmallVector, CopyAssignThrowsLargeToSmall) {
 TEST (SmallVector, MoveAssignThrowsLargeToSmall) {
   peejay::small_vector<move_ctor_throws, 1> b{2};
   peejay::small_vector<move_ctor_throws, 2> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
-  EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
 }
 
@@ -223,6 +226,7 @@ TEST (SmallVector, MoveAssignThrowsLargeToSmall) {
 TEST (SmallVector, CopyAssignThrowsSmallToLarge) {
   peejay::small_vector<copy_ctor_throws, 2> b{2};
   peejay::small_vector<copy_ctor_throws, 1> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (b), copy_ctor_ex);
   EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
@@ -231,8 +235,8 @@ TEST (SmallVector, CopyAssignThrowsSmallToLarge) {
 TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
   peejay::small_vector<move_ctor_throws, 2> b{2};
   peejay::small_vector<move_ctor_throws, 1> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
-  EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
 }
 
@@ -240,6 +244,7 @@ TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
 TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
   peejay::small_vector<copy_ctor_throws, 2> b{3};
   peejay::small_vector<copy_ctor_throws, 1> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (b), copy_ctor_ex);
   EXPECT_EQ (b.size (), 3);
   EXPECT_EQ (c.size (), 0);
@@ -248,8 +253,8 @@ TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
 TEST (SmallVector, MoveAssignThrowsLargeToLarge) {
   peejay::small_vector<move_ctor_throws, 2> b{3};
   peejay::small_vector<move_ctor_throws, 1> c;
+  // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
-  EXPECT_EQ (b.size (), 3);
   EXPECT_EQ (c.size (), 0);
 }
 

@@ -1268,6 +1268,7 @@ TEST (ArrayVec, ResizeCountEx) {
   EXPECT_THAT (v, ElementsAre (23));
   EXPECT_EQ (member::instances, 1U);
 }
+// NOLINTNEXTLINE
 TEST (ArrayVec, InsertPosCountValueEx) {
   member::instances = 0;
   member::operations = 0;
