@@ -187,26 +187,6 @@ add_subdirectory (lib)
 if (TARGET gtest)
   add_subdirectory (unittests)
 endif ()
-
-add_executable (json-main main.cpp)
-target_link_libraries (json-main PUBLIC peejay)
-setup_target (json-main)
-
-if (TARGET gtest)
-  set (prelink_target json-main)
-  set (test_target pj-unittests)
-  set (out_xml "${CMAKE_BINARY_DIR}/${test_target}.xml")
-  add_custom_command (
-    TARGET ${prelink_target}
-    PRE_LINK
-    COMMAND "$<TARGET_FILE:${test_target}>" "--gtest_output=xml:${out_xml}"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Running PJ unit tests" DEPENDS ${test_target}
-    BYPRODUCTS ${out_xml}
-    VERBATIM
-  )
-endif ()
-
 add_subdirectory (tools)
 add_subdirectory (klee)
 
