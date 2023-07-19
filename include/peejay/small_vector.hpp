@@ -115,20 +115,20 @@ public:
   /// \name Element access
   ///@{
   const_pointer data () const noexcept {
-    return visit (*this, [] (auto const &a) { return std::data (a); });
+    return visit (*this, [] (auto const &a) noexcept { return std::data (a); });
   }
   pointer data () noexcept {
-    return visit (*this, [] (auto &a) { return std::data (a); });
+    return visit (*this, [] (auto &a) noexcept { return std::data (a); });
   }
 
   const_reference operator[] (std::size_t n) const noexcept {
-    return visit (*this, [n] (auto const &a) -> const_reference {
+    return visit (*this, [n] (auto const &a) noexcept -> const_reference {
       using asize = typename std::decay_t<decltype (a)>::size_type;
       return a[static_cast<asize> (n)];
     });
   }
   reference operator[] (std::size_t n) noexcept {
-    return visit (*this, [n] (auto &a) -> reference {
+    return visit (*this, [n] (auto &a) noexcept -> reference {
       using asize = typename std::decay_t<decltype (a)>::size_type;
       return a[static_cast<asize> (n)];
     });
@@ -148,7 +148,7 @@ public:
   ///@{
   /// Returns the number of elements.
   [[nodiscard]] std::size_t size () const noexcept {
-    return visit (*this, [] (auto const &a) {
+    return visit (*this, [] (auto const &a) noexcept {
       return static_cast<std::size_t> (std::size (a));
     });
   }
@@ -162,11 +162,9 @@ public:
   /// Returns the number of elements that can be held in currently allocated
   /// storage.
   [[nodiscard]] std::size_t capacity () const noexcept {
-    size_t large_cap = 0;
-    if (auto const *const large_arr = std::get_if<large_type> (&arr_)) {
-      large_cap = large_arr->capacity ();
-    }
-    return std::max (BodyElements, large_cap);
+    auto const *const large_arr = std::get_if<large_type> (&arr_);
+    return std::max (BodyElements, large_arr != nullptr ? large_arr->capacity ()
+                                                        : std::size_t{0});
   }
 
   /// The number of elements stored within the body of the object.
@@ -174,25 +172,28 @@ public:
     return BodyElements;
   }
 
-  /// Increase the capacity of the vector to a value that's greater or equal to
-  /// new_cap. If new_cap is greater than the current capacity(), new storage is
+  /// \brief Increase the capacity of the vector to a value that's greater or
+  ///   equal to \p new_cap.
+  ///
+  /// If \p new_cap is greater than the current capacity(), new storage is
   /// allocated, otherwise the method does nothing. reserve() does not change
   /// the size of the vector.
   ///
-  /// \note If new_cap is greater than capacity(), all iterators, including the past-the-end
-  /// iterator, and all references to the elements are invalidated. Otherwise,
-  /// no iterators or references are invalidated.
+  /// \note If \p new_cap is greater than capacity(), all iterators, including
+  /// the past-the-end iterator, and all references to the elements are
+  /// invalidated. Otherwise, no iterators or references are invalidated.
   ///
-  /// \param new_cap The new capacity of the vector
+  /// \param new_cap  The new capacity of the vector.
   void reserve (std::size_t new_cap);
 
-  /// Resizes the container so that it is large enough for accommodate the
-  /// given number of elements.
+  /// \brief Resizes the container so that it is large enough for accommodate
+  ///   the given number of elements.
   ///
   /// \note Calling this function invalidates the contents of the buffer and
   ///   any iterators.
   ///
-  /// \param count  The number of elements that the buffer is to accommodate.
+  /// \param count  The number of elements that the container is to
+  ///   accommodate.
   void resize (std::size_t count);
   /// Resizes the container so that it is large enough for accommodate the
   /// given number of elements.
@@ -200,7 +201,8 @@ public:
   /// \note Calling this function invalidates the contents of the buffer and
   ///   any iterators.
   ///
-  /// \param count  The number of elements that the buffer is to accommodate.
+  /// \param count  The number of elements that the container is to
+  ///   accommodate.
   /// \param value  The value with which to initialize the new elements.
   void resize (size_type count, const_reference value);
   ///@}
@@ -362,10 +364,12 @@ private:
             typename = std::enable_if_t<
                 std::is_same_v<SmallVector, small_vector> ||
                 std::is_same_v<SmallVector, small_vector const>>>
-  static decltype (auto) visit (SmallVector &sv, Visitor visitor) {
+  static decltype (auto) visit (SmallVector &sv, Visitor visitor) noexcept (
+      std::is_nothrow_invocable_v<Visitor, small_type>
+          &&std::is_nothrow_invocable_v<Visitor, large_type>) {
     assert (!sv.arr_.valueless_by_exception ());
-    if (std::holds_alternative<small_type> (sv.arr_)) {
-      return visitor (std::get<small_type> (sv.arr_));
+    if (auto *const small = std::get_if<small_type> (&sv.arr_)) {
+      return visitor (*small);
     }
     assert (std::holds_alternative<large_type> (sv.arr_));
     return visitor (std::get<large_type> (sv.arr_));
@@ -617,12 +621,11 @@ void small_vector<ElementType, BodyElements>::transfer_alternative_from (
     this->transfer_from_same<Index> (std::forward<OtherVector> (rhs));
   } else {
     // Source and/or destination are not using the desired alternative.
-    using desired_alternative =
-        std::variant_alternative_t<Index, decltype (arr_)>;
-    static_assert (std::is_nothrow_default_constructible_v<desired_alternative>,
+    static_assert (std::is_nothrow_default_constructible_v<
+                       std::variant_alternative_t<Index, decltype (arr_)>>,
                    "default ctor must be noexcept so that the variant cannot "
                    "become valueless");
-    arr_.template emplace<desired_alternative> ();
+    arr_.template emplace<Index> ();
     this->transfer_from_different (std::forward<OtherVector> (rhs));
   }
 }
