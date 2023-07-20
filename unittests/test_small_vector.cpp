@@ -27,6 +27,52 @@
 using peejay::small_vector;
 using testing::ElementsAre;
 
+struct copy_ctor_ex : public std::domain_error {
+  copy_ctor_ex () : std::domain_error{"copy ctor"} {}
+};
+struct copy_ctor_throws {
+  copy_ctor_throws () noexcept = default;
+  explicit copy_ctor_throws (int v) noexcept : v{v} {}
+  copy_ctor_throws (copy_ctor_throws const&) {
+    if (throws) {
+      throw copy_ctor_ex{};
+    }
+  }
+  copy_ctor_throws (copy_ctor_throws&&) noexcept = default;
+  copy_ctor_throws& operator= (copy_ctor_throws const&) {
+    if (throws) {
+      throw copy_ctor_ex{};
+    }
+  }
+  copy_ctor_throws& operator= (copy_ctor_throws&&) noexcept = default;
+
+  bool operator== (copy_ctor_throws const& rhs) const noexcept {
+    return throws == rhs.throws && v == rhs.v;
+  }
+  bool operator!= (copy_ctor_throws const& rhs) const noexcept {
+    return !operator== (rhs);
+  }
+
+  bool throws = true;
+  int v = 0;
+};
+
+struct move_ctor_ex : public std::domain_error {
+  move_ctor_ex () : std::domain_error{"move ctor"} {}
+};
+struct move_ctor_throws {
+  move_ctor_throws () = default;
+  move_ctor_throws (move_ctor_throws const&) = default;
+  move_ctor_throws (move_ctor_throws&&) {
+    if (throws) {
+      throw move_ctor_ex{};
+    }
+  }
+  move_ctor_throws& operator= (const move_ctor_throws&) = default;
+  move_ctor_throws& operator= (move_ctor_throws&&) noexcept = default;
+  bool throws = true;
+};
+
 // NOLINTNEXTLINE
 TEST (SmallVector, DefaultCtor) {
   peejay::small_vector<int, 8> b;
@@ -153,38 +199,6 @@ TEST (SmallVector, AssignLargeToLarge) {
   EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
 }
 
-struct copy_ctor_ex : public std::domain_error {
-  copy_ctor_ex () : std::domain_error{"copy ctor"} {}
-};
-struct copy_ctor_throws {
-  copy_ctor_throws () = default;
-  copy_ctor_throws (copy_ctor_throws const&) {
-    if (throws) {
-      throw copy_ctor_ex{};
-    }
-  }
-  copy_ctor_throws (copy_ctor_throws&&) noexcept = default;
-  copy_ctor_throws& operator= (const copy_ctor_throws&) = default;
-  copy_ctor_throws& operator= (copy_ctor_throws&&) noexcept = default;
-  bool throws = true;
-};
-
-struct move_ctor_ex : public std::domain_error {
-  move_ctor_ex () : std::domain_error{"move ctor"} {}
-};
-struct move_ctor_throws {
-  move_ctor_throws () = default;
-  move_ctor_throws (move_ctor_throws const&) = default;
-  move_ctor_throws (move_ctor_throws&&) {
-    if (throws) {
-      throw move_ctor_ex{};
-    }
-  }
-  move_ctor_throws& operator= (const move_ctor_throws&) = default;
-  move_ctor_throws& operator= (move_ctor_throws&&) noexcept = default;
-  bool throws = true;
-};
-
 // NOLINTNEXTLINE
 TEST (SmallVector, CopyAssignThrowsSmallToSmall) {
   peejay::small_vector<copy_ctor_throws, 1> b{1};
@@ -296,6 +310,19 @@ TEST (SmallVector, AssignCountLarger) {
   int const v = 7;
   b.assign (std::size_t{5}, v);
   EXPECT_THAT (b, ElementsAre (7, 7, 7, 7, 7));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountLargerThrows) {
+  small_vector<copy_ctor_throws, 3> b{1};
+  copy_ctor_throws const v;
+  EXPECT_THROW (b.assign (std::size_t{5}, v), copy_ctor_ex);
+  EXPECT_EQ (b.size (), 0);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountSmallerThrows) {
+  small_vector<copy_ctor_throws, 3> b{3};
+  copy_ctor_throws const v{7};
+  EXPECT_THROW (b.assign (std::size_t{2}, v), copy_ctor_ex);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountSmaller) {

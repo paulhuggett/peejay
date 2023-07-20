@@ -445,7 +445,8 @@ auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
     static_assert (std::is_nothrow_move_constructible_v<large_type>);
     arr_.template emplace<large_type> (std::move (vec));
   }
-  return std::get<large_type> (arr_);
+  assert (std::holds_alternative<large_type> (arr_));
+  return *std::get_if<large_type> (&arr_);
 }
 
 // reserve
@@ -453,14 +454,15 @@ auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
 template <typename ElementType, std::size_t BodyElements>
 void small_vector<ElementType, BodyElements>::reserve (
     std::size_t const new_cap) {
+  assert (!arr_.valueless_by_exception ());
   if (auto const *const sm = std::get_if<small_type> (&arr_)) {
-    if (sm->capacity () < new_cap) {
-      this->to_large ();
+    if (new_cap <= sm->capacity ()) {
+      return;  // Resizing within the capacity of the small buffer.
     }
+    this->to_large ();
   }
-  if (auto *const vec = std::get_if<large_type> (&arr_)) {
-    std::get<large_type> (arr_).reserve (new_cap);
-  }
+  assert (std::holds_alternative<large_type> (arr_));
+  std::get_if<large_type> (&arr_)->reserve (new_cap);
 }
 
 // resize
@@ -481,7 +483,8 @@ void small_vector<ElementType, BodyElements>::resize (size_type count,
   }
   if (count <= BodyElements) {
     // Resize entirely within the small buffer.
-    std::get<small_type> (arr_).resize (
+    assert (std::holds_alternative<small_type> (arr_));
+    std::get_if<small_type> (&arr_)->resize (
         static_cast<typename small_type::size_type> (count), value);
   } else {
     this->to_large ().resize (count, value);
@@ -493,12 +496,14 @@ void small_vector<ElementType, BodyElements>::resize (size_type count,
 template <typename ElementType, std::size_t BodyElements>
 inline void small_vector<ElementType, BodyElements>::push_back (
     ElementType const &v) {
+  assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
     return vec->push_back (v);
   }
-  auto &arv = std::get<small_type> (arr_);
-  if (arv.size () < BodyElements) {
-    arv.push_back (v);
+  assert (std::holds_alternative<small_type> (arr_));
+  auto *const sm = std::get_if<small_type> (&arr_);
+  if (sm->size () < BodyElements) {
+    sm->push_back (v);
   } else {
     this->to_large ().push_back (v);
   }
@@ -510,13 +515,14 @@ template <typename ElementType, std::size_t BodyElements>
 template <typename... Args>
 inline void small_vector<ElementType, BodyElements>::emplace_back (
     Args &&...args) {
+  assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
-    vec->emplace_back (std::forward<Args> (args)...);
-    return;
+    return vec->emplace_back (std::forward<Args> (args)...);
   }
-  auto &arr = std::get<small_type> (arr_);
-  if (arr.size () < BodyElements) {
-    arr.emplace_back (std::forward<Args> (args)...);
+  assert (std::holds_alternative<small_type> (arr_));
+  auto *const sm = std::get_if<small_type> (&arr_);
+  if (sm->size () < BodyElements) {
+    sm->emplace_back (std::forward<Args> (args)...);
   } else {
     this->to_large ().emplace_back (std::forward<Args> (args)...);
   }
@@ -528,10 +534,17 @@ template <typename ElementType, std::size_t BodyElements>
 void small_vector<ElementType, BodyElements>::assign (size_type count,
                                                       const_reference value) {
   if (count <= BodyElements) {
-    arr_.template emplace<small_type> (
-        static_cast<typename small_type::size_type> (count), value);
+    if (auto *const small = std::get_if<small_type> (&arr_)) {
+      small->assign (count, value);
+      return;
+    }
+  }
+  if (auto *const large = std::get_if<large_type> (&arr_)) {
+    large->assign (count, value);
   } else {
-    arr_.template emplace<large_type> (count, value);
+    large_type vec (count, value);
+    static_assert (std::is_nothrow_move_constructible_v<large_type>);
+    arr_.template emplace<large_type> (std::move (vec));
   }
 }
 
