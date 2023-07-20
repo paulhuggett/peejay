@@ -371,8 +371,10 @@ private:
     if (auto *const small = std::get_if<small_type> (&sv.arr_)) {
       return visitor (*small);
     }
-    assert (std::holds_alternative<large_type> (sv.arr_));
-    return visitor (std::get<large_type> (sv.arr_));
+    if (auto *const large = std::get_if<large_type> (&sv.arr_)) {
+      return visitor (*large);
+    }
+    unreachable ();
   }
 
   large_type &to_large ();
