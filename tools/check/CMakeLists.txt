@@ -31,4 +31,3 @@ if (TARGET gtest)
     VERBATIM
   )
 endif ()
-
