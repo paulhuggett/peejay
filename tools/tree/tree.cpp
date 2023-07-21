@@ -55,7 +55,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
         std::span{peejay::pointer_cast<peejay::char8 const> (data), available});
 #else
     p.input (data, data + available);
-#endif  // PEEJAY_CXX20
+#endif  // PEEJAY_HAVE_SPAN
     if (auto const err = p.last_error ()) {
       return err;
     }
