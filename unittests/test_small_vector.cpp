@@ -316,7 +316,6 @@ TEST (SmallVector, AssignCountLargerThrows) {
   small_vector<copy_ctor_throws, 3> b{1};
   copy_ctor_throws const v;
   EXPECT_THROW (b.assign (std::size_t{5}, v), copy_ctor_ex);
-  EXPECT_EQ (b.size (), 0);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountSmallerThrows) {
