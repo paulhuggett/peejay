@@ -536,7 +536,8 @@ void small_vector<ElementType, BodyElements>::assign (size_type count,
                                                       const_reference value) {
   if (count <= BodyElements) {
     if (auto *const small = std::get_if<small_type> (&arr_)) {
-      small->assign (count, value);
+      small->assign (static_cast<typename small_type::size_type> (count),
+                     value);
       return;
     }
   }

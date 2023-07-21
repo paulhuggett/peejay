@@ -32,7 +32,7 @@ struct copy_ctor_ex : public std::domain_error {
 };
 struct copy_ctor_throws {
   copy_ctor_throws () noexcept = default;
-  explicit copy_ctor_throws (int v) noexcept : v{v} {}
+  explicit copy_ctor_throws (int v_) noexcept : v{v_} {}
   copy_ctor_throws (copy_ctor_throws const&) {
     if (throws) {
       throw copy_ctor_ex{};
@@ -43,6 +43,7 @@ struct copy_ctor_throws {
     if (throws) {
       throw copy_ctor_ex{};
     }
+    return *this;
   }
   copy_ctor_throws& operator= (copy_ctor_throws&&) noexcept = default;
 
