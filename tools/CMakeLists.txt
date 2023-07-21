@@ -15,3 +15,4 @@
 #===----------------------------------------------------------------------===//
 add_subdirectory (check)
 add_subdirectory (tree)
+add_subdirectory (schema)
