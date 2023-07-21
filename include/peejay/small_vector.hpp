@@ -517,7 +517,8 @@ inline void small_vector<ElementType, BodyElements>::emplace_back (
     Args &&...args) {
   assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
-    return vec->emplace_back (std::forward<Args> (args)...);
+    vec->emplace_back (std::forward<Args> (args)...);
+    return;
   }
   assert (std::holds_alternative<small_type> (arr_));
   auto *const sm = std::get_if<small_type> (&arr_);
