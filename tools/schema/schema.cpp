@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 
 #include "peejay/dom.hpp"
