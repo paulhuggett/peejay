@@ -40,7 +40,7 @@ int main () {
 
     small_vector_type::size_type count;
     MAKE_SYMBOLIC (count);
-    klee_assume (count <= max_elements - size);
+    klee_assume (count <= max_elements);
 
     small_vector_type sv;
     populate (sv, size);
