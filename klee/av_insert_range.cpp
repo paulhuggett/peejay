@@ -22,44 +22,59 @@
 
 #include <klee/klee.h>
 
+#include "av_member.hpp"
 #include "peejay/arrayvec.hpp"
+#include "vcommon.hpp"
 
 int main () {
-  static constexpr std::size_t av_size = 8;
-  std::array<int, av_size> const src{{11, 13, 17, 19, 23, 29, 31, 37}};
-  peejay::arrayvec<int, av_size> av{3, 5, 7};
+  try {
+    constexpr auto max_elements = std::size_t{8};
+    MAKE_SYMBOLIC (member::throw_number);
 
-  decltype (av)::difference_type pos;
-  std::size_t first;
-  std::size_t last;
+    peejay::arrayvec<member, max_elements> av;
 
-  klee_make_symbolic (&pos, sizeof pos, "pos");
-  klee_make_symbolic (&first, sizeof first, "first");
-  klee_make_symbolic (&last, sizeof last, "last");
+    std::size_t size;
+    MAKE_SYMBOLIC (size);
+    klee_assume (size <= max_elements);
 
-  // range check 'first' and 'last'.
-  klee_assume (first <= av_size);
-  klee_assume (last <= av_size);
-  klee_assume (first <= last);
+    decltype (av)::difference_type pos;
+    MAKE_SYMBOLIC (pos);
+    klee_assume (pos >= 0);
+    klee_assume (pos <= av.size ());
 
-  // Don't try to overflow the container.
-  klee_assume (av.size () + (last - first) <= av_size);
+    std::size_t first;
+    std::size_t last;
+    MAKE_SYMBOLIC (first);
+    MAKE_SYMBOLIC (last);
+    // range check 'first' and 'last'.
+    klee_assume (last <= av_size);
+    klee_assume (first <= last);
+    // Don't overflow the container.
+    klee_assume (av.size () + (last - first) <= max_elements);
 
-  // Range check 'pos'.
-  klee_assume (pos >= 0);
-  klee_assume (pos <= av.size ());
-
-  auto b = std::begin (src);
-  av.insert (av.begin () + pos, b + first, b + last);
+    auto b = std::begin (primes);
+    // Call the function under test.
+    av.insert (av.begin () + pos, b + first, b + last);
 
 #ifdef KLEE_RUN
-  std::vector<int> v{3, 5, 7};
-  v.insert (v.begin () + pos, b + first, b + last);
-  if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
-    std::cerr << "** Fail!\n";
+    std::vector<member> v;
+    populate (v, size);
+    // A mirror call to std::vector<>::insert() for comparison.
+    v.insert (v.begin () + pos, b + first, b + last);
+    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
+      std::cerr << "** Fail!\n";
+      return EXIT_FAILURE;
+    }
+#endif
+  } catch (memberex const&) {
+    // catch and ignore.
+  }
+#ifdef KLEE_RUN
+  if (auto const inst = member::instances (); inst != 0) {
+    std::cerr << "** Fail: instances = " << inst << '\n';
     return EXIT_FAILURE;
   }
   std::cerr << "Pass!\n";
+#endif  // KLEE_RUN
   return EXIT_SUCCESS;
-#endif
 }

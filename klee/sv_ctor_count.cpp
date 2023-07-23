@@ -37,10 +37,10 @@ int main () {
     MAKE_SYMBOLIC (count);
     klee_assume (count <= max_elements);
 
-    peejay::small_vector<member, body_elements> av{count};
+    peejay::small_vector<member, body_elements> av (count);
 
 #ifdef KLEE_RUN
-    std::vector<member> v{count};
+    std::vector<member> v (count);
 
     if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
       std::cerr << "** Fail!\n";
@@ -48,6 +48,7 @@ int main () {
     }
 #endif  // KLEE_RUN
   } catch (memberex const&) {
+    // catch and ignore.
   }
 #ifdef KLEE_RUN
   if (auto const inst = member::instances (); inst != 0) {

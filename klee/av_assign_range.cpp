@@ -24,56 +24,47 @@
 
 #include "av_member.hpp"
 #include "peejay/arrayvec.hpp"
+#include "vcommon.hpp"
 
 template <typename Container>
-void populate (Container& c) {
-  c.emplace_back (1);
-  c.emplace_back (3);
-  c.emplace_back (5);
+void assign_first_last (Container &c, std::size_t size, std::size_t first,
+                        std::size_t last) {
+  populate (c, size);
+
+  auto b = std::begin (primes);
+  // Call the function under test.
+  c.assign (b + first, b + last);
 }
 
 int main () {
   try {
-    constexpr std::size_t av_size = 8;
+    constexpr auto max_elements = std::size_t{8};
+    MAKE_SYMBOLIC (member::throw_number);
+
+    std::size_t size;
+    MAKE_SYMBOLIC (size);
+    klee_assume (size <= max_elements);
 
     std::size_t first;
     std::size_t last;
-    klee_make_symbolic (&first, sizeof first, "first");
-    klee_make_symbolic (&last, sizeof last, "last");
+    MAKE_SYMBOLIC (first);
+    MAKE_SYMBOLIC (last);
+    // range check 'first' and 'last'.
     klee_assume (last < av_size);
     klee_assume (first <= last);
-    klee_make_symbolic (&member::throw_number, sizeof (member::throw_number),
-                        "throw_number");
+    klee_assume (last - first <= max_elements);
 
-    std::array<member, av_size> src{{member{11}, member{13}, member{17},
-                                     member{19}, member{23}, member{29},
-                                     member{31}, member{37}}};
-
-    peejay::arrayvec<member, av_size> av;
-    populate (av);
-
-    // Call the function under test.
-    av.assign (&src[first], &src[last]);
+    peejay::arrayvec<member, max_elements> av;
+    assign_first_last (av, size, first, last);
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v);
-    // A mirror call to std::vector<>::assign for comparison.
-    v.assign (&src[first], &src[last]);
-
-    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
-      std::cerr << "** Fail!\n";
-      return EXIT_FAILURE;
-    }
+    assign_first_last (v, size, first, last);
+    check_equal (av, v);
 #endif  // KLEE_RUN
   } catch (memberex const&) {
+    // catch and ignore.
   }
-#ifdef KLEE_RUN
-  if (auto const inst = member::instances (); inst != 0) {
-    std::cerr << "** Fail: instances = " << inst << '\n';
-    return EXIT_FAILURE;
-  }
-  std::cerr << "Pass!\n";
-#endif  // KLEE_RUN
+  check_instances ();
   return EXIT_SUCCESS;
 }

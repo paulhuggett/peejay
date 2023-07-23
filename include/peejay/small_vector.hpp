@@ -70,7 +70,7 @@ public:
             typename = std::enable_if_t<input_iterator<InputIterator>>>
   small_vector (InputIterator first, InputIterator last);
   /// Constructs the container with the given initial number of elements.
-  explicit small_vector (std::size_t required_elements);
+  explicit small_vector (size_type required_elements);
   /// Constructs the container with \p count copies of elements with value
   /// \p value.
   ///
@@ -377,6 +377,10 @@ private:
     unreachable ();
   }
 
+  /// Converts the container to "large" if it is not already in that state.
+  ///
+  /// If an exception is thrown, the function has no effect (strong exception
+  /// guarantee).
   large_type &to_large ();
 };
 
