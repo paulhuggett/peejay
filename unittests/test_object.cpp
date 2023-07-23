@@ -22,6 +22,7 @@
 using namespace std::string_view_literals;
 using namespace std::string_literals;
 
+using testing::InSequence;
 using testing::StrictMock;
 
 using peejay::char8;
@@ -47,7 +48,7 @@ protected:
 
 // NOLINTNEXTLINE
 TEST_F (Object, Empty) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
@@ -61,7 +62,7 @@ TEST_F (Object, Empty) {
 
 // NOLINTNEXTLINE
 TEST_F (Object, OpeningBraceOnly) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser (proxy_);
@@ -75,7 +76,7 @@ TEST_F (Object, OpeningBraceOnly) {
 
 // NOLINTNEXTLINE
 TEST_F (Object, SingleKvp) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
@@ -128,7 +129,7 @@ TEST_F (Object, SingleKvpBadEndObject) {
 // NOLINTNEXTLINE
 TEST_F (Object, SingleQuotedKeyExtensionEnabled) {
   {
-    testing::InSequence _;
+    InSequence const _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
     EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
     EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
@@ -151,7 +152,7 @@ TEST_F (Object, SingleQuotedKeyExtensionDisabled) {
 
 // NOLINTNEXTLINE
 TEST_F (Object, TwoKvps) {
-  testing::InSequence _;
+  testing::InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
@@ -167,7 +168,7 @@ TEST_F (Object, TwoKvps) {
 
 // NOLINTNEXTLINE
 TEST_F (Object, DuplicateKeys) {
-  testing::InSequence _;
+  testing::InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
@@ -183,7 +184,7 @@ TEST_F (Object, DuplicateKeys) {
 
 // NOLINTNEXTLINE
 TEST_F (Object, ArrayValue) {
-  testing::InSequence _;
+  testing::InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
@@ -229,7 +230,7 @@ TEST_F (Object, TwoCommasBeforeProperty) {
 
 // NOLINTNEXTLINE
 TEST_F (Object, TrailingCommaExtensionEnabled) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (16)).Times (1);

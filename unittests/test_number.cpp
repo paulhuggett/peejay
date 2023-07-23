@@ -32,6 +32,7 @@ using peejay::parser;
 using peejay::u8string_view;
 
 using testing::DoubleEq;
+using testing::InSequence;
 using testing::IsNan;
 using testing::StrictMock;
 
@@ -414,7 +415,7 @@ TEST_F (Number, MinusNan) {
 // NOLINTNEXTLINE
 TEST_F (Number, ArrayOfNaNAndInfinity) {
   {
-    testing::InSequence _;
+    InSequence const _;
     EXPECT_CALL (callbacks_, begin_array ()).Times (1);
     EXPECT_CALL (
         callbacks_,
@@ -469,7 +470,7 @@ TEST_F (Number, TrailingDotExtensionDisabled) {
 }
 // NOLINTNEXTLINE
 TEST_F (Number, ArrayOfLeadingAndTrailingDot) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, double_value (0.1)).Times (1);
   EXPECT_CALL (callbacks_, double_value (1.0)).Times (1);
