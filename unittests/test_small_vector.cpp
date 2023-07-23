@@ -33,15 +33,20 @@ struct copy_ctor_ex : public std::domain_error {
 struct copy_ctor_throws {
   copy_ctor_throws () noexcept = default;
   explicit copy_ctor_throws (int v_) noexcept : v{v_} {}
-  copy_ctor_throws (copy_ctor_throws const&) {
+  copy_ctor_throws (copy_ctor_throws const& /*rhs*/) {
     if (throws) {
       throw copy_ctor_ex{};
     }
   }
   copy_ctor_throws (copy_ctor_throws&&) noexcept = default;
-  copy_ctor_throws& operator= (copy_ctor_throws const&) {
-    if (throws) {
-      throw copy_ctor_ex{};
+
+  ~copy_ctor_throws () noexcept = default;
+
+  copy_ctor_throws& operator= (copy_ctor_throws const& rhs) {
+    if (&rhs != this) {
+      if (throws) {
+        throw copy_ctor_ex{};
+      }
     }
     return *this;
   }
@@ -69,7 +74,9 @@ struct move_ctor_throws {
       throw move_ctor_ex{};
     }
   }
-  move_ctor_throws& operator= (const move_ctor_throws&) = default;
+  ~move_ctor_throws () noexcept = default;
+
+  move_ctor_throws& operator= (move_ctor_throws const&) = default;
   move_ctor_throws& operator= (move_ctor_throws&&) noexcept = default;
   bool throws = true;
 };
@@ -316,12 +323,14 @@ TEST (SmallVector, AssignCountLarger) {
 TEST (SmallVector, AssignCountLargerThrows) {
   small_vector<copy_ctor_throws, 3> b{1};
   copy_ctor_throws const v;
+  // NOLINTNEXTLINE
   EXPECT_THROW (b.assign (std::size_t{5}, v), copy_ctor_ex);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountSmallerThrows) {
   small_vector<copy_ctor_throws, 3> b{3};
   copy_ctor_throws const v{7};
+  // NOLINTNEXTLINE
   EXPECT_THROW (b.assign (std::size_t{2}, v), copy_ctor_ex);
 }
 // NOLINTNEXTLINE
@@ -697,27 +706,26 @@ TEST (SmallVector, VariantIsValuelessByException) {
   peejay::small_vector<int, 4> sv{1, 2, 3, 4};
   EXPECT_EQ (sv.size (), sv.body_elements ())
       << "The 'small' container is full";
-  try {
-    // During the switch from 'small' to 'large', we will throw an exception
-    // from the object being inserted. Ensure that the container state remains
-    // valid in this case.
-    sv.emplace_back (throws_on_cast_to_int{});
-  } catch (throws_on_cast_to_int::ex const&) {
-  }
+  // During the switch from 'small' to 'large', we will throw an exception
+  // from the object being inserted. Ensure that the container state remains
+  // valid in this case.
+  // NOLINTNEXTLINE
+  EXPECT_THROW (sv.emplace_back (throws_on_cast_to_int{}),
+                throws_on_cast_to_int::ex);
   EXPECT_THAT (sv, testing::ElementsAre (1, 2, 3, 4));
 }
 
 // NOLINTNEXTLINE
 TEST (SmallVector, Insert1AtSecondIndex) {
   peejay::small_vector<int, 8> v{1, 2, 3};
-  int x = 4;
+  auto const x = 4;
   v.insert (v.begin () + 1, 1, x);
   EXPECT_THAT (v, testing::ElementsAre (1, 4, 2, 3));
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, InsertN) {
   peejay::small_vector<int, 8> v{1, 2};
-  int x = 3;
+  auto const x = 3;
   v.insert (v.begin () + 1, 3, x);  // insert 3 copies of 'x' at [1].
   EXPECT_THAT (v, testing::ElementsAre (1, 3, 3, 3, 2));
 }
@@ -725,7 +733,7 @@ TEST (SmallVector, InsertN) {
 TEST (SmallVector, InsertNAtEnd) {
   peejay::small_vector<int, 8> v{1, 2};
 
-  int x = 3;
+  auto const x = 3;
   v.insert (v.end (), 3, x);  // append 3 copies of 'x'.
   EXPECT_THAT (v, testing::ElementsAre (1, 2, 3, 3, 3));
 }
