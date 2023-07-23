@@ -29,6 +29,7 @@ using peejay::parser;
 using peejay::u8string;
 
 using testing::DoubleEq;
+using testing::InSequence;
 using testing::StrictMock;
 
 namespace {
@@ -44,7 +45,7 @@ protected:
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, Empty) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
@@ -77,7 +78,7 @@ TEST_F (JsonArray, ArrayNoCloseBracket) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, SingleElement) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
@@ -94,7 +95,7 @@ TEST_F (JsonArray, SingleElement) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, SingleStringElement) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, string_value (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
@@ -106,7 +107,7 @@ TEST_F (JsonArray, SingleStringElement) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, ZeroExpPlus1) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.0))).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
@@ -118,7 +119,7 @@ TEST_F (JsonArray, ZeroExpPlus1) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, SimpleFloat) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, double_value (DoubleEq (1.234))).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
@@ -130,7 +131,7 @@ TEST_F (JsonArray, SimpleFloat) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, MinusZero) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, int64_value (0)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
@@ -142,7 +143,7 @@ TEST_F (JsonArray, MinusZero) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, TwoElements) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
   EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
@@ -182,7 +183,7 @@ TEST_F (JsonArray, MisplacedComma4) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, TrailingCommaEnabled) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
@@ -235,7 +236,7 @@ TEST_F (JsonArray, NestedError2) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, Nested) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (2);
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (2);
@@ -247,7 +248,7 @@ TEST_F (JsonArray, Nested) {
 
 // NOLINTNEXTLINE
 TEST_F (JsonArray, Nested2) {
-  testing::InSequence _;
+  InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (2);
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
