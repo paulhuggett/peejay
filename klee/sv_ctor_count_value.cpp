@@ -44,10 +44,10 @@ int main () {
     klee_assume (count <= max_elements);
 
     member value{23};
-    peejay::small_vector<member, body_elements> av{count, value};
+    peejay::small_vector<member, body_elements> av (count, value);
 
 #ifdef KLEE_RUN
-    std::vector<member> v{count, value};
+    std::vector<member> v (count, value);
 
     if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
       std::cerr << "** Fail!\n";

@@ -37,7 +37,7 @@ int main () {
 
     peejay::arrayvec<member, av_size>::size_type count;
     MAKE_SYMBOLIC (count);
-    klee_assume (count <= max_elements - size);
+    klee_assume (count <= max_elements);
 
     peejay::arrayvec<member, max_elements> av;
     populate (av, size);
@@ -57,6 +57,7 @@ int main () {
     }
 #endif  // KLEE_RUN
   } catch (memberex const&) {
+    // catch and ignore.
   }
 #ifdef KLEE_RUN
   if (auto const inst = member::instances (); inst != 0) {

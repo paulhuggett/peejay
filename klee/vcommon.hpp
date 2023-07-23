@@ -19,6 +19,9 @@
 #include <array>
 #include <cassert>
 
+#ifdef KLEE_RUN
+#include <iostream>
+#endif
 #define MAKE_SYMBOLIC(x) klee_make_symbolic (&(x), sizeof (x), #x)
 
 constexpr std::size_t av_size = 20;
@@ -34,5 +37,31 @@ Container& populate (Container& c, std::size_t n) {
   }
   return c;
 }
+
+#ifdef KLEE_RUN
+template <typename Container1, typename Container2>
+void check_equal (Container1 const& c1, Container2 const& c2) {
+  if (!std::equal (c1.begin (), c1.end (), c2.begin (), c2.end ())) {
+    std::cerr << "** Fail!\n";
+    std::abort ();
+  }
+}
+
+inline void check_instances () {
+  if (auto const inst = member::instances (); inst != 0) {
+    std::cerr << "** Fail: instances = " << inst << '\n';
+    std::abort ();
+  }
+}
+#else
+template <typename Container1, typename Container2>
+constexpr void check_equal (Container1 const& /*c1*/,
+                            Container2 const& /*c2*/) {
+  // Do nothing when running KLEE.
+}
+constexpr void check_instances () {
+  // Do nothing when running KLEE.
+}
+#endif  // KLEE_RUN
 
 #endif  // VCOMMON_HPP

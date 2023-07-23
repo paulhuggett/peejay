@@ -33,7 +33,7 @@ public:
     throw_check ();
     ++instances_;
   }
-  explicit member (int v) : v_{v} {
+  member (int v) : v_{v} {
     // The memory underlying arrayvec<> is initialized to 0xFF therefore we can
     // check that we're not using uninitialized stored by checking that the
     // values stored by instances of 'member' are not less than 0.
