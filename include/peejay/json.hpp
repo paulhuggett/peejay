@@ -572,6 +572,7 @@ enum char_set : char32_t {
   digit_three = char32_t{0x0033},           // '3'
   digit_two = char32_t{0x0032},             // '2'
   digit_zero = char32_t{0x0030},            // '0'
+  dollar_sign = char32_t{0x0024},           // '$'
   en_quad = char32_t{0x2000},
   form_feed = char32_t{0x000C},               // '\f'
   full_stop = char32_t{0x002E},               // '.'
@@ -596,6 +597,7 @@ enum char_set : char32_t {
   latin_small_letter_z = char32_t{0x007A},    // 'z'
   line_feed = char32_t{0x000A},               // '\n'
   line_separator = char32_t{0x2028},
+  low_line = char32_t{0x005f},  // '_'
   no_break_space = char32_t{0x00A0},
   null_char = char32_t{0x0000},
   number_sign = char32_t{0x0023},  // '#'
@@ -1955,6 +1957,24 @@ private:
   static_assert (decltype (hex_)::post_hex_state == post_hex_state);
 
   void hex_states (parser_type &parser, char32_t code_point);
+
+  /// \brief Checks if the given code point can begin an identifier.
+  ///
+  /// The code point \p code_point must be categorized as identifier-start.
+  ///
+  /// \param code_point  The Unicode code-point to be checked.
+  /// \returns True if the code-point can be used as the start of an identifier, false otherwise.
+  static constexpr bool is_identifier_start (
+      char32_t const code_point) noexcept;
+  /// \brief Checks if the given code point can be part of an identifier.
+  ///
+  /// The code point \p code_point must be categorized as either an identifier-
+  /// start or identifier-part.
+  ///
+  /// \param code_point  The Unicode code-point to be checked.
+  /// \returns True if the code-point can be part of an identifier, false otherwise.
+  static constexpr bool is_identifier_member (
+      char32_t const code_point) noexcept;
 };
 
 // hex states
@@ -1976,6 +1996,49 @@ void identifier_matcher<Backend, Policies>::hex_states (
   } else {
     state_ = std::get<1> (v).first;
   }
+}
+
+// is identifier start
+// ~~~~~~~~~~~~~~~~~~~
+template <typename Backend, typename Policies>
+constexpr bool identifier_matcher<Backend, Policies>::is_identifier_start (
+    char32_t const code_point) noexcept {
+  if (code_point >= char_set::latin_capital_letter_a &&
+      code_point <= char_set::latin_capital_letter_z) {
+    return true;
+  }
+  if (code_point >= char_set::latin_small_letter_a &&
+      code_point <= char_set::latin_small_letter_z) {
+    return true;
+  }
+  if (code_point == char_set::dollar_sign || code_point == char_set::low_line) {
+    return true;
+  }
+  // U+0080 Is where the Latin-1 supplement starts. Consult the table for
+  // code points beyond this.
+  if (code_point >= 0x80 &&
+      code_point_grammar_rule (code_point) == grammar_rule::identifier_start) {
+    return true;
+  }
+  return false;
+}
+
+// is identifier member
+// ~~~~~~~~~~~~~~~~~~~~
+template <typename Backend, typename Policies>
+constexpr bool identifier_matcher<Backend, Policies>::is_identifier_member (
+    char32_t const code_point) noexcept {
+  if (code_point >= char_set::digit_zero &&
+      code_point <= char_set::digit_nine) {
+    return true;
+  }
+  if (code_point < 0x80) {
+    return is_identifier_start (code_point);
+  }
+  return (static_cast<std::underlying_type_t<grammar_rule>> (
+              code_point_grammar_rule (code_point)
+                  .value_or (static_cast<grammar_rule> (0))) &
+          idmask) != 0U;
 }
 
 // consume
@@ -2009,11 +2072,7 @@ auto identifier_matcher<Backend, Policies>::consume (
     if (c == char_set::reverse_solidus) {
       return change_state (u_state);
     }
-    if ((c < char_set::latin_capital_letter_a ||
-         c > char_set::latin_capital_letter_z) &&
-        (c < char_set::latin_small_letter_a ||
-         c > char_set::latin_small_letter_z) &&
-        code_point_grammar_rule (c) != grammar_rule::identifier_start) {
+    if (!is_identifier_start (c)) {
       return install_error (error::bad_identifier);
     }
     state_ = part_state;
@@ -2028,10 +2087,7 @@ auto identifier_matcher<Backend, Policies>::consume (
     if (hex_.partial ()) {
       return install_error (error::bad_unicode_code_point);
     }
-    if ((static_cast<std::underlying_type_t<grammar_rule>> (
-             code_point_grammar_rule (c).value_or (
-                 static_cast<grammar_rule> (0))) &
-         idmask) == 0U) {
+    if (!is_identifier_member (c)) {
       // This code point wasn't part of an identifier, so don't consume it.
       if (std::error_code const error = parser.backend ().key (
               u8string_view{str_->data (), str_->size ()})) {
