@@ -45,6 +45,10 @@ enum class error : int {
   unterminated_multiline_comment,
   identifier_too_long,
   string_too_long,
+
+  schema_not_boolean_or_object,
+  schema_type_string_or_string_array,
+  schema_type_name_invalid,
 };
 
 // ******************
@@ -86,6 +90,12 @@ public:
       return "unterminated /* comment";
     case error::identifier_too_long: return "identifier too long";
     case error::string_too_long: return "string too long";
+
+    case error::schema_not_boolean_or_object:
+      return "schema must be boolean or object";
+    case error::schema_type_name_invalid: return "schema type name invalid";
+    case error::schema_type_string_or_string_array:
+      return "schema type constraint was not a string or an array";
     }
     assert (false && "bad error code");
     return "unknown PJ error code";

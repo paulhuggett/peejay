@@ -28,6 +28,7 @@ add_executable (
   test_json.cpp
   test_object.cpp
   test_number.cpp
+  test_schema.cpp
   test_small_vector.cpp
   test_stack.cpp
   test_string.cpp

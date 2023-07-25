@@ -199,3 +199,40 @@ TEST (Dom, ArrayStack) {
   EXPECT_EQ (d.begin_object (), err);
   EXPECT_EQ (d.key (u8"key"sv), err);
 }
+
+TEST (Element, EqObject) {
+  std::optional<element> const a =
+      make_parser (dom{}).input (u8R"({"a":[1,2,3]})"sv).eof ();
+  std::optional<element> const b =
+      make_parser (dom{}).input (u8R"({"a":[1,2,3]})"sv).eof ();
+  ASSERT_TRUE (a);
+  ASSERT_TRUE (b);
+  EXPECT_TRUE (*a == *b);
+}
+TEST (Element, EqObjectArraysOfDifferentLength) {
+  std::optional<element> const a =
+      make_parser (dom{}).input (u8R"({"a":[1,2,3]})"sv).eof ();
+  std::optional<element> const b =
+      make_parser (dom{}).input (u8R"({"a":[1,2,3,4]})"sv).eof ();
+  ASSERT_TRUE (a);
+  ASSERT_TRUE (b);
+  EXPECT_FALSE (*a == *b);
+}
+TEST (Element, EqObjectDifferentProperties) {
+  std::optional<element> const a =
+      make_parser (dom{}).input (u8R"({"a":[1,2,3]})"sv).eof ();
+  std::optional<element> const b =
+      make_parser (dom{}).input (u8R"({"b":[1,2,3]})"sv).eof ();
+  ASSERT_TRUE (a);
+  ASSERT_TRUE (b);
+  EXPECT_FALSE (*a == *b);
+}
+TEST (Element, EqArray) {
+  std::optional<element> const a =
+      make_parser (dom{}).input (u8R"([{"a":1},2])"sv).eof ();
+  std::optional<element> const b =
+      make_parser (dom{}).input (u8R"([{"a":1},2])"sv).eof ();
+  ASSERT_TRUE (a);
+  ASSERT_TRUE (b);
+  EXPECT_TRUE (*a == *b);
+}

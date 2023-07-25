@@ -45,11 +45,33 @@ struct mark {
 #endif  // !PEEJAY_CXX20
 };
 using object = std::shared_ptr<std::unordered_map<u8string, element>>;
-using array = std::shared_ptr<small_vector<element, 16>>;
+using array = std::shared_ptr<small_vector<element, 8>>;
 using variant = std::variant<int64_t, uint64_t, double, bool, null, u8string,
                              array, object, mark>;
 struct element : variant {
   using variant::variant;
+
+  bool operator== (element const &rhs) const {
+    if (this->index () != rhs.index ()) {
+      return false;
+    }
+    if (this->valueless_by_exception ()) {
+      return true;
+    }
+    return std::visit (
+        [&rhs] (auto const &lhs) {
+          using T = std::decay_t<decltype (lhs)>;
+          if constexpr (std::is_same_v<T, object>) {
+            return *lhs == *std::get<object> (rhs);
+          }
+          if constexpr (std::is_same_v<T, array>) {
+            return *lhs == *std::get<array> (rhs);
+          }
+          // TODO: int64_t/uint64_t/double variant could contain the same value.
+          return lhs == std::get<T> (rhs);
+        },
+        *this);
+  }
 };
 
 /// \brief A PJ JSON parser backend which constructs a DOM using instances of
