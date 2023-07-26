@@ -17,6 +17,7 @@ add_executable (
   pj-unittests
   harness.cpp
   callbacks.hpp
+  test_almost_equal.cpp
   test_array.cpp
   test_arrayvec.cpp
   test_boolean.cpp

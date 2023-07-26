@@ -19,6 +19,7 @@ set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
 
 add_library (
   peejay STATIC
+  "${include_dir}/peejay/almost_equal.hpp"
   "${include_dir}/peejay/arrayvec.hpp"
   "${include_dir}/peejay/cbii.hpp"
   "${include_dir}/peejay/details/avbase.hpp"

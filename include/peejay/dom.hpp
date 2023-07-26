@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "peejay/almost_equal.hpp"
 #include "peejay/json.hpp"
 #include "peejay/small_vector.hpp"
 
@@ -61,14 +62,17 @@ struct element : variant {
     return std::visit (
         [&rhs] (auto const &lhs) {
           using T = std::decay_t<decltype (lhs)>;
+          bool resl = false;
           if constexpr (std::is_same_v<T, object>) {
-            return *lhs == *std::get<object> (rhs);
+            resl = *lhs == *std::get<object> (rhs);
+          } else if constexpr (std::is_same_v<T, array>) {
+            resl = *lhs == *std::get<array> (rhs);
+          } else if constexpr (std::is_floating_point_v<T>) {
+            resl = almost_equal (lhs, std::get<T> (rhs));
+          } else {
+            resl = lhs == std::get<T> (rhs);
           }
-          if constexpr (std::is_same_v<T, array>) {
-            return *lhs == *std::get<array> (rhs);
-          }
-          // TODO: int64_t/uint64_t/double variant could contain the same value.
-          return lhs == std::get<T> (rhs);
+          return resl;
         },
         *this);
   }
