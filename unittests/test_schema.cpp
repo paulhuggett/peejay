@@ -52,6 +52,31 @@ TEST (SchemaConst, NumberPassing) {
   EXPECT_EQ (schema::check (*schema, *instance), error_or<bool>{true});
 }
 
+class SchemaEnum : public Test {
+protected:
+  element const schema = parse (u8R"({ "enum": [ 123, "foo" ] })"sv).value ();
+};
+TEST_F (SchemaEnum, UintPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8"123"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaEnum, IntegerFloatPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8"123.0"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaEnum, StringPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"("foo")"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaEnum, StringFailing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"("bar")"sv).value ()),
+             error_or<bool>{false});
+}
+TEST_F (SchemaEnum, ObjectFailing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"({"a":1,"b":2})"sv).value ()),
+             error_or<bool>{false});
+}
+
 class SchemaTypeNumber : public Test {
 protected:
   element const schema = parse (u8R"({ "type": "number" })"sv).value ();

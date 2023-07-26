@@ -98,7 +98,15 @@ error_or<bool> check (element const &schema, element const &instance) {
       return false;
     }
   }
-
+  if (auto const &enum_pos = map.find (u8"enum"); enum_pos != end) {
+    if (auto const *const arr = std::get_if<array> (&enum_pos->second)) {
+      return any (std::begin (**arr), std::end (**arr),
+                  [&instance] (element const &el) -> error_or<bool> {
+                    return el == instance;
+                  });
+    }
+    return error::schema_enum_must_be_array;
+  }
   if (auto const &type_pos = map.find (u8"type"); type_pos != end) {
     if (auto const *const name = std::get_if<u8string> (&type_pos->second)) {
       return check_type (*name, instance);

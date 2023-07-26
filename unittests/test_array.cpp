@@ -109,7 +109,7 @@ TEST_F (JsonArray, SingleStringElement) {
 TEST_F (JsonArray, ZeroExpPlus1) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, double_value (DoubleEq (0.0))).Times (1);
+  EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);

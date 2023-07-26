@@ -101,69 +101,33 @@ void show_schema (object const& root) {
   }
 }
 
-void schema_const () {
-  auto schema = parse (u8R"({ "const": 1234 })"sv);
-  auto instance = parse (u8"1234"sv);
-  assert (schema.has_value () && instance.has_value ());
-  assert (check_schema (*schema, *instance));
-}
-void schema_type () {
-  auto schema = parse (u8R"({ "type": "number" })"sv);
-  assert (schema.has_value ());
-  {
-    auto instance1 = parse (u8"1234"sv);
-    assert (instance1.has_value ());
-    assert (check_schema (*schema, *instance1));
-  }
-  {
-    auto instance2 = parse (u8"12.0"sv);
-    assert (instance2.has_value ());
-    assert (check_schema (*schema, *instance2));
-  }
-  {
-    auto instance3 = parse (u8"-1234"sv);
-    assert (instance3.has_value ());
-    assert (check_schema (*schema, *instance3));
-  }
-  {
-    auto instance4 = parse (u8R"("1234")"sv);
-    assert (instance4.has_value ());
-    assert (!check_schema (*schema, *instance4));
-  }
-}
-
 }  // end anonymous namespace
 
 int main (int argc, char* argv[]) {
+  int exit_code = EXIT_SUCCESS;
   try {
     if (argc != 3) {
       std::cerr << "Usage: " << argv[0] << " <schema> <input>\n";
       return EXIT_FAILURE;
     }
 
-    schema_const ();
-    schema_type ();
     auto schema = parse (argv[1]);
     auto instance = parse (argv[2]);
-
-    //  "$id": "https://example.com/product.schema.json",
-    //  "title": "Product",
-    //  "description": "A product in the catalog",
-    //  "type": "object"
-
     if (schema && instance) {
-      bool const ok = check_schema (*schema, *instance);
-      std::cout << std::boolalpha << ok << '\n';
+      error_or<bool> ok = peejay::schema::check (*schema, *instance);
+      if (auto const* const erc = std::get_if<std::error_code> (&ok)) {
+        std::cerr << "Error: " << erc->message () << '\n';
+        exit_code = EXIT_FAILURE;
+      } else {
+        std::cout << std::boolalpha << std::get<bool> (ok) << '\n';
+      }
     }
-
-    // put useful stuff here...
-
   } catch (std::exception const& ex) {
     std::cerr << "Error: " << ex.what () << '\n';
-    return EXIT_FAILURE;
+    exit_code = EXIT_FAILURE;
   } catch (...) {
     std::cerr << "Unknown error\n";
-    return EXIT_FAILURE;
+    exit_code = EXIT_FAILURE;
   }
-  return EXIT_SUCCESS;
+  return exit_code;
 }

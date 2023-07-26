@@ -46,6 +46,7 @@ enum class error : int {
   identifier_too_long,
   string_too_long,
 
+  schema_enum_must_be_array,
   schema_not_boolean_or_object,
   schema_type_string_or_string_array,
   schema_type_name_invalid,
@@ -91,6 +92,8 @@ public:
     case error::identifier_too_long: return "identifier too long";
     case error::string_too_long: return "string too long";
 
+    case error::schema_enum_must_be_array:
+      return "schema enum value must be an array";
     case error::schema_not_boolean_or_object:
       return "schema must be boolean or object";
     case error::schema_type_name_invalid: return "schema type name invalid";
