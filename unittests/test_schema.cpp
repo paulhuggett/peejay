@@ -124,20 +124,64 @@ TEST_F (SchemaTypeInteger, RationalFailing) {
              error_or<bool>{false});
 }
 
-class SchemaTypeArrayOfBooleanAndNull : public Test {
+class SchemaTypeArray : public Test {
 protected:
   element const schema =
       parse (u8R"({ "type": ["boolean", "null"] })"sv).value ();
 };
-TEST_F (SchemaTypeArrayOfBooleanAndNull, BoolPassing) {
+TEST_F (SchemaTypeArray, BoolPassing) {
   EXPECT_EQ (schema::check (schema, parse (u8"true"sv).value ()),
              error_or<bool>{true});
 }
-TEST_F (SchemaTypeArrayOfBooleanAndNull, NullPassing) {
+TEST_F (SchemaTypeArray, NullPassing) {
   EXPECT_EQ (schema::check (schema, parse (u8"null"sv).value ()),
              error_or<bool>{true});
 }
-TEST_F (SchemaTypeArrayOfBooleanAndNull, UIntFailing) {
+TEST_F (SchemaTypeArray, UIntFailing) {
   EXPECT_EQ (schema::check (schema, parse (u8"0"sv).value ()),
              error_or<bool>{false});
+}
+
+class SchemaMaxLength : public Test {
+protected:
+  element const schema = parse (u8R"({ "maxLength": 2 })"sv).value ();
+};
+TEST_F (SchemaMaxLength, ShortStringPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"("ab")"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaMaxLength, NotStringPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8"1"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaMaxLength, LongStringFailing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"("abc")"sv).value ()),
+             error_or<bool>{false});
+}
+TEST_F (SchemaMaxLength, BadSchemaValue) {
+  element const bad_schema = parse (u8R"({ "maxLength": "foo" })"sv).value ();
+  EXPECT_EQ (schema::check (bad_schema, parse (u8R"("ab")"sv).value ()),
+             error_or<bool>{make_error_code (error::schema_maxlength_number)});
+}
+
+class SchemaMinLength : public Test {
+protected:
+  element const schema = parse (u8R"({ "minLength": 2 })"sv).value ();
+};
+TEST_F (SchemaMinLength, ShortStringFailing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"("a")"sv).value ()),
+             error_or<bool>{false});
+}
+TEST_F (SchemaMinLength, NotStringPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8"1"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaMinLength, LongStringPassing) {
+  EXPECT_EQ (schema::check (schema, parse (u8R"("abc")"sv).value ()),
+             error_or<bool>{true});
+}
+TEST_F (SchemaMinLength, BadSchemaValue) {
+  element const bad_schema = parse (u8R"({ "minLength": "foo" })"sv).value ();
+  EXPECT_EQ (schema::check (bad_schema, parse (u8R"("ab")"sv).value ()),
+             error_or<bool>{make_error_code (error::schema_minlength_number)});
 }

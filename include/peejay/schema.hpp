@@ -124,6 +124,34 @@ public:
       return error::schema_type_string_or_string_array;
     }
 
+    // If the instance is a string, then check string constraints.
+    if (auto const *string_inst = std::get_if<u8string> (&instance)) {
+      if (auto const maxlength_pos = map.find (u8"maxLength");
+          maxlength_pos != end) {
+        auto const *const maxlength =
+            std::get_if<std::int64_t> (&maxlength_pos->second);
+        if (maxlength == nullptr || *maxlength < 0) {
+          return error::schema_maxlength_number;
+        }
+        if (icubaby::length (std::begin (*string_inst),
+                             std::end (*string_inst)) > *maxlength) {
+          return false;
+        }
+      }
+      if (auto const minlength_pos = map.find (u8"minLength");
+          minlength_pos != end) {
+        auto const *const minlength =
+            std::get_if<std::int64_t> (&minlength_pos->second);
+        if (minlength == nullptr || *minlength < 0) {
+          return error::schema_minlength_number;
+        }
+        if (icubaby::length (std::begin (*string_inst),
+                             std::end (*string_inst)) < *minlength) {
+          return false;
+        }
+      }
+    }
+
     if (auto const &properties_pos = map.find (u8"properties");
         properties_pos != end) {
       if (auto const *const properties =
