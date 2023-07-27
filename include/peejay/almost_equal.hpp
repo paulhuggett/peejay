@@ -27,13 +27,13 @@ namespace peejay {
 namespace details {
 
 template <typename FpType>
-using bits = uinteger_t<8 * sizeof (FpType)>;
+using raw_bits = uinteger_t<8 * sizeof (FpType)>;
 
 template <typename FpType>
 union fp {
   explicit constexpr fp (FpType const v) noexcept : value{v} {}
   FpType value;       ///< The floating-point number.
-  bits<FpType> bits;  ///< The raw bits.
+  raw_bits<FpType> bits;  ///< The raw bits.
 };
 template <typename FpType>
 fp (FpType f) -> fp<FpType>;
@@ -51,26 +51,27 @@ struct constants {
   static constexpr std::size_t num_exponent_bits =
       total_bits - 1 - num_fraction_bits;
 
-  static constexpr bits<FpType> sign_mask = static_cast<bits<FpType>> (1)
-                                            << (total_bits - 1);
-  static constexpr bits<FpType> fraction_mask =
-      ~static_cast<bits<FpType>> (0) >> (num_exponent_bits + 1);
-  static constexpr bits<FpType> exponent_mask = ~(sign_mask | fraction_mask);
+  static constexpr raw_bits<FpType> sign_mask =
+      static_cast<raw_bits<FpType>> (1) << (total_bits - 1);
+  static constexpr raw_bits<FpType> fraction_mask =
+      ~static_cast<raw_bits<FpType>> (0) >> (num_exponent_bits + 1);
+  static constexpr raw_bits<FpType> exponent_mask =
+      ~(sign_mask | fraction_mask);
 };
 
 /// Returns a floating-point value's exponent bits.
 template <typename FpType>
-constexpr bits<FpType> exponent_bits (FpType const f) noexcept {
+constexpr raw_bits<FpType> exponent_bits (FpType const f) noexcept {
   return fp{f}.bits & constants<FpType>::exponent_mask;
 }
 /// Returns a floating-point value's fraction bits.
 template <typename FpType>
-constexpr bits<FpType> fraction_bits (FpType const f) noexcept {
+constexpr raw_bits<FpType> fraction_bits (FpType const f) noexcept {
   return fp{f}.bits & constants<FpType>::fraction_mask;
 }
 
 template <typename FpType>
-static bits<FpType> fp_to_biased (FpType const f) noexcept {
+static raw_bits<FpType> fp_to_biased (FpType const f) noexcept {
   auto const sam = fp{f}.bits;
   if ((constants<FpType>::sign_mask & sam) != 0) {
     return ~sam + 1;  // a negative number.
@@ -80,7 +81,7 @@ static bits<FpType> fp_to_biased (FpType const f) noexcept {
 
 /// Returns the distance between two floating point values.
 template <typename FpType>
-bits<FpType> distance_between (FpType const f1, FpType const f2) noexcept {
+raw_bits<FpType> distance_between (FpType const f1, FpType const f2) noexcept {
   auto const b1 = fp_to_biased (f1);
   auto const b2 = fp_to_biased (f2);
   return b1 >= b2 ? b1 - b2 : b2 - b1;
