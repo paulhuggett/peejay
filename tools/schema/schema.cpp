@@ -46,20 +46,6 @@ void parse_error (pjparser& p, std::filesystem::path const& file_path) {
   parse_error (p);
 }
 
-std::optional<element> parse (peejay::u8string_view const& str) {
-  pjparser p;
-#if PEEJAY_HAVE_SPAN
-  p.input (std::span{str.data (), str.size ()});
-#else
-  p.input (std::begin (str), std::end (str));
-#endif  // PEEJAY_HAVE_SPAN
-  std::optional<peejay::element> result = p.eof ();
-  if (auto const erc = p.last_error ()) {
-    parse_error (p);
-    std::exit (EXIT_FAILURE);
-  }
-  return result;
-}
 std::optional<element> parse (std::filesystem::path const& file_path) {
   pjparser p;
   std::ifstream in{file_path};
@@ -91,14 +77,6 @@ std::optional<element> parse (std::filesystem::path const& file_path) {
     std::exit (EXIT_FAILURE);
   }
   return result;
-}
-
-void show_schema (object const& root) {
-  if (auto schema_it = root->find (u8"$schema"); schema_it != root->end ()) {
-    if (auto const* const str = std::get_if<u8string> (&schema_it->second)) {
-      std::cout << std::string (str->begin (), str->end ()) << '\n';
-    }
-  }
 }
 
 }  // end anonymous namespace
