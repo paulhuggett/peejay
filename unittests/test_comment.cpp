@@ -76,7 +76,7 @@ TEST_F (Comment, BashTrailing) {
 TEST_F (Comment, BashInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
@@ -94,7 +94,7 @@ TEST_F (Comment, BashInsideArray) {
 TEST_F (Comment, BashInsideArrayWithoutWhitespace) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
@@ -150,7 +150,7 @@ TEST_F (Comment, SingleLineTrailing) {
 TEST_F (Comment, SingleLineInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
@@ -188,7 +188,7 @@ TEST_F (Comment, SingleLineDisabledInsideArray) {
 TEST_F (Comment, SingleLineInsideArrayWithoutWhitespace) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
@@ -207,7 +207,7 @@ TEST_F (Comment, SingleLineInsideArrayWithoutWhitespace) {
 TEST_F (Comment, SingleLineRowCounting) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
@@ -313,7 +313,7 @@ TEST_F (Comment, MultiLineUnterminatedNewline) {
 TEST_F (Comment, MultiLineInsideArray) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
@@ -332,7 +332,7 @@ TEST_F (Comment, MultiLineInsideArray) {
 TEST_F (Comment, MultiLineRowCounting) {
   using testing::_;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (_)).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (_)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);

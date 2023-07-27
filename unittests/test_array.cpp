@@ -80,7 +80,7 @@ TEST_F (JsonArray, ArrayNoCloseBracket) {
 TEST_F (JsonArray, SingleElement) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
@@ -133,7 +133,7 @@ TEST_F (JsonArray, SimpleFloat) {
 TEST_F (JsonArray, MinusZero) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, int64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
@@ -145,7 +145,7 @@ TEST_F (JsonArray, MinusZero) {
 TEST_F (JsonArray, TwoElements) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
@@ -185,7 +185,7 @@ TEST_F (JsonArray, MisplacedComma4) {
 TEST_F (JsonArray, TrailingCommaEnabled) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::array_trailing_comma);
@@ -253,7 +253,7 @@ TEST_F (JsonArray, Nested2) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (2);
 
   auto p = make_parser (proxy_);

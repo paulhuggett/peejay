@@ -57,7 +57,7 @@ TEST (Dom, One) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"1"sv).eof ();
   ASSERT_TRUE (root);
-  EXPECT_EQ (std::get<uint64_t> (*root), 1U);
+  EXPECT_EQ (std::get<std::int64_t> (*root), 1U);
 }
 
 // NOLINTNEXTLINE
@@ -103,8 +103,9 @@ TEST (Dom, Array) {
   std::optional<element> const root =
       make_parser (dom{}).input (u8"[1,2]"sv).eof ();
   ASSERT_TRUE (root);
-  EXPECT_THAT (*std::get<array> (*root),
-               ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
+  EXPECT_THAT (
+      *std::get<array> (*root),
+      ElementsAre (element{std::int64_t{1}}, element{std::int64_t{2}}));
 }
 
 // NOLINTNEXTLINE
@@ -124,8 +125,8 @@ TEST (Dom, Object) {
   ASSERT_TRUE (root);
   EXPECT_THAT (
       *std::get<object> (*root),
-      UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{1}}),
-                            std::make_pair (u8"b"s, element{uint64_t{2}})));
+      UnorderedElementsAre (std::make_pair (u8"a"s, element{std::int64_t{1}}),
+                            std::make_pair (u8"b"s, element{std::int64_t{2}})));
 }
 
 // NOLINTNEXTLINE
@@ -137,9 +138,9 @@ TEST (Dom, ObjectInsideArray1) {
   ASSERT_EQ (arr->size (), 2U);
   EXPECT_THAT (
       *std::get<object> ((*arr)[0]),
-      UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{1}}),
-                            std::make_pair (u8"b"s, element{uint64_t{2}})));
-  EXPECT_THAT ((*arr)[1], element{uint64_t{3}});
+      UnorderedElementsAre (std::make_pair (u8"a"s, element{std::int64_t{1}}),
+                            std::make_pair (u8"b"s, element{std::int64_t{2}})));
+  EXPECT_THAT ((*arr)[1], element{std::int64_t{3}});
 }
 
 // NOLINTNEXTLINE
@@ -149,11 +150,11 @@ TEST (Dom, ObjectInsideArray2) {
   ASSERT_TRUE (root);
   auto const &arr = std::get<array> (*root);
   ASSERT_EQ (arr->size (), 2U);
-  EXPECT_THAT ((*arr)[0], element{uint64_t{1}});
+  EXPECT_THAT ((*arr)[0], element{std::int64_t{1}});
   EXPECT_THAT (
       *std::get<object> ((*arr)[1]),
-      UnorderedElementsAre (std::make_pair (u8"a"s, element{uint64_t{2}}),
-                            std::make_pair (u8"b"s, element{uint64_t{3}})));
+      UnorderedElementsAre (std::make_pair (u8"a"s, element{std::int64_t{2}}),
+                            std::make_pair (u8"b"s, element{std::int64_t{3}})));
 }
 
 // NOLINTNEXTLINE
@@ -163,9 +164,10 @@ TEST (Dom, ArrayInsideObject) {
   ASSERT_TRUE (root);
   auto const &obj = std::get<object> (*root);
   ASSERT_EQ (obj->size (), 2U);
-  EXPECT_THAT (*std::get<array> (obj->at (u8"a")),
-               ElementsAre (element{uint64_t{1}}, element{uint64_t{2}}));
-  EXPECT_EQ (obj->at (u8"b"), element{uint64_t{3}});
+  EXPECT_THAT (
+      *std::get<array> (obj->at (u8"a")),
+      ElementsAre (element{std::int64_t{1}}, element{std::int64_t{2}}));
+  EXPECT_EQ (obj->at (u8"b"), element{std::int64_t{3}});
 }
 
 // NOLINTNEXTLINE
@@ -189,8 +191,7 @@ TEST (Dom, ArrayStack) {
 
   auto const err = make_error_code (error::dom_nesting_too_deep);
   EXPECT_EQ (d.string_value (u8"string"sv), err);
-  EXPECT_EQ (d.int64_value (int64_t{37}), err);
-  EXPECT_EQ (d.uint64_value (uint64_t{37}), err);
+  EXPECT_EQ (d.integer_value (std::int64_t{37}), err);
   EXPECT_EQ (d.double_value (37.9), err);
   EXPECT_EQ (d.boolean_value (true), err);
   EXPECT_EQ (d.null_value (), err);

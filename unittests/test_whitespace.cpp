@@ -36,7 +36,7 @@ protected:
 
 // NOLINTNEXTLINE
 TEST_F (Whitespace, Empty) {
-  EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_);
   p.input (u8"0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -44,7 +44,7 @@ TEST_F (Whitespace, Empty) {
 
 // NOLINTNEXTLINE
 TEST_F (Whitespace, MultipleLeadingSpaces) {
-  EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_);
   p.input (u8"    0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -52,7 +52,7 @@ TEST_F (Whitespace, MultipleLeadingSpaces) {
 
 // NOLINTNEXTLINE
 TEST_F (Whitespace, MultipleTrailingSpaces) {
-  EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_);
   p.input (u8"0    "sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -69,7 +69,7 @@ std::array<char32_t, 6> const extra_ws_chars{
 
 // NOLINTNEXTLINE
 TEST_F (Whitespace, ExtendedWhitespaceCharactersEnabled) {
-  EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_, extensions::extra_whitespace);
   p.input (std::begin (extra_ws_chars), std::end (extra_ws_chars)).eof ();
   EXPECT_FALSE (p.has_error ());

@@ -49,7 +49,7 @@ protected:
 
 // NOLINTNEXTLINE
 TEST_F (Number, Zero) {
-  EXPECT_CALL (callbacks_, uint64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   parser p{proxy_};
   p.input (u8"0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -57,7 +57,7 @@ TEST_F (Number, Zero) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, NegativeZero) {
-  EXPECT_CALL (callbacks_, int64_value (0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   parser p{proxy_};
   p.input (u8"-0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -65,7 +65,7 @@ TEST_F (Number, NegativeZero) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, One) {
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   parser p{proxy_};
   p.input (u8" 1 "sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -80,7 +80,7 @@ TEST_F (Number, LeadingZero) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, MinusOne) {
-  EXPECT_CALL (callbacks_, int64_value (-1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (-1)).Times (1);
   parser p{proxy_};
   p.input (u8"-1"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -88,7 +88,7 @@ TEST_F (Number, MinusOne) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, OneWithLeadingPlus) {
-  EXPECT_CALL (callbacks_, uint64_value (1U)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   auto p = make_parser (proxy_, extensions::leading_plus);
   p.input (u8"+1"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
@@ -125,7 +125,7 @@ TEST_F (Number, MinusMinus) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, AllDigits) {
-  EXPECT_CALL (callbacks_, uint64_value (1234567890UL)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (INT64_C (1234567890))).Times (1);
   parser p{proxy_};
   p.input (u8"1234567890"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -224,7 +224,7 @@ TEST_F (Number, IntegerMax) {
   constexpr auto long_max = std::numeric_limits<std::int64_t>::max ();
   auto const str_max = to_u8string (long_max);
 
-  EXPECT_CALL (callbacks_, uint64_value (long_max)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (long_max)).Times (1);
   parser p{proxy_};
   p.input (str_max).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -272,7 +272,7 @@ TEST_F (Number, BadExponentAfterPoint) {
 }
 // NOLINTNEXTLINE
 TEST_F (Number, Hex) {
-  EXPECT_CALL (callbacks_, uint64_value (uint64_t{0x10})).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0x10)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
   p.input (u8"0x10"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -282,7 +282,7 @@ TEST_F (Number, Hex) {
 // NOLINTNEXTLINE
 TEST_F (Number, HexArray) {
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (uint64_t{0x10})).Times (2);
+  EXPECT_CALL (callbacks_, integer_value (0x10)).Times (2);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::numbers);
@@ -293,7 +293,7 @@ TEST_F (Number, HexArray) {
 }
 // NOLINTNEXTLINE
 TEST_F (Number, NegativeHex) {
-  EXPECT_CALL (callbacks_, int64_value (int64_t{-31})).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (-31)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
   p.input (u8"-0x1f"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -510,13 +510,13 @@ struct limits<64> {
   // Note that I hard-wire the numbers here rather than just using
   // numeric_limits<> so that  we've got a reference for the string constants
   // below.
-  static constexpr auto uint_max = UINT64_C (18'446'744'073'709'551'615);
-  static_assert (uint_max == std::numeric_limits<std::uint64_t>::max (),
-                 "Hard-wired unsigned 64-bit max value seems to be incorrect");
-  static constexpr auto uint_max_str =
-      u8"18446744073709551615";  // string equivalent of uint_max.
-  static constexpr auto uint_overflow =
-      u8"18446744073709551616";  // uint_max plus 1.
+  static constexpr auto int_max = INT64_C (9223372036854775807);
+  static_assert (int_max == std::numeric_limits<std::int64_t>::max (),
+                 "Hard-wired signed 64-bit max value seems to be incorrect");
+  static constexpr auto int_max_str =
+      u8"9223372036854775807";  // string equivalent of int_max.
+  static constexpr auto int_overflow =
+      u8"9223372036854775808";  // uint_max plus 1.
 
   // The literal "most negative int" cannot be written in C++. Integer constants
   // are formed by building an unsigned integer and then applying unary minus.
@@ -524,7 +524,7 @@ struct limits<64> {
   static_assert (int_min == std::numeric_limits<std::int64_t>::min (),
                  "Hard-wired signed 64-bit min value seems to be incorrect");
   static constexpr auto int_min_str = u8"-9223372036854775808";
-  static constexpr auto int_overflow =
+  static constexpr auto int_underflow =
       u8"-9223372036854775809";  // int_min minus 1.
 };
 
@@ -538,12 +538,12 @@ struct limits<32> {
   // Note that I hard-wire the numbers here rather than just using
   // numeric_limits<> so that  we've got a reference for the string constants
   // below.
-  static constexpr auto uint_max = UINT32_C (4'294'967'295);
-  static_assert (uint_max == std::numeric_limits<std::uint32_t>::max (),
-                 "Hard-wired unsigned 32-bit max value seems to be incorrect");
-  static constexpr auto uint_max_str =
-      u8"4294967295";  // string equivalent of uint_max.
-  static constexpr auto uint_overflow = u8"4294967296";  // uint_max plus 1.
+  static constexpr auto int_max = INT32_C (2'147'483'647);
+  static_assert (int_max == std::numeric_limits<std::int32_t>::max (),
+                 "Hard-wired signed 32-bit max value seems to be incorrect");
+  static constexpr auto int_max_str =
+      u8"2147483647";  // string equivalent of int_max.
+  static constexpr auto int_overflow = u8"2147483648";  // int_max plus 1.
 
   // The literal "most negative int" cannot be written in C++. Integer constants
   // are formed by building an unsigned integer and then applying unary minus.
@@ -551,7 +551,7 @@ struct limits<32> {
   static_assert (int_min == std::numeric_limits<std::int32_t>::min (),
                  "Hard-wired signed 32-bit min value seems to be incorrect");
   static constexpr auto int_min_str = u8"-2147483648";
-  static constexpr auto int_overflow = u8"-2147483649";  // int_min minus 1.
+  static constexpr auto int_underflow = u8"-2147483649";  // int_min minus 1.
 };
 
 template <>
@@ -564,12 +564,12 @@ struct limits<16> {
   // Note that I hard-wire the numbers here rather than just using
   // numeric_limits<> so that  we've got a reference for the string constants
   // below.
-  static constexpr auto uint_max = UINT16_C (65535);
-  static_assert (uint_max == std::numeric_limits<std::uint16_t>::max (),
-                 "Hard-wired unsigned 16-bit max value seems to be incorrect");
-  static constexpr auto uint_max_str =
-      u8"65535";  // string equivalent of uint_max.
-  static constexpr auto uint_overflow = u8"65536";  // uint_max plus 1.
+  static constexpr auto int_max = UINT16_C (32767);
+  static_assert (int_max == std::numeric_limits<std::int16_t>::max (),
+                 "Hard-wired signed 16-bit max value seems to be incorrect");
+  static constexpr auto int_max_str =
+      u8"32767";  // string equivalent of uint_max.
+  static constexpr auto int_overflow = u8"32768";  // uint_max plus 1.
 
   // The literal "most negative int" cannot be written in C++. Integer constants
   // are formed by building an unsigned integer and then applying unary minus.
@@ -577,7 +577,7 @@ struct limits<16> {
   static_assert (int_min == std::numeric_limits<std::int16_t>::min (),
                  "Hard-wired signed 16-bit min value seems to be incorrect");
   static constexpr auto int_min_str = u8"-32768";
-  static constexpr auto int_overflow = u8"-32769";  // int_min minus 1.
+  static constexpr auto int_underflow = u8"-32769";  // int_min minus 1.
 };
 
 }  // end anonymous namespace
@@ -599,14 +599,14 @@ using Sizes = testing::Types<std::integral_constant<int, 16>,
 TYPED_TEST_SUITE (NumberLimits, Sizes, );
 
 // NOLINTNEXTLINE
-TYPED_TEST (NumberLimits, UintMax) {
+TYPED_TEST (NumberLimits, IntMax) {
   constexpr auto bits = TypeParam ();
-  assert (limits<bits>::uint_max_str == to_u8string (limits<bits>::uint_max) &&
+  assert (limits<bits>::int_max_str == to_u8string (limits<bits>::int_max) &&
           "The hard-wired unsigned max string seems to be incorrect");
-  EXPECT_CALL (TestFixture::callbacks_, uint64_value (limits<bits>::uint_max))
+  EXPECT_CALL (TestFixture::callbacks_, integer_value (limits<bits>::int_max))
       .Times (1);
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::uint_max_str}).eof ();
+  p.input (u8string_view{limits<bits>::int_max_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 // NOLINTNEXTLINE
@@ -614,7 +614,7 @@ TYPED_TEST (NumberLimits, IntMin) {
   constexpr auto bits = TypeParam ();
   assert (limits<bits>::int_min_str == to_u8string (limits<bits>::int_min) &&
           "The hard-wired signed min string seems to be incorrect");
-  EXPECT_CALL (TestFixture::callbacks_, int64_value (limits<bits>::int_min))
+  EXPECT_CALL (TestFixture::callbacks_, integer_value (limits<bits>::int_min))
       .Times (1);
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
   p.input (u8string_view{limits<bits>::int_min_str}).eof ();
@@ -624,7 +624,7 @@ TYPED_TEST (NumberLimits, IntMin) {
 TYPED_TEST (NumberLimits, IntegerPositiveOverflow) {
   constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::uint_overflow}).eof ();
+  p.input (u8string_view{limits<bits>::int_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 // NOLINTNEXTLINE
@@ -637,6 +637,6 @@ TYPED_TEST (NumberLimits, IntegerNegativeOverflow1) {
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow2) {
   constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::int_overflow}).eof ();
+  p.input (u8string_view{limits<bits>::int_underflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }

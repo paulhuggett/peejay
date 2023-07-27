@@ -70,11 +70,7 @@ concept backend = requires (T &&v) {
   { v.string_value (u8string_view{}) } -> std::convertible_to<std::error_code>;
   /// Called when an integer value has been parsed.
   {
-    v.int64_value (std::make_signed_t<IntegerType>{})
-  } -> std::convertible_to<std::error_code>;
-  /// Called when an unsigned integer value has been parsed.
-  {
-    v.uint64_value (std::make_unsigned_t<IntegerType>{})
+    v.integer_value (std::make_signed_t<IntegerType>{})
   } -> std::convertible_to<std::error_code>;
   /// Called when a floating-point value has been parsed.
   { v.double_value (double{}) } -> std::convertible_to<std::error_code>;
@@ -1483,21 +1479,30 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
   if (std::holds_alternative<uinteger_type> (acc_)) {
     constexpr auto min = std::numeric_limits<sinteger_type>::min ();
     constexpr auto umin = static_cast<uinteger_type> (min);
+    constexpr auto umax =
+        static_cast<uinteger_type> (std::numeric_limits<sinteger_type>::max ());
 
+    // TODO: this doesn't automatically promote v. large integers to float.
+    // Perhaps it should?
     auto &int_acc = std::get<uinteger_type> (acc_);
     if (is_neg_) {
       if (int_acc > umin) {
         this->set_error (parser, error::number_out_of_range);
-        return;
+      } else {
+        this->set_error (
+            parser,
+            parser.backend ().integer_value (
+                (int_acc == umin) ? min
+                                  : -static_cast<sinteger_type> (int_acc)));
       }
-
-      this->set_error (
-          parser,
-          parser.backend ().int64_value (
-              (int_acc == umin) ? min : -static_cast<sinteger_type> (int_acc)));
-      return;
+    } else {
+      if (int_acc > umax) {
+        this->set_error (parser, error::number_out_of_range);
+      } else {
+        this->set_error (parser, parser.backend ().integer_value (
+                                     static_cast<sinteger_type> (int_acc)));
+      }
     }
-    this->set_error (parser, parser.backend ().uint64_value (int_acc));
     return;
   }
 
