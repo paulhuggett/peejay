@@ -83,6 +83,7 @@ TEST (AlmostEqual, NaNs) {
   }
 }
 TEST (AlmostEqual, TwoNearZero) {
-  auto d = std::numeric_limits<std::uint64_t>::max ();
-  EXPECT_FALSE (peejay::almost_equal (float (1.0 / d), 0.0F));
+  EXPECT_FALSE (peejay::almost_equal (
+      1.0F / static_cast<float> (std::numeric_limits<std::uint64_t>::max ()),
+      0.0F));
 }

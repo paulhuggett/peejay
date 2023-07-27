@@ -1519,14 +1519,18 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
   // one of the integer types)? This enables us to treat input such as "1.0" in
   // the same way as "1".
   if (std::rint (xf) == xf) {
-    if (xf >= std::numeric_limits<uinteger_type>::min () &&
-        xf <= std::numeric_limits<uinteger_type>::max ()) {
+    if (xf >= static_cast<decltype (xf)> (
+                  std::numeric_limits<uinteger_type>::min ()) &&
+        xf <= static_cast<decltype (xf)> (
+                  std::numeric_limits<uinteger_type>::max ())) {
       this->set_error (parser, parser.backend ().uint64_value (
                                    static_cast<uinteger_type> (xf)));
       return;
     }
-    if (xf >= std::numeric_limits<sinteger_type>::min () &&
-        xf <= std::numeric_limits<sinteger_type>::max ()) {
+    if (xf >= static_cast<decltype (xf)> (
+                  std::numeric_limits<sinteger_type>::min ()) &&
+        xf <= static_cast<decltype (xf)> (
+                  std::numeric_limits<sinteger_type>::max ())) {
       this->set_error (parser, parser.backend ().int64_value (
                                    static_cast<sinteger_type> (xf)));
       return;
