@@ -62,17 +62,17 @@ struct constants {
 /// Returns a floating-point value's exponent bits.
 template <typename FpType>
 constexpr raw_bits<FpType> exponent_bits (FpType const f) noexcept {
-  return fp{f}.bits & constants<FpType>::exponent_mask;
+  return fp<FpType>{f}.bits & constants<FpType>::exponent_mask;
 }
 /// Returns a floating-point value's fraction bits.
 template <typename FpType>
 constexpr raw_bits<FpType> fraction_bits (FpType const f) noexcept {
-  return fp{f}.bits & constants<FpType>::fraction_mask;
+  return fp<FpType>{f}.bits & constants<FpType>::fraction_mask;
 }
 
 template <typename FpType>
 static raw_bits<FpType> fp_to_biased (FpType const f) noexcept {
-  auto const sam = fp{f}.bits;
+  auto const sam = fp<FpType>{f}.bits;
   if ((constants<FpType>::sign_mask & sam) != 0) {
     return ~sam + 1;  // a negative number.
   }
