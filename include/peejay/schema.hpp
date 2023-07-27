@@ -16,6 +16,8 @@
 #ifndef PEEJAY_SCHEMA_HPP
 #define PEEJAY_SCHEMA_HPP
 
+#include <functional>
+
 #include "peejay/dom.hpp"
 
 namespace peejay {

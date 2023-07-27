@@ -67,7 +67,7 @@ std::optional<element> parse (std::filesystem::path const& file_path) {
     }
   }
   if ((in.rdstate () & std::ios_base::badbit) != 0) {
-    std::cerr << "Could not read " << std::quoted (file_path.native ()) << '\n';
+    std::cerr << "Could not read " << file_path << '\n';
     std::exit (EXIT_FAILURE);
   }
 
