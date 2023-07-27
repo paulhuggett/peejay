@@ -36,11 +36,7 @@ public:
     (void)sv;
     return {};
   }
-  static std::error_code int64_value (std::int64_t v) noexcept {
-    (void)v;
-    return {};
-  }
-  static std::error_code uint64_value (std::uint64_t v) noexcept {
+  static std::error_code integer_value (std::int64_t v) noexcept {
     (void)v;
     return {};
   }

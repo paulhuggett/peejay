@@ -61,21 +61,21 @@ TEST (Emit, False) {
 // NOLINTNEXTLINE
 TEST (Emit, Zero) {
   std::stringstream os;
-  emit (os, element{uint64_t{0}});
+  emit (os, element{std::int64_t{0}});
   EXPECT_EQ (os.str (), "0\n");
 }
 
 // NOLINTNEXTLINE
 TEST (Emit, One) {
   std::stringstream os;
-  emit (os, element{uint64_t{1}});
+  emit (os, element{std::int64_t{1}});
   EXPECT_EQ (os.str (), "1\n");
 }
 
 // NOLINTNEXTLINE
 TEST (Emit, MinusOne) {
   std::stringstream os;
-  emit (os, element{int64_t{-1}});
+  emit (os, element{std::int64_t{-1}});
   EXPECT_EQ (os.str (), "-1\n");
 }
 
@@ -111,7 +111,7 @@ TEST (Emit, EmptyArray) {
 TEST (Emit, ArrayOneMember) {
   std::stringstream os;
   auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (element{uint64_t{1}});
+  arr->push_back (element{std::int64_t{1}});
   emit (os, arr);
   EXPECT_EQ (os.str (), R"([
   1
@@ -123,8 +123,8 @@ TEST (Emit, ArrayOneMember) {
 TEST (Emit, ArrayTwoMembers) {
   std::stringstream os;
   auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (uint64_t{1});
-  arr->push_back (uint64_t{2});
+  arr->push_back (std::int64_t{1});
+  arr->push_back (std::int64_t{2});
   emit (os, arr);
   EXPECT_EQ (os.str (), R"([
   1,
@@ -156,8 +156,8 @@ TEST (Emit, ObjectOneMember) {
 TEST (Emit, ObjectArrayMember) {
   std::stringstream os;
   auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (uint64_t{1});
-  arr->push_back (uint64_t{2});
+  arr->push_back (std::int64_t{1});
+  arr->push_back (std::int64_t{2});
   auto obj = std::make_shared<object::element_type> ();
   (*obj)[u8"key1"] = element{std::move (arr)};
   emit (os, element{std::move (obj)});

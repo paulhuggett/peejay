@@ -79,7 +79,7 @@ TEST_F (Object, SingleKvp) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
@@ -114,7 +114,7 @@ TEST_F (Object, SingleKvpBadEndObject) {
   using testing::Return;
   EXPECT_CALL (callbacks_, begin_object ());
   EXPECT_CALL (callbacks_, key (_));
-  EXPECT_CALL (callbacks_, uint64_value (_));
+  EXPECT_CALL (callbacks_, integer_value (_));
   EXPECT_CALL (callbacks_, end_object ()).WillOnce (Return (end_object_error));
 
   auto p = make_parser (proxy_);
@@ -132,7 +132,7 @@ TEST_F (Object, SingleQuotedKeyExtensionEnabled) {
     InSequence const _;
     EXPECT_CALL (callbacks_, begin_object ()).Times (1);
     EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
-    EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+    EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
   auto p = make_parser (proxy_, extensions::single_quote_string);
@@ -155,7 +155,7 @@ TEST_F (Object, TwoKvps) {
   testing::InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, key (u8"b"sv)).Times (1);
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
@@ -171,7 +171,7 @@ TEST_F (Object, DuplicateKeys) {
   testing::InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
@@ -188,8 +188,8 @@ TEST_F (Object, ArrayValue) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (2)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (2)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
@@ -233,7 +233,7 @@ TEST_F (Object, TrailingCommaExtensionEnabled) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (16)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (16)).Times (1);
   EXPECT_CALL (callbacks_, key (u8"b"sv)).Times (1);
   EXPECT_CALL (callbacks_, string_value (u8"c"sv)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
@@ -289,7 +289,7 @@ TEST_F (Object, KeyIsIdentifierWithoutExtensionEnabled) {
 TEST_F (Object, IdentifierKey) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"key"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
@@ -302,7 +302,7 @@ TEST_F (Object, IdentifierKey) {
 TEST_F (Object, IdentifierKeyWhitespaceSurrounding) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"$key"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
@@ -337,7 +337,7 @@ TEST_F (Object, IdentifierKeyExtendedChars) {
 
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (peejay::u8string_view (key))).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
@@ -354,7 +354,7 @@ TEST_F (Object, IdentifierKeyHexEscape) {
 
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (peejay::u8string_view (key))).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
@@ -378,7 +378,7 @@ TEST_F (Object, IdentifierKeyHexEscapeHighLowSurrogatePair) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (peejay::u8string_view (expected_key)))
       .Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
@@ -435,7 +435,7 @@ struct ml10_policy {
 TEST_F (Object, IdentifierMaxLength) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
   EXPECT_CALL (callbacks_, key (u8"a123456789"sv)).Times (1);
-  EXPECT_CALL (callbacks_, uint64_value (1)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser<ml10_policy> (proxy_, extensions::identifier_object_key);

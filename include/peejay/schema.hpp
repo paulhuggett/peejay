@@ -33,15 +33,14 @@ constexpr bool is_type (element const &el) {
 }
 
 constexpr bool is_number (element const &el) {
-  return is_type<int64_t> (el) || is_type<uint64_t> (el) ||
-         is_type<double> (el);
+  return is_type<std::int64_t> (el) || is_type<double> (el);
 }
 constexpr bool is_integer (element const &el) {
-  if (is_type<int64_t> (el) || is_type<uint64_t> (el)) {
+  if (is_type<std::int64_t> (el)) {
     return true;
   }
   if (auto const *const d = std::get_if<double> (&el)) {
-    return *d == std::trunc (*d);
+    return *d == std::rint (*d);
   }
   return false;
 }
