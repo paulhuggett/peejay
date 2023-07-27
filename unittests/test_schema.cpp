@@ -23,11 +23,10 @@ using testing::Test;
 
 using pjparser = parser<dom<1024>>;
 
-void parse_error (pjparser const& p) {
-  auto const& pos = p.pos ();
-  std::cerr << static_cast<unsigned> (peejay::line (pos)) << ':'
-            << static_cast<unsigned> (peejay::column (pos)) << ':'
-            << " error: " << p.last_error ().message () << '\n';
+namespace {
+
+void parse_error () {
+  GTEST_FAIL ();
 }
 
 std::optional<element> parse (peejay::u8string_view const& str) {
@@ -39,11 +38,13 @@ std::optional<element> parse (peejay::u8string_view const& str) {
 #endif  // PEEJAY_HAVE_SPAN
   std::optional<peejay::element> result = p.eof ();
   if (auto const erc = p.last_error ()) {
-    parse_error (p);
+    parse_error ();
     return {};
   }
   return result;
 }
+
+}  // end anonymous namespace
 
 TEST (SchemaConst, NumberPassing) {
   auto schema = parse (u8R"({ "const": 1234 })"sv);
