@@ -133,7 +133,10 @@ inline element *element::apply_token (element *el, u8string const &token) {
   } else if (auto *const arr = std::get_if<array> (el)) {
     if (token == u8"-") {
       // the (nonexistent) member after the last array element
-    } else if (std::optional<unsigned> const index = element::stoui (token)) {
+      // TODO(paul): implement support.
+      return nullptr; // Not supported ATM.
+    }
+    if (std::optional<unsigned> const index = element::stoui (token)) {
       if (index >= (*arr)->size ()) {
         return nullptr;  // Fail (index out of range)
       }
