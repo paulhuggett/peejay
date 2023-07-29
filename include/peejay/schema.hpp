@@ -17,6 +17,7 @@
 #define PEEJAY_SCHEMA_HPP
 
 #include <functional>
+#include <regex>
 
 #include "peejay/dom.hpp"
 
@@ -84,6 +85,49 @@ public:
     return make_error_code (error::schema_type_name_invalid);
   }
 
+  static error_or<bool> string_constraints (u8string const &s,
+                                            object const &schema) {
+    auto const end = schema->end ();
+
+    if (auto const maxlength_pos = schema->find (u8"maxLength");
+        maxlength_pos != end) {
+      auto const *const maxlength =
+          std::get_if<std::int64_t> (&maxlength_pos->second);
+      if (maxlength == nullptr || *maxlength < 0) {
+        return error::schema_maxlength_number;
+      }
+      if (icubaby::length (std::begin (s), std::end (s)) > *maxlength) {
+        return false;
+      }
+    }
+    if (auto const minlength_pos = schema->find (u8"minLength");
+        minlength_pos != end) {
+      auto const *const minlength =
+          std::get_if<std::int64_t> (&minlength_pos->second);
+      if (minlength == nullptr || *minlength < 0) {
+        return error::schema_minlength_number;
+      }
+      if (icubaby::length (std::begin (s), std::end (s)) < *minlength) {
+        return false;
+      }
+    }
+    if (auto const pattern_pos = schema->find (u8"pattern");
+        pattern_pos != end) {
+      if (auto const *const pattern =
+              std::get_if<u8string> (&pattern_pos->second)) {
+        // std::basic_regex<char8> self_regex(*pattern,
+        // std::regex_constants::ECMAScript); if
+        // (!std::regex_search(*string_inst, self_regex)) {
+        //   return false;
+        // }
+        //  TODO: basic_regex and char8?
+      } else {
+        return error::schema_pattern_string;
+      }
+    }
+    return true;
+  }
+
   static error_or<bool> check (element const &schema, element const &instance) {
     // A schema or a sub-schema may be either an object or a boolean.
     if (auto const *const b = std::get_if<bool> (&schema)) {
@@ -126,29 +170,10 @@ public:
 
     // If the instance is a string, then check string constraints.
     if (auto const *string_inst = std::get_if<u8string> (&instance)) {
-      if (auto const maxlength_pos = map.find (u8"maxLength");
-          maxlength_pos != end) {
-        auto const *const maxlength =
-            std::get_if<std::int64_t> (&maxlength_pos->second);
-        if (maxlength == nullptr || *maxlength < 0) {
-          return error::schema_maxlength_number;
-        }
-        if (icubaby::length (std::begin (*string_inst),
-                             std::end (*string_inst)) > *maxlength) {
-          return false;
-        }
-      }
-      if (auto const minlength_pos = map.find (u8"minLength");
-          minlength_pos != end) {
-        auto const *const minlength =
-            std::get_if<std::int64_t> (&minlength_pos->second);
-        if (minlength == nullptr || *minlength < 0) {
-          return error::schema_minlength_number;
-        }
-        if (icubaby::length (std::begin (*string_inst),
-                             std::end (*string_inst)) < *minlength) {
-          return false;
-        }
+      error_or<bool> eo = string_constraints (*string_inst, *obj);
+      if (std::holds_alternative<std::error_code> (eo) ||
+          (std::holds_alternative<bool> (eo) && !std::get<bool> (eo))) {
+        return eo;
       }
     }
 
@@ -170,10 +195,38 @@ public:
     }
     return true;
   }
+
+  error_or<bool> root (element const &schema, element const &instance) {
+    root_ = &schema;
+
+    // A schema or a sub-schema may be either an object or a boolean.
+    if (auto const *const b = std::get_if<bool> (&schema)) {
+      return *b;
+    }
+    auto const *const obj = std::get_if<object> (&schema);
+    if (obj == nullptr) {
+      return make_error_code (error::schema_not_boolean_or_object);
+    }
+
+    auto const &map = **obj;
+    auto const end = map.end ();
+    if (auto const defs_pos = map.find (u8"$defs"); defs_pos != end) {
+      if (auto const *const defs = std::get_if<object> (&defs_pos->second)) {
+        defs_ = defs;
+      } else {
+        return error::schema_defs_must_be_object;
+      }
+    }
+
+    return this->check (schema, instance);
+  }
+
+  element const *root_;
+  std::optional<object const *> defs_;
 };
 
 inline error_or<bool> check (element const &schema, element const &instance) {
-  return checker::check (schema, instance);
+  return checker{}.root (schema, instance);
 }
 
 }  // end namespace schema

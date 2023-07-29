@@ -46,10 +46,12 @@ enum class error : int {
   identifier_too_long,
   string_too_long,
 
+  schema_defs_must_be_object,
   schema_enum_must_be_array,
   schema_not_boolean_or_object,
   schema_maxlength_number,
   schema_minlength_number,
+  schema_pattern_string,
   schema_type_string_or_string_array,
   schema_type_name_invalid,
 };
@@ -94,6 +96,8 @@ public:
     case error::identifier_too_long: return "identifier too long";
     case error::string_too_long: return "string too long";
 
+    case error::schema_defs_must_be_object:
+      return "schema $defs value must be an object";
     case error::schema_enum_must_be_array:
       return "schema enum value must be an array";
     case error::schema_not_boolean_or_object:
@@ -105,6 +109,8 @@ public:
       return "schema maxLength constaint was not a non-negative number";
     case error::schema_minlength_number:
       return "schema minLength constaint was not a non-negative number";
+    case error::schema_pattern_string:
+      return "schema pattern constraint was not a string";
     }
     assert (false && "bad error code");
     return "unknown PJ error code";

@@ -31,6 +31,12 @@
 
 namespace peejay {
 
+//*      _                   _    *
+//*  ___| |___ _ __  ___ _ _| |_  *
+//* / -_) / -_) '  \/ -_) ' \  _| *
+//* \___|_\___|_|_|_\___|_||_\__| *
+//*                               *
+
 struct element;
 struct null {
   bool operator== (null /*unused*/) const noexcept { return true; }
@@ -53,32 +59,133 @@ using variant = std::variant<std::int64_t, double, bool, null, u8string, array,
 struct element : variant {
   using variant::variant;
 
-  bool operator== (element const &rhs) const {
-    if (this->index () != rhs.index ()) {
-      return false;
-    }
-    if (this->valueless_by_exception ()) {
-      return true;
-    }
-    return std::visit (
-        [&rhs] (auto const &lhs) {
-          using T = std::decay_t<decltype (lhs)>;
-          bool resl = false;
-          if constexpr (std::is_same_v<T, object>) {
-            resl = *lhs == *std::get<object> (rhs);
-          } else if constexpr (std::is_same_v<T, array>) {
-            resl = *lhs == *std::get<array> (rhs);
-          } else if constexpr (std::is_floating_point_v<T>) {
-            resl = almost_equal (lhs, std::get<T> (rhs));
-          } else {
-            resl = lhs == std::get<T> (rhs);
-          }
-          return resl;
-        },
-        *this);
-  }
+  bool operator== (element const &rhs) const;
+
+  /// Evaluate a JSON pointer (RFC6901).
+  element *eval_pointer (u8string_view s);
+
+private:
+  static constexpr std::pair<u8string, u8string_view::size_type> next_token (
+      u8string_view s, u8string_view::size_type token_start);
+  static element *apply_token (element *el, u8string const &token);
+  /// Converts a u8stringview to an unsigned integer.
+  static constexpr std::optional<unsigned> stoui (u8string_view s);
 };
 
+// operator==
+// ~~~~~~~~~~
+inline bool element::operator== (element const &rhs) const {
+  if (this->index () != rhs.index ()) {
+    return false;
+  }
+  if (this->valueless_by_exception ()) {
+    return true;
+  }
+  return std::visit (
+      [&rhs] (auto const &lhs) {
+        using T = std::decay_t<decltype (lhs)>;
+        bool resl = false;
+        if constexpr (std::is_same_v<T, object>) {
+          resl = *lhs == *std::get<object> (rhs);
+        } else if constexpr (std::is_same_v<T, array>) {
+          resl = *lhs == *std::get<array> (rhs);
+        } else if constexpr (std::is_floating_point_v<T>) {
+          resl = almost_equal (lhs, std::get<T> (rhs));
+        } else {
+          resl = lhs == std::get<T> (rhs);
+        }
+        return resl;
+      },
+      *this);
+}
+
+// eval pointer
+// ~~~~~~~~~~~~
+inline element *element::eval_pointer (u8string_view const s) {
+  if (s.length () == 0) {
+    return this;
+  }
+  if (s[0] != '/') {
+    return nullptr;
+  }
+  element *el = this;
+  auto token_start = u8string_view::size_type{1};
+  do {
+    u8string token;
+    std::tie (token, token_start) = element::next_token (s, token_start);
+    el = element::apply_token (el, token);
+    if (el == nullptr) {
+      return nullptr;
+    }
+  } while (token_start != std::string::npos);
+  return el;
+}
+
+// apply token
+// ~~~~~~~~~~~
+inline element *element::apply_token (element *el, u8string const &token) {
+  if (auto *const obj = std::get_if<object> (el)) {
+    auto const pos = (*obj)->find (token);
+    if (pos == (*obj)->end ()) {
+      return nullptr;  // property not found.
+    }
+    el = &pos->second;
+  } else if (auto *const arr = std::get_if<array> (el)) {
+    if (token == u8"-") {
+      // the (nonexistent) member after the last array element
+    } else if (std::optional<unsigned> const index = element::stoui (token)) {
+      if (index >= (*arr)->size ()) {
+        return nullptr;  // Fail (index out of range)
+      }
+      el = &((**arr)[*index]);
+    } else {
+      return nullptr;  // Not an integer or '-'
+    }
+  } else {
+    return nullptr;  // Not an object or an array.
+  }
+  return el;
+}
+
+// next token
+// ~~~~~~~~~~
+constexpr std::pair<u8string, u8string_view::size_type> element::next_token (
+    u8string_view s, u8string_view::size_type token_start) {
+  auto const token_end = s.find ('/', token_start);
+  u8string_view const token_view = s.substr (
+      token_start, token_end != u8string_view::npos ? token_end - token_start
+                                                    : u8string_view::npos);
+  u8string token{std::begin (token_view), std::end (token_view)};
+  if (auto const pos = token.find (u8"~1"); pos != u8string::npos) {
+    token.replace (pos, 2, u8"/");
+  }
+  if (auto const pos = token.find (u8"~0"); pos != u8string::npos) {
+    token.replace (pos, 2, u8"~");
+  }
+  return {token, token_end != u8string::npos ? token_end + 1 : u8string::npos};
+}
+
+// stoui
+// ~~~~~
+constexpr std::optional<unsigned> element::stoui (u8string_view s) {
+  if (s.length () == 0) {
+    return {};
+  }
+  auto res = 0U;
+  for (auto const c : s) {
+    if (!std::isdigit (static_cast<int> (c))) {
+      return {};
+    }
+    res = res * 10U + (c - '0');
+  }
+  return res;
+}
+
+//*     _            *
+//*  __| |___ _ __   *
+//* / _` / _ \ '  \  *
+//* \__,_\___/_|_|_| *
+//*                  *
 /// \brief A PJ JSON parser backend which constructs a DOM using instances of
 ///   peejay::element.
 template <std::size_t StackSize>

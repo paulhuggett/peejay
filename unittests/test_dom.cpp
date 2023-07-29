@@ -30,6 +30,7 @@ using peejay::object;
 using peejay::u8string;
 
 using testing::ElementsAre;
+using testing::Test;
 using testing::UnorderedElementsAre;
 
 // NOLINTNEXTLINE
@@ -236,4 +237,94 @@ TEST (Element, EqArray) {
   ASSERT_TRUE (a);
   ASSERT_TRUE (b);
   EXPECT_TRUE (*a == *b);
+}
+
+// The tests from RFC6901 (April 2013) paragraph 5.
+class PointerRFC6901 : public Test {
+public:
+  void SetUp () override {
+    root_ = &(doc_.value ());
+    ASSERT_TRUE (std::holds_alternative<object> (*root_));
+    obj_ = std::get<object> (*root_);
+  }
+
+protected:
+  std::optional<element> doc_ = make_parser (dom{})
+                                    .input (
+                                        u8R"(
+ {
+  "foo": ["bar", "baz"],
+  "": 0,
+  "a/b": 1,
+  "c%d": 2,
+  "e^f": 3,
+  "g|h": 4,
+  "i\\j": 5,
+  "k\"l": 6,
+  " ": 7,
+  "m~n": 8
+ }
+)"sv)
+                                    .eof ();
+  element *root_ = nullptr;
+  object obj_;  // The object contained by document root element.
+};
+
+TEST_F (PointerRFC6901, Empty) {
+  EXPECT_EQ (root_->eval_pointer (u8""), root_);
+}
+TEST_F (PointerRFC6901, SlashFoo) {
+  auto const &foo_value = (*obj_)[u8"foo"];
+  EXPECT_EQ (root_->eval_pointer (u8"/foo"), &foo_value);
+}
+TEST_F (PointerRFC6901, SlashFooZero) {
+  auto const &foo_value = (*obj_)[u8"foo"];
+  ASSERT_TRUE (std::holds_alternative<array> (foo_value));
+  auto const &foo_array = std::get<array> (foo_value);
+  EXPECT_EQ (root_->eval_pointer (u8"/foo/0"), &(*foo_array)[0]);
+}
+TEST_F (PointerRFC6901, SlashEmpty) {
+  auto const &empty_key_value = (*obj_)[u8""];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (empty_key_value));
+  EXPECT_EQ (root_->eval_pointer (u8"/"), &empty_key_value);
+}
+TEST_F (PointerRFC6901, SlashASlashB) {
+  auto const &value = (*obj_)[u8"a/b"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8"/a~1b"), &value);
+}
+TEST_F (PointerRFC6901, SlashCPercentD) {
+  auto const &value = (*obj_)[u8"c%d"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8"/c%d"), &value);
+}
+TEST_F (PointerRFC6901, SlashECircumflexF) {
+  auto const &value = (*obj_)[u8"e^f"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8"/e^f"), &value);
+}
+TEST_F (PointerRFC6901, SlashGBarH) {
+  auto const &value = (*obj_)[u8"g|h"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8"/g|h"), &value);
+}
+TEST_F (PointerRFC6901, SlashIBackslashJ) {
+  auto const &value = (*obj_)[u8R"(i\j)"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8R"(/i\j)"), &value);
+}
+TEST_F (PointerRFC6901, SlashKQuoteL) {
+  auto const &value = (*obj_)[u8R"(k"l)"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8R"(/k"l)"), &value);
+}
+TEST_F (PointerRFC6901, SlashSpace) {
+  auto const &value = (*obj_)[u8" "];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8"/ "), &value);
+}
+TEST_F (PointerRFC6901, MTildeN) {
+  auto const &value = (*obj_)[u8"m~n"];
+  ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
+  EXPECT_EQ (root_->eval_pointer (u8"/m~0n"), &value);
 }
