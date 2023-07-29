@@ -179,7 +179,7 @@ constexpr std::optional<unsigned> element::stoui (u8string_view s) {
     if (!std::isdigit (static_cast<int> (c))) {
       return {};
     }
-    res = res * 10U + (c - '0');
+    res = res * 10U + static_cast<unsigned> (c - '0');
   }
   return res;
 }
