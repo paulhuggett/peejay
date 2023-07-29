@@ -65,7 +65,7 @@ struct element : variant {
   element *eval_pointer (u8string_view s);
 
 private:
-  static constexpr std::pair<u8string, u8string_view::size_type> next_token (
+  static std::pair<u8string, u8string_view::size_type> next_token (
       u8string_view s, u8string_view::size_type token_start);
   static element *apply_token (element *el, u8string const &token);
   /// Converts a u8stringview to an unsigned integer.
@@ -152,7 +152,7 @@ inline element *element::apply_token (element *el, u8string const &token) {
 
 // next token
 // ~~~~~~~~~~
-constexpr std::pair<u8string, u8string_view::size_type> element::next_token (
+inline std::pair<u8string, u8string_view::size_type> element::next_token (
     u8string_view s, u8string_view::size_type token_start) {
   auto const token_end = s.find ('/', token_start);
   u8string_view const token_view = s.substr (
