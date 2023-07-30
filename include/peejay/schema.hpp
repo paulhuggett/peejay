@@ -110,6 +110,11 @@ public:
     return error::schema_expected_number;
   }
 
+  template <typename T1, typename T2>
+  using math_type = std::conditional_t<std::is_floating_point_v<T1> ||
+                                           std::is_floating_point_v<T2>,
+                                       double, std::int64_t>;
+
   template <typename NumberType>
   static error_or<bool> number_constraints (object const &schema,
                                             NumberType const num) {
@@ -137,7 +142,10 @@ public:
       if (auto const eo = check_number (
               maximum_pos->second,
               [num] (auto const &v) {
-                return static_cast<std::decay_t<decltype (v)>> (num) <= v;
+                using target_type =
+                    math_type<NumberType, std::decay_t<decltype (v)>>;
+                return static_cast<target_type> (num) <=
+                       static_cast<target_type> (v);
               });
           failed (eo)) {
         return eo;
@@ -153,7 +161,10 @@ public:
       if (auto const eo = check_number (
               exmax_pos->second,
               [num] (auto const &v) {
-                return static_cast<std::decay_t<decltype (v)>> (num) < v;
+                using target_type =
+                    math_type<NumberType, std::decay_t<decltype (v)>>;
+                return static_cast<target_type> (num) <
+                       static_cast<target_type> (v);
               });
           failed (eo)) {
         return eo;
@@ -169,7 +180,10 @@ public:
       if (auto const eo = check_number (
               minimum_pos->second,
               [num] (auto const &v) {
-                return static_cast<std::decay_t<decltype (v)>> (num) >= v;
+                using target_type =
+                    math_type<NumberType, std::decay_t<decltype (v)>>;
+                return static_cast<target_type> (num) >=
+                       static_cast<target_type> (v);
               });
           failed (eo)) {
         return eo;
@@ -185,7 +199,10 @@ public:
       if (auto const eo = check_number (
               exmin_pos->second,
               [num] (auto const &v) {
-                return static_cast<std::decay_t<decltype (v)>> (num) > v;
+                using target_type =
+                    math_type<NumberType, std::decay_t<decltype (v)>>;
+                return static_cast<target_type> (num) >
+                       static_cast<target_type> (v);
               });
           failed (eo)) {
         return eo;
