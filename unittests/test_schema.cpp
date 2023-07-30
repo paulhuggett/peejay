@@ -17,11 +17,15 @@
 
 #include "peejay/schema.hpp"
 
-using namespace peejay;
-using namespace std::string_view_literals;
-using testing::Test;
+using peejay::dom;
+using peejay::element;
+using peejay::error;
+using peejay::error_or;
+using peejay::make_parser;
+using peejay::schema::check;
 
-using pjparser = parser<dom<1024>>;
+using namespace std::literals;
+using testing::Test;
 
 namespace {
 
@@ -30,13 +34,9 @@ void parse_error () {
 }
 
 std::optional<element> parse (peejay::u8string_view const& str) {
-  pjparser p;
-#if PEEJAY_HAVE_SPAN
-  p.input (std::span{str.data (), str.size ()});
-#else
-  p.input (std::begin (str), std::end (str));
-#endif  // PEEJAY_HAVE_SPAN
-  std::optional<peejay::element> result = p.eof ();
+  auto p = make_parser (dom{});
+  std::optional<peejay::element> result =
+      p.input (std::begin (str), std::end (str)).eof ();
   if (auto const erc = p.last_error ()) {
     parse_error ();
     return {};
@@ -46,35 +46,40 @@ std::optional<element> parse (peejay::u8string_view const& str) {
 
 }  // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST (SchemaConst, NumberPassing) {
   auto schema = parse (u8R"({ "const": 1234 })"sv);
   auto instance = parse (u8"1234"sv);
   ASSERT_TRUE (schema.has_value () && instance.has_value ());
-  EXPECT_EQ (schema::check (*schema, *instance), error_or<bool>{true});
+  EXPECT_EQ (check (*schema, *instance), error_or<bool>{true});
 }
 
 class SchemaEnum : public Test {
 protected:
   element const schema = parse (u8R"({ "enum": [ 123, "foo" ] })"sv).value ();
 };
+// NOLINTNEXTLINE
 TEST_F (SchemaEnum, UintPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"123"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"123"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaEnum, IntegerFloatPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"123.0"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8"123.0"sv).value ()),
              error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaEnum, StringPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("foo")"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"("foo")"sv).value ()),
              error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaEnum, StringFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("bar")"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"("bar")"sv).value ()),
              error_or<bool>{false});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaEnum, ObjectFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"({"a":1,"b":2})"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"({"a":1,"b":2})"sv).value ()),
              error_or<bool>{false});
 }
 
@@ -82,20 +87,22 @@ class SchemaTypeNumber : public Test {
 protected:
   element const schema = parse (u8R"({ "type": "number" })"sv).value ();
 };
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeNumber, UintPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"1234"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"1234"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeNumber, FloatPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"12.0"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"12.0"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeNumber, SIntPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"-1234"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8"-1234"sv).value ()),
              error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeNumber, StringFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("foo")"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"("foo")"sv).value ()),
              error_or<bool>{false});
 }
 
@@ -103,24 +110,27 @@ class SchemaTypeInteger : public Test {
 protected:
   element const schema = parse (u8R"({ "type": "integer" })"sv).value ();
 };
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeInteger, UintPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"1234"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"1234"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeInteger, FloatPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"12.0"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"12.0"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeInteger, SIntPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"-1234"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8"-1234"sv).value ()),
              error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeInteger, StringFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("foo")"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"("foo")"sv).value ()),
              error_or<bool>{false});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeInteger, RationalFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"12.01"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8"12.01"sv).value ()),
              error_or<bool>{false});
 }
 
@@ -129,59 +139,108 @@ protected:
   element const schema =
       parse (u8R"({ "type": ["boolean", "null"] })"sv).value ();
 };
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeArray, BoolPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"true"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"true"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeArray, NullPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"null"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"null"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaTypeArray, UIntFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"0"sv).value ()),
-             error_or<bool>{false});
+  EXPECT_EQ (check (schema, parse (u8"0"sv).value ()), error_or<bool>{false});
 }
 
 class SchemaMaxLength : public Test {
 protected:
   element const schema = parse (u8R"({ "maxLength": 2 })"sv).value ();
 };
+// NOLINTNEXTLINE
 TEST_F (SchemaMaxLength, ShortStringPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("ab")"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"("ab")"sv).value ()),
              error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaMaxLength, NotStringPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"1"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8"1"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaMaxLength, LongStringFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("abc")"sv).value ()),
+  EXPECT_EQ (check (schema, parse (u8R"("abc")"sv).value ()),
              error_or<bool>{false});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaMaxLength, BadSchemaValue) {
   element const bad_schema = parse (u8R"({ "maxLength": "foo" })"sv).value ();
-  EXPECT_EQ (schema::check (bad_schema, parse (u8R"("ab")"sv).value ()),
+  EXPECT_EQ (check (bad_schema, parse (u8R"("ab")"sv).value ()),
              error_or<bool>{make_error_code (error::schema_maxlength_number)});
 }
 
 class SchemaMinLength : public Test {
 protected:
-  element const schema = parse (u8R"({ "minLength": 2 })"sv).value ();
+  element const schema_ = parse (u8R"({ "minLength": 2 })"sv).value ();
 };
+// NOLINTNEXTLINE
 TEST_F (SchemaMinLength, ShortStringFailing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("a")"sv).value ()),
+  EXPECT_EQ (check (schema_, parse (u8R"("a")"sv).value ()),
              error_or<bool>{false});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaMinLength, NotStringPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8"1"sv).value ()),
-             error_or<bool>{true});
+  EXPECT_EQ (check (schema_, parse (u8"1"sv).value ()), error_or<bool>{true});
 }
+// NOLINTNEXTLINE
 TEST_F (SchemaMinLength, LongStringPassing) {
-  EXPECT_EQ (schema::check (schema, parse (u8R"("abc")"sv).value ()),
+  EXPECT_EQ (check (schema_, parse (u8R"("abc")"sv).value ()),
              error_or<bool>{true});
 }
 TEST_F (SchemaMinLength, BadSchemaValue) {
   element const bad_schema = parse (u8R"({ "minLength": "foo" })"sv).value ();
-  EXPECT_EQ (schema::check (bad_schema, parse (u8R"("ab")"sv).value ()),
+  EXPECT_EQ (check (bad_schema, parse (u8R"("ab")"sv).value ()),
              error_or<bool>{make_error_code (error::schema_minlength_number)});
+}
+
+class SchemaProperties : public Test {
+protected:
+  element const schema_ = parse (
+                              u8R"({
+  "properties": {
+    "name": {
+      "type": ["string"]
+    }
+  }
+})"sv)
+                              .value ();
+};
+
+// NOLINTNEXTLINE
+TEST_F (SchemaProperties, HasPropertyPassing) {
+  // valid - instance has name, which is a string.
+  EXPECT_EQ (check (schema_, parse (u8R"({ "name": "Alice" })").value ()),
+             error_or<bool>{true});
+}
+// NOLINTNEXTLINE
+TEST_F (SchemaProperties, MissingPropertyPassing) {
+  // valid - instance has name, which is a string.
+  EXPECT_EQ (check (schema_, parse (u8R"({ "fullName": "Alice" })").value ()),
+             error_or<bool>{true});
+}
+// NOLINTNEXTLINE
+TEST_F (SchemaProperties, ArrayPassing) {
+  // valid - instance is not an object, therefore `properties` isn't applicable.
+  EXPECT_EQ (check (schema_, parse (u8R"([ "name", 123 ])").value ()),
+             error_or<bool>{true});
+}
+// NOLINTNEXTLINE
+TEST_F (SchemaProperties, NoApplicablePropertiesPassing) {
+  // valid - instance data has no applicable properties.
+  EXPECT_EQ (check (schema_, parse (u8R"({ })").value ()),
+             error_or<bool>{true});
+}
+// NOLINTNEXTLINE
+TEST_F (SchemaProperties, PropertyHasWrongTypeFailing) {
+  // invalid - The `name` property value must be a string.
+  EXPECT_EQ (check (schema_, parse (u8R"({ "name": 123 })").value ()),
+             error_or<bool>{false});
 }

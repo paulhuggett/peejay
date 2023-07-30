@@ -79,14 +79,14 @@ public:
   }
   static error_or<bool> check_type (element const &type_name,
                                     element const &instance) {
-    if (auto const *name = std::get_if<u8string> (&type_name)) {
+    if (auto const *const name = std::get_if<u8string> (&type_name)) {
       return check_type (*name, instance);
     }
     return make_error_code (error::schema_type_name_invalid);
   }
 
-  static error_or<bool> string_constraints (u8string const &s,
-                                            object const &schema) {
+  static error_or<bool> string_constraints (object const &schema,
+                                            u8string const &s) {
     auto const end = schema->end ();
 
     if (auto const maxlength_pos = schema->find (u8"maxLength");
@@ -128,16 +128,53 @@ public:
     return true;
   }
 
+  static bool failed (error_or<bool> const &eo) {
+    bool const *const b = std::get_if<bool> (&eo);
+    return b == nullptr || !*b;
+  }
+
+  static error_or<bool> object_constraints (object const &schema,
+                                            object const &obj) {
+    auto const end = schema->end ();
+
+    if (auto const properties_pos = schema->find (u8"properties");
+        properties_pos != end) {
+      if (auto const *const properties =
+              std::get_if<object> (&properties_pos->second)) {
+        for (auto const &[key, subschema] : **properties) {
+          // Does the instance object contain a property with this name?
+          if (auto const instance_pos = obj->find (key);
+              instance_pos != obj->end ()) {
+            // It does, so check the instance property's value against the
+            // subschema.
+            if (auto const res = check (subschema, instance_pos->second);
+                failed (res)) {
+              return res;
+            }
+          }
+        }
+      } else {
+        return error::schema_properties_must_be_object;
+      }
+    }
+    if (schema->find (u8"patternProperties") != end) {
+    }
+    if (schema->find (u8"additionalProperties") != end) {
+    }
+    if (schema->find (u8"propertyNames") != end) {
+    }
+    return true;
+  }
   static error_or<bool> check (element const &schema, element const &instance) {
     // A schema or a sub-schema may be either an object or a boolean.
     if (auto const *const b = std::get_if<bool> (&schema)) {
       return *b;
     }
-    auto const *const obj = std::get_if<object> (&schema);
-    if (obj == nullptr) {
+    auto const *const schema_obj = std::get_if<object> (&schema);
+    if (schema_obj == nullptr) {
       return make_error_code (error::schema_not_boolean_or_object);
     }
-    auto const &map = **obj;
+    auto const &map = **schema_obj;
     auto const end = map.end ();
 
     if (auto const &const_pos = map.find (u8"const"); const_pos != end) {
@@ -169,29 +206,21 @@ public:
     }
 
     // If the instance is a string, then check string constraints.
-    if (auto const *string_inst = std::get_if<u8string> (&instance)) {
-      error_or<bool> eo = string_constraints (*string_inst, *obj);
-      if (std::holds_alternative<std::error_code> (eo) ||
-          (std::holds_alternative<bool> (eo) && !std::get<bool> (eo))) {
+    if (auto const *const string_inst = std::get_if<u8string> (&instance)) {
+      if (error_or<bool> const eo =
+              string_constraints (*schema_obj, *string_inst);
+          failed (eo)) {
         return eo;
       }
     }
 
-    if (auto const &properties_pos = map.find (u8"properties");
-        properties_pos != end) {
-      if (auto const *const properties =
-              std::get_if<object> (&properties_pos->second)) {
-        // TODO(paul): implement this!
-        // auto const &pmap = **properties;
-      } else {
-        // error: properties MUST be an object.
+    // If the instance is an object, check for the object keywords.
+    if (auto const *const object_inst = std::get_if<object> (&instance)) {
+      if (error_or<bool> const eo =
+              object_constraints (*schema_obj, *object_inst);
+          failed (eo)) {
+        return eo;
       }
-    }
-    if (map.find (u8"patternProperties") != end) {
-    }
-    if (map.find (u8"additionalProperties") != end) {
-    }
-    if (map.find (u8"propertyNames") != end) {
     }
     return true;
   }
