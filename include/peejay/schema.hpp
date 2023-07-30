@@ -135,7 +135,10 @@ public:
     if (auto const maximum_pos = schema->find (u8"maximum");
         maximum_pos != end) {
       if (auto const eo = check_number (
-              maximum_pos->second, [num] (auto const &v) { return num <= v; });
+              maximum_pos->second,
+              [num] (auto const &v) {
+                return static_cast<std::decay_t<decltype (v)>> (num) <= v;
+              });
           failed (eo)) {
         return eo;
       }
@@ -148,7 +151,10 @@ public:
     if (auto const exmax_pos = schema->find (u8"exclusiveMaximum");
         exmax_pos != end) {
       if (auto const eo = check_number (
-              exmax_pos->second, [num] (auto const &v) { return num < v; });
+              exmax_pos->second,
+              [num] (auto const &v) {
+                return static_cast<std::decay_t<decltype (v)>> (num) < v;
+              });
           failed (eo)) {
         return eo;
       }
@@ -161,7 +167,10 @@ public:
     if (auto const minimum_pos = schema->find (u8"minimum");
         minimum_pos != end) {
       if (auto const eo = check_number (
-              minimum_pos->second, [num] (auto const &v) { return num >= v; });
+              minimum_pos->second,
+              [num] (auto const &v) {
+                return static_cast<std::decay_t<decltype (v)>> (num) >= v;
+              });
           failed (eo)) {
         return eo;
       }
@@ -174,7 +183,10 @@ public:
     if (auto const exmin_pos = schema->find (u8"exclusiveMinimum");
         exmin_pos != end) {
       if (auto const eo = check_number (
-              exmin_pos->second, [num] (auto const &v) { return num > v; });
+              exmin_pos->second,
+              [num] (auto const &v) {
+                return static_cast<std::decay_t<decltype (v)>> (num) > v;
+              });
           failed (eo)) {
         return eo;
       }
