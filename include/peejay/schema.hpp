@@ -31,14 +31,14 @@ namespace schema {
 constexpr bool is_multiple_of (int64_t a, int64_t mo) noexcept {
   return a / mo * mo == a;
 }
-constexpr bool is_multiple_of (double a, double mo) noexcept {
+inline bool is_multiple_of (double a, double mo) noexcept {
   auto const t = a / mo;
   return t == std::floor (t);
 }
-constexpr bool is_multiple_of (double a, int64_t mo) noexcept {
+inline bool is_multiple_of (double a, int64_t mo) noexcept {
   return is_multiple_of (a, static_cast<double> (mo));
 }
-constexpr bool is_multiple_of (int64_t a, double mo) noexcept {
+inline bool is_multiple_of (int64_t a, double mo) noexcept {
   return is_multiple_of (static_cast<double> (a), mo);
 }
 
