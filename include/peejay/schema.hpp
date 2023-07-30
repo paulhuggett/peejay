@@ -28,6 +28,20 @@ using error_or = std::variant<std::error_code, T>;
 
 namespace schema {
 
+constexpr bool is_multiple_of (int64_t a, int64_t mo) noexcept {
+  return a / mo * mo == a;
+}
+constexpr bool is_multiple_of (double a, double mo) noexcept {
+  auto const t = a / mo;
+  return t == std::floor (t);
+}
+constexpr bool is_multiple_of (double a, int64_t mo) noexcept {
+  return is_multiple_of (a, static_cast<double> (mo));
+}
+constexpr bool is_multiple_of (int64_t a, double mo) noexcept {
+  return is_multiple_of (static_cast<double> (a), mo);
+}
+
 template <typename T>
 constexpr bool is_type (element const &el) {
   return std::holds_alternative<T> (el);
@@ -82,32 +96,134 @@ public:
     if (auto const *const name = std::get_if<u8string> (&type_name)) {
       return check_type (*name, instance);
     }
-    return make_error_code (error::schema_type_name_invalid);
+    return error::schema_type_name_invalid;
+  }
+
+  template <typename Predicate>
+  static error_or<bool> check_number (element const &el, Predicate pred) {
+    if (auto const *const integer = std::get_if<std::int64_t> (&el)) {
+      return pred (*integer);
+    }
+    if (auto const *const fp = std::get_if<double> (&el)) {
+      return pred (*fp);
+    }
+    return error::schema_expected_number;
+  }
+
+  template <typename NumberType>
+  static error_or<bool> number_constraints (object const &schema,
+                                            NumberType const num) {
+    auto const end = schema->end ();
+
+    // The value of "multipleOf" MUST be a number, strictly greater than 0. A
+    // numeric instance is valid only if division by this keyword's value
+    // results in an integer.
+    if (auto const multipleof_pos = schema->find (u8"multipleOf");
+        multipleof_pos != end) {
+      if (auto const eo = check_number (
+              multipleof_pos->second,
+              [num] (auto const &v) { return is_multiple_of (num, v); });
+          failed (eo)) {
+        return eo;
+      }
+    }
+
+    // The value of "maximum" MUST be a number, representing an inclusive upper
+    // limit for a numeric instance. If the instance is a number, then this
+    // keyword validates only if the instance is less than or exactly equal to
+    // "maximum".
+    if (auto const maximum_pos = schema->find (u8"maximum");
+        maximum_pos != end) {
+      if (auto const eo = check_number (
+              maximum_pos->second, [num] (auto const &v) { return num <= v; });
+          failed (eo)) {
+        return eo;
+      }
+    }
+
+    // The value of "exclusiveMaximum" MUST be a number, representing an
+    // exclusive upper limit for a numeric instance. If the instance is a
+    // number, then the instance is valid only if it has a value strictly less
+    // than (not equal to) "exclusiveMaximum".
+    if (auto const exmax_pos = schema->find (u8"exclusiveMaximum");
+        exmax_pos != end) {
+      if (auto const eo = check_number (
+              exmax_pos->second, [num] (auto const &v) { return num < v; });
+          failed (eo)) {
+        return eo;
+      }
+    }
+
+    // The value of "minimum" MUST be a number, representing an inclusive lower
+    // limit for a numeric instance. If the instance is a number, then this
+    // keyword validates only if the instance is greater than or exactly equal
+    // to "minimum".
+    if (auto const minimum_pos = schema->find (u8"minimum");
+        minimum_pos != end) {
+      if (auto const eo = check_number (
+              minimum_pos->second, [num] (auto const &v) { return num >= v; });
+          failed (eo)) {
+        return eo;
+      }
+    }
+
+    // The value of "exclusiveMinimum" MUST be a number, representing an
+    // exclusive lower limit for a numeric instance. If the instance is a
+    // number, then the instance is valid only if it has a value strictly
+    // greater than (not equal to) "exclusiveMinimum".
+    if (auto const exmin_pos = schema->find (u8"exclusiveMinimum");
+        exmin_pos != end) {
+      if (auto const eo = check_number (
+              exmin_pos->second, [num] (auto const &v) { return num > v; });
+          failed (eo)) {
+        return eo;
+      }
+    }
+
+    return true;
   }
 
   static error_or<bool> string_constraints (object const &schema,
                                             u8string const &s) {
     auto const end = schema->end ();
 
+    std::optional<u8string::iterator::difference_type> length;
+    auto const get_length = [&length, &s] () {
+      if (!length) {
+        length = icubaby::length (std::begin (s), std::end (s));
+      }
+      return length.value ();
+    };
+
+    // The value of this keyword MUST be a non-negative integer. A string
+    // instance is valid against this keyword if its length is less than, or
+    // equal to, the value of this keyword. The length of a string instance is
+    //  defined as the number of its characters as defined by RFC 8259.
     if (auto const maxlength_pos = schema->find (u8"maxLength");
         maxlength_pos != end) {
       auto const *const maxlength =
           std::get_if<std::int64_t> (&maxlength_pos->second);
       if (maxlength == nullptr || *maxlength < 0) {
-        return error::schema_maxlength_number;
+        return error::schema_expected_non_negative_integer;
       }
-      if (icubaby::length (std::begin (s), std::end (s)) > *maxlength) {
+      if (get_length () > *maxlength) {
         return false;
       }
     }
+
+    // The value of this keyword MUST be a non-negative integer. A string
+    // instance is valid against this keyword if its length is greater than, or
+    // equal to, the value of this keyword. The length of a string instance is
+    // defined as the number of its characters as defined by RFC 8259. Omitting
+    // this keyword has the same behavior as a value of 0.
     if (auto const minlength_pos = schema->find (u8"minLength");
         minlength_pos != end) {
       auto const *const minlength =
           std::get_if<std::int64_t> (&minlength_pos->second);
       if (minlength == nullptr || *minlength < 0) {
-        return error::schema_minlength_number;
+        return error::schema_expected_non_negative_integer;
       }
-      if (icubaby::length (std::begin (s), std::end (s)) < *minlength) {
+      if (get_length () < *minlength) {
         return false;
       }
     }
@@ -172,7 +288,7 @@ public:
     }
     auto const *const schema_obj = std::get_if<object> (&schema);
     if (schema_obj == nullptr) {
-      return make_error_code (error::schema_not_boolean_or_object);
+      return error::schema_not_boolean_or_object;
     }
     auto const &map = **schema_obj;
     auto const end = map.end ();
@@ -205,10 +321,24 @@ public:
       return error::schema_type_string_or_string_array;
     }
 
+    if (auto const *const integer_inst =
+            std::get_if<std::int64_t> (&instance)) {
+      if (error_or<bool> const eo =
+              number_constraints (*schema_obj, *integer_inst);
+          failed (eo)) {
+        return eo;
+      }
+    }
+    if (auto const *const fp_inst = std::get_if<double> (&instance)) {
+      if (error_or<bool> const eo = number_constraints (*schema_obj, *fp_inst);
+          failed (eo)) {
+        return eo;
+      }
+    }
+
     // If the instance is a string, then check string constraints.
     if (auto const *const string_inst = std::get_if<u8string> (&instance)) {
-      if (error_or<bool> const eo =
-              string_constraints (*schema_obj, *string_inst);
+      if (auto const eo = string_constraints (*schema_obj, *string_inst);
           failed (eo)) {
         return eo;
       }
@@ -216,8 +346,7 @@ public:
 
     // If the instance is an object, check for the object keywords.
     if (auto const *const object_inst = std::get_if<object> (&instance)) {
-      if (error_or<bool> const eo =
-              object_constraints (*schema_obj, *object_inst);
+      if (auto const eo = object_constraints (*schema_obj, *object_inst);
           failed (eo)) {
         return eo;
       }

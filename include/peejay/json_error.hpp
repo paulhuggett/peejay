@@ -49,8 +49,8 @@ enum class error : int {
   schema_defs_must_be_object,
   schema_enum_must_be_array,
   schema_not_boolean_or_object,
-  schema_maxlength_number,
-  schema_minlength_number,
+  schema_expected_number,
+  schema_expected_non_negative_integer,
   schema_pattern_string,
   schema_properties_must_be_object,
   schema_type_string_or_string_array,
@@ -101,6 +101,9 @@ public:
       return "schema $defs value must be an object";
     case error::schema_enum_must_be_array:
       return "schema enum value must be an array";
+    case error::schema_expected_number: return "schema expected a number";
+    case error::schema_expected_non_negative_integer:
+      return "schema expected a non-negative integer";
     case error::schema_not_boolean_or_object:
       return "schema must be boolean or object";
     case error::schema_properties_must_be_object:
@@ -108,10 +111,6 @@ public:
     case error::schema_type_name_invalid: return "schema type name invalid";
     case error::schema_type_string_or_string_array:
       return "schema type constraint was not a string or an array";
-    case error::schema_maxlength_number:
-      return "schema maxLength constaint was not a non-negative number";
-    case error::schema_minlength_number:
-      return "schema minLength constaint was not a non-negative number";
     case error::schema_pattern_string:
       return "schema pattern constraint was not a string";
     }

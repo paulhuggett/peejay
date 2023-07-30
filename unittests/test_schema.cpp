@@ -174,7 +174,7 @@ TEST_F (SchemaMaxLength, LongStringFailing) {
 TEST_F (SchemaMaxLength, BadSchemaValue) {
   element const bad_schema = parse (u8R"({ "maxLength": "foo" })"sv).value ();
   EXPECT_EQ (check (bad_schema, parse (u8R"("ab")"sv).value ()),
-             error_or<bool>{make_error_code (error::schema_maxlength_number)});
+             error_or<bool>{error::schema_expected_non_negative_integer});
 }
 
 class SchemaMinLength : public Test {
@@ -198,7 +198,7 @@ TEST_F (SchemaMinLength, LongStringPassing) {
 TEST_F (SchemaMinLength, BadSchemaValue) {
   element const bad_schema = parse (u8R"({ "minLength": "foo" })"sv).value ();
   EXPECT_EQ (check (bad_schema, parse (u8R"("ab")"sv).value ()),
-             error_or<bool>{make_error_code (error::schema_minlength_number)});
+             error_or<bool>{error::schema_expected_non_negative_integer});
 }
 
 class SchemaProperties : public Test {
@@ -243,4 +243,59 @@ TEST_F (SchemaProperties, PropertyHasWrongTypeFailing) {
   // invalid - The `name` property value must be a string.
   EXPECT_EQ (check (schema_, parse (u8R"({ "name": 123 })").value ()),
              error_or<bool>{false});
+}
+
+// NOLINTNEXTLINE
+TEST (SchemaNumberInstanceChecks, MultipleOf) {
+  EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2 })"sv).value (),
+                    parse (u8"2"sv).value ()),
+             error_or<bool>{true});
+  EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2 })"sv).value (),
+                    parse (u8"3"sv).value ()),
+             error_or<bool>{false});
+  EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2.5 })"sv).value (),
+                    parse (u8"5"sv).value ()),
+             error_or<bool>{true});
+  EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2.5 })"sv).value (),
+                    parse (u8"4"sv).value ()),
+             error_or<bool>{false});
+  EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2.4 })"sv).value (),
+                    parse (u8"4.8"sv).value ()),
+             error_or<bool>{true});
+  EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2.4 })"sv).value (),
+                    parse (u8"4.9"sv).value ()),
+             error_or<bool>{false});
+}
+TEST (SchemaNumberInstanceChecks, MaximumInteger) {
+  auto two = parse (u8R"({ "maximum": 2 })"sv).value ();
+  EXPECT_EQ (check (two, parse (u8"2"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (two, parse (u8"-1"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (two, parse (u8"2.1"sv).value ()), error_or<bool>{false});
+  EXPECT_EQ (check (two, parse (u8"3"sv).value ()), error_or<bool>{false});
+}
+TEST (SchemaNumberInstanceChecks, MaximumFp) {
+  auto pi = parse (u8R"({ "maximum": 3.14 })"sv).value ();
+  EXPECT_EQ (check (pi, parse (u8"2"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (pi, parse (u8"-1"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (pi, parse (u8"3.14"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (pi, parse (u8"3.15"sv).value ()), error_or<bool>{false});
+  EXPECT_EQ (check (pi, parse (u8"4"sv).value ()), error_or<bool>{false});
+}
+TEST (SchemaNumberInstanceChecks, ExclusiveMaximumInteger) {
+  auto three = parse (u8R"({ "exclusiveMaximum": 3 })"sv).value ();
+  EXPECT_EQ (check (three, parse (u8"2"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (three, parse (u8"-1"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (three, parse (u8"2.1"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (three, parse (u8"2.9999"sv).value ()),
+             error_or<bool>{true});
+  EXPECT_EQ (check (three, parse (u8"3"sv).value ()), error_or<bool>{false});
+}
+TEST (SchemaNumberInstanceChecks, ExclusiveMaximumFp) {
+  auto pi = parse (u8R"({ "exclusiveMaximum": 3.14 })"sv).value ();
+  EXPECT_EQ (check (pi, parse (u8"2"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (pi, parse (u8"-1"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (pi, parse (u8"3.13999"sv).value ()), error_or<bool>{true});
+  EXPECT_EQ (check (pi, parse (u8"3.14"sv).value ()), error_or<bool>{false});
+  EXPECT_EQ (check (pi, parse (u8"3.15"sv).value ()), error_or<bool>{false});
+  EXPECT_EQ (check (pi, parse (u8"4"sv).value ()), error_or<bool>{false});
 }
