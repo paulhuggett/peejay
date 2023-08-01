@@ -244,6 +244,13 @@ TEST (ArrayVec, Front) {
 }
 
 // NOLINTNEXTLINE
+TEST (ArrayVec, At) {
+  arrayvec<int, 2> a{3};
+  EXPECT_EQ (a.at (0), 3);
+  EXPECT_THROW (a.at (1), std::out_of_range);
+}
+
+// NOLINTNEXTLINE
 TEST (ArrayVec, SizeAfterResizeSmaller) {
   arrayvec<int, 8> b (std::size_t{8}, int{});
   b.resize (5);

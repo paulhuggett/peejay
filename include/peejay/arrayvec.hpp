@@ -175,6 +175,25 @@ public:
     return *(this->data () + n);
   }
 
+  /// \brief Returns a reference to the element at specified location \p pos,
+  ///   with bounds checking.
+  ///
+  /// If pos is not within the range of the container, an exception of type
+  /// std::out_of_range is thrown.
+  ///
+  /// \param pos  Position of the element to return.
+  /// \returns  A reference to the requested element.
+  reference at (size_type pos);
+  /// \brief Returns a reference to the element at specified location \p pos,
+  ///   with bounds checking.
+  ///
+  /// If pos is not within the range of the container, an exception of type
+  /// std::out_of_range is thrown.
+  ///
+  /// \param pos  Position of the element to return.
+  /// \returns  A reference to the requested element.
+  const_reference at (size_type pos) const;
+
   /// \brief Access the first element.
   ///
   /// The effect of calling front() on a zero-sized arrayvec is undefined.
@@ -608,6 +627,23 @@ auto arrayvec<T, Size>::operator= (arrayvec &&other) noexcept (
     assert (size_ <= this->max_size ());
   }
   return *this;
+}
+
+// at
+// ~~
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::at (size_type pos) -> reference {
+  if (pos >= this->size ()) {
+    details::avbase<T>::raise_out_of_range ();
+  }
+  return (*this)[pos];
+}
+template <typename T, std::size_t Size>
+auto arrayvec<T, Size>::at (size_type pos) const -> const_reference {
+  if (pos >= this->size ()) {
+    details::avbase<T>::raise_out_of_range ();
+  }
+  return (*this)[pos];
 }
 
 // front
