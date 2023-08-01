@@ -299,3 +299,25 @@ TEST (SchemaNumberInstanceChecks, ExclusiveMaximumFp) {
   EXPECT_EQ (check (pi, parse (u8"3.15"sv).value ()), error_or<bool>{false});
   EXPECT_EQ (check (pi, parse (u8"4"sv).value ()), error_or<bool>{false});
 }
+
+TEST (SchemaMinProperties, GoodSchema) {
+  element const schema = parse (u8R"({ "minProperties": 2 })"sv).value ();
+  EXPECT_EQ (check (schema, parse (u8R"({ "a":1, "b":2 })"sv).value ()),
+             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8R"({ "a":1, "b":2, "c":3 })"sv).value ()),
+             error_or<bool>{true});
+  EXPECT_EQ (check (schema, parse (u8R"({ "a":1 })"sv).value ()),
+             error_or<bool>{false});
+  EXPECT_EQ (check (schema, parse (u8R"([1])"sv).value ()),
+             error_or<bool>{true});
+}
+TEST (SchemaMinProperties, BadSchemaNegativeValue) {
+  element const schema = parse (u8R"({ "minProperties": -2 })"sv).value ();
+  EXPECT_EQ (check (schema, parse (u8R"({ "a":1, "b":2 })"sv).value ()),
+             error_or<bool>{error::schema_expected_non_negative_integer});
+}
+TEST (SchemaMinProperties, BadSchemaWrongType) {
+  element const schema = parse (u8R"({ "minProperties": "2" })"sv).value ();
+  EXPECT_EQ (check (schema, parse (u8R"({ "a":1, "b":2 })"sv).value ()),
+             error_or<bool>{error::schema_expected_non_negative_integer});
+}

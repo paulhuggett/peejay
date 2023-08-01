@@ -227,7 +227,7 @@ public:
     // The value of this keyword MUST be a non-negative integer. A string
     // instance is valid against this keyword if its length is less than, or
     // equal to, the value of this keyword. The length of a string instance is
-    //  defined as the number of its characters as defined by RFC 8259.
+    // defined as the number of its characters as defined by RFC 8259.
     if (auto const maxlength_pos = schema->find (u8"maxLength");
         maxlength_pos != end) {
       auto const *const maxlength =
@@ -282,6 +282,12 @@ public:
                                             object const &obj) {
     auto const end = schema->end ();
 
+    // core 10.3.2.1. properties
+    // The value of "properties" MUST be an object. Each value of this object
+    // MUST be a valid JSON Schema. Validation succeeds if, for each name that
+    // appears in both the instance and as a name within this keyword's value,
+    // the child instance for that name successfully validates against the
+    // corresponding schema.
     if (auto const properties_pos = schema->find (u8"properties");
         properties_pos != end) {
       if (auto const *const properties =
@@ -302,6 +308,42 @@ public:
         return error::schema_properties_must_be_object;
       }
     }
+
+    // 6.5.1. maxProperties
+    // The value of this keyword MUST be a non-negative integer. An object
+    // instance is valid against "maxProperties" if its number of properties is
+    // less than, or equal to, the value of this keyword.
+    if (auto const properties_pos = schema->find (u8"maxProperties");
+        properties_pos != end) {
+      if (auto const *const max_properties =
+              std::get_if<std::int64_t> (&properties_pos->second);
+          max_properties != nullptr && *max_properties >= 0) {
+        if (obj->size () > static_cast<std::uint64_t> (*max_properties)) {
+          return false;
+        }
+      } else {
+        return error::schema_expected_non_negative_integer;
+      }
+    }
+
+    // 6.5.2. minProperties
+    // The value of this keyword MUST be a non-negative integer. An object
+    // instance is valid against "minProperties" if its number of properties is
+    // greater than, or equal to, the value of this keyword. Omitting this
+    // keyword has the same behavior as a value of 0.
+    if (auto const properties_pos = schema->find (u8"minProperties");
+        properties_pos != end) {
+      if (auto const *const min_properties =
+              std::get_if<std::int64_t> (&properties_pos->second);
+          min_properties != nullptr && *min_properties >= 0) {
+        if (obj->size () < static_cast<std::uint64_t> (*min_properties)) {
+          return false;
+        }
+      } else {
+        return error::schema_expected_non_negative_integer;
+      }
+    }
+
     if (schema->find (u8"patternProperties") != end) {
     }
     if (schema->find (u8"additionalProperties") != end) {
