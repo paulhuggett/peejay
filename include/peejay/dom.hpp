@@ -58,13 +58,41 @@ using variant = std::variant<std::int64_t, double, bool, null, u8string, array,
 
 struct element : variant {
   using variant::variant;
+  struct element *parent = nullptr;
 
+  element (element const &rhs) = delete;
+  element (element &&rhs) noexcept
+      : variant (std::move (static_cast<variant &&> (rhs))) {
+    adjust_parents ();
+  }
+
+  element &operator= (element const &rhs) = delete;
+  element &operator= (element &&rhs) noexcept {
+    if (this != &rhs) {
+      static_cast<variant *> (this)->operator= (
+          std::move (static_cast<variant &&> (rhs)));
+      adjust_parents ();
+    }
+    return *this;
+  }
   bool operator== (element const &rhs) const;
 
   /// Evaluate a JSON pointer (RFC6901).
   element *eval_pointer (u8string_view s);
 
 private:
+  void adjust_parents () {
+    if (auto *const arr = std::get_if<array> (this)) {
+      for (element &member : **arr) {
+        member.parent = this;
+      }
+    } else if (auto const *obj = std::get_if<object> (this)) {
+      for (auto &kvp : **obj) {
+        kvp.second.parent = this;
+      }
+    }
+  }
+
   static std::pair<u8string, u8string_view::size_type> next_token (
       u8string_view s, u8string_view::size_type token_start);
   static element *apply_token (element *el, u8string const &token);
@@ -324,7 +352,10 @@ std::error_code dom<StackSize>::end_array () {
 #else
   std::reverse (std::begin (*arr), std::end (*arr));
 #endif
-  stack_->emplace (std::move (arr));
+  element &top = stack_->emplace (std::move (arr));
+  for (element &member : *std::get<array> (top)) {
+    member.parent = &top;
+  }
   return error::none;
 }
 
@@ -351,7 +382,10 @@ std::error_code dom<StackSize>::end_object () {
   // The presence of duplicate keys can mean that we end up with fewer entries
   // in the map than there were key/value pairs on the stack.
   assert (obj->size () <= size);
-  stack_->emplace (std::move (obj));
+  element &top = stack_->emplace (std::move (obj));
+  for (auto &kvp : *std::get<object> (top)) {
+    kvp.second.parent = &top;
+  }
   return error::none;
 }
 
