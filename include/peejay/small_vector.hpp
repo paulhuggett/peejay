@@ -142,9 +142,7 @@ public:
   ///
   /// \param pos  Position of the element to return.
   /// \returns  A reference to the requested element.
-  reference at (size_type pos) {
-    return visit (*this, [&pos] (auto &a) { return std::ref (a.at (pos)); });
-  }
+  reference at (size_type pos) { return at_impl (*this, pos); }
   /// \brief Returns a reference to the element at specified location \p pos,
   ///   with bounds checking.
   ///
@@ -153,10 +151,7 @@ public:
   ///
   /// \param pos  Position of the element to return.
   /// \returns  A reference to the requested element.
-  const_reference at (size_type pos) const {
-    return visit (*this,
-                  [&pos] (auto const &a) { return std::cref (a.at (pos)); });
-  }
+  const_reference at (size_type pos) const { return at_impl (*this, pos); }
 
   const_reference back () const {
     return visit (*this,
@@ -383,6 +378,17 @@ private:
   void transfer_from_different (small_vector<ElementType, OtherSize> &&rhs) {
     visit (*this, [&rhs] (auto &v) {
       std::move (std::begin (rhs), std::end (rhs), std::back_inserter (v));
+    });
+  }
+
+  template <typename SmallVector>
+  static decltype (auto) at_impl (SmallVector &smv, size_type pos) {
+    return visit (smv, [pos] (auto &v) {
+      using Vector = std::decay_t<decltype (v)>;
+      if (pos >= v.size ()) {
+        throw std::out_of_range{"small vector"};
+      }
+      return std::ref (v.at (static_cast<typename Vector::size_type> (pos)));
     });
   }
 
