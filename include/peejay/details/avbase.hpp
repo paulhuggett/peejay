@@ -120,6 +120,10 @@ protected:
                                             SizeType *size,
                                             pointer_based_iterator<T> pos,
                                             Args &&...args);
+
+  static void raise_out_of_range () {
+    throw std::out_of_range{"peejay::arrayvec"};
+  }
 };
 
 // init

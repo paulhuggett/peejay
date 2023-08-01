@@ -134,6 +134,30 @@ public:
     });
   }
 
+  /// \brief Returns a reference to the element at specified location \p pos,
+  ///   with bounds checking.
+  ///
+  /// If pos is not within the range of the container, an exception of type
+  /// std::out_of_range is thrown.
+  ///
+  /// \param pos  Position of the element to return.
+  /// \returns  A reference to the requested element.
+  reference at (size_type pos) {
+    return visit (*this, [&pos] (auto &a) { return std::ref (a.at (pos)); });
+  }
+  /// \brief Returns a reference to the element at specified location \p pos,
+  ///   with bounds checking.
+  ///
+  /// If pos is not within the range of the container, an exception of type
+  /// std::out_of_range is thrown.
+  ///
+  /// \param pos  Position of the element to return.
+  /// \returns  A reference to the requested element.
+  const_reference at (size_type pos) const {
+    return visit (*this,
+                  [&pos] (auto const &a) { return std::cref (a.at (pos)); });
+  }
+
   const_reference back () const {
     return visit (*this,
                   [] (auto const &a) -> const_reference { return a.back (); });
@@ -280,6 +304,8 @@ public:
 
   /// Adds an element to the end.
   void push_back (ElementType const &v);
+  void push_back (ElementType &&v);
+
   template <typename... Args>
   void emplace_back (Args &&...args);
 
@@ -443,9 +469,11 @@ small_vector<ElementType, BodyElements>::small_vector (
 template <typename ElementType, std::size_t BodyElements>
 auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
   assert (std::holds_alternative<small_type> (arr_));
-  if (auto const *const sm = std::get_if<small_type> (&arr_)) {
+  if (auto *const sm = std::get_if<small_type> (&arr_)) {
     // Switch from small to large.
-    std::vector<ElementType> vec{std::begin (*sm), std::end (*sm)};
+    std::vector<ElementType> vec;
+    vec.reserve (sm->size ());
+    std::move (std::begin (*sm), std::end (*sm), std::back_inserter (vec));
     static_assert (std::is_nothrow_move_constructible_v<large_type>);
     arr_.template emplace<large_type> (std::move (vec));
   }
@@ -510,6 +538,22 @@ inline void small_vector<ElementType, BodyElements>::push_back (
     sm->push_back (v);
   } else {
     this->to_large ().push_back (v);
+  }
+}
+
+template <typename ElementType, std::size_t BodyElements>
+inline void small_vector<ElementType, BodyElements>::push_back (
+    ElementType &&v) {
+  assert (!arr_.valueless_by_exception ());
+  if (auto *const vec = std::get_if<large_type> (&arr_)) {
+    return vec->push_back (std::move (v));
+  }
+  assert (std::holds_alternative<small_type> (arr_));
+  auto *const sm = std::get_if<small_type> (&arr_);
+  if (sm->size () < BodyElements) {
+    sm->push_back (std::move (v));
+  } else {
+    this->to_large ().push_back (std::move (v));
   }
 }
 

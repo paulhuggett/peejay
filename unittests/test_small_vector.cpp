@@ -407,6 +407,17 @@ TEST (SmallVector, DataAndConstDataMatch) {
 }
 
 // NOLINTNEXTLINE
+TEST (SmallVector, At) {
+  peejay::small_vector<int, 1> a{3};
+  EXPECT_EQ (a.at (0), 3);
+  EXPECT_THROW (a.at (1), std::out_of_range);
+  a.push_back (4);
+  EXPECT_EQ (a.at (0), 3);
+  EXPECT_EQ (a.at (1), 4);
+  EXPECT_THROW (a.at (2), std::out_of_range);
+}
+
+// NOLINTNEXTLINE
 TEST (SmallVector, IteratorNonConst) {
   peejay::small_vector<int, 4> buffer (std::size_t{4});
 
