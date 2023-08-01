@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cassert>
 #include <limits>
+#include <stdexcept>
 
 #include "peejay/pointer_based_iterator.hpp"
 #include "peejay/portab.hpp"
