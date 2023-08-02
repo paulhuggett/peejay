@@ -150,14 +150,19 @@ inline element *element::eval_pointer (u8string_view const s) {
   return el;
 }
 
-inline std::pair<u8string_view::size_type, unsigned> decimal (u8string_view s) {
+inline std::optional<std::pair<u8string_view, unsigned>> decimal (
+    u8string_view s) {
   auto prefix = 0U;
   auto pos = u8string_view::size_type{0};
   auto const len = s.length ();
   for (; std::isdigit (s[pos]) && pos < len; ++pos) {
     prefix = prefix * 10U + static_cast<unsigned> (s[pos] - '0');
   }
-  return {pos, prefix};
+  if (pos == 0) {
+    return {};
+  }
+  s.remove_prefix (pos);
+  return std::make_pair (s, prefix);
 }
 
 // The ABNF syntax of a Relative JSON Pointer is:
@@ -193,11 +198,13 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
   if (s.empty () || !std::isdigit (s.front ())) {
     return {};
   }
-  auto [consumed, prefix] = decimal (s);
-  if (consumed == 0) {
+  auto const d1 = decimal (s);
+  if (!d1) {
     return {};
   }
-  s.remove_prefix (consumed);
+  auto prefix = 0U;
+  std::tie (s, prefix) = *d1;
+
   auto current = this;
   for (; prefix > 0U; --prefix) {
     if (current == nullptr) {
@@ -209,6 +216,9 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
     }
   }
 
+  if (current == nullptr) {
+    return {};
+  }
   if (s.length () == 0) {
     return *current;
   }
@@ -225,19 +235,22 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
   if (s[0] == '+' || s[0] == '-') {
     bool const positive = s[0] == '+';
     s.remove_prefix (1);
-    auto [consumed, offset] = decimal (s);
-    if (consumed == 0) {
+    auto const d2 = decimal (s);
+    if (!d2) {
       return {};
     }
-    s.remove_prefix (consumed);
+    auto offset = 0U;
+    std::tie (s, offset) = *d2;
 
-    if (current == nullptr) {
-      return {};
-    }
     if (auto const *const arr = std::get_if<array> (current->parent)) {
       auto index = current - &(*arr)->front ();
       auto new_index = index + (positive ? index : -index);
-      current = &(*arr)->at (new_index);
+      using udiff_type = std::make_unsigned_t<decltype (index)>;
+      if (new_index < 0 ||
+          static_cast<udiff_type> (new_index) >= (*arr)->size ()) {
+        return {};
+      }
+      current = &(**arr)[static_cast<udiff_type> (new_index)];
     } else {
       return {};  // the current referenced value is not an item of an array.
     }
@@ -253,9 +266,6 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
     //   evaluation result is the value's index position within the array.
     // - If the referenced value is an object member within an object, then
     //   the new referenced value is the corresponding member name.
-    if (current == nullptr) {
-      return {};  // This is the root: fail.
-    }
     assert (current->parent != nullptr);
     if (current->parent != nullptr) {
       if (auto const *const arr = std::get_if<array> (current->parent)) {
