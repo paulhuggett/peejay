@@ -581,7 +581,7 @@ TEST (SmallVector, Front) {
   a.push_back (1);
   EXPECT_EQ (a.front (), 1);
   a.push_back (2);
-  EXPECT_EQ (a.front (), 2);
+  EXPECT_EQ (a.front (), 1);
   a.insert (a.begin (), 1, 3);
   EXPECT_EQ (a.front (), 3);
 }
