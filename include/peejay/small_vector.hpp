@@ -32,14 +32,22 @@
 namespace peejay {
 
 /// A class which provides a vector-like interface to a small, normally stack
-/// allocated, buffer which may, if necessary, be resized. It is normally used
-/// to contain string buffers where they are typically small enough to be
+/// allocated, buffer which may, if necessary, be resized. It can, for example,
+/// be used for string buffers where they are typically small enough to be
 /// stack-allocated, but where the code must gracefully suport arbitrary
 /// lengths.
+///
+/// \tparam ElementType  The type of the elements.
+/// \tparam BodyElements  The number of elements held in the "small" container.
+/// \tparam Allocator  An allocator that is used when the vector is "large" to
+///   acquire and release memory as as to construct or destroy elements in that
+///   memory. The type must meet the requirements of `Allocator` and
+///   `Allocator::value_type` must be the same as ElementType.
 template <typename ElementType,
-          std::size_t BodyElements = 256 / sizeof (ElementType)>
+          std::size_t BodyElements = 256 / sizeof (ElementType),
+          typename Allocator = std::allocator<ElementType>>
 class small_vector {
-  template <typename, std::size_t>
+  template <typename, std::size_t, typename>
   friend class small_vector;
 
 public:
@@ -153,10 +161,37 @@ public:
   /// \returns  A reference to the requested element.
   const_reference at (size_type pos) const { return at_impl (*this, pos); }
 
+  /// \brief Returns a reference to the first element in the container.
+  ///
+  /// Calling front() on an empty container causes undefined behavior.
+  ///
+  /// \returns A reference to the first element.
+  const_reference front () const {
+    return visit (*this,
+                  [] (auto const &a) -> const_reference { return a.front (); });
+  }
+  /// \brief Returns a reference to the first element in the container.
+  ///
+  /// Calling front() on an empty container causes undefined behavior.
+  ///
+  /// \returns A reference to the first element.
+  reference front () {
+    return visit (*this, [] (auto &a) -> reference { return a.front (); });
+  }
+  /// \brief Returns a reference to the last element in the container.
+  ///
+  /// Calling back() on an empty container causes undefined behavior.
+  ///
+  /// \returns A reference to the last element.
   const_reference back () const {
     return visit (*this,
                   [] (auto const &a) -> const_reference { return a.back (); });
   }
+  /// \brief Returns a reference to the last element in the container.
+  ///
+  /// Calling back() on an empty container causes undefined behavior.
+  ///
+  /// \returns A reference to the last element.
   reference back () {
     return visit (*this, [] (auto &a) -> reference { return a.back (); });
   }
@@ -346,7 +381,7 @@ private:
   using small_type = arrayvec<ElementType, BodyElements>;
   /// A (potentially) large buffer that is used to satify requests for
   /// buffer element counts that are too large for type 'small'.
-  using large_type = std::vector<ElementType>;
+  using large_type = std::vector<ElementType, Allocator>;
   std::variant<small_type, large_type> arr_;
 
   template <typename T>
@@ -418,10 +453,10 @@ private:
 
 // (ctor)
 // ~~~~~~
-template <typename ElementType, std::size_t BodyElements>
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <typename InputIterator, typename>
-small_vector<ElementType, BodyElements>::small_vector (InputIterator first,
-                                                       InputIterator last) {
+small_vector<ElementType, BodyElements, Allocator>::small_vector (
+    InputIterator first, InputIterator last) {
   if constexpr (forward_iterator<InputIterator>) {
     if (auto const count = std::distance (first, last);
         count >= 0 && static_cast<std::make_unsigned_t<decltype (count)>> (
@@ -437,8 +472,8 @@ small_vector<ElementType, BodyElements>::small_vector (InputIterator first,
                  [this] (auto const &v) { this->emplace_back (v); });
 }
 
-template <typename ElementType, std::size_t BodyElements>
-small_vector<ElementType, BodyElements>::small_vector (
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+small_vector<ElementType, BodyElements, Allocator>::small_vector (
     std::size_t const required_elements) {
   if (required_elements <= BodyElements) {
     arr_.template emplace<small_type> (
@@ -448,9 +483,9 @@ small_vector<ElementType, BodyElements>::small_vector (
   }
 }
 
-template <typename ElementType, std::size_t BodyElements>
-small_vector<ElementType, BodyElements>::small_vector (size_type count,
-                                                       const_reference value) {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+small_vector<ElementType, BodyElements, Allocator>::small_vector (
+    size_type count, const_reference value) {
   if (count <= BodyElements) {
     arr_.template emplace<small_type> (
         static_cast<typename small_type::size_type> (count), value);
@@ -459,8 +494,8 @@ small_vector<ElementType, BodyElements>::small_vector (size_type count,
   }
 }
 
-template <typename ElementType, std::size_t BodyElements>
-small_vector<ElementType, BodyElements>::small_vector (
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+small_vector<ElementType, BodyElements, Allocator>::small_vector (
     std::initializer_list<ElementType> init)
     : small_vector () {
   if (init.size () <= BodyElements) {
@@ -472,8 +507,9 @@ small_vector<ElementType, BodyElements>::small_vector (
 
 // to large
 // ~~~~~~~~
-template <typename ElementType, std::size_t BodyElements>
-auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+auto small_vector<ElementType, BodyElements, Allocator>::to_large ()
+    -> large_type & {
   assert (std::holds_alternative<small_type> (arr_));
   if (auto *const sm = std::get_if<small_type> (&arr_)) {
     // Switch from small to large.
@@ -489,8 +525,8 @@ auto small_vector<ElementType, BodyElements>::to_large () -> large_type & {
 
 // reserve
 // ~~~~~~~
-template <typename ElementType, std::size_t BodyElements>
-void small_vector<ElementType, BodyElements>::reserve (
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+void small_vector<ElementType, BodyElements, Allocator>::reserve (
     std::size_t const new_cap) {
   assert (!arr_.valueless_by_exception ());
   if (auto const *const sm = std::get_if<small_type> (&arr_)) {
@@ -505,14 +541,15 @@ void small_vector<ElementType, BodyElements>::reserve (
 
 // resize
 // ~~~~~~
-template <typename ElementType, std::size_t BodyElements>
-void small_vector<ElementType, BodyElements>::resize (size_type count) {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+void small_vector<ElementType, BodyElements, Allocator>::resize (
+    size_type count) {
   this->resize (count, ElementType{});
 }
 
-template <typename ElementType, std::size_t BodyElements>
-void small_vector<ElementType, BodyElements>::resize (size_type count,
-                                                      const_reference value) {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+void small_vector<ElementType, BodyElements, Allocator>::resize (
+    size_type count, const_reference value) {
   assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
     // Resize entirely within the large buffer.
@@ -531,8 +568,8 @@ void small_vector<ElementType, BodyElements>::resize (size_type count,
 
 // push back
 // ~~~~~~~~~
-template <typename ElementType, std::size_t BodyElements>
-inline void small_vector<ElementType, BodyElements>::push_back (
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+inline void small_vector<ElementType, BodyElements, Allocator>::push_back (
     ElementType const &v) {
   assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
@@ -547,8 +584,8 @@ inline void small_vector<ElementType, BodyElements>::push_back (
   }
 }
 
-template <typename ElementType, std::size_t BodyElements>
-inline void small_vector<ElementType, BodyElements>::push_back (
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+inline void small_vector<ElementType, BodyElements, Allocator>::push_back (
     ElementType &&v) {
   assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
@@ -565,9 +602,9 @@ inline void small_vector<ElementType, BodyElements>::push_back (
 
 // emplace back
 // ~~~~~~~~~~~~
-template <typename ElementType, std::size_t BodyElements>
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <typename... Args>
-inline void small_vector<ElementType, BodyElements>::emplace_back (
+inline void small_vector<ElementType, BodyElements, Allocator>::emplace_back (
     Args &&...args) {
   assert (!arr_.valueless_by_exception ());
   if (auto *const vec = std::get_if<large_type> (&arr_)) {
@@ -585,9 +622,9 @@ inline void small_vector<ElementType, BodyElements>::emplace_back (
 
 // assign
 // ~~~~~~
-template <typename ElementType, std::size_t BodyElements>
-void small_vector<ElementType, BodyElements>::assign (size_type count,
-                                                      const_reference value) {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+void small_vector<ElementType, BodyElements, Allocator>::assign (
+    size_type count, const_reference value) {
   if (count <= BodyElements) {
     if (auto *const small = std::get_if<small_type> (&arr_)) {
       small->assign (static_cast<typename small_type::size_type> (count),
@@ -604,20 +641,20 @@ void small_vector<ElementType, BodyElements>::assign (size_type count,
   }
 }
 
-template <typename ElementType, std::size_t BodyElements>
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <typename InputIt>
-void small_vector<ElementType, BodyElements>::assign (InputIt first,
-                                                      InputIt last) {
+void small_vector<ElementType, BodyElements, Allocator>::assign (InputIt first,
+                                                                 InputIt last) {
   this->clear ();
   this->append (first, last);
 }
 
 // append
 // ~~~~~~
-template <typename ElementType, std::size_t BodyElements>
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <typename Iterator>
-void small_vector<ElementType, BodyElements>::append (Iterator first,
-                                                      Iterator last) {
+void small_vector<ElementType, BodyElements, Allocator>::append (
+    Iterator first, Iterator last) {
   for (; first != last; ++first) {
     this->push_back (*first);
   }
@@ -625,9 +662,9 @@ void small_vector<ElementType, BodyElements>::append (Iterator first,
 
 // erase
 // ~~~~~
-template <typename ElementType, std::size_t BodyElements>
-auto small_vector<ElementType, BodyElements>::erase (const_iterator pos)
-    -> iterator {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+auto small_vector<ElementType, BodyElements, Allocator>::erase (
+    const_iterator pos) -> iterator {
   return visit (*this, [this, pos] (auto &v) {
     // Convert 'pos' to an iterator in v.
     auto const vpos = v.begin () + (to_address (pos) - data ());
@@ -638,10 +675,9 @@ auto small_vector<ElementType, BodyElements>::erase (const_iterator pos)
   });
 }
 
-template <typename ElementType, std::size_t BodyElements>
-auto small_vector<ElementType, BodyElements>::erase (const_iterator first,
-                                                     const_iterator last)
-    -> iterator {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+auto small_vector<ElementType, BodyElements, Allocator>::erase (
+    const_iterator first, const_iterator last) -> iterator {
   return visit (*this, [this, first, last] (auto &v) {
     auto b = v.begin ();
     auto *const d = data ();
@@ -656,11 +692,9 @@ auto small_vector<ElementType, BodyElements>::erase (const_iterator first,
 
 // insert
 // ~~~~~~
-template <typename ElementType, std::size_t BodyElements>
-auto small_vector<ElementType, BodyElements>::insert (const_iterator pos,
-                                                      size_type count,
-                                                      const_reference value)
-    -> iterator {
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+auto small_vector<ElementType, BodyElements, Allocator>::insert (
+    const_iterator pos, size_type count, const_reference value) -> iterator {
   assert (!arr_.valueless_by_exception ());
   // Compute the index _before_ potentially converting the buffer to "large".
   auto const index = to_address (pos) - this->data ();
@@ -682,10 +716,10 @@ auto small_vector<ElementType, BodyElements>::insert (const_iterator pos,
 
 // transfer from
 // ~~~~~~~~~~~~~
-template <typename ElementType, std::size_t BodyElements>
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <std::size_t Index, typename OtherVector>
-void small_vector<ElementType, BodyElements>::transfer_alternative_from (
-    OtherVector &&rhs) {
+void small_vector<ElementType, BodyElements,
+                  Allocator>::transfer_alternative_from (OtherVector &&rhs) {
   // Source and destination are both using the desired alternative, so we can
   // copy/move directly between them.
   if (arr_.index () == Index && rhs.arr_.index () == Index) {
@@ -701,9 +735,9 @@ void small_vector<ElementType, BodyElements>::transfer_alternative_from (
   }
 }
 
-template <typename ElementType, std::size_t BodyElements>
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <typename OtherVector>
-void small_vector<ElementType, BodyElements>::transfer_from (
+void small_vector<ElementType, BodyElements, Allocator>::transfer_from (
     OtherVector &&rhs) {
   constexpr auto small_index = std::size_t{0};
   constexpr auto large_index = std::size_t{1};
