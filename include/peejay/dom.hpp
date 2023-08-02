@@ -155,7 +155,7 @@ inline std::optional<std::pair<u8string_view, unsigned>> decimal (
   auto prefix = 0U;
   auto pos = u8string_view::size_type{0};
   auto const len = s.length ();
-  for (; std::isdigit (s[pos]) && pos < len; ++pos) {
+  for (; pos < len && std::isdigit (s[pos]); ++pos) {
     prefix = prefix * 10U + static_cast<unsigned> (s[pos] - '0');
   }
   if (pos == 0) {
