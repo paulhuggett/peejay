@@ -414,3 +414,27 @@ TEST_F (RelativePointerBazStart, OneHash) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"1#"),
                Optional (VariantWith<u8string> (u8"foo"s)));
 }
+class RelativePointerObjectsTrueStart : public RelativePointer {
+protected:
+  element *start_ = doc_.value ().eval_pointer (u8"/highly/nested");
+};
+TEST_F (RelativePointerObjectsTrueStart, ZeroObjects) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"0/objects"),
+               Optional (VariantWith<bool> (true)));
+}
+TEST_F (RelativePointerObjectsTrueStart, OneNestedObjects) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"1/nested/objects"),
+               Optional (VariantWith<bool> (true)));
+}
+TEST_F (RelativePointerObjectsTrueStart, TwoFooZero) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"2/foo/0"),
+               Optional (VariantWith<u8string> (u8"bar"s)));
+}
+TEST_F (RelativePointerObjectsTrueStart, ZeroHash) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"0#"),
+               Optional (VariantWith<u8string> (u8"nested"s)));
+}
+TEST_F (RelativePointerObjectsTrueStart, OneHash) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"1#"),
+               Optional (VariantWith<u8string> (u8"highly"s)));
+}
