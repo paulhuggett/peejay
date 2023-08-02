@@ -21,6 +21,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 using peejay::array;
+using peejay::char8;
 using peejay::dom;
 using peejay::element;
 using peejay::error;
@@ -124,8 +125,18 @@ TEST_F (Dom, Array2) {
   std::optional<element> const root = parse (u8R"(["\uFFFD"])"sv);
   ASSERT_THAT (root, Optional (VariantWith<array> (_)));
   auto const &arr = *std::get<array> (*root);
+
+  u8string s = std::get<u8string> (arr[0]);
+
+  std::byte const expected_bytes[] = {
+      std::byte{0xEF}, std::byte{0xBF},
+      std::byte{0xBD},  // REPLACEMENT CHARACTER
+      std::byte{0x00}   // NULL
+  };
+
   // Check the array contents.
-  ASSERT_THAT (arr, ElementsAre (VariantWith<u8string> (u8"\xEF\xBF\xBD"s)));
+  ASSERT_THAT (arr, ElementsAre (VariantWith<u8string> (u8string{
+                        reinterpret_cast<char8 const *> (expected_bytes)})));
   // Check the parent pointers.
   EXPECT_EQ (root->parent, nullptr);
   EXPECT_THAT (arr, Each (Field ("parent", parent_field, Eq (&root.value ()))));
