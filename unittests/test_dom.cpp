@@ -357,3 +357,53 @@ TEST_F (PointerRFC6901, MTildeN) {
   ASSERT_TRUE (std::holds_alternative<std::int64_t> (value));
   EXPECT_EQ (root_->eval_pointer (u8"/m~0n"), &value);
 }
+
+class RelativePointer : public Test {
+protected:
+  void SetUp () override {
+    root_ = &(doc_.value ());
+    ASSERT_TRUE (std::holds_alternative<object> (*root_));
+    obj_ = std::get<object> (*root_);
+  }
+  std::optional<element> doc_ = parse (
+      u8R"(
+{
+  "foo": ["bar", "baz"],
+  "highly": { "nested": { "objects": true } }
+}
+)"sv);
+  element *root_ = nullptr;
+  object obj_;  // The object contained by document root element.
+};
+class RelativePointerBazStart : public RelativePointer {
+protected:
+  element *start_ = doc_.value ().eval_pointer (u8"/foo/1");
+};
+TEST_F (RelativePointerBazStart, Zero) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"0"),
+               Optional (VariantWith<u8string> (u8"baz"s)));
+}
+TEST_F (RelativePointerBazStart, OneSlashZero) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"1/0"),
+               Optional (VariantWith<u8string> (u8"bar"s)));
+}
+TEST_F (RelativePointerBazStart, ZeroMinusOne) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"0-1"),
+               Optional (VariantWith<u8string> (u8"bar"s)));
+}
+TEST_F (RelativePointerBazStart, TwoHighlyNestedObjects) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"2/highly/nested/objects"),
+               Optional (VariantWith<bool> (true)));
+}
+TEST_F (RelativePointerBazStart, ZeroHash) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"0#"),
+               Optional (VariantWith<std::int64_t> (1)));
+}
+TEST_F (RelativePointerBazStart, ZeroMinusOneHash) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"0-1#"),
+               Optional (VariantWith<std::int64_t> (0)));
+}
+TEST_F (RelativePointerBazStart, OneHash) {
+  EXPECT_THAT (start_->eval_relative_pointer (u8"1#"),
+               Optional (VariantWith<u8string> (u8"foo"s)));
+}

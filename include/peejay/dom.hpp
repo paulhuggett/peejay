@@ -79,6 +79,7 @@ struct element : variant {
 
   /// Evaluate a JSON pointer (RFC6901).
   element *eval_pointer (u8string_view s);
+  std::optional<variant> eval_relative_pointer (u8string_view s);
 
 private:
   void adjust_parents () {
@@ -147,6 +148,139 @@ inline element *element::eval_pointer (u8string_view const s) {
     }
   } while (token_start != std::string::npos);
   return el;
+}
+
+inline std::pair<u8string_view::size_type, unsigned> decimal (u8string_view s) {
+  auto prefix = 0U;
+  auto pos = u8string_view::size_type{0};
+  auto const len = s.length ();
+  for (; std::isdigit (s[pos]) && pos < len; ++pos) {
+    prefix = prefix * 10U + static_cast<unsigned> (s[pos] - '0');
+  }
+  return {pos, prefix};
+}
+
+// The ABNF syntax of a Relative JSON Pointer is:
+//
+//  relative-json-pointer =  non-negative-integer [index-manipulation]
+//                           <json-pointer>
+//  relative-json-pointer =/ non-negative-integer "#"
+//  index-manipulation    =  ("+" / "-") non-negative-integer
+//  non-negative-integer      =  %x30 / %x31-39 *( %x30-39 )
+//           ; "0", or digits without a leading "0"
+//
+// where <json-pointer> follows the production defined in RFC 6901, Section 3
+// ("Syntax").
+//
+// [pbh: I think this may be wrong. One of the examples from the "Relative JSON
+// Pointers" specification (draft-bhutton-relative-json-pointer-00) is "0-1#".
+// If I'm reading the grammar correctly, then this is not legal because the
+// production containing '#' doesn't allow for index-manipulation.]
+inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
+  // Evaluation begins by processing the non-negative-integer prefix. This can
+  // be found by taking the longest continuous sequence of decimal digits
+  // available, starting from the beginning of the string, taking the decimal
+  // numerical value. If this value is more than zero, then the following steps
+  // are repeated that number of times:
+  //
+  // - If the current referenced value is the root of the document, then
+  //   evaluation fails (see below).
+  // - If the referenced value is an item within an array, then the new
+  //   referenced value is that array.
+  // - If the referenced value is an object member within an object, then the
+  //   new referenced value is that object.
+
+  if (s.empty () || !std::isdigit (s.front ())) {
+    return {};
+  }
+  auto [consumed, prefix] = decimal (s);
+  if (consumed == 0) {
+    return {};
+  }
+  s.remove_prefix (consumed);
+  auto current = this;
+  for (; prefix > 0U; --prefix) {
+    if (current == nullptr) {
+      return {};  // we've reached the root: fail.
+    }
+    if (std::holds_alternative<array> (*current->parent) ||
+        std::holds_alternative<object> (*current->parent)) {
+      current = current->parent;
+    }
+  }
+
+  if (s.length () == 0) {
+    return *current;
+  }
+
+  // If the next character is a plus ("+") or minus ("-"), followed by another
+  // continuous sequence of decimal digits, the following steps are taken using
+  // the decimal numeric value of that plus or minus sign and decimal sequence:
+  //
+  // - If the current referenced value is not an item of an array, then
+  //   evaluation fails (see below).
+  // - If the referenced value is an item of an array, then the new referenced
+  //   value is the item of the array indexed by adding the decimal value (which
+  //   may be negative), to the index of the current referenced value.
+  if (s[0] == '+' || s[0] == '-') {
+    bool const positive = s[0] == '+';
+    s.remove_prefix (1);
+    auto [consumed, offset] = decimal (s);
+    if (consumed == 0) {
+      return {};
+    }
+    s.remove_prefix (consumed);
+
+    if (current == nullptr) {
+      return {};
+    }
+    if (auto const *const arr = std::get_if<array> (current->parent)) {
+      auto index = current - &(*arr)->front ();
+      auto new_index = index + (positive ? index : -index);
+      current = &(*arr)->at (new_index);
+    } else {
+      return {};  // the current referenced value is not an item of an array.
+    }
+  }
+
+  if (s == u8string_view{u8"#"}) {
+    // Otherwise (when the remainder of the Relative JSON Pointer is the
+    // character '#'), the final result is determined as follows:
+    //
+    // - If the current referenced value is the root of the document, then
+    //   evaluation fails (see below).
+    // - If the referenced value is an item within an array, then the final
+    //   evaluation result is the value's index position within the array.
+    // - If the referenced value is an object member within an object, then
+    //   the new referenced value is the corresponding member name.
+    if (current == nullptr) {
+      return {};  // This is the root: fail.
+    }
+    assert (current->parent != nullptr);
+    if (current->parent != nullptr) {
+      if (auto const *const arr = std::get_if<array> (current->parent)) {
+        auto index = current - &(*arr)->front ();
+        return index;
+      }
+      if (auto const *const obj = std::get_if<object> (current->parent)) {
+        auto const end = (*obj)->end ();
+        if (auto const pos = std::find_if (
+                (*obj)->begin (), end,
+                [current] (auto const &kvp) { return &kvp.second == current; });
+            pos != end) {
+          return pos->first;
+        }
+      }
+      return {};
+    }
+    return *current;
+  }
+
+  auto const *const resl = current->eval_pointer (s);
+  if (resl == nullptr) {
+    return {};
+  }
+  return *resl;
 }
 
 // apply token
