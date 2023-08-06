@@ -92,12 +92,10 @@ int main (int argc, char* argv[]) {
     auto schema = parse (argv[1]);
     auto instance = parse (argv[2]);
     if (schema && instance) {
-      error_or<bool> ok = peejay::schema::check (*schema, *instance);
-      if (auto const* const erc = std::get_if<std::error_code> (&ok)) {
-        std::cerr << "Error: " << erc->message () << '\n';
+      if (std::error_code const erc =
+              peejay::schema::check (*schema, *instance)) {
+        std::cerr << "Error: " << erc.message () << '\n';
         exit_code = EXIT_FAILURE;
-      } else {
-        std::cout << std::boolalpha << std::get<bool> (ok) << '\n';
       }
     }
   } catch (std::exception const& ex) {
