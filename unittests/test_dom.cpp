@@ -386,30 +386,37 @@ class RelativePointerBazStart : public RelativePointer {
 protected:
   element *start_ = doc_.value ().eval_pointer (u8"/foo/1");
 };
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, Zero) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"0"),
                Optional (VariantWith<u8string> (u8"baz"s)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, OneSlashZero) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"1/0"),
                Optional (VariantWith<u8string> (u8"bar"s)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, ZeroMinusOne) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"0-1"),
                Optional (VariantWith<u8string> (u8"bar"s)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, TwoHighlyNestedObjects) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"2/highly/nested/objects"),
                Optional (VariantWith<bool> (true)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, ZeroHash) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"0#"),
                Optional (VariantWith<std::int64_t> (1)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, ZeroMinusOneHash) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"0-1#"),
                Optional (VariantWith<std::int64_t> (0)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerBazStart, OneHash) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"1#"),
                Optional (VariantWith<u8string> (u8"foo"s)));
@@ -418,22 +425,27 @@ class RelativePointerObjectsTrueStart : public RelativePointer {
 protected:
   element *start_ = doc_.value ().eval_pointer (u8"/highly/nested");
 };
+// NOLINTNEXTLINE
 TEST_F (RelativePointerObjectsTrueStart, ZeroObjects) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"0/objects"),
                Optional (VariantWith<bool> (true)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerObjectsTrueStart, OneNestedObjects) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"1/nested/objects"),
                Optional (VariantWith<bool> (true)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerObjectsTrueStart, TwoFooZero) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"2/foo/0"),
                Optional (VariantWith<u8string> (u8"bar"s)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerObjectsTrueStart, ZeroHash) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"0#"),
                Optional (VariantWith<u8string> (u8"nested"s)));
 }
+// NOLINTNEXTLINE
 TEST_F (RelativePointerObjectsTrueStart, OneHash) {
   EXPECT_THAT (start_->eval_relative_pointer (u8"1#"),
                Optional (VariantWith<u8string> (u8"highly"s)));
