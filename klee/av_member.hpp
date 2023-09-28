@@ -6,12 +6,9 @@
 //*  \__,_| \_/   |_| |_| |_|\___|_| |_| |_|_.__/ \___|_|    *
 //*                                                          *
 //===----------------------------------------------------------------------===//
-//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
-//
 //===----------------------------------------------------------------------===//
 #ifndef AV_MEMBER_HPP
 #define AV_MEMBER_HPP

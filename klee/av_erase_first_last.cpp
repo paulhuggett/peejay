@@ -6,12 +6,9 @@
 //*  \__,_| \_/    \___|_|  \__,_|___/\___| |_| |_|_|  |___/\__| |_|\__,_|___/\__| *
 //*                                                                                *
 //===----------------------------------------------------------------------===//
-//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
-//
 //===----------------------------------------------------------------------===//
 #include <cassert>
 #include <cstddef>

@@ -6,12 +6,9 @@
 //* |___/\__\__,_|\___|_|\_\ *
 //*                          *
 //===----------------------------------------------------------------------===//
-//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
-//
 //===----------------------------------------------------------------------===//
 /// \file stack.hpp
 /// \brief Provides peejay::stack, a clone of std::stack but with iterator

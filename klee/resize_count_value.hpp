@@ -6,12 +6,9 @@
 //* |_|  \___||___/_/___\___|  \___\___/ \__,_|_| |_|\__|   \_/ \__,_|_|\__,_|\___| *
 //*                                                                                 *
 //===----------------------------------------------------------------------===//
-//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
-//
 //===----------------------------------------------------------------------===//
 #ifndef RESIZE_COUNT_VALUE_HPP
 #define RESIZE_COUNT_VALUE_HPP
