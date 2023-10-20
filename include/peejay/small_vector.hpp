@@ -435,11 +435,11 @@ private:
       std::is_nothrow_invocable_v<Visitor, small_type>
           &&std::is_nothrow_invocable_v<Visitor, large_type>) {
     assert (!sv.arr_.valueless_by_exception ());
-    if (auto *const small = std::get_if<small_type> (&sv.arr_)) {
-      return visitor (*small);
+    if (auto *const s = std::get_if<small_type> (&sv.arr_)) {
+      return visitor (*s);
     }
-    if (auto *const large = std::get_if<large_type> (&sv.arr_)) {
-      return visitor (*large);
+    if (auto *const l = std::get_if<large_type> (&sv.arr_)) {
+      return visitor (*l);
     }
     unreachable ();
   }
@@ -626,14 +626,13 @@ template <typename ElementType, std::size_t BodyElements, typename Allocator>
 void small_vector<ElementType, BodyElements, Allocator>::assign (
     size_type count, const_reference value) {
   if (count <= BodyElements) {
-    if (auto *const small = std::get_if<small_type> (&arr_)) {
-      small->assign (static_cast<typename small_type::size_type> (count),
-                     value);
+    if (auto *const s = std::get_if<small_type> (&arr_)) {
+      s->assign (static_cast<typename small_type::size_type> (count), value);
       return;
     }
   }
-  if (auto *const large = std::get_if<large_type> (&arr_)) {
-    large->assign (count, value);
+  if (auto *const l = std::get_if<large_type> (&arr_)) {
+    l->assign (count, value);
   } else {
     large_type vec (count, value);
     static_assert (std::is_nothrow_move_constructible_v<large_type>);
