@@ -5,6 +5,7 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 jobs:
   sonar:
     name: Build
@@ -72,9 +73,9 @@ jobs:
 
       - name: Index the raw profile
         run: |
-          "llvm-profdata-$CLANG_VERSION" merge   \
-            --sparse                             \
-            $(find "$BUILD_DIR" -name *.profraw) \
+          "llvm-profdata-$CLANG_VERSION" merge    \
+            --sparse                              \
+            $(find "$BUILD_DIR" -name \*.profraw) \
             -o "$BUILD_DIR/merged.profdata"
 
       - name: Collect the coverage
