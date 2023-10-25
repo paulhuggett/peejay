@@ -5,6 +5,7 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 jobs:
   sonar:
     name: Build
@@ -16,10 +17,10 @@ jobs:
       CLANG_VERSION: 14
 
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
-        with:
-          egress-policy: audit
+      #- name: Harden Runner
+      #  uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+      #  with:
+      #    egress-policy: audit
 
       - name: Install clang
         run: |
@@ -72,9 +73,9 @@ jobs:
 
       - name: Index the raw profile
         run: |
-          "llvm-profdata-$CLANG_VERSION" merge   \
-            --sparse                             \
-            $(find "$BUILD_DIR" -name *.profraw) \
+          "llvm-profdata-$CLANG_VERSION" merge    \
+            --sparse                              \
+            $(find "$BUILD_DIR" -name \*.profraw) \
             -o "$BUILD_DIR/merged.profdata"
 
       - name: Collect the coverage
