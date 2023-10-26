@@ -13,6 +13,7 @@ on:
     # The branches below must be a subset of the branches above
     branches: [ "main" ]
   workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -89,9 +90,11 @@ jobs:
                 -D LIBCXX=Yes                      \
                 -D WERROR=Yes
 
-      - name: Build and Test
-        run: |
-          cmake --build "${{ github.workspace }}/build" --target klee-all
+      - name: KLEE Build
+        run: cmake --build "${{ github.workspace }}/build" --target klee-build-all
+
+      - name: KLEE Test
+        run: cmake --build "${{ github.workspace }}/build" --target klee-all
 
       - name: Compress Test Outputs
         run: |
