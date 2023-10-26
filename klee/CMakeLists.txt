@@ -73,6 +73,8 @@ function (add_klee_target)
   set (exe_target "${target_base}-exe")
   set (run_target "${target_base}-run")
 
+  message (STATUS "Adding KLEE targets klee-${target_base}-bc/exe/run")
+
   # Bitcode Target
 
   add_library (${bitcode_target} OBJECT ${sources})
@@ -126,12 +128,14 @@ function (add_klee_target)
   )
 
   add_dependencies (klee-all ${run_target})
+  add_dependencies (klee-build-all ${bitcode_target} ${exe_target})
 endfunction (add_klee_target)
 
 klee_is_available (klee_available)
 message (STATUS "KLEE available? ${klee_available}")
 if (klee_available)
   add_custom_target (klee-all)
+  add_custom_target (klee-build-all)
 
   # Calls to add_klee_target of the form:
   set (
@@ -164,7 +168,6 @@ if (klee_available)
     quote
   )
   foreach (T ${TESTS})
-    message (STATUS "Adding KLEE test ${T}")
     add_klee_target (TARGET klee-${T} SOURCES ${T}.cpp)
   endforeach ()
 
