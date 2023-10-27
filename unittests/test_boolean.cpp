@@ -6,12 +6,10 @@
 //* |_.__/ \___/ \___/|_|\___|\__,_|_| |_| *
 //*                                        *
 //===----------------------------------------------------------------------===//
-//
 // Distributed under the Apache License v2.0.
 // See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
 // for license information.
 // SPDX-License-Identifier: Apache-2.0
-//
 //===----------------------------------------------------------------------===//
 #include "peejay/json.hpp"
 

@@ -6,12 +6,10 @@
 //*  \___\__,_|_|_|_.__/ \__,_|\___|_|\_\___/ *
 //*                                           *
 //===----------------------------------------------------------------------===//
-//
 // Distributed under the Apache License v2.0.
 // See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
 // for license information.
 // SPDX-License-Identifier: Apache-2.0
-//
 //===----------------------------------------------------------------------===//
 
 #ifndef PEEJAY_UNITTESTS_CALLBACKS_HPP
