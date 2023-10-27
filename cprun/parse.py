@@ -7,12 +7,10 @@
 # * | .__/ \__,_|_|  |___/\___| *
 # * |_|                         *
 # ===----------------------------------------------------------------------===//
-#
 #  Distributed under the Apache License v2.0.
 #  See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
 #  for license information.
 #  SPDX-License-Identifier: Apache-2.0
-#
 # ===----------------------------------------------------------------------===//
 """
 This module is used to generate the table of Unicode code point categories

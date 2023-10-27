@@ -6,12 +6,10 @@
 #*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
 #*                                                   *
 #===----------------------------------------------------------------------===//
-#
 # Distributed under the Apache License v2.0.
 # See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
 # for license information.
 # SPDX-License-Identifier: Apache-2.0
-#
 #===----------------------------------------------------------------------===//
 function (klee_is_available result)
   find_program (KLEE_PATH klee)
