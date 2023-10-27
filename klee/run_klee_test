@@ -2,7 +2,9 @@
 exe="$1"
 shift
 for f in "$@"; do
+    echo "** ktest-tool $f"
     ktest-tool $f
+    echo "** KTEST_FILE=$f \"$exe\""
     KTEST_FILE=$f "$exe"
     if [ $? -ne 0 ]; then
         echo "*** Test failure $1"

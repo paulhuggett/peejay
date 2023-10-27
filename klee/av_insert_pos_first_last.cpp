@@ -43,6 +43,11 @@ int main () {
     // less-than max_elements to ensure room for a new element.
     klee_assume (size < max_elements);
 
+    std::size_t first;
+    std::size_t last;
+    MAKE_SYMBOLIC (first);
+    MAKE_SYMBOLIC (last);
+
     // Insert position.
     arrayvec_type::size_type pos;
     MAKE_SYMBOLIC (pos);
@@ -54,10 +59,6 @@ int main () {
     std::array<member, max_elements> src{{member{419}, member{421}, member{431},
                                           member{433}, member{439}, member{443},
                                           member{449}}};
-    std::size_t first;
-    std::size_t last;
-    MAKE_SYMBOLIC (first);
-    MAKE_SYMBOLIC (last);
     klee_assume (last <= max_elements);
     klee_assume (first <= last);
     klee_assume (last - first <= max_elements - size);

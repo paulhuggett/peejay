@@ -1,10 +1,16 @@
 name: SonarCloud
+
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   sonar:
     name: Build
@@ -16,6 +22,11 @@ jobs:
       CLANG_VERSION: 14
 
     steps:
+      #- name: Harden Runner
+      #  uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+      #  with:
+      #    egress-policy: audit
+
       - name: Install clang
         run: |
           if ! command -v "clang++-${{ env.CLANG_VERSION }}"
@@ -28,7 +39,7 @@ jobs:
             sudo ./llvm.sh "$CLANG_VERSION" all
           fi
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
           submodules: 'True'
@@ -43,7 +54,7 @@ jobs:
             ninja-build
 
       - name: Install sonar-scanner and build-wrapper
-        uses: SonarSource/sonarcloud-github-c-cpp@v1
+        uses: SonarSource/sonarcloud-github-c-cpp@e4882e1621ad2fb48dddfa48287411bed34789b1 # v2.0.2
 
       - name: Configure build
         run: |
@@ -67,9 +78,9 @@ jobs:
 
       - name: Index the raw profile
         run: |
-          "llvm-profdata-$CLANG_VERSION" merge   \
-            --sparse                             \
-            $(find "$BUILD_DIR" -name *.profraw) \
+          "llvm-profdata-$CLANG_VERSION" merge    \
+            --sparse                              \
+            $(find "$BUILD_DIR" -name \*.profraw) \
             -o "$BUILD_DIR/merged.profdata"
 
       - name: Collect the coverage

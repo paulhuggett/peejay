@@ -26,6 +26,7 @@ add_executable (
   test_json.cpp
   test_object.cpp
   test_number.cpp
+  test_pointer_based_iterator.cpp
   test_schema.cpp
   test_small_vector.cpp
   test_stack.cpp
@@ -33,7 +34,7 @@ add_executable (
   test_whitespace.cpp
 )
 setup_target (pj-unittests)
-target_link_libraries (pj-unittests PRIVATE peejay gtest gmock)
+target_link_libraries (pj-unittests PRIVATE peejay gmock)
 
 set (clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
 set (gcc_options)

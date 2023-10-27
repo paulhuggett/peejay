@@ -48,6 +48,8 @@
 #include <type_traits>
 #include <version>
 
+#include "peejay/portab.hpp"
+
 namespace peejay {
 
 template <typename T>
