@@ -34,7 +34,7 @@ add_executable (
   test_whitespace.cpp
 )
 setup_target (pj-unittests)
-target_link_libraries (pj-unittests PRIVATE peejay gtest gmock)
+target_link_libraries (pj-unittests PRIVATE peejay gmock)
 
 set (clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
 set (gcc_options)
