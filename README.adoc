@@ -4,7 +4,7 @@ JSON Parser for C++
 
 == Status
 
-[cols="1,1"]
+[cols="2,1"]
 |===
 | Continuous Integration 
 | image:https://github.com/paulhuggett/peejay/actions/workflows/ci.yaml/badge.svg[CI Build & Test,link=https://github.com/paulhuggett/peejay/actions/workflows/ci.yaml]
