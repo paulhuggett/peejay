@@ -34,6 +34,7 @@ namespace {
 
 } // end anonymous namespace
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, PreIncrement) {
   std::array<int, 2> arr{{1, 3}};
   int y = 1;
@@ -47,6 +48,7 @@ TEST_F (PointerBasedIterator, PreIncrement) {
   EXPECT_EQ (++i, iterator{&arr[0] + 2});
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, PostIncrement) {
   std::array<int, 2> arr{{1, 3}};
   iterator i{&arr[0]};
@@ -57,6 +59,7 @@ TEST_F (PointerBasedIterator, PostIncrement) {
   EXPECT_EQ (i, iterator{&arr[0] + 2});
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, PreDecrement) {
   std::array<int, 3> arr{{1, 3, 5}};
   iterator i{&arr[0] + 3};
@@ -66,6 +69,7 @@ TEST_F (PointerBasedIterator, PreDecrement) {
   EXPECT_EQ (*i, 3);
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, PostDecrement) {
   std::array<int, 3> arr{{1, 3, 5}};
   iterator i{&arr[0] + 3};
@@ -75,6 +79,7 @@ TEST_F (PointerBasedIterator, PostDecrement) {
   EXPECT_EQ (*i, 3);
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, IPlusEqualN) {
   std::array<int, 2> arr{{1, 3}};
 
@@ -85,6 +90,7 @@ TEST_F (PointerBasedIterator, IPlusEqualN) {
   EXPECT_EQ (i2 += -2, iterator{&arr[0]});
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, IPlusN) {
   std::array<int, 2> arr{{1, 3}};
   iterator i{&arr[0]};
@@ -93,6 +99,7 @@ TEST_F (PointerBasedIterator, IPlusN) {
   EXPECT_EQ (i + 2, 2 + i);
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, IMinusEqualN) {
   std::array<int, 2> arr{{1, 3}};
 
@@ -103,12 +110,14 @@ TEST_F (PointerBasedIterator, IMinusEqualN) {
   EXPECT_EQ (i2 -= -2, iterator{&arr[0] + 2});
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, IMinusN) {
   std::array<int, 2> arr{{1, 3}};
   iterator it{&arr[0] + 2};
   EXPECT_EQ (it - 2, iterator{&arr[0]});
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, BMinusA) {
   std::array<int, 2> arr{{1, 3}};
   iterator b{&arr[0] + 2};
@@ -117,6 +126,7 @@ TEST_F (PointerBasedIterator, BMinusA) {
   EXPECT_EQ (b, a + (b - a));
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, TotalOrder) {
   std::array<int, 2> arr{{1, 3}};
   iterator b{&arr[0] + 2};
@@ -138,6 +148,7 @@ TEST_F (PointerBasedIterator, TotalOrder) {
   EXPECT_TRUE (b != c);
 }
 
+// NOLINTNEXTLINE
 TEST_F (PointerBasedIterator, Assign) {
   std::array<int, 2> arr{{3, 5}};
   iterator b{&arr[0] + 2};
