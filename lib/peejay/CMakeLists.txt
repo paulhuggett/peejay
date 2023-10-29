@@ -12,11 +12,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #===----------------------------------------------------------------------===//
 set (include_dir "${PEEJAY_ROOT}/include")
-
 set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
-
-add_library (
-  peejay STATIC
+set (
+  include_files
   "${include_dir}/peejay/arrayvec.hpp"
   "${include_dir}/peejay/cbii.hpp"
   "${include_dir}/peejay/details/avbase.hpp"
@@ -31,9 +29,10 @@ add_library (
   "${include_dir}/peejay/small_vector.hpp"
   "${include_dir}/peejay/stack.hpp"
   "${include_dir}/peejay/uinteger.hpp"
-  dummy.cpp
   "${CPRUN_HPP}"
 )
+add_library (peejay STATIC dummy.cpp ${include_files})
+
 target_include_directories (
   peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>
 )
@@ -60,6 +59,8 @@ else ()
   )
 endif ()
 
+# Attach the header files to PUBLIC_HEADER so they will be installed.
+set_target_properties (peejay PROPERTIES PUBLIC_HEADER "${include_files}")
 include (GNUInstallDirs)
 install (
   TARGETS peejay
@@ -68,7 +69,6 @@ install (
                 COMPONENT peejay
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay" COMPONENT peejay
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay" COMPONENT peejay
-  INCLUDES
-  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 add_dependencies (install-peejay peejay)
