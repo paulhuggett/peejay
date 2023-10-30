@@ -33,8 +33,9 @@ set (
 )
 add_library (peejay STATIC dummy.cpp ${include_files})
 
-target_include_directories (
-  peejay PUBLIC $<BUILD_INTERFACE:${include_dir}> $<INSTALL_INTERFACE:peejay>
+target_include_directories (peejay PUBLIC
+  $<BUILD_INTERFACE:${include_dir}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
 )
 
 setup_target (peejay)
@@ -59,7 +60,6 @@ else ()
   )
 endif ()
 
-# Attach the header files to PUBLIC_HEADER so they will be installed.
 set_target_properties (peejay PROPERTIES PUBLIC_HEADER "${include_files}")
 include (GNUInstallDirs)
 install (
