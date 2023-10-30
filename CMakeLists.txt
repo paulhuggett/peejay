@@ -123,7 +123,10 @@ function (setup_target target)
   )
 endfunction (setup_target)
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
+# Check that we've got the googletest submodule checked out and that a parent project
+# didn't already create the gtest/gmock targets
+if (TARGET gtest)
+elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
   # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
   # Windows.
   set (
