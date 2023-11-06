@@ -7,8 +7,7 @@
 //*                       |___/  *
 //===----------------------------------------------------------------------===//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 #include "callbacks.hpp"
@@ -107,7 +106,7 @@ TEST_F (JsonArray, SingleStringElement) {
 TEST_F (JsonArray, ZeroExpPlus1) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
-  EXPECT_CALL (callbacks_, double_value (DoubleEq (0.0))).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);

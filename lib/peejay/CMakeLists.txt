@@ -7,14 +7,14 @@
 #*                                                   *
 #===----------------------------------------------------------------------===//
 # Distributed under the Apache License v2.0.
-# See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-# for license information.
+# See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 # SPDX-License-Identifier: Apache-2.0
 #===----------------------------------------------------------------------===//
 set (include_dir "${PEEJAY_ROOT}/include")
 set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
 set (
   include_files
+  "${include_dir}/peejay/almost_equal.hpp"
   "${include_dir}/peejay/arrayvec.hpp"
   "${include_dir}/peejay/cbii.hpp"
   "${include_dir}/peejay/details/avbase.hpp"
@@ -26,6 +26,7 @@ set (
   "${include_dir}/peejay/null.hpp"
   "${include_dir}/peejay/pointer_based_iterator.hpp"
   "${include_dir}/peejay/portab.hpp"
+  "${include_dir}/peejay/schema.hpp"
   "${include_dir}/peejay/small_vector.hpp"
   "${include_dir}/peejay/stack.hpp"
   "${include_dir}/peejay/uinteger.hpp"

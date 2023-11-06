@@ -7,8 +7,7 @@
 //*                                         *
 //===----------------------------------------------------------------------===//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 #include <gtest/gtest.h>
@@ -163,7 +162,7 @@ TEST_F (Number, NegativeZeroPoint45) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, ZeroExp2) {
-  EXPECT_CALL (callbacks_, double_value (DoubleEq (0))).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   parser p{proxy_};
   p.input (u8"0e2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -171,7 +170,7 @@ TEST_F (Number, ZeroExp2) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, OneExp2) {
-  EXPECT_CALL (callbacks_, double_value (DoubleEq (100.0))).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (100)).Times (1);
   parser p{proxy_};
   p.input (u8"1e2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -179,7 +178,7 @@ TEST_F (Number, OneExp2) {
 
 // NOLINTNEXTLINE
 TEST_F (Number, OneExpPlus2) {
-  EXPECT_CALL (callbacks_, double_value (DoubleEq (100.0))).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (100)).Times (1);
   parser p{proxy_};
   p.input (u8"1e+2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
@@ -453,7 +452,7 @@ TEST_F (Number, LeadingDotExtensionDisabled) {
 }
 // NOLINTNEXTLINE
 TEST_F (Number, TrailingDot) {
-  EXPECT_CALL (callbacks_, double_value (1234.0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1234)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
   p.input (u8"1234."sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
@@ -471,7 +470,7 @@ TEST_F (Number, ArrayOfLeadingAndTrailingDot) {
   InSequence const _;
   EXPECT_CALL (callbacks_, begin_array ()).Times (1);
   EXPECT_CALL (callbacks_, double_value (0.1)).Times (1);
-  EXPECT_CALL (callbacks_, double_value (1.0)).Times (1);
+  EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::numbers);
