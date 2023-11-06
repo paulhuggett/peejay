@@ -189,12 +189,3 @@ install (
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
   NAMESPACE peejay::
 )
-# List of four values that specify what project to install. The four values are:
-#
-# * Build directory
-# * Project Name
-# * Project Component
-# * Directory.
-#set (CPACK_INSTALL_CMAKE_PROJECTS
-#     "${CMAKE_CURRENT_BINARY_DIR};${CMAKE_PROJECT_NAME};ALL;/"
-#)
