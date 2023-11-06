@@ -45,6 +45,10 @@
 #endif
 #endif
 
+#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
+#include <bit>
+#endif
+
 #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
 #define PEEJAY_HAVE_CONCEPTS (1)
 #else
