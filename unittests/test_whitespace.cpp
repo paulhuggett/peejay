@@ -7,8 +7,7 @@
 //*                               |_|                    *
 //===----------------------------------------------------------------------===//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 #include <gtest/gtest.h>

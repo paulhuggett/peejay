@@ -7,14 +7,14 @@
 #*                                                   *
 #===----------------------------------------------------------------------===//
 # Distributed under the Apache License v2.0.
-# See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-# for license information.
+# See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 # SPDX-License-Identifier: Apache-2.0
 #===----------------------------------------------------------------------===//
 add_executable (
   pj-unittests
   harness.cpp
   callbacks.hpp
+  test_almost_equal.cpp
   test_array.cpp
   test_arrayvec.cpp
   test_boolean.cpp
@@ -27,6 +27,7 @@ add_executable (
   test_object.cpp
   test_number.cpp
   test_pointer_based_iterator.cpp
+  test_schema.cpp
   test_small_vector.cpp
   test_stack.cpp
   test_string.cpp

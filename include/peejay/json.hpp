@@ -7,8 +7,7 @@
 //* |__/                  *
 //===----------------------------------------------------------------------===//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 /// \file json.hpp
@@ -1518,6 +1517,19 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
   xf *= exp;
   if (is_neg_) {
     xf = -xf;
+  }
+
+  // Is the fractional part of the float 0 (i.e. could we potentially cast it to
+  // one of the integer types)? This enables us to treat input such as "1.0" in
+  // the same way as "1".
+  if (std::rint (xf) == xf &&
+      xf >= static_cast<decltype (xf)> (
+                std::numeric_limits<sinteger_type>::min ()) &&
+      xf <= static_cast<decltype (xf)> (
+                std::numeric_limits<sinteger_type>::max ())) {
+    this->set_error (parser, parser.backend ().integer_value (
+                                 static_cast<sinteger_type> (xf)));
+    return;
   }
 
   this->set_error (parser, parser.backend ().double_value (xf));
