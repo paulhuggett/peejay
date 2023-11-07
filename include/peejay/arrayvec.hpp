@@ -19,7 +19,7 @@
 #include <array>
 #include <initializer_list>
 
-#include "peejay/details/avbase.hpp"
+#include "peejay/avbase.hpp"
 #include "peejay/uinteger.hpp"
 
 #if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)

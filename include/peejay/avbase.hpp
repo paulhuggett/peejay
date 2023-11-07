@@ -1,4 +1,4 @@
-//===- include/peejay/details/avbase.hpp ------------------*- mode: C++ -*-===//
+//===- include/peejay/avbase.hpp --------------------------*- mode: C++ -*-===//
 //*              _                     *
 //*   __ ___   _| |__   __ _ ___  ___  *
 //*  / _` \ \ / / '_ \ / _` / __|/ _ \ *
@@ -7,7 +7,8 @@
 //*                                    *
 //===----------------------------------------------------------------------===//
 // Distributed under the Apache License v2.0.
-// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 #ifndef PEEJAY_DETAILS_AVBASE_HPP
@@ -44,8 +45,8 @@ protected:
   static void operator_assign (
       T *destp, SizeType *destsize,
       std::pair<SrcType *, std::size_t> const
-          &src) noexcept (IsMove &&std::is_nothrow_move_constructible_v<T>
-                              &&std::is_nothrow_move_assignable_v<T>);
+          &src) noexcept (IsMove && std::is_nothrow_move_constructible_v<T> &&
+                          std::is_nothrow_move_assignable_v<T>);
 
   template <typename SizeType>
   static void clear (SizeType *size, pointer_based_iterator<T> first,
@@ -62,8 +63,8 @@ protected:
   static void move_range (
       pointer_based_iterator<T> from, pointer_based_iterator<T> end,
       pointer_based_iterator<T>
-          to) noexcept (std::is_nothrow_move_constructible_v<T>
-                            &&std::is_nothrow_move_assignable_v<T>);
+          to) noexcept (std::is_nothrow_move_constructible_v<T> &&
+                        std::is_nothrow_move_assignable_v<T>);
 
   static std::size_t erase (pointer_based_iterator<T> pos,
                             pointer_based_iterator<T> end, std::size_t size);
@@ -80,8 +81,8 @@ protected:
   static pointer_based_iterator<T> insert (
       pointer_based_iterator<T> begin, SizeType *size,
       pointer_based_iterator<T> pos,
-      T &&value) noexcept (std::is_nothrow_move_constructible_v<T>
-                               &&std::is_nothrow_move_assignable_v<T>);
+      T &&value) noexcept (std::is_nothrow_move_constructible_v<T> &&
+                           std::is_nothrow_move_assignable_v<T>);
 
   /// \tparam SizeType  The type of the array-vector size value.
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
@@ -167,8 +168,8 @@ template <bool IsMove, typename SizeType, typename SrcType>
 void avbase<T>::operator_assign (
     T *const destp, SizeType *const destsize,
     std::pair<SrcType *, std::size_t> const
-        &src) noexcept (IsMove &&std::is_nothrow_move_constructible_v<T>
-                            &&std::is_nothrow_move_assignable_v<T>) {
+        &src) noexcept (IsMove && std::is_nothrow_move_constructible_v<T> &&
+                        std::is_nothrow_move_assignable_v<T>) {
   auto *src_ptr = src.first;
   auto *dest_ptr = destp;
   auto *const old_dest_end = destp + *destsize;
@@ -272,8 +273,8 @@ template <typename T>
 void avbase<T>::move_range (
     pointer_based_iterator<T> const from, pointer_based_iterator<T> const end,
     pointer_based_iterator<T> const
-        to) noexcept (std::is_nothrow_move_constructible_v<T>
-                          &&std::is_nothrow_move_assignable_v<T>) {
+        to) noexcept (std::is_nothrow_move_constructible_v<T> &&
+                      std::is_nothrow_move_assignable_v<T>) {
   assert (end >= from && to >= from);
   auto const dist = to - from;  // how far to move.
   auto const new_end = end + dist;
@@ -359,8 +360,8 @@ template <typename SizeType>
 pointer_based_iterator<T> avbase<T>::insert (
     pointer_based_iterator<T> begin, SizeType *const size,
     pointer_based_iterator<T> pos,
-    T &&value) noexcept (std::is_nothrow_move_constructible_v<T>
-                             &&std::is_nothrow_move_assignable_v<T>) {
+    T &&value) noexcept (std::is_nothrow_move_constructible_v<T> &&
+                         std::is_nothrow_move_assignable_v<T>) {
   static_assert (std::is_move_assignable_v<T>,
                  "avbase::insert: type T must be move-constructible");
   if (auto const end = begin + *size; pos == end) {
