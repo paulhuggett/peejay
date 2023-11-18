@@ -1,0 +1,61 @@
+name: CodeCov
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+
+jobs:
+  codecov:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: build_codecov
+      GCC_VERSION: 12
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          submodules: 'True'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "g++-$GCC_VERSION"
+          sudo apt-get install -y cmake lcov ninja-build
+
+      - name: Configure Build
+        run: |
+          mkdir "$BUILD_DIR"
+          cmake                                      \
+            -G Ninja                                 \
+            -S .                                     \
+            -B "$BUILD_DIR"                          \
+            -D COVERAGE=Yes                          \
+            -D CMAKE_C_COMPILER="gcc-$GCC_VERSION"   \
+            -D CMAKE_CXX_COMPILER="g++-$GCC_VERSION"
+
+      - name: Build
+        run: |
+            cmake --build "$BUILD_DIR"
+
+      - name: Collect the Coverage
+        run: |
+          set -x
+          lcov                              \
+            --capture                       \
+            --output-file coverage.info     \
+            --directory "$BUILD_DIR"        \
+            --gcov-tool "gcov-$GCC_VERSION" \
+            --include "$(pwd)/*.?pp"
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3.1.4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
