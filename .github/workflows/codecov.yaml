@@ -37,7 +37,7 @@ jobs:
             -G Ninja                                 \
             -S .                                     \
             -B "$BUILD_DIR"                          \
-            -D COVERAGE=Yes                          \
+            -D PEEJAY_COVERAGE=Yes                   \
             -D CMAKE_C_COMPILER="gcc-$GCC_VERSION"   \
             -D CMAKE_CXX_COMPILER="g++-$GCC_VERSION"
 
