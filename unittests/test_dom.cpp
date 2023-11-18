@@ -123,13 +123,14 @@ TEST_F (Dom, Array2) {
   ASSERT_THAT (root, Optional (VariantWith<array> (_)));
   auto const &arr = *std::get<array> (*root);
   // Check the array contents.
-  std::byte const expected_bytes[] = {
+  std::array<std::byte, 4> const expected_bytes = {{
       std::byte{0xEF}, std::byte{0xBF},
       std::byte{0xBD},  // REPLACEMENT CHARACTER
       std::byte{0x00}   // NULL
-  };
-  ASSERT_THAT (arr, ElementsAre (VariantWith<u8string> (u8string{
-                        reinterpret_cast<char8 const *> (expected_bytes)})));
+  }};
+  ASSERT_THAT (arr,
+               ElementsAre (VariantWith<u8string> (u8string{
+                   reinterpret_cast<char8 const *> (expected_bytes.data ())})));
   // Check the parent pointers.
   EXPECT_EQ (root->parent, nullptr);
   EXPECT_THAT (arr, Each (Field ("parent", parent_field, Eq (&root.value ()))));
