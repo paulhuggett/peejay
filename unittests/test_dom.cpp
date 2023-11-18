@@ -197,7 +197,9 @@ TEST_F (Dom, ArrayInsideObject) {
   ASSERT_THAT (
       obj, UnorderedElementsAre (Pair (u8"a"s, VariantWith<array> (_)),
                                  Pair (u8"b"s, VariantWith<std::int64_t> (3))));
-  auto const &arr = *std::get<array> (obj.find (u8"a")->second);
+  auto const pos = obj.find (u8"a");
+  ASSERT_NE (pos, obj.end ());
+  auto const &arr = *std::get<array> (pos->second);
   ASSERT_THAT (arr, ElementsAre (VariantWith<std::int64_t> (1),
                                  VariantWith<std::int64_t> (2)));
 }
