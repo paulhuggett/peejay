@@ -15,7 +15,7 @@ image:https://img.shields.io/coverity/scan/28476.svg[Coverity Scan Build Status,
 image:https://github.com/paulhuggett/peejay/actions/workflows/msvc.yaml/badge.svg[Microsoft C++ Code Analysis,link=https://github.com/paulhuggett/peejay/actions/workflows/msvc.yaml]
 
 | Dynamic Analysis
-| image:https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml/badge.svg[KLEE Tests,link=https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml]
+| image:https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml/badge.svg[KLEE Tests,link=https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml] image:https://codecov.io/github/paulhuggett/peejay/graph/badge.svg?token=BSNN6OFIJU[CodeCov,link=https://codecov.io/github/paulhuggett/peejay]
 
 | https://openssf.org[Open SSF]
 | image:https://www.bestpractices.dev/projects/8006/badge[OpenSSF Best Practices,link=https://www.bestpractices.dev/projects/8006]
