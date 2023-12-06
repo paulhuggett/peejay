@@ -123,13 +123,14 @@ TEST_F (Dom, Array2) {
   ASSERT_THAT (root, Optional (VariantWith<array> (_)));
   auto const &arr = *std::get<array> (*root);
   // Check the array contents.
-  std::byte const expected_bytes[] = {
+  std::array<std::byte, 4> const expected_bytes = {{
       std::byte{0xEF}, std::byte{0xBF},
       std::byte{0xBD},  // REPLACEMENT CHARACTER
       std::byte{0x00}   // NULL
-  };
-  ASSERT_THAT (arr, ElementsAre (VariantWith<u8string> (u8string{
-                        reinterpret_cast<char8 const *> (expected_bytes)})));
+  }};
+  ASSERT_THAT (arr,
+               ElementsAre (VariantWith<u8string> (u8string{
+                   reinterpret_cast<char8 const *> (expected_bytes.data ())})));
   // Check the parent pointers.
   EXPECT_EQ (root->parent, nullptr);
   EXPECT_THAT (arr, Each (Field ("parent", parent_field, Eq (&root.value ()))));
@@ -196,7 +197,9 @@ TEST_F (Dom, ArrayInsideObject) {
   ASSERT_THAT (
       obj, UnorderedElementsAre (Pair (u8"a"s, VariantWith<array> (_)),
                                  Pair (u8"b"s, VariantWith<std::int64_t> (3))));
-  auto const &arr = *std::get<array> (obj.find (u8"a")->second);
+  auto const pos = obj.find (u8"a");
+  ASSERT_NE (pos, obj.end ());
+  auto const &arr = *std::get<array> (pos->second);
   ASSERT_THAT (arr, ElementsAre (VariantWith<std::int64_t> (1),
                                  VariantWith<std::int64_t> (2)));
 }
