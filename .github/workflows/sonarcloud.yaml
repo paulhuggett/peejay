@@ -63,7 +63,7 @@ jobs:
             -G Ninja                                       \
             -S .                                           \
             -B "$BUILD_DIR"                                \
-            -D COVERAGE=Yes                                \
+            -D PEEJAY_COVERAGE=Yes                         \
             -D PEEJAY_CXX17=Yes                            \
             -D LIBCXX=Yes                                  \
             -D CMAKE_C_COMPILER="clang-$CLANG_VERSION"     \
