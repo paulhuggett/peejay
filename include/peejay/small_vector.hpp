@@ -448,6 +448,9 @@ private:
   large_type &to_large ();
 };
 
+template <typename ElementType>
+small_vector (ElementType) -> small_vector<ElementType>;
+
 // (ctor)
 // ~~~~~~
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
