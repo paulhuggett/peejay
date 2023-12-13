@@ -387,19 +387,6 @@ private:
   template <std::size_t Index, typename OtherVector>
   void transfer_alternative_from (OtherVector &&rhs);
 
-  template <std::size_t Index, std::size_t OtherSize>
-  void transfer_from_same (small_vector<ElementType, OtherSize> const &rhs) {
-    std::get<Index> (arr_) = std::get<Index> (rhs.arr_);
-  }
-  template <std::size_t Index, std::size_t OtherSize>
-  void
-  transfer_from_same (small_vector<ElementType, OtherSize> &&rhs) noexcept (
-      std::is_rvalue_reference_v<decltype (rhs)>
-          &&std::is_nothrow_move_assignable_v<
-              std::variant_alternative_t<Index, decltype (arr_)>>) {
-    std::get<Index> (arr_) = std::move (std::get<Index> (rhs.arr_));
-  }
-
   template <std::size_t OtherSize>
   void transfer_from_different (
       small_vector<ElementType, OtherSize> const &rhs) {
@@ -722,7 +709,11 @@ void small_vector<ElementType, BodyElements,
   // Source and destination are both using the desired alternative, so we can
   // copy/move directly between them.
   if (arr_.index () == Index && rhs.arr_.index () == Index) {
-    this->transfer_from_same<Index> (std::forward<OtherVector> (rhs));
+    if constexpr (std::is_rvalue_reference_v<decltype (rhs)>) {
+      std::get<Index> (arr_) = std::move (std::get<Index> (rhs.arr_));
+    } else {
+      std::get<Index> (arr_) = std::get<Index> (rhs.arr_);
+    }
   } else {
     // Source and/or destination are not using the desired alternative.
     static_assert (std::is_nothrow_default_constructible_v<
