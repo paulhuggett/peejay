@@ -167,7 +167,7 @@ int main (int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
     pjparser p = make_parser (peejay::dom{});
-    auto const res = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
+    auto const& res = argc < 2 ? slurp (p, std::cin) : slurp_file (p, argv[1]);
     if (std::holds_alternative<std::error_code> (res)) {
       report_error (p, argc < 2 ? "<stdin>" : argv[1]);
       exit_code = EXIT_FAILURE;
