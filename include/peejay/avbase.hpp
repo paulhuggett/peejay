@@ -45,8 +45,10 @@ protected:
   static void operator_assign (
       T *destp, SizeType *destsize,
       std::pair<SrcType *, std::size_t> const
-          &src) noexcept (IsMove && std::is_nothrow_move_constructible_v<T> &&
-                          std::is_nothrow_move_assignable_v<T>);
+          &src) noexcept (IsMove ? std::is_nothrow_move_constructible_v<T> &&
+                                       std::is_nothrow_move_assignable_v<T>
+                                 : std::is_nothrow_copy_constructible_v<T> &&
+                                       std::is_nothrow_copy_assignable_v<T>);
 
   template <typename SizeType>
   static void clear (SizeType *size, pointer_based_iterator<T> first,
@@ -168,8 +170,10 @@ template <bool IsMove, typename SizeType, typename SrcType>
 void avbase<T>::operator_assign (
     T *const destp, SizeType *const destsize,
     std::pair<SrcType *, std::size_t> const
-        &src) noexcept (IsMove && std::is_nothrow_move_constructible_v<T> &&
-                        std::is_nothrow_move_assignable_v<T>) {
+        &src) noexcept (IsMove ? std::is_nothrow_move_constructible_v<T> &&
+                                     std::is_nothrow_move_assignable_v<T>
+                               : std::is_nothrow_copy_constructible_v<T> &&
+                                     std::is_nothrow_copy_assignable_v<T>) {
   auto *src_ptr = src.first;
   auto *dest_ptr = destp;
   auto *const old_dest_end = destp + *destsize;
