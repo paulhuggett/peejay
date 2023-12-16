@@ -724,7 +724,7 @@ template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back (T &&value) noexcept (
     std::is_nothrow_move_constructible_v<T>) {
   assert (this->size () < this->max_size ());
-  construct_at (to_address (this->end ()), std::forward<T> (value));
+  construct_at (to_address (this->end ()), std::move (value));
   ++size_;
 }
 
