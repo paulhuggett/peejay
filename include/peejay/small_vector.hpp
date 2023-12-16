@@ -762,20 +762,21 @@ void small_vector<ElementType, BodyElements, Allocator>::
   constexpr auto idx = static_cast<std::size_t> (Index);
   // Source and destination are both using the Index alternative and move-assign
   // is also nothrow, so we can move directly between them.
-  if (std::is_nothrow_move_assignable_v<
-          std::variant_alternative_t<idx, decltype (arr_)>> &&
-      arr_.index () == idx && rhs.arr_.index () == idx) {
-    std::get<idx> (arr_) = std::move (std::get<idx> (rhs.arr_));
-  } else {
-    // Source and/or destination are not using the desired alternative.
-    static_assert (std::is_nothrow_default_constructible_v<
-                       std::variant_alternative_t<idx, decltype (arr_)>>,
-                   "default ctor must be noexcept so that the variant cannot "
-                   "become valueless");
-    arr_.template emplace<idx> ();
-    std::move (std::begin (rhs), std::end (rhs),
-               std::back_inserter (std::get<idx> (arr_)));
+  if constexpr (std::is_nothrow_move_assignable_v<
+                    std::variant_alternative_t<idx, decltype (arr_)>>) {
+    if (arr_.index () == idx && rhs.arr_.index () == idx) {
+      std::get<idx> (arr_) = std::move (std::get<idx> (rhs.arr_));
+      return;
+    }
   }
+  // Source and/or destination are not using the desired alternative.
+  static_assert (std::is_nothrow_default_constructible_v<
+                     std::variant_alternative_t<idx, decltype (arr_)>>,
+                 "default ctor must be noexcept so that the variant cannot "
+                 "become valueless");
+  arr_.template emplace<idx> ();
+  std::move (std::begin (rhs), std::end (rhs),
+             std::back_inserter (std::get<idx> (arr_)));
 }
 
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
