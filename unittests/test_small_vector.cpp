@@ -468,6 +468,12 @@ TEST (SmallVector, AssignInitializerList) {
   b.assign ({4, 5, 6, 7});
   EXPECT_THAT (b, ElementsAre (4, 5, 6, 7));
 }
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignLargeInitializerList) {
+  peejay::small_vector<int, 3> b{1, 2, 3, 4};
+  b.assign ({5, 6, 7, 8});
+  EXPECT_THAT (b, ElementsAre (5, 6, 7, 8));
+}
 
 // NOLINTNEXTLINE
 TEST (SmallVector, OperatorEqCopy) {
@@ -477,6 +483,13 @@ TEST (SmallVector, OperatorEqCopy) {
   EXPECT_THAT (c, ElementsAre (5, 7));
 }
 
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignCountLargeContainerToLarger) {
+  small_vector<int, 2> b (std::size_t{4});
+  int const v = 7;
+  b.assign (std::size_t{5}, v);
+  EXPECT_THAT (b, ElementsAre (7, 7, 7, 7, 7));
+}
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountLarger) {
   small_vector<int, 3> b{1};
