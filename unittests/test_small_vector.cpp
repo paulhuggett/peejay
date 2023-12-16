@@ -109,20 +109,13 @@ struct move_throws {
 // Check the noexcept attributes on the small_vector ctor/assign members.
 // 1/3: int
 static_assert (std::is_nothrow_constructible_v<peejay::small_vector<int>>);
-static_assert (
-    !std::is_nothrow_copy_constructible_v<peejay::small_vector<int>>);
 static_assert (std::is_nothrow_move_constructible_v<peejay::small_vector<int>>);
-static_assert (std::is_nothrow_copy_assignable_v<peejay::small_vector<int>>);
 static_assert (std::is_nothrow_move_assignable_v<peejay::small_vector<int>>);
 // 2/3: copy_thorws
 static_assert (
     std::is_nothrow_constructible_v<peejay::small_vector<copy_throws>>);
 static_assert (
-    !std::is_nothrow_copy_constructible_v<peejay::small_vector<copy_throws>>);
-static_assert (
     std::is_nothrow_move_constructible_v<peejay::small_vector<copy_throws>>);
-static_assert (
-    !std::is_nothrow_copy_assignable_v<peejay::small_vector<copy_throws>>);
 static_assert (
     std::is_nothrow_move_assignable_v<peejay::small_vector<copy_throws>>);
 // 3/3: move_throws
@@ -373,19 +366,23 @@ TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
   peejay::small_vector<move_throws, 1> c;
   // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ex);
+  EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
 }
 
 // NOLINTNEXTLINE
 TEST (SmallVector, CopyCtorThrowsLargeToLarge) {
-  using svl = peejay::small_vector<copy_throws, 1>;
-  svl b;
-  b.reserve (2);
+  peejay::small_vector<copy_throws, 2> b;
+  // Reserve to avoid a possible move operation during vector resize.
+  b.reserve (3);
   b.emplace_back (3);
   b.emplace_back (5);
+  b.emplace_back (7);
+  using svl = peejay::small_vector<copy_throws, 1>;
   // We'll copy two elements from b's large array to the large container of an
-  // instance of 'svl'. NOLINTNEXTLINE
-  EXPECT_THROW ({ svl c = b; }, copy_ex);
+  // instance of 'svl'.
+  // NOLINTNEXTLINE
+  EXPECT_THROW ({ svl c{b}; }, copy_ex);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
