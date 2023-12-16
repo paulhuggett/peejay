@@ -53,10 +53,14 @@ struct copy_throws {
   }
   copy_throws& operator= (copy_throws&&) noexcept = default;
 
-  bool operator== (copy_throws const& rhs) const noexcept {
+  constexpr bool operator== (copy_throws const& rhs) const noexcept {
     return throws == rhs.throws && v == rhs.v;
   }
-  bool operator!= (copy_throws const& rhs) const noexcept {
+  constexpr bool operator!= (copy_throws const& rhs) const noexcept {
+    return !operator== (rhs);
+  }
+  constexpr bool operator== (int rhs) const noexcept { return v == rhs; }
+  constexpr bool operator!= (int rhs) const noexcept {
     return !operator== (rhs);
   }
   /// This member variable is present to defeat a warning that the copy ctor
@@ -393,6 +397,19 @@ TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
   EXPECT_EQ (b.size (), 3);
   EXPECT_EQ (c.size (), 0);
 }
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyMoveAssignLargeToLarge) {
+  peejay::small_vector<copy_throws, 2> b{};
+  b.reserve (3);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  b.emplace_back (7);
+  peejay::small_vector<copy_throws, 1> c{2};
+  // NOLINTNEXTLINE
+  EXPECT_NO_THROW (c.operator= (std::move (b)));
+  EXPECT_THAT (c, testing::ElementsAre (3, 5, 7));
+}
+
 // NOLINTNEXTLINE
 TEST (SmallVector, MoveCtorThrowsLargeToLarge) {
   using svl = peejay::small_vector<copy_throws, 1>;
