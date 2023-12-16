@@ -255,6 +255,16 @@ TEST (SmallVector, AssignLargeToLarge) {
   EXPECT_EQ (5U, c.size ());
   EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
 }
+TEST (SmallVector, MoveAssignLargeToLarge) {
+  // The first of these vectors has too few in-body elements to accommodate its
+  // members and therefore uses a large buffer. It is assigned to a vector
+  // which _can_ hold those elements in-body.
+  peejay::small_vector<int, 3> b{3, 5, 7, 11, 13};
+  peejay::small_vector<int, 2> c{17, 19, 23};
+  c = std::move (b);
+  EXPECT_EQ (5U, c.size ());
+  EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
+}
 
 // NOLINTNEXTLINE
 TEST (SmallVector, CopyCtorThrowsSmallToSmall) {
