@@ -397,6 +397,18 @@ TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
   EXPECT_EQ (b.size (), 3);
   EXPECT_EQ (c.size (), 0);
 }
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyMoveAssignSmallToLarge) {
+  peejay::small_vector<copy_throws, 2> b{};
+  b.reserve (2);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  peejay::small_vector<copy_throws, 1> c;
+  // NOLINTNEXTLINE
+  EXPECT_NO_THROW (c.operator= (std::move (b)));
+  EXPECT_THAT (c, testing::ElementsAre (3, 5));
+}
 // NOLINTNEXTLINE
 TEST (SmallVector, CopyMoveAssignLargeToLarge) {
   peejay::small_vector<copy_throws, 2> b{};
@@ -516,6 +528,18 @@ TEST (SmallVector, SizeAfterResizeLarger) {
   b.resize (size);
   EXPECT_EQ (size, b.size ());
   EXPECT_GE (size, b.capacity ())
+      << "expected capacity to be at least " << size << " (the container size)";
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, ResizeLargeToLarge) {
+  peejay::small_vector<int, 2> b (std::size_t{4});
+  EXPECT_GE (b.capacity (), b.size ())
+      << "expected capacity to be at least 4 (the container size)";
+  constexpr auto size = std::size_t{5};
+  b.resize (size);
+  EXPECT_EQ (b.size (), size);
+  EXPECT_GE (b.capacity (), size)
       << "expected capacity to be at least " << size << " (the container size)";
 }
 
