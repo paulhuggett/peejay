@@ -13,6 +13,7 @@
 
 #include <gmock/gmock.h>
 
+#include <exception>
 #include <numeric>
 #include <sstream>
 
@@ -24,7 +25,8 @@
 using peejay::small_vector;
 using testing::ElementsAre;
 
-struct copy_ex : public std::domain_error {
+class copy_ex : public std::domain_error {
+public:
   copy_ex () : std::domain_error{"copy"} {}
 };
 struct copy_throws {
@@ -76,7 +78,7 @@ struct move_throws {
   move_throws () = default;
   explicit move_throws (int v_) : v{v_} {}
   move_throws (move_throws const&) noexcept = default;
-  // NOLINTNEXTLINE(bugprone-exception-escape)
+  // NOLINTNEXTLINE
   move_throws (move_throws&& rhs) {
     if (throws) {
       throw move_ex{};
@@ -87,7 +89,7 @@ struct move_throws {
   ~move_throws () noexcept = default;
 
   move_throws& operator= (move_throws const&) noexcept = default;
-  // NOLINTNEXTLINE(bugprone-exception-escape)
+  // NOLINTNEXTLINE
   move_throws& operator= (move_throws&& rhs) {
     if (&rhs != this) {
       if (throws) {
@@ -134,7 +136,7 @@ static_assert (
 
 // NOLINTNEXTLINE
 TEST (SmallVector, DefaultCtor) {
-  peejay::small_vector<int, 8> b;
+  peejay::small_vector<int, 8> const b;
   EXPECT_EQ (0U, b.size ())
       << "expected the initial size to be number number of stack elements";
   EXPECT_EQ (8U, b.capacity ());
@@ -214,7 +216,7 @@ TEST (SmallVector, CtorInitializerList) {
 
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorInitializerList2) {
-  peejay::small_vector<int, 2> b{1, 2, 3, 4};
+  peejay::small_vector<int, 2> const b{1, 2, 3, 4};
   EXPECT_THAT (b, ::testing::ElementsAre (1, 2, 3, 4));
 }
 
@@ -222,7 +224,7 @@ TEST (SmallVector, CtorInitializerList2) {
 TEST (SmallVector, CtorCopy) {
   peejay::small_vector<int, 3> const b{3, 5};
   // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-  peejay::small_vector<int, 2> c = b;
+  peejay::small_vector<int, 2> const c = b;
   EXPECT_EQ (2U, c.size ());
   EXPECT_THAT (c, ElementsAre (3, 5));
 }
@@ -629,6 +631,7 @@ TEST (SmallVector, IteratorNonConst) {
   // I populate the buffer manually here to ensure coverage of basic iterator
   // operations, but use std::iota() elsewhere to keep the tests simple.
   int value = 42;
+  // NOLINTNEXTLINE (modernize-loop-convert)
   for (decltype (buffer)::iterator it = buffer.begin (), end = buffer.end ();
        it != end; ++it) {
     *it = value++;
@@ -637,6 +640,7 @@ TEST (SmallVector, IteratorNonConst) {
   {
     // Manually copy the contents of the buffer to a new vector.
     std::vector<int> actual;
+    // NOLINTNEXTLINE (modernize-loop-convert)
     for (decltype (buffer)::iterator it = buffer.begin (), end = buffer.end ();
          it != end; ++it) {
       actual.push_back (*it);
@@ -700,7 +704,7 @@ TEST (SmallVector, IteratorConstReverse) {
     return buffer;
   }();
 
-  std::vector<int> actual (cbuffer.rbegin (), cbuffer.rend ());
+  std::vector<int> const actual (cbuffer.rbegin (), cbuffer.rend ());
   EXPECT_THAT (actual, ::testing::ElementsAre (45, 44, 43, 42));
 }
 

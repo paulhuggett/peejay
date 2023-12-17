@@ -57,22 +57,19 @@ struct element : variant {
   using variant::variant;
   struct element *parent = nullptr;
 
+  element () noexcept = default;
   element (element const &rhs) = delete;
   element (element &&rhs) noexcept
       : variant (std::move (static_cast<variant &&> (rhs))) {
     adjust_parents ();
   }
+  ~element () noexcept = default;
 
   element &operator= (element const &rhs) = delete;
-  element &operator= (element &&rhs) noexcept {
-    if (this != &rhs) {
-      static_cast<variant *> (this)->operator= (
-          std::move (static_cast<variant &&> (rhs)));
-      adjust_parents ();
-    }
-    return *this;
-  }
+  element &operator= (element &&rhs) noexcept;
+
   bool operator== (element const &rhs) const;
+  bool operator!= (element const &rhs) const { return !operator== (rhs); }
 
   /// Evaluate a JSON pointer (RFC6901).
   element *eval_pointer (u8string_view s);
@@ -97,6 +94,17 @@ private:
   /// Converts a u8stringview to an unsigned integer.
   static constexpr std::optional<unsigned> stoui (u8string_view s);
 };
+
+// operator=
+// ~~~~~~~~~
+inline element &element::operator= (element &&rhs) noexcept {
+  if (this != &rhs) {
+    static_cast<variant *> (this)->operator= (
+        std::move (static_cast<variant &&> (rhs)));
+    adjust_parents ();
+  }
+  return *this;
+}
 
 // operator==
 // ~~~~~~~~~~
@@ -152,7 +160,7 @@ inline std::optional<std::pair<u8string_view, unsigned>> decimal (
   auto prefix = 0U;
   auto pos = u8string_view::size_type{0};
   auto const len = s.length ();
-  for (; pos < len && std::isdigit (s[pos]); ++pos) {
+  for (; pos < len && std::isdigit (s[pos]) != 0; ++pos) {
     prefix = prefix * 10U + static_cast<unsigned> (s[pos] - '0');
   }
   if (pos == 0) {
@@ -192,7 +200,7 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
   // - If the referenced value is an object member within an object, then the
   //   new referenced value is that object.
 
-  if (s.empty () || !std::isdigit (s.front ())) {
+  if (s.empty () || std::isdigit (s.front ()) == 0) {
     return {};
   }
   auto const d1 = decimal (s);
@@ -345,7 +353,7 @@ constexpr std::optional<unsigned> element::stoui (u8string_view s) {
   }
   auto res = 0U;
   for (auto const c : s) {
-    if (!std::isdigit (static_cast<int> (c))) {
+    if (std::isdigit (static_cast<int> (c)) == 0) {
       return {};
     }
     res = res * 10U + static_cast<unsigned> (c - '0');
