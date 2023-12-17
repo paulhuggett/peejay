@@ -244,6 +244,7 @@ TEST (ArrayVec, Front) {
 TEST (ArrayVec, At) {
   arrayvec<int, 2> a{3};
   EXPECT_EQ (a.at (0), 3);
+  // NOLINTNEXTLINE
   EXPECT_THROW (a.at (1), std::out_of_range);
 }
 
@@ -584,6 +585,7 @@ enum class action {
 };
 
 static std::ostream &operator<< (std::ostream &os, action a) {
+  // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
   char const * str = "";
   switch (a) {
   case action::added: str = "added"; break;
