@@ -38,8 +38,7 @@ protected:
                     InputIterator first, InputIterator last);
 
   template <typename SizeType, typename... Args>
-  static void init (pointer_based_iterator<T> begin, SizeType *const size,
-                    SizeType count, Args &&...args);
+  static void init (pointer_based_iterator<T> begin, SizeType *size, SizeType count, Args &&...args);
 
   template <bool IsMove, typename SizeType, typename SrcType>
   static void operator_assign (
