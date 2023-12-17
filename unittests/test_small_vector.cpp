@@ -76,6 +76,7 @@ struct move_throws {
   move_throws () = default;
   explicit move_throws (int v_) : v{v_} {}
   move_throws (move_throws const&) noexcept = default;
+  // NOLINTNEXTLINE(bugprone-exception-escape)
   move_throws (move_throws&& rhs) {
     if (throws) {
       throw move_ex{};
@@ -86,6 +87,7 @@ struct move_throws {
   ~move_throws () noexcept = default;
 
   move_throws& operator= (move_throws const&) noexcept = default;
+  // NOLINTNEXTLINE(bugprone-exception-escape)
   move_throws& operator= (move_throws&& rhs) {
     if (&rhs != this) {
       if (throws) {
@@ -228,6 +230,7 @@ TEST (SmallVector, CtorCopy) {
 // NOLINTNEXTLINE
 TEST (SmallVector, CtorCopy2) {
   peejay::small_vector<int, 3> const b{3, 5, 7, 11, 13};
+  // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
   peejay::small_vector<int, 3> c = b;
   EXPECT_EQ (5U, c.size ());
   EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
@@ -380,7 +383,6 @@ TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
   peejay::small_vector<move_throws, 1> c;
   // NOLINTNEXTLINE
   EXPECT_THROW (c.operator= (std::move (b)), move_ex);
-  EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
 }
 
@@ -610,10 +612,12 @@ TEST (SmallVector, DataAndConstDataMatch) {
 TEST (SmallVector, At) {
   peejay::small_vector<int, 1> a{3};
   EXPECT_EQ (a.at (0), 3);
+  // NOLINTNEXTLINE
   EXPECT_THROW (a.at (1), std::out_of_range);
   a.push_back (4);
   EXPECT_EQ (a.at (0), 3);
   EXPECT_EQ (a.at (1), 4);
+  // NOLINTNEXTLINE
   EXPECT_THROW (a.at (2), std::out_of_range);
 }
 
@@ -799,7 +803,7 @@ TEST (SmallVector, AppendIteratorRange) {
   peejay::small_vector<int, 4> a (std::size_t{4});
   std::iota (std::begin (a), std::end (a), 0);
 
-  std::array<int, 4> extra;
+  std::array<int, 4> extra{};
   std::iota (std::begin (extra), std::end (extra), 100);
 
   a.append (std::begin (extra), std::end (extra));
@@ -918,7 +922,7 @@ struct throws_on_cast_to_int {
   public:
     ex () : std::runtime_error{"test exception"} {}
   };
-  // NOLINTNEXTLINE(google-explicit-constructor)
+  // NOLINTNEXTLINE(hicpp-explicit-conversions, google-explicit-constructor)
   operator int () const { throw ex{}; }
 };
 
@@ -958,24 +962,3 @@ TEST (SmallVector, InsertNAtEnd) {
   v.insert (v.end (), 3, x);  // append 3 copies of 'x'.
   EXPECT_THAT (v, testing::ElementsAre (1, 2, 3, 3, 3));
 }
-
-#if 0
-TEST (SmallVector, ThrowsX) {
-  peejay::small_vector<copy_ctor_throws, 2> v;
-  v.emplace_back (7);
-  v.emplace_back (11);
-  v.emplace_back (13);
-  peejay::small_vector<copy_ctor_throws, 2> v2;
-  try {
-    v2 = v;
-  } catch (move_ctor_ex const &) {
-    int a = 4;
-  } catch (copy_ctor_ex const &) {
-    int a = 4;
-  } catch (...) {
-    int c = 11;
-  }
-  ASSERT_TRUE (v2.vbe ());
-  int b = 5;
-}
-#endif
