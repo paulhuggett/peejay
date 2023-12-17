@@ -24,59 +24,111 @@
 using peejay::small_vector;
 using testing::ElementsAre;
 
-struct copy_ctor_ex : public std::domain_error {
-  copy_ctor_ex () : std::domain_error{"copy ctor"} {}
+struct copy_ex : public std::domain_error {
+  copy_ex () : std::domain_error{"copy"} {}
 };
-struct copy_ctor_throws {
-  copy_ctor_throws () noexcept = default;
-  explicit copy_ctor_throws (int v_) noexcept : v{v_} {}
-  copy_ctor_throws (copy_ctor_throws const& /*rhs*/) {
+struct copy_throws {
+  copy_throws () noexcept = default;
+  explicit copy_throws (int v_) noexcept : v{v_} {}
+  copy_throws (copy_throws const& rhs) {
     if (throws) {
-      throw copy_ctor_ex{};
+      throw copy_ex{};
     }
+    throws = rhs.throws;
+    v = rhs.v;
   }
-  copy_ctor_throws (copy_ctor_throws&&) noexcept = default;
+  copy_throws (copy_throws&&) noexcept = default;
 
-  ~copy_ctor_throws () noexcept = default;
+  ~copy_throws () noexcept = default;
 
-  copy_ctor_throws& operator= (copy_ctor_throws const& rhs) {
+  copy_throws& operator= (copy_throws const& rhs) {
     if (&rhs != this) {
       if (throws) {
-        throw copy_ctor_ex{};
+        throw copy_ex{};
       }
+      throws = rhs.throws;
+      v = rhs.v;
     }
     return *this;
   }
-  copy_ctor_throws& operator= (copy_ctor_throws&&) noexcept = default;
+  copy_throws& operator= (copy_throws&&) noexcept = default;
 
-  bool operator== (copy_ctor_throws const& rhs) const noexcept {
+  constexpr bool operator== (copy_throws const& rhs) const noexcept {
     return throws == rhs.throws && v == rhs.v;
   }
-  bool operator!= (copy_ctor_throws const& rhs) const noexcept {
+  constexpr bool operator!= (copy_throws const& rhs) const noexcept {
     return !operator== (rhs);
   }
-
+  constexpr bool operator== (int rhs) const noexcept { return v == rhs; }
+  constexpr bool operator!= (int rhs) const noexcept {
+    return !operator== (rhs);
+  }
+  /// This member variable is present to defeat a warning that the copy ctor
+  /// should be declared with attribute noreturn.
   bool throws = true;
   int v = 0;
 };
 
-struct move_ctor_ex : public std::domain_error {
-  move_ctor_ex () : std::domain_error{"move ctor"} {}
+struct move_ex : public std::domain_error {
+  move_ex () : std::domain_error{"move"} {}
 };
-struct move_ctor_throws {
-  move_ctor_throws () = default;
-  move_ctor_throws (move_ctor_throws const&) = default;
-  move_ctor_throws (move_ctor_throws&&) {
+struct move_throws {
+  move_throws () = default;
+  explicit move_throws (int v_) : v{v_} {}
+  move_throws (move_throws const&) noexcept = default;
+  move_throws (move_throws&& rhs) {
     if (throws) {
-      throw move_ctor_ex{};
+      throw move_ex{};
     }
+    throws = rhs.throws;
+    v = rhs.v;
   }
-  ~move_ctor_throws () noexcept = default;
+  ~move_throws () noexcept = default;
 
-  move_ctor_throws& operator= (move_ctor_throws const&) = default;
-  move_ctor_throws& operator= (move_ctor_throws&&) noexcept = default;
+  move_throws& operator= (move_throws const&) noexcept = default;
+  move_throws& operator= (move_throws&& rhs) {
+    if (&rhs != this) {
+      if (throws) {
+        throw move_ex{};
+      }
+      throws = rhs.throws;
+      v = rhs.v;
+    }
+    return *this;
+  }
+
+  bool operator== (move_throws const& rhs) const noexcept {
+    return throws == rhs.throws && v == rhs.v;
+  }
+  bool operator!= (move_throws const& rhs) const noexcept {
+    return !operator== (rhs);
+  }
+
+  /// Much like in the copy_throws class, this member variable is present to
+  /// defeat a warning that moves should be declared with attribute noreturn.
   bool throws = true;
+  int v = 0;
 };
+
+// Check the noexcept attributes on the small_vector ctor/assign members.
+// 1/3: int
+static_assert (std::is_nothrow_constructible_v<peejay::small_vector<int>>);
+static_assert (std::is_nothrow_move_constructible_v<peejay::small_vector<int>>);
+static_assert (std::is_nothrow_move_assignable_v<peejay::small_vector<int>>);
+// 2/3: copy_thorws
+static_assert (
+    std::is_nothrow_constructible_v<peejay::small_vector<copy_throws>>);
+static_assert (
+    std::is_nothrow_move_constructible_v<peejay::small_vector<copy_throws>>);
+static_assert (
+    std::is_nothrow_move_assignable_v<peejay::small_vector<copy_throws>>);
+// 3/3: move_throws
+static_assert (
+    std::is_nothrow_constructible_v<peejay::small_vector<move_throws>>);
+static_assert (
+    !std::is_nothrow_move_constructible_v<peejay::small_vector<move_throws>>);
+static_assert (
+    !std::is_nothrow_move_assignable_v<peejay::small_vector<move_throws>>);
 
 // NOLINTNEXTLINE
 TEST (SmallVector, DefaultCtor) {
@@ -203,76 +255,202 @@ TEST (SmallVector, AssignLargeToLarge) {
   EXPECT_EQ (5U, c.size ());
   EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
 }
+TEST (SmallVector, MoveAssignLargeToLarge) {
+  // The first of these vectors has too few in-body elements to accommodate its
+  // members and therefore uses a large buffer. It is assigned to a vector
+  // which _can_ hold those elements in-body.
+  peejay::small_vector<int, 3> b{3, 5, 7, 11, 13};
+  peejay::small_vector<int, 2> c{17, 19, 23};
+  c = std::move (b);
+  EXPECT_EQ (5U, c.size ());
+  EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
+}
 
 // NOLINTNEXTLINE
-TEST (SmallVector, CopyAssignThrowsSmallToSmall) {
-  peejay::small_vector<copy_ctor_throws, 1> b{1};
-  peejay::small_vector<copy_ctor_throws, 2> c;
+TEST (SmallVector, CopyCtorThrowsSmallToSmall) {
+  using sv = peejay::small_vector<copy_throws, 2>;
+  sv b;
+  b.emplace_back (3);
+  b.emplace_back (5);
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_THROW ({ sv c = b; }, copy_ex);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsSmallToSmall) {
+  peejay::small_vector<copy_throws, 1> b{1};
+  peejay::small_vector<copy_throws, 2> c;
+  // NOLINTNEXTLINE
+  EXPECT_THROW (c.operator= (b), copy_ex);
   EXPECT_EQ (b.size (), 1);
   EXPECT_EQ (c.size (), 0);
 }
 // NOLINTNEXTLINE
-TEST (SmallVector, MoveAssignThrowsSmallToSmall) {
-  peejay::small_vector<move_ctor_throws, 1> b{1};
-  peejay::small_vector<move_ctor_throws, 2> c;
+TEST (SmallVector, MoveCtorThrowsSmallToSmall) {
+  using sv = peejay::small_vector<move_throws, 2>;
+  sv b;
+  b.emplace_back (3);
+  b.emplace_back (5);
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_THROW ({ sv c = std::move (b); }, move_ex);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveAssignThrowsSmallToSmall) {
+  peejay::small_vector<move_throws, 1> b{1};
+  peejay::small_vector<move_throws, 2> c;
+  // NOLINTNEXTLINE
+  EXPECT_THROW (c.operator= (std::move (b)), move_ex);
   EXPECT_EQ (c.size (), 0);
 }
 
 // NOLINTNEXTLINE
-TEST (SmallVector, CopyAssignThrowsLargeToSmall) {
-  peejay::small_vector<copy_ctor_throws, 1> b{2};
-  peejay::small_vector<copy_ctor_throws, 2> c;
+TEST (SmallVector, CopyCtorThrowsLargeToSmall) {
+  peejay::small_vector<copy_throws, 1> b;
+  b.emplace_back (3);
+  b.emplace_back (5);
+  // We'll copy two elements from b's large array to the small container of an
+  // instance of 'svs'.
+  using svs = peejay::small_vector<copy_throws, 3>;
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_THROW ({ svs c = b; }, copy_ex);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsLargeToSmall) {
+  peejay::small_vector<copy_throws, 1> b{2};
+  peejay::small_vector<copy_throws, 2> c;
+  // NOLINTNEXTLINE
+  EXPECT_THROW (c.operator= (b), copy_ex);
   EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveCtorThrowsLargeToSmall) {
+  peejay::small_vector<move_throws, 1> b;
+  b.reserve (2);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  // We'll move two elements from b's large array to the small container of an
+  // instance of 'svs'.
+  using svs = peejay::small_vector<move_throws, 3>;
+  // NOLINTNEXTLINE
+  EXPECT_THROW ({ svs c = std::move (b); }, move_ex);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, MoveAssignThrowsLargeToSmall) {
-  peejay::small_vector<move_ctor_throws, 1> b{2};
-  peejay::small_vector<move_ctor_throws, 2> c;
+  peejay::small_vector<move_throws, 1> b{2};
+  peejay::small_vector<move_throws, 2> c;
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_THROW (c.operator= (std::move (b)), move_ex);
   EXPECT_EQ (c.size (), 0);
 }
 
 // NOLINTNEXTLINE
-TEST (SmallVector, CopyAssignThrowsSmallToLarge) {
-  peejay::small_vector<copy_ctor_throws, 2> b{2};
-  peejay::small_vector<copy_ctor_throws, 1> c;
+TEST (SmallVector, CopyCtorThrowsSmallToLarge) {
+  peejay::small_vector<copy_throws, 2> b;
+  b.emplace_back (3);
+  b.emplace_back (5);
+  // We'll copy two elements from b's small array to the large container of an
+  // instance of 'svs'.
+  using svl = peejay::small_vector<copy_throws, 1>;
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_THROW ({ svl c = b; }, copy_ex);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsSmallToLarge) {
+  peejay::small_vector<copy_throws, 2> b{2};
+  peejay::small_vector<copy_throws, 1> c;
+  // NOLINTNEXTLINE
+  EXPECT_THROW (c.operator= (b), copy_ex);
   EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
 }
 // NOLINTNEXTLINE
-TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
-  peejay::small_vector<move_ctor_throws, 2> b{2};
-  peejay::small_vector<move_ctor_throws, 1> c;
+TEST (SmallVector, MoveCtorThrowsSmallToLarge) {
+  peejay::small_vector<move_throws, 2> b;
+  b.emplace_back (3);
+  b.emplace_back (5);
+  // We'll move two elements from b's large array to the small container of an
+  // instance of 'svs'.
+  using svs = peejay::small_vector<move_throws, 1>;
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_THROW ({ svs c = std::move (b); }, move_ex);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveAssignThrowsSmallToLarge) {
+  peejay::small_vector<move_throws, 2> b{2};
+  peejay::small_vector<move_throws, 1> c;
+  // NOLINTNEXTLINE
+  EXPECT_THROW (c.operator= (std::move (b)), move_ex);
+  EXPECT_EQ (b.size (), 2);
   EXPECT_EQ (c.size (), 0);
 }
 
 // NOLINTNEXTLINE
-TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
-  peejay::small_vector<copy_ctor_throws, 2> b{3};
-  peejay::small_vector<copy_ctor_throws, 1> c;
+TEST (SmallVector, CopyCtorThrowsLargeToLarge) {
+  peejay::small_vector<copy_throws, 2> b;
+  // Reserve to avoid a possible move operation during vector resize.
+  b.reserve (3);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  b.emplace_back (7);
+  using svl = peejay::small_vector<copy_throws, 1>;
+  // We'll copy two elements from b's large array to the large container of an
+  // instance of 'svl'.
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (b), copy_ctor_ex);
+  EXPECT_THROW ({ svl c{b}; }, copy_ex);
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyAssignThrowsLargeToLarge) {
+  peejay::small_vector<copy_throws, 2> b{3};
+  peejay::small_vector<copy_throws, 1> c;
+  // NOLINTNEXTLINE
+  EXPECT_THROW (c.operator= (b), copy_ex);
   EXPECT_EQ (b.size (), 3);
   EXPECT_EQ (c.size (), 0);
 }
+
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyMoveAssignSmallToLarge) {
+  peejay::small_vector<copy_throws, 2> b{};
+  b.reserve (2);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  peejay::small_vector<copy_throws, 1> c;
+  // NOLINTNEXTLINE
+  EXPECT_NO_THROW (c.operator= (std::move (b)));
+  EXPECT_THAT (c, testing::ElementsAre (3, 5));
+}
+// NOLINTNEXTLINE
+TEST (SmallVector, CopyMoveAssignLargeToLarge) {
+  peejay::small_vector<copy_throws, 2> b{};
+  b.reserve (3);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  b.emplace_back (7);
+  peejay::small_vector<copy_throws, 1> c{2};
+  // NOLINTNEXTLINE
+  EXPECT_NO_THROW (c.operator= (std::move (b)));
+  EXPECT_THAT (c, testing::ElementsAre (3, 5, 7));
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, MoveCtorThrowsLargeToLarge) {
+  using svl = peejay::small_vector<copy_throws, 1>;
+  svl b;
+  b.reserve (2);
+  b.emplace_back (3);
+  b.emplace_back (5);
+  /// The large-to-large move operation is unusual in that we can simply move
+  /// the underlying vector instance rather than moving the individual
+  /// instances.
+  // NOLINTNEXTLINE
+  EXPECT_NO_THROW ({ svl c = std::move (b); });
+}
 // NOLINTNEXTLINE
 TEST (SmallVector, MoveAssignThrowsLargeToLarge) {
-  peejay::small_vector<move_ctor_throws, 2> b{3};
-  peejay::small_vector<move_ctor_throws, 1> c;
+  peejay::small_vector<move_throws, 2> b{3};
+  peejay::small_vector<move_throws, 1> c;
   // NOLINTNEXTLINE
-  EXPECT_THROW (c.operator= (std::move (b)), move_ctor_ex);
+  EXPECT_THROW (c.operator= (std::move (b)), move_ex);
   EXPECT_EQ (c.size (), 0);
 }
 
@@ -300,6 +478,12 @@ TEST (SmallVector, AssignInitializerList) {
   b.assign ({4, 5, 6, 7});
   EXPECT_THAT (b, ElementsAre (4, 5, 6, 7));
 }
+// NOLINTNEXTLINE
+TEST (SmallVector, AssignLargeInitializerList) {
+  peejay::small_vector<int, 3> b{1, 2, 3, 4};
+  b.assign ({5, 6, 7, 8});
+  EXPECT_THAT (b, ElementsAre (5, 6, 7, 8));
+}
 
 // NOLINTNEXTLINE
 TEST (SmallVector, OperatorEqCopy) {
@@ -310,6 +494,13 @@ TEST (SmallVector, OperatorEqCopy) {
 }
 
 // NOLINTNEXTLINE
+TEST (SmallVector, AssignCountLargeContainerToLarger) {
+  small_vector<int, 2> b (std::size_t{4});
+  int const v = 7;
+  b.assign (std::size_t{5}, v);
+  EXPECT_THAT (b, ElementsAre (7, 7, 7, 7, 7));
+}
+// NOLINTNEXTLINE
 TEST (SmallVector, AssignCountLarger) {
   small_vector<int, 3> b{1};
   int const v = 7;
@@ -318,17 +509,17 @@ TEST (SmallVector, AssignCountLarger) {
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountLargerThrows) {
-  small_vector<copy_ctor_throws, 3> b{1};
-  copy_ctor_throws const v;
+  small_vector<copy_throws, 3> b{1};
+  copy_throws const v;
   // NOLINTNEXTLINE
-  EXPECT_THROW (b.assign (std::size_t{5}, v), copy_ctor_ex);
+  EXPECT_THROW (b.assign (std::size_t{5}, v), copy_ex);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountSmallerThrows) {
-  small_vector<copy_ctor_throws, 3> b{3};
-  copy_ctor_throws const v{7};
+  small_vector<copy_throws, 3> b{3};
+  copy_throws const v{7};
   // NOLINTNEXTLINE
-  EXPECT_THROW (b.assign (std::size_t{2}, v), copy_ctor_ex);
+  EXPECT_THROW (b.assign (std::size_t{2}, v), copy_ex);
 }
 // NOLINTNEXTLINE
 TEST (SmallVector, AssignCountSmaller) {
@@ -360,6 +551,18 @@ TEST (SmallVector, SizeAfterResizeLarger) {
   b.resize (size);
   EXPECT_EQ (size, b.size ());
   EXPECT_GE (size, b.capacity ())
+      << "expected capacity to be at least " << size << " (the container size)";
+}
+
+// NOLINTNEXTLINE
+TEST (SmallVector, ResizeLargeToLarge) {
+  peejay::small_vector<int, 2> b (std::size_t{4});
+  EXPECT_GE (b.capacity (), b.size ())
+      << "expected capacity to be at least 4 (the container size)";
+  constexpr auto size = std::size_t{5};
+  b.resize (size);
+  EXPECT_EQ (b.size (), size);
+  EXPECT_GE (b.capacity (), size)
       << "expected capacity to be at least " << size << " (the container size)";
 }
 
@@ -755,3 +958,24 @@ TEST (SmallVector, InsertNAtEnd) {
   v.insert (v.end (), 3, x);  // append 3 copies of 'x'.
   EXPECT_THAT (v, testing::ElementsAre (1, 2, 3, 3, 3));
 }
+
+#if 0
+TEST (SmallVector, ThrowsX) {
+  peejay::small_vector<copy_ctor_throws, 2> v;
+  v.emplace_back (7);
+  v.emplace_back (11);
+  v.emplace_back (13);
+  peejay::small_vector<copy_ctor_throws, 2> v2;
+  try {
+    v2 = v;
+  } catch (move_ctor_ex const &) {
+    int a = 4;
+  } catch (copy_ctor_ex const &) {
+    int a = 4;
+  } catch (...) {
+    int c = 11;
+  }
+  ASSERT_TRUE (v2.vbe ());
+  int b = 5;
+}
+#endif

@@ -17,6 +17,7 @@
 #ifndef PEEJAY_SMALL_VECTOR_HPP
 #define PEEJAY_SMALL_VECTOR_HPP
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <initializer_list>
@@ -64,7 +65,8 @@ public:
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   /// Constructs the container with an initial size of 0.
-  small_vector () noexcept = default;
+  small_vector () noexcept (
+      std::is_nothrow_default_constructible_v<decltype (arr_)>) = default;
   /// Constructs the container with the contents of the range [\p first, \p
   /// last).
   ///
@@ -88,13 +90,22 @@ public:
 
   template <std::size_t OtherSize>
   small_vector (small_vector<ElementType, OtherSize> const &rhs) {
-    this->transfer_from (rhs);
+    if (rhs.size () <= BodyElements) {
+      this->transfer_alternative_from<arr_index::small> (rhs);
+    } else {
+      this->transfer_alternative_from<arr_index::large> (rhs);
+    }
   }
   small_vector (small_vector const &rhs) = default;
 
   template <std::size_t OtherSize>
-  small_vector (small_vector<ElementType, OtherSize> &&rhs) noexcept {
-    this->transfer_from (std::move (rhs));
+  small_vector (small_vector<ElementType, OtherSize> &&rhs) noexcept (
+      std::is_nothrow_move_constructible_v<ElementType>) {
+    if (rhs.size () <= BodyElements) {
+      this->transfer_alternative_from<arr_index::small> (std::move (rhs));
+    } else {
+      this->transfer_alternative_from<arr_index::large> (std::move (rhs));
+    }
   }
   small_vector (small_vector &&rhs) noexcept (
       std::is_nothrow_move_constructible_v<ElementType>) = default;
@@ -103,19 +114,28 @@ public:
 
   template <std::size_t OtherSize>
   small_vector &operator= (small_vector<ElementType, OtherSize> const &other) {
-    this->transfer_from (other);
+    if (other.size () <= BodyElements) {
+      this->transfer_alternative_from<arr_index::small> (other);
+    } else {
+      this->transfer_alternative_from<arr_index::large> (other);
+    }
     return *this;
   }
   small_vector &operator= (small_vector const &other) = default;
 
   template <std::size_t OtherSize>
-  small_vector &operator= (small_vector<ElementType, OtherSize> &&other) {
-    this->transfer_from (std::move (other));
+  small_vector &
+  operator= (small_vector<ElementType, OtherSize> &&other) noexcept (
+      std::is_nothrow_move_constructible_v<ElementType>) {
+    if (other.size () <= BodyElements) {
+      this->transfer_alternative_from<arr_index::small> (std::move (other));
+    } else {
+      this->transfer_alternative_from<arr_index::large> (std::move (other));
+    }
     return *this;
   }
   small_vector &operator= (small_vector &&other) noexcept (
-      std::is_nothrow_move_constructible_v<ElementType>
-          &&std::is_nothrow_move_assignable_v<ElementType>) = default;
+      std::is_nothrow_move_assignable_v<ElementType>) = default;
 
   /// \name Element access
   ///@{
@@ -379,26 +399,31 @@ private:
   /// A (potentially) large buffer that is used to satify requests for
   /// buffer element counts that are too large for type 'small'.
   using large_type = std::vector<ElementType, Allocator>;
-  std::variant<small_type, large_type> arr_;
+  using variant_type = std::variant<small_type, large_type>;
+  variant_type arr_;
+
+  enum class arr_index { small = 0, large = 1 };
+  static_assert (std::is_same_v<small_type,
+                                std::variant_alternative_t<
+                                    static_cast<std::size_t> (arr_index::small),
+                                    decltype (arr_)>>,
+                 "small_index must be wrong");
+  static_assert (std::is_same_v<large_type,
+                                std::variant_alternative_t<
+                                    static_cast<std::size_t> (arr_index::large),
+                                    decltype (arr_)>>,
+                 "large_index must be wrong");
 
   template <typename T>
   void transfer_from (T &&rhs);
 
-  template <std::size_t Index, typename OtherVector>
-  void transfer_alternative_from (OtherVector &&rhs);
-
-  template <std::size_t OtherSize>
-  void transfer_from_different (
-      small_vector<ElementType, OtherSize> const &rhs) {
-    visit (*this,
-           [&rhs] (auto &v) { v.assign (std::begin (rhs), std::end (rhs)); });
-  }
-  template <std::size_t OtherSize>
-  void transfer_from_different (small_vector<ElementType, OtherSize> &&rhs) {
-    visit (*this, [&rhs] (auto &v) {
-      std::move (std::begin (rhs), std::end (rhs), std::back_inserter (v));
-    });
-  }
+  template <arr_index Index, std::size_t OtherBodyElements>
+  void transfer_alternative_from (
+      small_vector<ElementType, OtherBodyElements> const &rhs);
+  template <arr_index Index, std::size_t OtherBodyElements>
+  void transfer_alternative_from (
+      small_vector<ElementType, OtherBodyElements>
+          &&rhs) noexcept (std::is_nothrow_move_constructible_v<ElementType>);
 
   template <typename SmallVector>
   static decltype (auto) at_impl (SmallVector &smv, size_type pos) {
@@ -703,50 +728,70 @@ auto small_vector<ElementType, BodyElements, Allocator>::insert (
 // transfer from
 // ~~~~~~~~~~~~~
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
-template <std::size_t Index, typename OtherVector>
-void small_vector<ElementType, BodyElements,
-                  Allocator>::transfer_alternative_from (OtherVector &&rhs) {
-  // Source and destination are both using the desired alternative, so we can
-  // copy/move directly between them.
-  if (arr_.index () == Index && rhs.arr_.index () == Index) {
-    if constexpr (std::is_rvalue_reference_v<decltype (rhs)>) {
-      std::get<Index> (arr_) = std::move (std::get<Index> (rhs.arr_));
-    } else {
-      std::get<Index> (arr_) = std::get<Index> (rhs.arr_);
-    }
+template <typename small_vector<ElementType, BodyElements, Allocator>::arr_index
+              Index,
+          std::size_t OtherBodyElements>
+void small_vector<ElementType, BodyElements, Allocator>::
+    transfer_alternative_from (
+        small_vector<ElementType, OtherBodyElements> const &rhs) {
+  constexpr auto idx = static_cast<std::size_t> (Index);
+  if (arr_.index () == idx && rhs.arr_.index () == idx) {
+    // Source and destination are both using the Index alternative, so we can
+    // assign directly.
+    std::get<idx> (arr_) = std::get<idx> (rhs.arr_);
   } else {
     // Source and/or destination are not using the desired alternative.
     static_assert (std::is_nothrow_default_constructible_v<
-                       std::variant_alternative_t<Index, decltype (arr_)>>,
+                       std::variant_alternative_t<idx, decltype (arr_)>>,
                    "default ctor must be noexcept so that the variant cannot "
                    "become valueless");
-    arr_.template emplace<Index> ();
-    this->transfer_from_different (std::forward<OtherVector> (rhs));
+    arr_.template emplace<idx> ();
+    visit (*this,
+           [&rhs] (auto &v) { v.assign (std::begin (rhs), std::end (rhs)); });
   }
+}
+
+template <typename ElementType, std::size_t BodyElements, typename Allocator>
+template <typename small_vector<ElementType, BodyElements, Allocator>::arr_index
+              Index,
+          std::size_t OtherBodyElements>
+void small_vector<ElementType, BodyElements, Allocator>::
+    transfer_alternative_from (
+        small_vector<ElementType, OtherBodyElements> &&
+            rhs) noexcept (std::is_nothrow_move_constructible_v<ElementType>) {
+  constexpr auto idx = static_cast<std::size_t> (Index);
+  // Source and destination are both using the Index alternative and move-assign
+  // is also nothrow, so we can move directly between them.
+  if constexpr (std::is_nothrow_move_assignable_v<
+                    std::variant_alternative_t<idx, decltype (arr_)>>) {
+    if (arr_.index () == idx && rhs.arr_.index () == idx) {
+      std::get<idx> (arr_) = std::move (std::get<idx> (rhs.arr_));
+      return;
+    }
+  }
+  // Source and/or destination are not using the desired alternative.
+  static_assert (std::is_nothrow_default_constructible_v<
+                     std::variant_alternative_t<idx, decltype (arr_)>>,
+                 "default ctor must be noexcept so that the variant cannot "
+                 "become valueless");
+  arr_.template emplace<idx> ();
+  std::move (std::begin (rhs), std::end (rhs),
+             std::back_inserter (std::get<idx> (arr_)));
 }
 
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
 template <typename OtherVector>
 void small_vector<ElementType, BodyElements, Allocator>::transfer_from (
     OtherVector &&rhs) {
-  constexpr auto small_index = std::size_t{0};
-  constexpr auto large_index = std::size_t{1};
-  static_assert (
-      std::is_same_v<small_type, std::variant_alternative_t<small_index,
-                                                            decltype (arr_)>> &&
-          std::is_same_v<large_type, std::variant_alternative_t<
-                                         large_index, decltype (arr_)>>,
-      "small_index and/or large_index must be wrong");
-
   // If the rhs container will fit into our "small" container then that's what
   // we'll produce otherwise we must use the "large" alternative. Note that the
   // 'rhs' container has a different value for BodyElements so it may be using
   // either alternative.
   if (rhs.size () <= BodyElements) {
-    this->transfer_alternative_from<small_index> (
+    this->transfer_alternative_from<arr_index::small> (
         std::forward<OtherVector> (rhs));
   } else {
-    this->transfer_alternative_from<large_index> (
+    this->transfer_alternative_from<arr_index::large> (
         std::forward<OtherVector> (rhs));
   }
 }
