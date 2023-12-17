@@ -258,6 +258,7 @@ TEST (SmallVector, AssignLargeToLarge) {
   EXPECT_EQ (5U, c.size ());
   EXPECT_THAT (c, ElementsAre (3, 5, 7, 11, 13));
 }
+// NOLINTNEXTLINE
 TEST (SmallVector, MoveAssignLargeToLarge) {
   // The first of these vectors has too few in-body elements to accommodate its
   // members and therefore uses a large buffer. It is assigned to a vector
