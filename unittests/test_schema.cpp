@@ -311,6 +311,8 @@ TEST (SchemaNumberInstanceChecks, MultipleOf) {
   EXPECT_EQ (check (parse (u8R"({ "multipleOf": 2.4 })"sv), parse (u8"4.9"sv)),
              make_error_code (error::schema_validation));
 }
+
+// NOLINTNEXTLINE
 TEST (SchemaNumberInstanceChecks, MaximumInteger) {
   auto two = parse (u8R"({ "maximum": 2 })"sv);
   EXPECT_EQ (check (two, parse (u8"2"sv)), std::error_code{});
@@ -320,6 +322,8 @@ TEST (SchemaNumberInstanceChecks, MaximumInteger) {
   EXPECT_EQ (check (two, parse (u8"3"sv)),
              make_error_code (error::schema_validation));
 }
+
+// NOLINTNEXTLINE
 TEST (SchemaNumberInstanceChecks, MaximumFp) {
   auto pi = parse (u8R"({ "maximum": 3.14 })"sv);
   EXPECT_EQ (check (pi, parse (u8"2"sv)), std::error_code{});
@@ -330,6 +334,8 @@ TEST (SchemaNumberInstanceChecks, MaximumFp) {
   EXPECT_EQ (check (pi, parse (u8"4"sv)),
              make_error_code (error::schema_validation));
 }
+
+// NOLINTNEXTLINE
 TEST (SchemaNumberInstanceChecks, ExclusiveMaximumInteger) {
   auto three = parse (u8R"({ "exclusiveMaximum": 3 })"sv);
   EXPECT_EQ (check (three, parse (u8"2"sv)), std::error_code{});
@@ -339,6 +345,8 @@ TEST (SchemaNumberInstanceChecks, ExclusiveMaximumInteger) {
   EXPECT_EQ (check (three, parse (u8"3"sv)),
              make_error_code (error::schema_validation));
 }
+
+// NOLINTNEXTLINE
 TEST (SchemaNumberInstanceChecks, ExclusiveMaximumFp) {
   auto pi = parse (u8R"({ "exclusiveMaximum": 3.14 })"sv);
   EXPECT_EQ (check (pi, parse (u8"2"sv)), std::error_code{});

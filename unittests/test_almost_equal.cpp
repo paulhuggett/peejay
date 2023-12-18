@@ -14,9 +14,12 @@
 
 #include "peejay/almost_equal.hpp"
 
+// NOLINTNEXTLINE
 TEST (AlmostEqual, TwoIdentical) {
   EXPECT_TRUE (peejay::almost_equal (3.14, 3.14));
 }
+
+// NOLINTNEXTLINE
 TEST (AlmostEqual, Infinities) {
   if constexpr (std::numeric_limits<float>::has_infinity) {
     EXPECT_TRUE (
@@ -59,6 +62,8 @@ TEST (AlmostEqual, Infinities) {
                               std::numeric_limits<double>::min ()));
   }
 }
+
+// NOLINTNEXTLINE
 TEST (AlmostEqual, NaNs) {
   if constexpr (std::numeric_limits<float>::has_quiet_NaN) {
     EXPECT_FALSE (
@@ -79,6 +84,8 @@ TEST (AlmostEqual, NaNs) {
         peejay::almost_equal (0.0, std::numeric_limits<double>::quiet_NaN ()));
   }
 }
+
+// NOLINTNEXTLINE
 TEST (AlmostEqual, TwoNearZero) {
   EXPECT_FALSE (peejay::almost_equal (
       1.0F / static_cast<float> (std::numeric_limits<std::uint64_t>::max ()),
