@@ -210,7 +210,7 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
   auto prefix = 0U;
   std::tie (s, prefix) = *d1;
 
-  auto current = this;
+  auto * current = this;
   for (; prefix > 0U; --prefix) {
     if (current == nullptr) {
       return {};  // we've reached the root: fail.

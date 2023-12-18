@@ -11,8 +11,8 @@
 // for license information.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS_AVBASE_HPP
-#define PEEJAY_DETAILS_AVBASE_HPP
+#ifndef PEEJAY_AVBASE_HPP
+#define PEEJAY_AVBASE_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -456,4 +456,4 @@ pointer_based_iterator<T> avbase<T>::emplace (pointer_based_iterator<T> end,
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_DETAILS_AVBASE_HPP
+#endif  // PEEJAY_AVBASE_HPP
