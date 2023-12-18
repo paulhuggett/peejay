@@ -170,7 +170,8 @@ public:
     unsigned y_;
   };
 
-  constexpr coord () noexcept = default;
+  // (Using '{}' rather than '=default;' here to pacify clang-8.)
+  constexpr coord () noexcept {}
   constexpr coord (column x, line y) noexcept : line_{y}, column_{x} {}
   constexpr coord (line y, column x) noexcept : line_{y}, column_{x} {}
 
