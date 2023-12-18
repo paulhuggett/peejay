@@ -1979,8 +1979,7 @@ private:
   ///
   /// \param code_point  The Unicode code-point to be checked.
   /// \returns True if the code-point can be used as the start of an identifier, false otherwise.
-  static constexpr bool is_identifier_start (
-      char32_t const code_point) noexcept;
+  static constexpr bool is_identifier_start (char32_t code_point) noexcept;
   /// \brief Checks if the given code point can be part of an identifier.
   ///
   /// The code point \p code_point must be categorized as either an identifier-
@@ -1988,8 +1987,7 @@ private:
   ///
   /// \param code_point  The Unicode code-point to be checked.
   /// \returns True if the code-point can be part of an identifier, false otherwise.
-  static constexpr bool is_identifier_member (
-      char32_t const code_point) noexcept;
+  static constexpr bool is_identifier_member (char32_t code_point) noexcept;
 };
 
 // hex states
