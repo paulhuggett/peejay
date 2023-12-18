@@ -425,7 +425,7 @@ public:
       }
     }
 
-    return this->check (schema, instance);
+    return checker::check (schema, instance);
   }
 
   u8string base_uri_;
