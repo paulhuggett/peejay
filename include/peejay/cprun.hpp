@@ -1,12 +1,9 @@
 // This file was auto-generated. DO NOT EDIT!
 #ifndef PEEJAY_CPRUN_HPP
 #define PEEJAY_CPRUN_HPP
-
 #include <array>
 #include <cstdint>
-
 namespace peejay {
-
 enum class grammar_rule : std::uint8_t {
   whitespace = 0b00,
   identifier_start = 0b01,

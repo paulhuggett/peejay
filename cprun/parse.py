@@ -22,7 +22,8 @@ from typing import Annotated, Generator, Optional, Sequence
 import argparse
 import pathlib
 
-from unicode_data import CodePoint, CodePointValueDict, DbDict, GeneralCategory, MAX_CODE_POINT, read_unicode_data
+from unicode_data import CodePoint, CodePointValueDict, DbDict, GeneralCategory,\
+                         MAX_CODE_POINT, read_unicode_data
 
 CodePointBitsType = Annotated[
     int, 'The number of bits used to represent a code point']
@@ -39,28 +40,41 @@ MAX_RULE = pow(2, RULE_BITS) - 1
 
 
 class GrammarRule(Enum):
-    whitespace = 0b00
-    identifier_start = 0b01
-    identifier_part = 0b11
+    """The roles that each known code-point may serve."""
+    WHITESPACE = 0b00
+    IDENTIFIER_START = 0b01
+    IDENTIFIER_PART = 0b11
+
+
+def rule_name (rule: GrammarRule) -> str:
+    """Converts a GrammerRule name using the Python naming convention (all
+    upper-case) to the PJ C++ convention of using snake-case."""
+
+    rule_to_str_map = {
+        GrammarRule.WHITESPACE: 'whitespace',
+        GrammarRule.IDENTIFIER_START: 'identifier_start',
+        GrammarRule.IDENTIFIER_PART: 'identifier_part'
+    }
+    return rule_to_str_map[rule]
 
 
 CATEGORY_TO_GRAMMAR_RULE: dict[GeneralCategory, GrammarRule] = {
-    GeneralCategory.Spacing_Mark: GrammarRule.identifier_part,
-    GeneralCategory.Connector_Punctuation: GrammarRule.identifier_part,
-    GeneralCategory.Decimal_Number: GrammarRule.identifier_part,
-    GeneralCategory.Letter_Number: GrammarRule.identifier_start,
-    GeneralCategory.Lowercase_Letter: GrammarRule.identifier_start,
-    GeneralCategory.Modifier_Letter: GrammarRule.identifier_start,
-    GeneralCategory.Nonspacing_Mark: GrammarRule.identifier_part,
-    GeneralCategory.Space_Separator: GrammarRule.whitespace,
-    GeneralCategory.Other_Letter: GrammarRule.identifier_start,
-    GeneralCategory.Titlecase_Letter: GrammarRule.identifier_start,
-    GeneralCategory.Uppercase_Letter: GrammarRule.identifier_start,
+    GeneralCategory.Spacing_Mark: GrammarRule.IDENTIFIER_PART,
+    GeneralCategory.Connector_Punctuation: GrammarRule.IDENTIFIER_PART,
+    GeneralCategory.Decimal_Number: GrammarRule.IDENTIFIER_PART,
+    GeneralCategory.Letter_Number: GrammarRule.IDENTIFIER_START,
+    GeneralCategory.Lowercase_Letter: GrammarRule.IDENTIFIER_START,
+    GeneralCategory.Modifier_Letter: GrammarRule.IDENTIFIER_START,
+    GeneralCategory.Nonspacing_Mark: GrammarRule.IDENTIFIER_PART,
+    GeneralCategory.Space_Separator: GrammarRule.WHITESPACE,
+    GeneralCategory.Other_Letter: GrammarRule.IDENTIFIER_START,
+    GeneralCategory.Titlecase_Letter: GrammarRule.IDENTIFIER_START,
+    GeneralCategory.Uppercase_Letter: GrammarRule.IDENTIFIER_START,
 }
 
 
 class OutputRow:
-    """An individual output row representing a run of unicode code points
+    """An individual output row representing a run of Unicode code points
     which all belong to the same rule."""
 
     def __init__(self, code_point: CodePoint, length: int,
@@ -72,10 +86,9 @@ class OutputRow:
         assert category.value < pow(2, RULE_BITS)
         self.__category: GrammarRule = category
 
-    def as_str(self, db: DbDict) -> str:
-        return '{{ 0x{0:04x}, {1}, {2} }}, // {3} ({4})'\
-            .format(self.__code_point, self.__length, self.__category.value,
-                    db[self.__code_point]['Name'], self.__category.name)
+    def as_str(self, database: DbDict) -> str:
+        name = database[self.__code_point]['Name']
+        return f'{{ 0x{self.__code_point:04x}, {self.__length}, {self.__category.value} }}, // {name} ({rule_name (self.__category)})'
 
 
 class CRAState:
@@ -86,31 +99,31 @@ class CRAState:
         self.__first: CodePoint = CodePoint(0)
         self.__length: int = 0
         self.__max_length: int = 0
-        self.__cat: Optional[GrammarRule] = None
+        self.__rule: Optional[GrammarRule] = None
 
     def new_run(self, code_point: CodePoint,
-                mc: Optional[GrammarRule]) -> None:
+                rule: Optional[GrammarRule]) -> None:
         """Start a new potential run of contiguous code points.
 
         :param code_point: The code point at which the run may start.
-        :param mc: The rule associated with this code point or None.
+        :param rule: The rule associated with this code point or None.
         :return: None
         """
 
         self.__first = code_point
-        self.__cat = mc
-        self.__length = int(mc is not None)
+        self.__rule = rule
+        self.__length = int(rule is not None)
 
-    def extend_run(self, mc: Optional[GrammarRule]) -> bool:
+    def extend_run(self, rule: Optional[GrammarRule]) -> bool:
         """Adds a code point to the current run or indicates that a new run
         should be started.
 
-        :param mc:
+        :param rule:
         :return: True if the current run was extended or False if a new run
                  should be started.
         """
 
-        if self.__cat is not None and mc == self.__cat:
+        if self.__rule is not None and rule == self.__rule:
             if self.__length > MAX_RUN_LENGTH:
                 return False
             self.__length += 1
@@ -128,11 +141,11 @@ class CRAState:
         :return: The value 'result'.
         """
 
-        if self.__length > 0 and self.__cat is not None:
+        if self.__length > 0 and self.__rule is not None:
             assert self.__first <= MAX_CODE_POINT
             assert self.__length <= MAX_RUN_LENGTH
-            assert self.__cat.value <= MAX_RULE
-            result.append(OutputRow(self.__first, self.__length, self.__cat))
+            assert self.__rule.value <= MAX_RULE
+            result.append(OutputRow(self.__first, self.__length, self.__rule))
         return result
 
     def max_run(self) -> int:
@@ -150,46 +163,46 @@ def all_code_points() -> Generator[CodePoint, None, None]:
         code_point = CodePoint(code_point + 1)
 
 
-def code_run_array(db: DbDict) -> list[OutputRow]:
+def code_run_array(database: DbDict) -> list[OutputRow]:
     """Produces an array of code runs from the Unicode database dictionary.
 
-    :param db: The Unicode database dictionary.
+    :param database: The Unicode database dictionary.
     :return: An array of code point runs.
     """
 
     state = CRAState()
-    code_runs: list[OutputRow] = list()
+    code_runs: list[OutputRow] = []
     for code_point in all_code_points():
-        mc: Optional[GrammarRule] = None
-        v: Optional[CodePointValueDict] = db.get(code_point)
-        if v is not None:
-            mc = CATEGORY_TO_GRAMMAR_RULE.get(v['General_Category'])
-            if state.extend_run(mc):
+        rule: Optional[GrammarRule] = None
+        value: Optional[CodePointValueDict] = database.get(code_point)
+        if value is not None:
+            rule = CATEGORY_TO_GRAMMAR_RULE.get(value['General_Category'])
+            if state.extend_run(rule):
                 continue
         state.end_run(code_runs)
-        state.new_run(code_point, mc)
+        state.new_run(code_point, rule)
     state.end_run(code_runs)
     return code_runs
 
 
-def patch_special_code_points(db: DbDict) -> DbDict:
+def patch_special_code_points(database: DbDict) -> DbDict:
     """The ECMAScript grammar rules assigns meaning to some individual Unicode
     code points as well as to entire categories of code point. This function
     ensures that the individual code points belong to categories that will in
     turn be mapped to the correct grammar_rule value.
 
-    :param db: The Unicode database dictionary.
+    :param database: The Unicode database dictionary.
     :return: The Unicode database dictionary.
     """
 
     # Check that the GeneralCategory enumerations will be eventually mapped to
     # the grammar_rule value we expect.
     assert CATEGORY_TO_GRAMMAR_RULE[
-        GeneralCategory.Space_Separator] == GrammarRule.whitespace
+        GeneralCategory.Space_Separator] == GrammarRule.WHITESPACE
     assert CATEGORY_TO_GRAMMAR_RULE[
-        GeneralCategory.Other_Letter] == GrammarRule.identifier_start
+        GeneralCategory.Other_Letter] == GrammarRule.IDENTIFIER_START
     assert CATEGORY_TO_GRAMMAR_RULE[
-        GeneralCategory.Spacing_Mark] == GrammarRule.identifier_part
+        GeneralCategory.Spacing_Mark] == GrammarRule.IDENTIFIER_PART
     special_code_points = {
         CodePoint(0x0009): GeneralCategory.Space_Separator,
         CodePoint(0x000A): GeneralCategory.Space_Separator,
@@ -204,55 +217,54 @@ def patch_special_code_points(db: DbDict) -> DbDict:
         CodePoint(0x200D): GeneralCategory.Spacing_Mark,
         CodePoint(0xFEFF): GeneralCategory.Space_Separator
     }
-    for cp, cat in special_code_points.items():
-        db[cp]['General_Category'] = cat
-    return db
+    for code_point, cat in special_code_points.items():
+        database[code_point]['General_Category'] = cat
+    return database
 
 
-def dump_db(db: DbDict) -> None:
-    for k, v in db.items():
-        print('U+{0:04x} {1}'.format(k, v))
+def dump_database(database: DbDict) -> None:
+    for key, value in database.items():
+        print(f'U+{key:04x} {value}')
 
 
-def emit_header(entries: Sequence[OutputRow], include_guard: str) -> None:
+def emit_header(database: DbDict, entries: Sequence[OutputRow], include_guard: str) -> None:
     """Emits a C++ header file which declares the array variable along with the
     necessary types.
 
+    :param database: The Unicode database dictionary.
     :param entries: A sequence of OutputRow instances sorted by code point.
     :param include_guard: The name of the header file include guard to be used.
     :return: None
     """
+
     print('// This file was auto-generated. DO NOT EDIT!')
-    print('#ifndef {0}'.format(include_guard))
-    print('#define {0}'.format(include_guard))
-    print('''
-#include <array>
+    print(f'#ifndef {include_guard}')
+    print(f'#define {include_guard}')
+    print('''#include <array>
 #include <cstdint>
-
 namespace peejay {
-
 enum class grammar_rule : std::uint8_t {''')
-    print(',\n'.join(
-        ['  {0} = 0b{1:0>2b}'.format(x.name, x.value) for x in GrammarRule]))
-    print('''}};
+    print(',\n'.join([f'  {rule_name(x)} = 0b{x.value:0>2b}' for x in GrammarRule]))
+    print(f'''}};
 constexpr auto idmask = 0b01U;
 struct cprun {{
-  std::uint_least32_t code_point: {0};
-  std::uint_least32_t length: {1};
-  std::uint_least32_t rule: {2};
-}};'''.format(CODE_POINT_BITS, RUN_LENGTH_BITS, RULE_BITS))
+  std::uint_least32_t code_point: {CODE_POINT_BITS};
+  std::uint_least32_t length: {RUN_LENGTH_BITS};
+  std::uint_least32_t rule: {RULE_BITS};
+}};''')
     assert CODE_POINT_BITS + RUN_LENGTH_BITS + RULE_BITS <= 32
 
-    print('inline std::array<cprun, {0}> const code_point_runs = {{{{'.format(
-        len(entries)))
-    for x in entries:
-        print('  {0}'.format(x.as_str(db)))
+    print(f'inline std::array<cprun, {len(entries)}> const code_point_runs = {{{{')
+    for entry in entries:
+        print(f'  {entry.as_str(database)}')
     print('}};')
     print('\n} // end namespace peejay')
-    print('#endif // {0}'.format(include_guard))
+    print(f'#endif // {include_guard}')
 
 
-if __name__ == '__main__':
+def main():
+    """The program's entry point."""
+
     parser = argparse.ArgumentParser(
         prog='ProgramName',
         description=
@@ -275,10 +287,13 @@ if __name__ == '__main__':
                        action='store_true')
 
     args = parser.parse_args()
-    db = read_unicode_data(args.unicode_data)
+    database = read_unicode_data(args.unicode_data)
     if args.dump:
-        dump_db(db)
+        dump_database(database)
     else:
-        db = patch_special_code_points(db)
-        entries = code_run_array(db)
-        emit_header(entries, args.include_guard)
+        database = patch_special_code_points(database)
+        entries = code_run_array(database)
+        emit_header(database, entries, args.include_guard)
+
+if __name__ == '__main__':
+    main ()
