@@ -91,9 +91,9 @@ public:
   template <std::size_t OtherSize>
   small_vector (small_vector<ElementType, OtherSize> const &rhs) {
     if (rhs.size () <= BodyElements) {
-      this->transfer_alternative_from<arr_index::small> (rhs);
+      this->transfer_alternative_from<variant_index::small_type> (rhs);
     } else {
-      this->transfer_alternative_from<arr_index::large> (rhs);
+      this->transfer_alternative_from<variant_index::large_type> (rhs);
     }
   }
   small_vector (small_vector const &rhs) = default;
@@ -102,9 +102,11 @@ public:
   small_vector (small_vector<ElementType, OtherSize> &&rhs) noexcept (
       std::is_nothrow_move_constructible_v<ElementType>) {
     if (rhs.size () <= BodyElements) {
-      this->transfer_alternative_from<arr_index::small> (std::move (rhs));
+      this->transfer_alternative_from<variant_index::small_type> (
+          std::move (rhs));
     } else {
-      this->transfer_alternative_from<arr_index::large> (std::move (rhs));
+      this->transfer_alternative_from<variant_index::large_type> (
+          std::move (rhs));
     }
   }
   small_vector (small_vector &&rhs) noexcept (
@@ -115,9 +117,9 @@ public:
   template <std::size_t OtherSize>
   small_vector &operator= (small_vector<ElementType, OtherSize> const &other) {
     if (other.size () <= BodyElements) {
-      this->transfer_alternative_from<arr_index::small> (other);
+      this->transfer_alternative_from<variant_index::small_type> (other);
     } else {
-      this->transfer_alternative_from<arr_index::large> (other);
+      this->transfer_alternative_from<variant_index::large_type> (other);
     }
     return *this;
   }
@@ -128,9 +130,11 @@ public:
   operator= (small_vector<ElementType, OtherSize> &&other) noexcept (
       std::is_nothrow_move_constructible_v<ElementType>) {
     if (other.size () <= BodyElements) {
-      this->transfer_alternative_from<arr_index::small> (std::move (other));
+      this->transfer_alternative_from<variant_index::small_type> (
+          std::move (other));
     } else {
-      this->transfer_alternative_from<arr_index::large> (std::move (other));
+      this->transfer_alternative_from<variant_index::large_type> (
+          std::move (other));
     }
     return *this;
   }
@@ -402,25 +406,34 @@ private:
   using variant_type = std::variant<small_type, large_type>;
   variant_type arr_;
 
-  enum class arr_index { small = 0, large = 1 };
-  static_assert (std::is_same_v<small_type,
-                                std::variant_alternative_t<
-                                    static_cast<std::size_t> (arr_index::small),
-                                    decltype (arr_)>>,
-                 "small_index must be wrong");
-  static_assert (std::is_same_v<large_type,
-                                std::variant_alternative_t<
-                                    static_cast<std::size_t> (arr_index::large),
-                                    decltype (arr_)>>,
-                 "large_index must be wrong");
+  // These two constants should have been named simply "small" and "large".
+  // However, Microsoft's rpcndr.h unconditionally defines a macro named
+  // "small".
+  //
+  // Since they represent the index values of the small_type and large_type
+  // containers respectively , and they're a scoped enum class, I went with the
+  // rather wordy reuse of those names instead.
+  enum class variant_index { small_type = 0, large_type = 1 };
+  static_assert (
+      std::is_same_v<small_type,
+                     std::variant_alternative_t<
+                         static_cast<std::size_t> (variant_index::small_type),
+                         decltype (arr_)>>,
+      "variant_index::small_type must be wrong");
+  static_assert (
+      std::is_same_v<large_type,
+                     std::variant_alternative_t<
+                         static_cast<std::size_t> (variant_index::large_type),
+                         decltype (arr_)>>,
+      "variant_index::small_type must be wrong");
 
   template <typename T>
   void transfer_from (T &&rhs);
 
-  template <arr_index Index, std::size_t OtherBodyElements>
+  template <variant_index Index, std::size_t OtherBodyElements>
   void transfer_alternative_from (
       small_vector<ElementType, OtherBodyElements> const &rhs);
-  template <arr_index Index, std::size_t OtherBodyElements>
+  template <variant_index Index, std::size_t OtherBodyElements>
   void transfer_alternative_from (
       small_vector<ElementType, OtherBodyElements>
           &&rhs) noexcept (std::is_nothrow_move_constructible_v<ElementType>);
@@ -728,8 +741,8 @@ auto small_vector<ElementType, BodyElements, Allocator>::insert (
 // transfer from
 // ~~~~~~~~~~~~~
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
-template <typename small_vector<ElementType, BodyElements, Allocator>::arr_index
-              Index,
+template <typename small_vector<ElementType, BodyElements,
+                                Allocator>::variant_index Index,
           std::size_t OtherBodyElements>
 void small_vector<ElementType, BodyElements, Allocator>::
     transfer_alternative_from (
@@ -752,8 +765,8 @@ void small_vector<ElementType, BodyElements, Allocator>::
 }
 
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
-template <typename small_vector<ElementType, BodyElements, Allocator>::arr_index
-              Index,
+template <typename small_vector<ElementType, BodyElements,
+                                Allocator>::variant_index Index,
           std::size_t OtherBodyElements>
 void small_vector<ElementType, BodyElements, Allocator>::
     transfer_alternative_from (
@@ -788,10 +801,10 @@ void small_vector<ElementType, BodyElements, Allocator>::transfer_from (
   // 'rhs' container has a different value for BodyElements so it may be using
   // either alternative.
   if (rhs.size () <= BodyElements) {
-    this->transfer_alternative_from<arr_index::small> (
+    this->transfer_alternative_from<variant_index::small_type> (
         std::forward<OtherVector> (rhs));
   } else {
-    this->transfer_alternative_from<arr_index::large> (
+    this->transfer_alternative_from<variant_index::large_type> (
         std::forward<OtherVector> (rhs));
   }
 }
