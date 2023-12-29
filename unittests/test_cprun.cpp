@@ -12,6 +12,10 @@
 //===----------------------------------------------------------------------===//
 #include <gmock/gmock.h>
 
+#if PEEJAY_FUZZTEST
+#include "fuzztest/fuzztest.h"
+#endif
+
 #include <algorithm>
 #include <ostream>
 
@@ -63,3 +67,11 @@ TEST (CodePointRun, VariationSelector17) {
              std::optional{grammar_rule::identifier_part});
   EXPECT_FALSE (code_point_grammar_rule (char32_t{vs17 + 240}));
 }
+
+#if PEEJAY_FUZZTEST
+static void CodePointGrammarRuleNeverCrashes (char32_t cp) {
+  code_point_grammar_rule (cp);
+}
+FUZZ_TEST (CodePointRun, CodePointGrammarRuleNeverCrashes);
+#endif
+

@@ -34,7 +34,6 @@ add_executable (
   test_whitespace.cpp
 )
 setup_target (pj-unittests)
-target_link_libraries (pj-unittests PRIVATE peejay gmock)
 
 set (clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
 set (gcc_options)
@@ -47,3 +46,12 @@ target_compile_options (
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
 )
+target_link_libraries (pj-unittests PUBLIC peejay)
+
+if (PEEJAY_FUZZTEST)
+  target_link_libraries (pj-unittests PUBLIC gtest gmock)
+  link_fuzztest (pj-unittests)
+  gtest_discover_tests (pj-unittests)
+else ()
+  target_link_libraries (pj-unittests PUBLIC gmock_main)
+endif (PEEJAY_FUZZTEST)

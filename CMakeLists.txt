@@ -23,6 +23,7 @@ option (WERROR "Compiler warnings are errors")
 option (PEEJAY_CXX17 "Use C++17 (rather than C++20" Yes)
 option (LIBCXX "Use libc++ rather than libstdc++ (clang only)")
 option (PEEJAY_COVERAGE "Generate Source-based Coverage")
+option (PEEJAY_FUZZTEST "Enable fuzztest")
 
 if (PEEJAY_CXX17)
   set (STANDARD 17)
@@ -100,6 +101,9 @@ function (setup_target target)
   if (LIBCXX)
     list (APPEND clang_options -stdlib=libc++)
   endif ()
+  if (PEEJAY_FUZZTEST)
+    target_compile_definitions (${target} PUBLIC PEEJAY_FUZZTEST=1)
+  endif ()
 
   set_target_properties (
     ${target}
@@ -127,56 +131,77 @@ function (setup_target target)
   )
 endfunction (setup_target)
 
-# Check that we've got the googletest submodule checked out and that a parent project
-# didn't already create the gtest/gmock targets
-if (TARGET gtest)
-elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
-  # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
-  # Windows.
-  set (gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
-  # We don't want to install either gtest or gmock.
-  set (INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-  set (INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+function (setup_gtest)
+  # Check that we've got the googletest submodule checked out and that a parent project
+  # didn't already create the gtest/gmock targets
+  if (TARGET gtest)
+  elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
+    # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
+    # Windows.
+    set (gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+    # We don't want to install either gtest or gmock.
+    set (INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+    set (INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
 
-  add_subdirectory (googletest)
+    add_subdirectory (googletest)
 
-  foreach (target gtest gmock gmock_main gtest_main)
-    set_target_properties (
-      ${target}
-      PROPERTIES CXX_STANDARD ${STANDARD}
-                 CXX_STANDARD_REQUIRED Yes
-                 CXX_EXTENSIONS No
-    )
-
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
-      check_cxx_compiler_flag (
-        -Wno-implicit-int-float-conversion
-        CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION
+    foreach (target gtest gmock gmock_main gtest_main)
+      set_target_properties (
+        ${target}
+        PROPERTIES CXX_STANDARD ${STANDARD}
+                   CXX_STANDARD_REQUIRED Yes
+                   CXX_EXTENSIONS No
       )
-      if (${CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION})
-        list (APPEND gclang_options -Wno-implicit-int-float-conversion)
+
+      if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
+        check_cxx_compiler_flag (
+          -Wno-implicit-int-float-conversion
+          CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION
+        )
+        if (${CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION})
+          list (APPEND gclang_options -Wno-implicit-int-float-conversion)
+        endif ()
       endif ()
-    endif ()
 
-    if (LIBCXX)
-      list (APPEND gclang_options -stdlib=libc++)
-    endif ()
+      if (LIBCXX)
+        list (APPEND gclang_options -stdlib=libc++)
+      endif ()
 
-    target_compile_definitions (
-      ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
-    )
-    target_compile_options (
-      ${target}
-      PRIVATE
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-    )
-    target_link_options (
-      ${target}
-      PRIVATE
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-    )
-  endforeach ()
-endif ()
+      target_compile_definitions (
+        ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
+      )
+      target_compile_options (
+        ${target}
+        PRIVATE
+          $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+      )
+      target_link_options (
+        ${target}
+        PRIVATE
+          $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+      )
+    endforeach ()
+  endif ()
+endfunction (setup_gtest)
+
+if (PEEJAY_FUZZTEST)
+  set (FUZZTEST_FUZZING_MODE On)
+  include (FetchContent)
+  set (FUZZTEST_REPO_BRANCH "main" CACHE STRING "FuzzTest repository branch.")
+  message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
+  FetchContent_Declare (
+    fuzztest
+    GIT_REPOSITORY https://github.com/google/fuzztest.git
+    GIT_TAG ${FUZZTEST_REPO_BRANCH}
+  )
+  FetchContent_MakeAvailable (fuzztest)
+  enable_testing ()
+  include (GoogleTest)
+  fuzztest_setup_fuzzing_flags ()
+else ()
+  setup_gtest ()
+endif (PEEJAY_FUZZTEST)
+
 
 add_subdirectory (lib)
 if (TARGET gtest)
