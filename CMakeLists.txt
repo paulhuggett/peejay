@@ -51,6 +51,7 @@ function (setup_target target)
     -Wno-c++98-compat
     -Wno-c++98-compat-pedantic
     -Wno-c99-extensions
+    -Wno-documentation-unknown-command
     -Wno-exit-time-destructors
     -Wno-padded
     -Wno-undef
