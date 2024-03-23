@@ -318,78 +318,32 @@ public:
   /// external source). Once all of the data has been received, call the
   /// parser::eof() method.
 
-  /// \param src The data to be parsed.
-  parser &input (std::u32string const &src) {
-    return this->input (std::begin (src), std::end (src));
-  }
-  /// \param src The data to be parsed.
-  parser &input (std::u32string_view const &src) {
-    return this->input (std::begin (src), std::end (src));
-  }
-
-
-  parser &input (u8string const &src) {
-    return this->input (std::begin (src), std::end (src));
-  }
-  parser &input (u8string_view const &src) {
-    return this->input (std::begin (src), std::end (src));
-  }
 #if PEEJAY_HAVE_SPAN
-  /// \param span The span of UTF-8 code units to be parsed.
-  template <size_t Extent>
-  parser &input (std::span<char8, Extent> const &span) {
+  /// \param span The span of bytes to be parsed.
+  template <std::size_t Extent>
+  parser &input (std::span<std::byte, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
-  /// \param span The span of UTF-8 code units to be parsed.
-  template <size_t Extent>
-  parser &input (std::span<char8 const, Extent> const &span) {
+  /// \param span The span of bytes to be parsed.
+  template <std::size_t Extent>
+  parser &input (std::span<std::byte const, Extent> const &span) {
     return this->input (std::begin (span), std::end (span));
   }
-#endif  // PEEJAY_CXX20
-  /// \param first The element in the half-open range of UTF-32 code-units to be parsed.
-  /// \param last The end of the range of UTF-32 code-units to be parsed.
+#endif  // PEEJAY_HAVE_SPAN
+  /// \param first The element in the half-open range of bytes to be parsed.
+  /// \param last The end of the range of bytes to be parsed.
 #if PEEJAY_HAVE_CONCEPTS
-  template <typename InputIterator>
-  PEEJAY_CXX20REQUIRES (
-      (std::input_iterator<InputIterator> &&
-       std::is_same_v<std::decay_t<typename std::iterator_traits<
-                          InputIterator>::value_type>,
-                      char32_t>))
-  parser &input (InputIterator first, InputIterator last) {
-    return input32 (first, last);
-  }
+  template <std::input_iterator InputIterator>
+    requires (std::is_same_v<std::decay_t<typename std::iterator_traits<
+                                 InputIterator>::value_type>,
+                             std::byte>)
+  parser &input (InputIterator first, InputIterator last);
 #else
   template <typename InputIterator,
             typename = typename std::enable_if_t<
-                details::iterator_produces<char32_t, InputIterator>::value>>
-  parser &input (InputIterator first, InputIterator last,
-                 char32_t *_ = nullptr) {
-    (void)_;
-    return input32 (first, last);
-  }
-#endif
-
-  /// \param first The element in the half-open range of UTF-8 code-units to be parsed.
-  /// \param last The end of the range of UTF-8 code-units to be parsed.
-#if PEEJAY_HAVE_CONCEPTS
-  template <typename InputIterator>
-  PEEJAY_CXX20REQUIRES (
-      (std::input_iterator<InputIterator> &&
-       std::is_same_v<std::decay_t<typename std::iterator_traits<
-                          InputIterator>::value_type>,
-                      char8>))
-  parser &input (InputIterator first, InputIterator last) {
-    return input8 (first, last);
-  }
-#else
-  template <typename InputIterator,
-            typename = typename std::enable_if_t<
-                details::iterator_produces<char8, InputIterator>::value>>
-  parser &input (InputIterator first, InputIterator last, char8 *_ = nullptr) {
-    (void)_;
-    return input8 (first, last);
-  }
-#endif
+                details::iterator_produces<std::byte, InputIterator>::value>>
+  parser &input (InputIterator first, InputIterator last);
+#endif  // PEEJAY_HAVE_CONCEPTS
   ///@}
 
   /// Informs the parser that the complete input stream has been passed by calls
@@ -433,11 +387,6 @@ public:
 private:
   using matcher = details::matcher<Backend, Policies>;
   using pointer = std::unique_ptr<matcher, details::deleter<matcher>>;
-
-  template <typename InputIterator>
-  parser &input32 (InputIterator first, InputIterator last);
-  template <typename InputIterator>
-  parser &input8 (InputIterator first, InputIterator last);
 
   static constexpr auto null_pointer () {
     using deleter = typename pointer::deleter_type;
@@ -502,7 +451,7 @@ private:
   /// uncontrollably.
   static constexpr std::size_t max_stack_depth_ = 200;
 
-  icubaby::t8_32 utf_;
+  icubaby::tx_32 utf_;
   /// The parse stack.
   stack<pointer> stack_;
   std::error_code error_;
@@ -2997,41 +2946,28 @@ auto parser<Backend, Policies>::make_identifier_matcher () -> pointer {
       str_buffer_.get ());
 }
 
-// input32
-// ~~~~~~~
+// input
+// ~~~~~
+
 /// \param first The element in the half-open range of UTF-32 code-units to be parsed.
 /// \param last The end of the range of UTF-32 code-units to be parsed.
 template <typename Backend, typename Policies>
 PEEJAY_CXX20REQUIRES ((policy<Policies> &&
                        backend<Backend, typename Policies::integer_type>))
-template <typename InputIterator>
-auto parser<Backend, Policies>::input32 (InputIterator first,
-                                         InputIterator last) -> parser & {
+#if PEEJAY_HAVE_CONCEPTS
+template <std::input_iterator InputIterator>
+#else
+template <typename InputIterator, typename>
+#endif  // PEEJAY_HAVE_CONCEPTS
+PEEJAY_CXX20REQUIRES (
+    (std::is_same_v<
+        std::decay_t<typename std::iterator_traits<InputIterator>::value_type>,
+        std::byte>))
+parser<Backend, Policies> &parser<Backend, Policies>::input (
+    InputIterator first, InputIterator last) {
   if (error_) {
     return *this;
   }
-  for (; first != last; ++first) {
-    this->consume_code_point (*first);
-    if (error_) {
-      break;
-    }
-    this->advance_column ();
-  }
-  return *this;
-}
-
-// input8
-// ~~~~~~
-template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-template <typename InputIterator>
-auto parser<Backend, Policies>::input8 (InputIterator first, InputIterator last)
-    -> parser & {
-  if (error_) {
-    return *this;
-  }
-
   std::array<char32_t, 1> code_point{{0}};
   while (first != last && !error_) {
     auto it = utf_ (*first, std::begin (code_point));

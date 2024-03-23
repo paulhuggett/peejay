@@ -17,6 +17,7 @@
 
 #include "peejay/json.hpp"
 #include "peejay/null.hpp"
+#include "peejay/small_vector.hpp"
 
 using peejay::char8;
 using peejay::null;
@@ -40,19 +41,23 @@ bool report_error (parser<Params...> const& p,
   return false;
 }
 
-/// Convert from a string of char to a string of char8.
-u8string& line_to_u8 (std::string const& line, u8string& u8line) {
-  // TODO(paul) need to convert encoding from host to UTF-8 here?
-  u8line.clear ();
-  u8line.reserve (line.size ());
-  auto const op = [] (char c) { return static_cast<char8> (c); };
-  auto const out = std::back_inserter (u8line);
+using byte_vector = peejay::small_vector<std::byte, 256>;
+
+/// Convert from a string of char to a string of bytes.
+byte_vector& line_to_bytes (std::string const& line, byte_vector& byte_line) {
+  byte_line.clear ();
+  byte_line.reserve (line.size ());
+  auto const op = [] (char const c) {
+    static_assert (sizeof (c) == sizeof (std::byte));
+    return static_cast<std::byte> (c);
+  };
+  auto const out = std::back_inserter (byte_line);
 #if __cpp_lib_ranges
   std::ranges::transform (line, out, op);
 #else
   std::transform (std::begin (line), std::end (line), out, op);
 #endif
-  return u8line;
+  return byte_line;
 }
 
 /// Read an input stream line by line, feeding it to the parser. Any errors
@@ -60,11 +65,12 @@ u8string& line_to_u8 (std::string const& line, u8string& u8line) {
 bool slurp (std::istream& in, char const* file_name) {
   auto p = make_parser (null{}, peejay::extensions::all);
   std::string line;
-  u8string u8line;
+  byte_vector byte_line;
   while (in.rdstate () == std::ios_base::goodbit) {
     std::getline (in, line);
     line += '\n';
-    p.input (line_to_u8 (line, u8line));
+    line_to_bytes (line, byte_line);
+    p.input (std::begin (byte_line), std::end (byte_line));
     if (auto const err = p.last_error ()) {
       return report_error (p, file_name, line);
     }

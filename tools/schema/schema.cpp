@@ -54,9 +54,10 @@ std::optional<element> parse (std::filesystem::path const& file_path) {
     auto const available = as_unsigned (in.gcount ());
     // TODO(paul) I just assume that the IStream yields UTF-8.
 #if PEEJAY_HAVE_SPAN
-    p.input (std::span{pointer_cast<peejay::char8 const> (data), available});
+    p.input (std::span{pointer_cast<std::byte const> (data), available});
 #else
-    p.input (data, data + available);
+    p.input (pointer_cast<std::byte const> (data),
+             pointer_cast<std::byte const> (data + available));
 #endif  // PEEJAY_HAVE_SPAN
     if (auto const err = p.last_error ()) {
       parse_error (p, file_path);

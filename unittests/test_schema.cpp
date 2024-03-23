@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 #include <gtest/gtest.h>
 
+#include "callbacks.hpp"
 #include "peejay/schema.hpp"
 
 using peejay::dom;
@@ -31,8 +32,7 @@ void parse_error () {
 
 element parse (peejay::u8string_view const& str) {
   auto p = make_parser (dom{});
-  std::optional<peejay::element> result =
-      p.input (std::begin (str), std::end (str)).eof ();
+  std::optional<peejay::element> result = input (p, str).eof ();
   if (auto const erc = p.last_error ()) {
     parse_error ();
     return {};

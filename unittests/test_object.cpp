@@ -50,7 +50,7 @@ TEST_F (Object, Empty) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8"{\r\n}\n"sv).eof ();
+  input (p, u8"{\r\n}\n"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
@@ -63,7 +63,7 @@ TEST_F (Object, OpeningBraceOnly) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8"{"sv).eof ();
+  input (p, u8"{"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member))
       << "JSON error was: " << p.last_error ().message ();
@@ -80,7 +80,7 @@ TEST_F (Object, SingleKvp) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"({ "a":1 })"sv).eof ();
+  input (p, u8R"({ "a":1 })"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{line{1U}, column{9U}}));
@@ -96,7 +96,7 @@ TEST_F (Object, BadBeginObject) {
   EXPECT_CALL (callbacks_, begin_object ()).WillOnce (Return (error));
 
   auto p = make_parser (proxy_);
-  p.input (u8R"({ "a":1 })"sv).eof ();
+  input (p, u8R"({ "a":1 })"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), error)
       << "Expected the error to be propagated from the begin_object() callback";
@@ -115,7 +115,7 @@ TEST_F (Object, SingleKvpBadEndObject) {
   EXPECT_CALL (callbacks_, end_object ()).WillOnce (Return (end_object_error));
 
   auto p = make_parser (proxy_);
-  p.input (u8"{\n\"a\" : 1\n}"sv);
+  input (p, u8"{\n\"a\" : 1\n}"sv);
   p.eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), end_object_error)
@@ -133,7 +133,7 @@ TEST_F (Object, SingleQuotedKeyExtensionEnabled) {
     EXPECT_CALL (callbacks_, end_object ()).Times (1);
   }
   auto p = make_parser (proxy_, extensions::single_quote_string);
-  p.input (u8"{ 'a': 1 }"sv).eof ();
+  input (p, u8"{ 'a': 1 }"sv).eof ();
   EXPECT_FALSE (p.last_error ())
       << "Expected success but error was: " << p.last_error ().message ();
 }
@@ -142,7 +142,7 @@ TEST_F (Object, SingleQuotedKeyExtensionEnabled) {
 TEST_F (Object, SingleQuotedKeyExtensionDisabled) {
   EXPECT_CALL (callbacks_, begin_object ());
   auto p = make_parser (proxy_);
-  p.input (u8"{ 'a': 1 }"sv).eof ();
+  input (p, u8"{ 'a': 1 }"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "Actual error was: " << p.last_error ().message ();
 }
@@ -158,7 +158,7 @@ TEST_F (Object, TwoKvps) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"({"a":1, "b" : true })"sv).eof ();
+  input (p, u8R"({"a":1, "b" : true })"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -174,7 +174,7 @@ TEST_F (Object, DuplicateKeys) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"({"a":1, "a":true})"sv).eof ();
+  input (p, u8R"({"a":1, "a":true})"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -191,7 +191,7 @@ TEST_F (Object, ArrayValue) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8"{\"a\": [1,2]}"sv);
+  input (p, u8"{\"a\": [1,2]}"sv);
   p.eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
@@ -201,7 +201,7 @@ TEST_F (Object, ArrayValue) {
 TEST_F (Object, MisplacedCommaBeforeCloseBrace) {
   // An object with a trailing comma but with the extension disabled.
   parser p{null{}};
-  p.input (u8R"({"a":1,})"sv).eof ();
+  input (p, u8R"({"a":1,})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -210,7 +210,7 @@ TEST_F (Object, MisplacedCommaBeforeCloseBrace) {
 // NOLINTNEXTLINE
 TEST_F (Object, NoCommaBeforeProperty) {
   parser p{null{}};
-  p.input (u8R"({"a":1 "b":1})"sv).eof ();
+  input (p, u8R"({"a":1 "b":1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_member))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -219,7 +219,7 @@ TEST_F (Object, NoCommaBeforeProperty) {
 // NOLINTNEXTLINE
 TEST_F (Object, TwoCommasBeforeProperty) {
   parser p{null{}};
-  p.input (u8R"({"a":1,,"b":1})"sv).eof ();
+  input (p, u8R"({"a":1,,"b":1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -238,7 +238,7 @@ TEST_F (Object, TrailingCommaExtensionEnabled) {
   // An object with a trailing comma but with the extension _enabled_. Note that
   // there is deliberate whitespace around the final comma.
   auto p = make_parser (proxy_, extensions::object_trailing_comma);
-  p.input (u8R"({ "a":16, "b":"c" , })"sv).eof ();
+  input (p, u8R"({ "a":16, "b":"c" , })"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -246,7 +246,7 @@ TEST_F (Object, TrailingCommaExtensionEnabled) {
 // NOLINTNEXTLINE
 TEST_F (Object, BadNestedObject) {
   parser p{null{}};
-  p.input (u8"{\"a\":nu}"sv).eof ();
+  input (p, u8"{\"a\":nu}"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -255,11 +255,11 @@ TEST_F (Object, BadNestedObject) {
 TEST_F (Object, TooDeeplyNested) {
   parser p{null{}};
 
-  u8string input;
+  u8string src;
   for (auto ctr = 0U; ctr < 200U; ++ctr) {
-    input += u8"{\"a\":";
+    src += u8"{\"a\":";
   }
-  p.input (input).eof ();
+  input (p, src).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::nesting_too_deep))
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -267,7 +267,7 @@ TEST_F (Object, TooDeeplyNested) {
 // NOLINTNEXTLINE
 TEST_F (Object, KeyIsNotString) {
   parser p{null{}};
-  p.input (u8"{{}:{}}"sv).eof ();
+  input (p, u8"{{}:{}}"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
@@ -276,7 +276,7 @@ TEST_F (Object, KeyIsNotString) {
 // NOLINTNEXTLINE
 TEST_F (Object, KeyIsIdentifierWithoutExtensionEnabled) {
   parser p{null{}};
-  p.input (u8"{foo:1}"sv).eof ();
+  input (p, u8"{foo:1}"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_object_key))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
@@ -290,7 +290,7 @@ TEST_F (Object, IdentifierKey) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8"{key:1}"sv).eof ();
+  input (p, u8"{key:1}"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -303,7 +303,7 @@ TEST_F (Object, IdentifierKeyWhitespaceSurrounding) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8"{ $key : 1 }"sv).eof ();
+  input (p, u8"{ $key : 1 }"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -313,7 +313,7 @@ TEST_F (Object, IdentifierKeyEmpty) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8"{ : 1 }"sv).eof ();
+  input (p, u8"{ : 1 }"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_identifier))
       << "JSON error was: " << p.last_error ().message ();
@@ -338,7 +338,7 @@ TEST_F (Object, IdentifierKeyExtendedChars) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8"{ " + key + u8":1}").eof ();
+  input (p, u8"{ " + key + u8":1}").eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -355,7 +355,7 @@ TEST_F (Object, IdentifierKeyHexEscape) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({ sig\u03A3ma: 1 })"sv).eof ();
+  input (p, u8R"({ sig\u03A3ma: 1 })"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -379,7 +379,7 @@ TEST_F (Object, IdentifierKeyHexEscapeHighLowSurrogatePair) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8"{ "s + prefix + gclef16 + suffix + u8" : 1 }"s).eof ();
+  input (p, u8"{ "s + prefix + gclef16 + suffix + u8" : 1 }"s).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -389,7 +389,7 @@ TEST_F (Object, IdentifierKeyHexEscapeHighSurrogateMissingLow) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({ key\uD834g: 1 })"s).eof ();
+  input (p, u8R"({ key\uD834g: 1 })"s).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
       << "JSON error was: " << p.last_error ().message ();
@@ -402,7 +402,7 @@ TEST_F (Object, IdentifierKeyHexEscapeLowSurrogateOnly) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({ key\uDD1E: 1 })"s).eof ();
+  input (p, u8R"({ key\uDD1E: 1 })"s).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
       << "JSON error was: " << p.last_error ().message ();
@@ -416,7 +416,7 @@ TEST_F (Object, IdentifierUtf16HighFollowedByUtf8Char) {
 
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_, extensions::identifier_object_key);
-  p.input (u8"{ \\uD834!: 1 }"sv).eof ();
+  input (p, u8"{ \\uD834!: 1 }"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{3U}, line{1U}}));
@@ -436,7 +436,7 @@ TEST_F (Object, IdentifierMaxLength) {
   EXPECT_CALL (callbacks_, end_object ()).Times (1);
 
   auto p = make_parser<ml10_policy> (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({a123456789:1})"sv).eof ();
+  input (p, u8R"({a123456789:1})"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
       << "Expected the parse error to be zero but was: "
@@ -448,7 +448,7 @@ TEST_F (Object, IdentifierOnePastMaxLength) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser<ml10_policy> (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({a1234567890:1})"sv).eof ();
+  input (p, u8R"({a1234567890:1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::identifier_too_long))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -458,7 +458,7 @@ TEST_F (Object, IdentifierOneUtf8HexPastMaxLength) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser<ml10_policy> (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({a123456789\u0030:1})"sv).eof ();
+  input (p, u8R"({a123456789\u0030:1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::identifier_too_long))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -468,7 +468,7 @@ TEST_F (Object, IdentifierOneUtf16HexPastMaxLength) {
   EXPECT_CALL (callbacks_, begin_object ()).Times (1);
 
   auto p = make_parser<ml10_policy> (proxy_, extensions::identifier_object_key);
-  p.input (u8R"({a123456789\uD834\uDD1E:1})"sv).eof ();
+  input (p, u8R"({a123456789\uD834\uDD1E:1})"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::identifier_too_long))
       << "Real error was: " << p.last_error ().message ();
 }

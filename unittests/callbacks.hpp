@@ -21,6 +21,14 @@
 
 #include "peejay/json.hpp"
 
+template <typename Parser>
+Parser &input (Parser &parser, peejay::u8string_view const &str) {
+  return parser.input (peejay::pointer_cast<std::byte const> (
+                           peejay::to_address (std::begin (str))),
+                       peejay::pointer_cast<std::byte const> (
+                           peejay::to_address (std::end (str))));
+}
+
 template <typename IntegerType>
 class json_callbacks_base {
 public:

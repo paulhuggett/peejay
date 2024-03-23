@@ -58,8 +58,10 @@
 // This macro can't be written using a constexpr template function.
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define PEEJAY_CXX20REQUIRES(x) requires x
+#define PEEJAY_CONCEPT_INPUT_ITERATOR std::input_iterator
 #else
 #define PEEJAY_CXX20REQUIRES(x)
+#define PEEJAY_CONCEPT_INPUT_ITERATOR typename
 #endif  // PEEJAY_HAVE_CONCEPTS
 
 #if PEEJAY_CXX20 && defined(__cpp_lib_span) && __cpp_lib_span >= 202002L

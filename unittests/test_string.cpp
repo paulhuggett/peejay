@@ -43,7 +43,7 @@ TEST_F (String, EmptyDoubleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8""sv)).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("")"sv).eof ();
+  input (p, u8R"("")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
@@ -55,7 +55,7 @@ TEST_F (String, EmptySingleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8""sv)).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_quote_string);
-  p.input (u8R"('')"sv).eof ();
+  input (p, u8R"('')"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{2U}, line{1U}}));
@@ -65,7 +65,7 @@ TEST_F (String, EmptySingleQuote) {
 // NOLINTNEXTLINE
 TEST_F (String, EmptySingleQuoteExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8R"('')"sv).eof ();
+  input (p, u8R"('')"sv).eof ();
   EXPECT_TRUE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
@@ -77,7 +77,7 @@ TEST_F (String, SimpleDoubleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("hello")"sv).eof ();
+  input (p, u8R"("hello")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{7U}, line{1U}}));
@@ -89,7 +89,7 @@ TEST_F (String, SimpleSingleQuote) {
   EXPECT_CALL (callbacks_, string_value (u8"hello"sv)).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_quote_string);
-  p.input (u8R"('hello')"sv).eof ();
+  input (p, u8R"('hello')"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{7U}, line{1U}}));
@@ -99,7 +99,7 @@ TEST_F (String, SimpleSingleQuote) {
 // NOLINTNEXTLINE
 TEST_F (String, UnterminatedDoubleQuote) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("hello)"sv).eof ();
+  input (p, u8R"("hello)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
@@ -108,7 +108,7 @@ TEST_F (String, UnterminatedDoubleQuote) {
 // NOLINTNEXTLINE
 TEST_F (String, UnterminatedSingleQuote) {
   auto p = make_parser (proxy_, extensions::single_quote_string);
-  p.input (u8R"('hello)"sv).eof ();
+  input (p, u8R"('hello)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
@@ -123,7 +123,7 @@ struct ml10_policy {
 TEST_F (String, MaxLength) {
   EXPECT_CALL (callbacks_, string_value (u8"0123456789"sv)).Times (1);
   auto p = make_parser<ml10_policy> (proxy_);
-  p.input (u8R"("0123456789")"sv).eof ();
+  input (p, u8R"("0123456789")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
       << "Expected the parse error to be zero but was: "
@@ -133,7 +133,7 @@ TEST_F (String, MaxLength) {
 // NOLINTNEXTLINE
 TEST_F (String, OnePastMaxLength) {
   auto p = make_parser<ml10_policy> (proxy_);
-  p.input (u8R"("01234567890")"sv).eof ();
+  input (p, u8R"("01234567890")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -141,7 +141,7 @@ TEST_F (String, OnePastMaxLength) {
 // NOLINTNEXTLINE
 TEST_F (String, OneUtf8HexPastMaxLength) {
   auto p = make_parser<ml10_policy> (proxy_);
-  p.input (u8R"("0123456789\u0030")"sv).eof ();
+  input (p, u8R"("0123456789\u0030")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -149,7 +149,7 @@ TEST_F (String, OneUtf8HexPastMaxLength) {
 // NOLINTNEXTLINE
 TEST_F (String, OneUtf16HexPastMaxLength) {
   auto p = make_parser<ml10_policy> (proxy_);
-  p.input (u8R"("0123456789\uD834\uDD1E")"sv).eof ();
+  input (p, u8R"("0123456789\uD834\uDD1E")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::string_too_long))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -159,7 +159,7 @@ TEST_F (String, EscapeN) {
   EXPECT_CALL (callbacks_, string_value (u8"a\n"sv)).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("a\n")"sv).eof ();
+  input (p, u8R"("a\n")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{5U}, line{1U}}));
@@ -169,7 +169,7 @@ TEST_F (String, EscapeN) {
 // NOLINTNEXTLINE
 TEST_F (String, BadEscape1) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("a\qb")"sv).eof ();
+  input (p, u8R"("a\qb")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
@@ -178,7 +178,7 @@ TEST_F (String, BadEscape1) {
 // NOLINTNEXTLINE
 TEST_F (String, BadEscape2) {
   auto p = make_parser (proxy_);
-  p.input (u8"\"\\\xC3\xBF\""sv).eof ();
+  input (p, u8"\"\\\xC3\xBF\""sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{3U}, line{1U}}));
@@ -190,7 +190,7 @@ TEST_F (String, XEscape) {
 
   auto p = make_parser (proxy_, extensions::string_escapes);
   // String contains just U+002F SOLIDUS ('/')
-  p.input (u8R"("\x2f")"sv).eof ();
+  input (p, u8R"("\x2f")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero was: "
                                  << p.last_error ().message ();
@@ -199,7 +199,7 @@ TEST_F (String, XEscape) {
 // NOLINTNEXTLINE
 TEST_F (String, BackslashQuoteUnterminated) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("a\")"sv).eof ();
+  input (p, u8R"("a\")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{5U}, line{1U}}));
@@ -208,7 +208,7 @@ TEST_F (String, BackslashQuoteUnterminated) {
 // NOLINTNEXTLINE
 TEST_F (String, TrailingBackslashUnterminated) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("a\)"sv).eof ();
+  input (p, u8R"("a\)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{4U}, line{1U}}));
@@ -221,7 +221,7 @@ TEST_F (String, FiveWaysToWriteSolidus) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escapes);
-  p.input (u8R"([ "\x2F", "\u002F", "\u002f", "\/", "/" ])"sv).eof ();
+  input (p, u8R"([ "\x2F", "\u002F", "\u002f", "\/", "/" ])"sv).eof ();
 
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
@@ -242,16 +242,20 @@ TEST_F (String, GCleffUtf8) {
 
   auto p = make_parser (proxy_);
 
-  std::vector<char8> input;
-  input.emplace_back (char_set::quotation_mark);  // code point 1
+  std::vector<char8> src;
+  src.emplace_back (char_set::quotation_mark);  // code point 1
 #if __cpp_lib_ranges
-  std::ranges::copy (gclef, std::back_inserter (input));  // code point 2
+  std::ranges::copy (gclef, std::back_inserter (src));  // code point 2
 #else
   std::copy (std::begin (gclef), std::end (gclef),
-             std::back_inserter (input));         // code point 2
+             std::back_inserter (src));  // code point 2
 #endif
-  input.emplace_back (char_set::quotation_mark);  // code point 3
-  p.input (std::begin (input), std::end (input)).eof ();
+  src.emplace_back (char_set::quotation_mark);  // code point 3
+  p.input (peejay::pointer_cast<std::byte const> (
+               peejay::to_address (std::begin (src))),
+           peejay::pointer_cast<std::byte const> (
+               peejay::to_address (std::end (src))))
+      .eof ();
 
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
@@ -264,7 +268,7 @@ TEST_F (String, SlashUnicodeUpper) {
   EXPECT_CALL (callbacks_, string_value (u8"/"sv)).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("\u002F")"sv).eof ();
+  input (p, u8R"("\u002F")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -280,7 +284,7 @@ TEST_F (String, SlashUnicodeLower) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("\u00af")"sv).eof ();
+  input (p, u8R"("\u00af")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -298,7 +302,7 @@ TEST_F (String, FourFs) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uFFFF")"sv).eof ();
+  input (p, u8R"("\uFFFF")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -318,7 +322,7 @@ TEST_F (String, TwoUtf16Chars) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("\u214B\u30A1")"sv).eof ();
+  input (p, u8R"("\u214B\u30A1")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{14U}, line{1U}}));
@@ -337,7 +341,7 @@ TEST_F (String, Utf16Surrogates) {
       .Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uD834\uDD1E")"sv).eof ();
+  input (p, u8R"("\uD834\uDD1E")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
       << "Expected the parse error to be zero but was "
@@ -350,7 +354,7 @@ TEST_F (String, Utf16Surrogates) {
 TEST_F (String, Utf16HighWithNoLowSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uD834\u30A1")"sv).eof ();
+  input (p, u8R"("\uD834\u30A1")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point))
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
@@ -361,7 +365,7 @@ TEST_F (String, Utf16HighWithNoLowSurrogate) {
 TEST_F (String, Utf16HighFollowedByUtf8Char) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uD834!")"sv).eof ();
+  input (p, u8R"("\uD834!")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
@@ -370,7 +374,7 @@ TEST_F (String, Utf16HighFollowedByUtf8Char) {
 // NOLINTNEXTLINE
 TEST_F (String, Utf16HighWithMissingLowSurrogate) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uDD1E\u30A1")"sv).eof ();
+  input (p, u8R"("\uDD1E\u30A1")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{7U}, line{1U}}));
@@ -379,7 +383,7 @@ TEST_F (String, Utf16HighWithMissingLowSurrogate) {
 // NOLINTNEXTLINE
 TEST_F (String, Utf16HighSurrogateFollowedByHighSurrogate) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uD800\uD800")"sv).eof ();
+  input (p, u8R"("\uD800\uD800")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{13U}, line{1U}}));
@@ -388,7 +392,7 @@ TEST_F (String, Utf16HighSurrogateFollowedByHighSurrogate) {
 // NOLINTNEXTLINE
 TEST_F (String, ControlCharacter) {
   auto p = make_parser (proxy_);
-  p.input (u8"\"\t\""sv).eof ();
+  input (p, u8"\"\t\""sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{2U}, line{1U}}));
@@ -399,7 +403,7 @@ TEST_F (String, ControlCharacterUTF16) {
   EXPECT_CALL (callbacks_, string_value (u8"\t"sv)).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (u8R"("\u0009")"sv).eof ();
+  input (p, u8R"("\u0009")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
   EXPECT_EQ (p.pos (), (coord{column{8U}, line{1U}}));
@@ -410,7 +414,7 @@ TEST_F (String, ControlCharacterUTF16) {
 TEST_F (String, Utf16LowWithNoHighSurrogate) {
   // UTF-16 high surrogate followed by non-surrogate UTF-16 hex code point.
   auto p = make_parser (proxy_);
-  p.input (u8R"("\uD834")"sv).eof ();
+  input (p, u8R"("\uD834")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::bad_unicode_code_point));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{8U}, line{1U}}));
@@ -419,7 +423,7 @@ TEST_F (String, Utf16LowWithNoHighSurrogate) {
 // NOLINTNEXTLINE
 TEST_F (String, SlashBadHexChar) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("\u00xf")"sv).eof ();
+  input (p, u8R"("\u00xf")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_hex_char));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
@@ -428,7 +432,7 @@ TEST_F (String, SlashBadHexChar) {
 // NOLINTNEXTLINE
 TEST_F (String, PartialHexChar) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("\u00)"sv).eof ();
+  input (p, u8R"("\u00)"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_close_quote));
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{6U}, line{1U}}));
@@ -437,7 +441,7 @@ TEST_F (String, PartialHexChar) {
 // NOLINTNEXTLINE
 TEST_F (String, Escape0Disabled) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("\0")"sv).eof ();
+  input (p, u8R"("\0")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char))
       << "Error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
@@ -450,7 +454,7 @@ TEST_F (String, Escape0Enabled) {
   EXPECT_CALL (callbacks_, string_value (peejay::u8string_view{str})).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escapes);
-  p.input (u8R"("\0")"sv).eof ();
+  input (p, u8R"("\0")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
       << "Expected the parse error to be zero but was: "
@@ -462,7 +466,7 @@ TEST_F (String, Escape0Enabled) {
 // NOLINTNEXTLINE
 TEST_F (String, EscapeVDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8R"("\v")"sv).eof ();
+  input (p, u8R"("\v")"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char))
       << "Error was: " << p.last_error ().message ();
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{1U}}));
@@ -475,7 +479,7 @@ TEST_F (String, EscapeVEnabled) {
   EXPECT_CALL (callbacks_, string_value (peejay::u8string_view{str})).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escapes);
-  p.input (u8R"("\v")"sv).eof ();
+  input (p, u8R"("\v")"sv).eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())
       << "Expected the parse error to be zero but was: "
@@ -516,8 +520,8 @@ protected:
 // NOLINTNEXTLINE
 TEST_P (StringContinuation, ExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
-           peejay::u8string{suffix})
+  input (p, peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
+                peejay::u8string{suffix})
       .eof ();
   EXPECT_TRUE (p.has_error ()) << "Expected the parse to fail";
   EXPECT_EQ (p.last_error (), make_error_code (error::invalid_escape_char))
@@ -529,8 +533,8 @@ TEST_P (StringContinuation, ExtensionEnabled) {
   EXPECT_CALL (callbacks_, string_value (expected)).Times (1);
 
   auto p = make_parser (proxy_, extensions::string_escapes);
-  p.input (peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
-           peejay::u8string{suffix})
+  input (p, peejay::u8string{prefix} + utf8_sequence (GetParam ()) +
+                peejay::u8string{suffix})
       .eof ();
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ())

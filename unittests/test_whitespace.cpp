@@ -35,7 +35,7 @@ protected:
 TEST_F (Whitespace, Empty) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_);
-  p.input (u8"0"sv).eof ();
+  input (p, u8"0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -43,7 +43,7 @@ TEST_F (Whitespace, Empty) {
 TEST_F (Whitespace, MultipleLeadingSpaces) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_);
-  p.input (u8"    0"sv).eof ();
+  input (p, u8"    0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -51,16 +51,31 @@ TEST_F (Whitespace, MultipleLeadingSpaces) {
 TEST_F (Whitespace, MultipleTrailingSpaces) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_);
-  p.input (u8"0    "sv).eof ();
+  input (p, u8"0    "sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 namespace {
 
-std::array<char32_t, 6> const extra_ws_chars{
-    {char_set::character_tabulation, char_set::vertical_tabulation,
-     char_set::space, char_set::no_break_space, char_set::en_quad,
-     char_set::digit_zero}};
+#define UTF32_AS_BYTES(cu)                                                     \
+  static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 24) & 0xFF),     \
+      static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 16) & 0xFF), \
+      static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 8) & 0xFF),  \
+      static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 0) & 0xFF)
+
+std::array<std::byte, 7 * 4> const extra_ws_chars{{
+    std::byte{0x00},
+    std::byte{0x00},
+    std::byte{0xFE},
+    std::byte{0xFF},
+
+    UTF32_AS_BYTES (char_set::character_tabulation),
+    UTF32_AS_BYTES (char_set::vertical_tabulation),
+    UTF32_AS_BYTES (char_set::space),
+    UTF32_AS_BYTES (char_set::no_break_space),
+    UTF32_AS_BYTES (char_set::en_quad),
+    UTF32_AS_BYTES (char_set::digit_zero),
+}};
 
 } // end anonymous namespace
 
