@@ -2968,17 +2968,20 @@ parser<Backend, Policies> &parser<Backend, Policies>::input (
   if (error_) {
     return *this;
   }
-  std::array<char32_t, 1> code_point{{0}};
+  std::array<char32_t, 2> code_points{{0}};
+  auto const first_code_point = std::begin (code_points);
   while (first != last && !error_) {
-    auto it = utf_ (*first, std::begin (code_point));
-    assert (it == std::begin (code_point) || it == std::end (code_point));
+    auto const last_code_point = utf_ (*first, first_code_point);
     ++first;
-    if (it != std::begin (code_point)) {
-      this->consume_code_point (code_point[0]);
-      if (!error_) {
-        this->advance_column ();
-      }
-    }
+    std::for_each (first_code_point, last_code_point,
+                   [this] (char32_t const code_point) {
+                     if (!error_) {
+                       this->consume_code_point (code_point);
+                     }
+                     if (!error_) {
+                       this->advance_column ();
+                     }
+                   });
   }
   return *this;
 }
