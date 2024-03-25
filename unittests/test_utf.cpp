@@ -24,7 +24,7 @@ class Utf : public testing::TestWithParam<std::vector<std::byte>> {};
 
 TEST_P (Utf, Utf) {
   parser p{json_out_callbacks{}};
-  auto const src = this->GetParam ();
+  auto const& src = GetParam ();
   u8string const res = p.input (std::begin (src), std::end (src)).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_EQ (res, u8"null");
