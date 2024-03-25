@@ -58,9 +58,24 @@
 // This macro can't be written using a constexpr template function.
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define PEEJAY_CXX20REQUIRES(x) requires x
+#define PEEJAY_CONCEPT_INPUT_ITERATOR std::input_iterator
 #else
 #define PEEJAY_CXX20REQUIRES(x)
+#define PEEJAY_CONCEPT_INPUT_ITERATOR typename
 #endif  // PEEJAY_HAVE_CONCEPTS
+
+/// \brief Defined as 1 if the standard library's __cpp_lib_ranges macro is available and 0 otherwise.
+/// \hideinitializer
+#ifdef __cpp_lib_ranges
+#define PEEJAY_CPP_LIB_RANGES_DEFINED (1)
+#else
+#define PEEJAY_CPP_LIB_RANGES_DEFINED (0)
+#endif
+
+/// \brief Tests for the availability of library support for C++ 20 ranges.
+/// \hideinitializer
+#define PEEJAY_HAVE_RANGES \
+  (PEEJAY_CPP_LIB_RANGES_DEFINED && __cpp_lib_ranges >= 201811L)
 
 #if PEEJAY_CXX20 && defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
 #define PEEJAY_HAVE_SPAN (1)

@@ -15,6 +15,7 @@ cmake_minimum_required (VERSION 3.13)
 project (peejay C CXX)
 
 include (CheckCXXCompilerFlag)
+include (CheckLinkerFlag)
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
@@ -106,15 +107,9 @@ function (setup_target target)
     target_compile_definitions (${target} PUBLIC PEEJAY_FUZZTEST=1)
   endif ()
 
-  set_target_properties (
-    ${target}
-    PROPERTIES CXX_STANDARD ${STANDARD}
-               CXX_STANDARD_REQUIRED Yes
-               CXX_EXTENSIONS No
-               # Produce PIC so that PJ static libraries can be used in a
-               # shared library.
-               POSITION_INDEPENDENT_CODE Yes
-  )
+  target_compile_features (${target} PUBLIC $<IF:$<BOOL:${PEEJAY_CXX17}>,cxx_std_17,cxx_std_20>)
+  # Produce PIC so that PJ static libraries can be used in a shared library.
+  set_target_properties (${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
 
   target_compile_options (
     ${target}
@@ -129,7 +124,14 @@ function (setup_target target)
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:>
-  )
+    )
+
+      # If the link step supports -Wl,-Map generate a map file from the link.
+  check_linker_flag (CXX "-Wl,-Map=map.txt" map_supported)
+  if (map_supported)
+    target_link_options (${target} PRIVATE "-Wl,-Map=$<TARGET_FILE_DIR:${target}>/map.txt")
+  endif ()
+
 endfunction (setup_target)
 
 function (setup_gtest)
@@ -199,6 +201,10 @@ if (PEEJAY_FUZZTEST)
   enable_testing ()
   include (GoogleTest)
   fuzztest_setup_fuzzing_flags ()
+
+  foreach (target gtest gmock gmock_main gtest_main)
+    target_compile_features (${target} PUBLIC $<IF:$<BOOL:${PEEJAY_CXX17}>,cxx_std_17,cxx_std_20>)
+  endforeach()
 else ()
   setup_gtest ()
 endif (PEEJAY_FUZZTEST)

@@ -20,6 +20,16 @@
 #include <system_error>
 
 #include "peejay/json.hpp"
+#include "peejay/small_vector.hpp"
+
+template <typename Parser>
+Parser &input (Parser &parser, peejay::u8string_view const &str) {
+  peejay::small_vector<std::byte, 16> vec;
+  std::transform (
+      std::begin (str), std::end (str), std::back_inserter (vec),
+      [] (peejay::char8 const c) { return static_cast<std::byte> (c); });
+  return parser.input (std::begin (vec), std::end (vec));
+}
 
 template <typename IntegerType>
 class json_callbacks_base {

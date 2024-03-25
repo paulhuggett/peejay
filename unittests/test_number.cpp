@@ -48,7 +48,7 @@ protected:
 TEST_F (Number, Zero) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   parser p{proxy_};
-  p.input (u8"0"sv).eof ();
+  input (p, u8"0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -56,7 +56,7 @@ TEST_F (Number, Zero) {
 TEST_F (Number, NegativeZero) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   parser p{proxy_};
-  p.input (u8"-0"sv).eof ();
+  input (p, u8"-0"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -64,14 +64,14 @@ TEST_F (Number, NegativeZero) {
 TEST_F (Number, One) {
   EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   parser p{proxy_};
-  p.input (u8" 1 "sv).eof ();
+  input (p, u8" 1 "sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, LeadingZero) {
   parser p{proxy_};
-  p.input (u8"01"sv).eof ();
+  input (p, u8"01"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
@@ -79,7 +79,7 @@ TEST_F (Number, LeadingZero) {
 TEST_F (Number, MinusOne) {
   EXPECT_CALL (callbacks_, integer_value (-1)).Times (1);
   parser p{proxy_};
-  p.input (u8"-1"sv).eof ();
+  input (p, u8"-1"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -87,7 +87,7 @@ TEST_F (Number, MinusOne) {
 TEST_F (Number, OneWithLeadingPlus) {
   EXPECT_CALL (callbacks_, integer_value (1)).Times (1);
   auto p = make_parser (proxy_, extensions::leading_plus);
-  p.input (u8"+1"sv).eof ();
+  input (p, u8"+1"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
@@ -95,7 +95,7 @@ TEST_F (Number, OneWithLeadingPlus) {
 // NOLINTNEXTLINE
 TEST_F (Number, LeadingPlusExtensionDisabled) {
   parser p{proxy_};
-  p.input (u8"+1"sv).eof ();
+  input (p, u8"+1"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
@@ -103,20 +103,20 @@ TEST_F (Number, LeadingPlusExtensionDisabled) {
 // NOLINTNEXTLINE
 TEST_F (Number, MinusOneLeadingZero) {
   parser p{proxy_};
-  p.input (u8"-01"sv).eof ();
+  input (p, u8"-01"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, MinusOnly) {
   parser p{proxy_};
-  p.input (u8"-"sv).eof ();
+  input (p, u8"-"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits));
 }
 // NOLINTNEXTLINE
 TEST_F (Number, MinusMinus) {
   parser p{proxy_};
-  p.input (u8"--"sv).eof ();
+  input (p, u8"--"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
@@ -124,7 +124,7 @@ TEST_F (Number, MinusMinus) {
 TEST_F (Number, AllDigits) {
   EXPECT_CALL (callbacks_, integer_value (INT64_C (1234567890))).Times (1);
   parser p{proxy_};
-  p.input (u8"1234567890"sv).eof ();
+  input (p, u8"1234567890"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -132,7 +132,7 @@ TEST_F (Number, AllDigits) {
 TEST_F (Number, PositivePi) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (3.1415))).Times (1);
   parser p{proxy_};
-  p.input (u8"3.1415"sv).eof ();
+  input (p, u8"3.1415"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -140,7 +140,7 @@ TEST_F (Number, PositivePi) {
 TEST_F (Number, NegativePi) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (-3.1415))).Times (1);
   parser p{proxy_};
-  p.input (u8"-3.1415"sv).eof ();
+  input (p, u8"-3.1415"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -148,7 +148,7 @@ TEST_F (Number, NegativePi) {
 TEST_F (Number, PositiveZeroPoint45) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.45))).Times (1);
   parser p{proxy_};
-  p.input (u8"0.45"sv).eof ();
+  input (p, u8"0.45"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -156,7 +156,7 @@ TEST_F (Number, PositiveZeroPoint45) {
 TEST_F (Number, NegativeZeroPoint45) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (-0.45))).Times (1);
   parser p{proxy_};
-  p.input (u8"-0.45"sv).eof ();
+  input (p, u8"-0.45"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -164,7 +164,7 @@ TEST_F (Number, NegativeZeroPoint45) {
 TEST_F (Number, ZeroExp2) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   parser p{proxy_};
-  p.input (u8"0e2"sv).eof ();
+  input (p, u8"0e2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -172,7 +172,7 @@ TEST_F (Number, ZeroExp2) {
 TEST_F (Number, OneExp2) {
   EXPECT_CALL (callbacks_, integer_value (100)).Times (1);
   parser p{proxy_};
-  p.input (u8"1e2"sv).eof ();
+  input (p, u8"1e2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -180,7 +180,7 @@ TEST_F (Number, OneExp2) {
 TEST_F (Number, OneExpPlus2) {
   EXPECT_CALL (callbacks_, integer_value (100)).Times (1);
   parser p{proxy_};
-  p.input (u8"1e+2"sv).eof ();
+  input (p, u8"1e+2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -188,7 +188,7 @@ TEST_F (Number, OneExpPlus2) {
 TEST_F (Number, ZeroPointZeroOne) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
   parser p{proxy_};
-  p.input (u8"0.01"sv).eof ();
+  input (p, u8"0.01"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -196,7 +196,7 @@ TEST_F (Number, ZeroPointZeroOne) {
 TEST_F (Number, OneExpMinus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
   parser p{proxy_};
-  p.input (u8"1e-2"sv).eof ();
+  input (p, u8"1e-2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -204,7 +204,7 @@ TEST_F (Number, OneExpMinus2) {
 TEST_F (Number, OneCapitalExpMinus2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
   parser p{proxy_};
-  p.input (u8"1E-2"sv).eof ();
+  input (p, u8"1E-2"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -212,7 +212,7 @@ TEST_F (Number, OneCapitalExpMinus2) {
 TEST_F (Number, OneExpMinusZero2) {
   EXPECT_CALL (callbacks_, double_value (DoubleEq (0.01))).Times (1);
   parser p{proxy_};
-  p.input (u8"1E-02"sv).eof ();
+  input (p, u8"1E-02"sv).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
@@ -223,55 +223,55 @@ TEST_F (Number, IntegerMax) {
 
   EXPECT_CALL (callbacks_, integer_value (long_max)).Times (1);
   parser p{proxy_};
-  p.input (str_max).eof ();
+  input (p, str_max).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, RealPositiveOverflow) {
   parser p{proxy_};
-  p.input (u8"123123e100000"sv).eof ();
+  input (p, u8"123123e100000"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, RealPositiveOverflow2) {
   parser p{proxy_};
-  p.input (u8"9999E999"sv).eof ();
+  input (p, u8"9999E999"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, RealUnderflow) {
   parser p = make_parser (proxy_);
-  p.input (u8"123e-10000000"sv).eof ();
+  input (p, u8"123e-10000000"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, BadExponentDigit) {
   parser p{proxy_};
-  p.input (u8"1Ex"sv).eof ();
+  input (p, u8"1Ex"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 
 // NOLINTNEXTLINE
 TEST_F (Number, BadFractionDigit) {
   parser p{proxy_};
-  p.input (u8"1.."sv).eof ();
+  input (p, u8"1.."sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 // NOLINTNEXTLINE
 TEST_F (Number, BadExponentAfterPoint) {
   parser p{proxy_};
-  p.input (u8"1.E"sv).eof ();
+  input (p, u8"1.E"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token));
 }
 // NOLINTNEXTLINE
 TEST_F (Number, Hex) {
   EXPECT_CALL (callbacks_, integer_value (0x10)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"0x10"sv).eof ();
+  input (p, u8"0x10"sv).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
@@ -283,7 +283,7 @@ TEST_F (Number, HexArray) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"[0x10,0x10]"sv).eof ();
+  input (p, u8"[0x10,0x10]"sv).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
@@ -292,7 +292,7 @@ TEST_F (Number, HexArray) {
 TEST_F (Number, NegativeHex) {
   EXPECT_CALL (callbacks_, integer_value (-31)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"-0x1f"sv).eof ();
+  input (p, u8"-0x1f"sv).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
@@ -300,7 +300,7 @@ TEST_F (Number, NegativeHex) {
 // NOLINTNEXTLINE
 TEST_F (Number, HexExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"0x10"sv).eof ();
+  input (p, u8"0x10"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range))
       << "Error was: " << p.last_error ().message ();
@@ -308,7 +308,7 @@ TEST_F (Number, HexExtensionDisabled) {
 // NOLINTNEXTLINE
 TEST_F (Number, BadLetterAfterX) {
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"0xt"sv).eof ();
+  input (p, u8"0xt"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
       << "Error was: " << p.last_error ().message ();
@@ -316,7 +316,7 @@ TEST_F (Number, BadLetterAfterX) {
 // NOLINTNEXTLINE
 TEST_F (Number, EndAfterX) {
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"0x"sv).eof ();
+  input (p, u8"0x"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
       << "Error was: " << p.last_error ().message ();
@@ -327,7 +327,7 @@ TEST_F (Number, Infinity) {
                double_value (std::numeric_limits<double>::infinity ()))
       .Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"Infinity"sv).eof ();
+  input (p, u8"Infinity"sv).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
@@ -335,7 +335,7 @@ TEST_F (Number, Infinity) {
 // NOLINTNEXTLINE
 TEST_F (Number, InfinityExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"Infinity"sv).eof ();
+  input (p, u8"Infinity"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
       << "Error was: " << p.last_error ().message ();
@@ -344,7 +344,7 @@ TEST_F (Number, InfinityExtensionDisabled) {
 TEST_F (Number, NaN) {
   EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"NaN"sv).eof ();
+  input (p, u8"NaN"sv).eof ();
   EXPECT_FALSE (p.has_error ());
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
@@ -352,7 +352,7 @@ TEST_F (Number, NaN) {
 // NOLINTNEXTLINE
 TEST_F (Number, NaNExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"NaN"sv).eof ();
+  input (p, u8"NaN"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
       << "Error was: " << p.last_error ().message ();
@@ -364,21 +364,21 @@ TEST_F (Number, PlusInfinity) {
       double_value (DoubleEq (std::numeric_limits<double>::infinity ())))
       .Times (1);
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"+Infinity"sv).eof ();
+  input (p, u8"+Infinity"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
 // NOLINTNEXTLINE
 TEST_F (Number, PlusInfinityExtraCharacters) {
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"+InfinityX"sv).eof ();
+  input (p, u8"+InfinityX"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
       << "Parse error was: " << p.last_error ().message ();
 }
 // NOLINTNEXTLINE
 TEST_F (Number, PlusInfinityPartial) {
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"+Inf"sv).eof ();
+  input (p, u8"+Inf"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
       << "Parse error was: " << p.last_error ().message ();
 }
@@ -389,7 +389,7 @@ TEST_F (Number, MinusInfinity) {
       double_value (DoubleEq (-1.0 * std::numeric_limits<double>::infinity ())))
       .Times (1);
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"-Infinity"sv).eof ();
+  input (p, u8"-Infinity"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
@@ -397,7 +397,7 @@ TEST_F (Number, MinusInfinity) {
 TEST_F (Number, PlusNan) {
   EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"+NaN"sv).eof ();
+  input (p, u8"+NaN"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
@@ -405,7 +405,7 @@ TEST_F (Number, PlusNan) {
 TEST_F (Number, MinusNan) {
   EXPECT_CALL (callbacks_, double_value (IsNan ())).Times (1);
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"-NaN"sv).eof ();
+  input (p, u8"-NaN"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
@@ -431,7 +431,7 @@ TEST_F (Number, ArrayOfNaNAndInfinity) {
     EXPECT_CALL (callbacks_, end_array ()).Times (1);
   }
   auto p = make_parser (proxy_, extensions::all);
-  p.input (u8"[Infinity,NaN,+Infinity,-Infinity,-NaN]"sv).eof ();
+  input (p, u8"[Infinity,NaN,+Infinity,-Infinity,-NaN]"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
@@ -439,14 +439,14 @@ TEST_F (Number, ArrayOfNaNAndInfinity) {
 TEST_F (Number, LeadingDot) {
   EXPECT_CALL (callbacks_, double_value (0.1234)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8".1234"sv).eof ();
+  input (p, u8".1234"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
 // NOLINTNEXTLINE
 TEST_F (Number, LeadingDotExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8".1234"sv).eof ();
+  input (p, u8".1234"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -454,14 +454,14 @@ TEST_F (Number, LeadingDotExtensionDisabled) {
 TEST_F (Number, TrailingDot) {
   EXPECT_CALL (callbacks_, integer_value (1234)).Times (1);
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"1234."sv).eof ();
+  input (p, u8"1234."sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
 // NOLINTNEXTLINE
 TEST_F (Number, TrailingDotExtensionDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"1234."sv).eof ();
+  input (p, u8"1234."sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -474,21 +474,21 @@ TEST_F (Number, ArrayOfLeadingAndTrailingDot) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"[.1,1.]"sv).eof ();
+  input (p, u8"[.1,1.]"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero. Was: "
                                  << p.last_error ().message ();
 }
 // NOLINTNEXTLINE
 TEST_F (Number, LoneDecimalPointThenEOF) {
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8"."sv).eof ();
+  input (p, u8"."sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_digits))
       << "Real error was: " << p.last_error ().message ();
 }
 // NOLINTNEXTLINE
 TEST_F (Number, LoneDecimalPointThenWhitespace) {
   auto p = make_parser (proxy_, extensions::numbers);
-  p.input (u8". "sv).eof ();
+  input (p, u8". "sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::unrecognized_token))
       << "Real error was: " << p.last_error ().message ();
 }
@@ -603,7 +603,7 @@ TYPED_TEST (NumberLimits, IntMax) {
   EXPECT_CALL (TestFixture::callbacks_, integer_value (limits<bits>::int_max))
       .Times (1);
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::int_max_str}).eof ();
+  input (p, u8string_view{limits<bits>::int_max_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 // NOLINTNEXTLINE
@@ -614,26 +614,26 @@ TYPED_TEST (NumberLimits, IntMin) {
   EXPECT_CALL (TestFixture::callbacks_, integer_value (limits<bits>::int_min))
       .Times (1);
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::int_min_str}).eof ();
+  input (p, u8string_view{limits<bits>::int_min_str}).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerPositiveOverflow) {
   constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::int_overflow}).eof ();
+  input (p, u8string_view{limits<bits>::int_overflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow1) {
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8"-123123123123123123123123123123"sv).eof ();
+  input (p, u8"-123123123123123123123123123123"sv).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }
 // NOLINTNEXTLINE
 TYPED_TEST (NumberLimits, IntegerNegativeOverflow2) {
   constexpr auto bits = TypeParam ();
   auto p = make_parser<typename TestFixture::policy> (TestFixture::proxy_);
-  p.input (u8string_view{limits<bits>::int_underflow}).eof ();
+  input (p, u8string_view{limits<bits>::int_underflow}).eof ();
   EXPECT_EQ (p.last_error (), make_error_code (error::number_out_of_range));
 }

@@ -49,9 +49,10 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp (
     // TODO(paul) I just assume that the IStream yields UTF-8.
 #if PEEJAY_HAVE_SPAN
     p.input (
-        std::span{peejay::pointer_cast<peejay::char8 const> (data), available});
+        std::span{peejay::pointer_cast<std::byte const> (data), available});
 #else
-    p.input (data, data + available);
+    p.input (peejay::pointer_cast<std::byte const> (data),
+             peejay::pointer_cast<std::byte const> (data + available));
 #endif  // PEEJAY_HAVE_SPAN
     if (auto const err = p.last_error ()) {
       return err;
@@ -143,7 +144,7 @@ std::variant<std::error_code, std::optional<peejay::element>> slurp_file (
   if (mapped == MAP_FAILED) {
     return std::error_code{errno, std::generic_category ()};
   }
-  unmapper<peejay::char8 const> ptr{mapped, as_unsigned (sb.st_size)};
+  unmapper<std::byte const> ptr{mapped, as_unsigned (sb.st_size)};
   std::optional<peejay::element> result =
       p.input (std::begin (ptr), std::end (ptr)).eof ();
   if (std::error_code const erc = p.last_error ()) {

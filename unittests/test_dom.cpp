@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 #include <gmock/gmock.h>
 
+#include "callbacks.hpp"
 #include "peejay/dom.hpp"
 
 using namespace std::string_literals;
@@ -41,7 +42,8 @@ using testing::VariantWith;
 namespace {
 
 std::optional<element> parse (u8string_view s) {
-  return make_parser (dom{}).input (s).eof ();
+  auto p = make_parser (dom{});
+  return input (p, s).eof ();
 }
 
 }  // end anonymous namespace
@@ -273,9 +275,8 @@ public:
   }
 
 protected:
-  std::optional<element> doc_ = make_parser (dom{})
-                                    .input (
-                                        u8R"(
+  std::optional<element> doc_ = parse (
+      u8R"(
  {
   "foo": ["bar", "baz"],
   "": 0,
@@ -288,8 +289,7 @@ protected:
   " ": 7,
   "m~n": 8
  }
-)"sv)
-                                    .eof ();
+)"sv);
   element *root_ = nullptr;
   object obj_;  // The object contained by document root element.
 };

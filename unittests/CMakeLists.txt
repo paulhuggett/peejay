@@ -12,7 +12,7 @@
 #===----------------------------------------------------------------------===//
 add_executable (
   pj-unittests
-  harness.cpp
+  backtrace.cpp
   callbacks.hpp
   test_almost_equal.cpp
   test_array.cpp
@@ -31,6 +31,7 @@ add_executable (
   test_small_vector.cpp
   test_stack.cpp
   test_string.cpp
+  test_utf.cpp
   test_whitespace.cpp
 )
 setup_target (pj-unittests)
@@ -53,5 +54,6 @@ if (PEEJAY_FUZZTEST)
   link_fuzztest (pj-unittests)
   gtest_discover_tests (pj-unittests)
 else ()
+  target_sources (pj-unittests PUBLIC harness.cpp)
   target_link_libraries (pj-unittests PUBLIC gmock_main)
 endif (PEEJAY_FUZZTEST)

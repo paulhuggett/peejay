@@ -10,19 +10,19 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
+#include <array>
 #include <cstddef>
 
 #include "klee/klee.h"
-
 #include "peejay/null.hpp"
 
 int main () {
   static constexpr std::size_t const size = 5;
-  peejay::char8 input[size];
+  std::array<std::byte, size> input;
 
-  klee_make_symbolic (input, sizeof input, "input");
-  klee_assume(input[0] == '"');
-  klee_assume(input[size - 1] == '\0');
+  klee_make_symbolic (input.data (), size, "input");
+  klee_assume (input[0] == static_cast<std::byte> ('"'));
+  klee_assume (input[size - 1] == std::byte{0});
 
-  make_parser (peejay::null{}).input (peejay::u8string{input}).eof();
+  make_parser (peejay::null{}).input (input.begin (), input.end ()).eof ();
 }

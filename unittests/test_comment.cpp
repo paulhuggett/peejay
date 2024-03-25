@@ -35,7 +35,7 @@ protected:
 // NOLINTNEXTLINE
 TEST_F (Comment, BashDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"# comment\nnull"sv).eof ();
+  input (p, u8"# comment\nnull"sv).eof ();
   EXPECT_TRUE (p.has_error ());
 }
 
@@ -44,7 +44,7 @@ TEST_F (Comment, BashSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
-  p.input (u8"# comment\nnull"sv).eof ();
+  input (p, u8"# comment\nnull"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -54,7 +54,7 @@ TEST_F (Comment, BashMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
-  p.input (u8"# comment\n\n    # remark\nnull"sv).eof ();
+  input (p, u8"# comment\n\n    # remark\nnull"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -64,7 +64,7 @@ TEST_F (Comment, BashTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
-  p.input (u8"null # comment"sv).eof ();
+  input (p, u8"null # comment"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -77,8 +77,8 @@ TEST_F (Comment, BashInsideArray) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
-  p.input (
-       u8R"([#comment
+  input (p,
+         u8R"([#comment
 1,     # comment containing #
 2 # comment
 ]
@@ -95,8 +95,8 @@ TEST_F (Comment, BashInsideArrayWithoutWhitespace) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::bash_comments);
-  p.input (
-       u8R"([#comment
+  input (p,
+         u8R"([#comment
 1,# comment containing #
 2# comment
 ]
@@ -108,7 +108,7 @@ TEST_F (Comment, BashInsideArrayWithoutWhitespace) {
 // NOLINTNEXTLINE
 TEST_F (Comment, SingleLineDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"// comment\nnull"sv).eof ();
+  input (p, u8"// comment\nnull"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
@@ -118,7 +118,7 @@ TEST_F (Comment, SingleLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
-  p.input (u8"// comment\nnull"sv).eof ();
+  input (p, u8"// comment\nnull"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -128,7 +128,7 @@ TEST_F (Comment, SingleLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
-  p.input (u8"// comment\n\n    // remark\nnull"sv).eof ();
+  input (p, u8"// comment\n\n    // remark\nnull"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -138,7 +138,7 @@ TEST_F (Comment, SingleLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
-  p.input (u8"null // comment"sv).eof ();
+  input (p, u8"null // comment"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -151,8 +151,8 @@ TEST_F (Comment, SingleLineInsideArray) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
-  p.input (
-       u8R"([//comment
+  input (p,
+         u8R"([//comment
 1,    // comment containing //
 2 // comment
 ]
@@ -168,8 +168,8 @@ TEST_F (Comment, SingleLineDisabledInsideArray) {
   EXPECT_CALL (callbacks_, boolean_value (false)).Times (1);
 
   auto p = make_parser (proxy_);
-  p.input (
-       u8R"(
+  input (p,
+         u8R"(
 [
     false   // true
 ]
@@ -189,8 +189,8 @@ TEST_F (Comment, SingleLineInsideArrayWithoutWhitespace) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
-  p.input (
-       u8R"([//comment
+  input (p,
+         u8R"([//comment
 1,// comment containing //
 2// comment
 ]
@@ -208,8 +208,8 @@ TEST_F (Comment, SingleLineRowCounting) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::single_line_comments);
-  p.input (
-       u8R"([ //comment
+  input (p,
+         u8R"([ //comment
 1, // comment
 2 // comment
 ] // comment
@@ -226,7 +226,7 @@ TEST_F (Comment, SingleLineRowCounting) {
 // NOLINTNEXTLINE
 TEST_F (Comment, MultiLineDisabled) {
   auto p = make_parser (proxy_);
-  p.input (u8"// comment\nnull"sv).eof ();
+  input (p, u8"// comment\nnull"sv).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
@@ -236,7 +236,7 @@ TEST_F (Comment, MultiLineSingleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"/* comment */\nnull"sv).eof ();
+  input (p, u8"/* comment */\nnull"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -246,7 +246,7 @@ TEST_F (Comment, MultiLineMultipleLeading) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"/* comment\ncomment */\nnull"sv).eof ();
+  input (p, u8"/* comment\ncomment */\nnull"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -256,7 +256,7 @@ TEST_F (Comment, MultiLineExtraStar) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"/* comment **/ null"sv).eof ();
+  input (p, u8"/* comment **/ null"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -266,7 +266,7 @@ TEST_F (Comment, MultiLineTrailing) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"null\n/* comment */\n"sv).eof ();
+  input (p, u8"null\n/* comment */\n"sv).eof ();
   EXPECT_FALSE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
 }
@@ -276,7 +276,7 @@ TEST_F (Comment, MultiLineUnterminated) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"null /* comment"sv).eof ();
+  input (p, u8"null /* comment"sv).eof ();
   EXPECT_TRUE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.last_error (),
@@ -288,7 +288,7 @@ TEST_F (Comment, MultiLineUnterminatedNoSlash) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"null /* comment *"sv).eof ();
+  input (p, u8"null /* comment *"sv).eof ();
   EXPECT_TRUE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.last_error (),
@@ -299,7 +299,7 @@ TEST_F (Comment, MultiLineUnterminatedNewline) {
   EXPECT_CALL (callbacks_, null_value ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (u8"null /* comment\n"sv).eof ();
+  input (p, u8"null /* comment\n"sv).eof ();
   EXPECT_TRUE (p.has_error ())
       << "JSON error was: " << p.last_error ().message ();
   EXPECT_EQ (p.last_error (),
@@ -314,8 +314,8 @@ TEST_F (Comment, MultiLineInsideArray) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (
-       u8R"([ /* comment */
+  input (p,
+         u8R"([ /* comment */
 1,    /* comment containing / * */
 2 /* comment */
 ]
@@ -333,8 +333,8 @@ TEST_F (Comment, MultiLineRowCounting) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_, extensions::multi_line_comments);
-  p.input (
-       u8R"([ /*comment */
+  input (p,
+         u8R"([ /*comment */
 1, /* comment
 comment
 */
@@ -357,8 +357,8 @@ TEST_F (Comment, Mixed) {
   auto p = make_parser (proxy_, extensions::bash_comments |
                                     extensions::single_line_comments |
                                     extensions::multi_line_comments);
-  p.input (
-       u8R"(# comment 1
+  input (p,
+         u8R"(# comment 1
 // comment 2
 /* comment 3 */
 null
