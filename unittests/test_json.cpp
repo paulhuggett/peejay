@@ -73,23 +73,6 @@ TEST_F (Json, StringInput) {
 }
 
 // NOLINTNEXTLINE
-TEST_F (Json, IteratorInput) {
-  parser p{json_out_callbacks{}};
-  std::byte const* first = peejay::pointer_cast<std::byte const> (
-      peejay::to_address (std::begin (keyword)));
-  std::byte const* last = peejay::pointer_cast<std::byte const> (
-      peejay::to_address (std::end (keyword)));
-  u8string const res = p.input (first, last).eof ();
-  EXPECT_FALSE (p.has_error ());
-  EXPECT_EQ (res, keyword);
-  EXPECT_EQ (p.pos (), (coord{line{1U}, column{1U}}));
-  EXPECT_EQ (p.input_pos (), (coord{
-                                 line{1U},
-                                 column{5U},
-                             }));
-}
-
-// NOLINTNEXTLINE
 TEST_F (Json, LeadingWhitespace) {
   parser p{json_out_callbacks{}};
   u8string const res = input (p, u8"   \t    null"sv).eof ();

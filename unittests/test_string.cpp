@@ -242,20 +242,22 @@ TEST_F (String, GCleffUtf8) {
 
   auto p = make_parser (proxy_);
 
-  std::vector<char8> src;
-  src.emplace_back (char_set::quotation_mark);  // code point 1
+  peejay::small_vector<std::byte, 9> src;
+  src.push_back (std::byte{0xEF});  // three byte UTF-8 BOM.
+  src.push_back (std::byte{0xBB});
+  src.push_back (std::byte{0xBF});
+  src.push_back (
+      static_cast<std::byte> (char_set::quotation_mark));  // code point 1
+  auto const op = [] (char8 const c) { return static_cast<std::byte> (c); };
 #if __cpp_lib_ranges
-  std::ranges::copy (gclef, std::back_inserter (src));  // code point 2
+  std::ranges::transform (gclef, std::back_inserter (src), op);  // code point 2
 #else
-  std::copy (std::begin (gclef), std::end (gclef),
-             std::back_inserter (src));  // code point 2
+  std::transform (std::begin (gclef), std::end (gclef),
+                  std::back_inserter (src), op);
 #endif
-  src.emplace_back (char_set::quotation_mark);  // code point 3
-  p.input (peejay::pointer_cast<std::byte const> (
-               peejay::to_address (std::begin (src))),
-           peejay::pointer_cast<std::byte const> (
-               peejay::to_address (std::end (src))))
-      .eof ();
+  src.push_back (
+      static_cast<std::byte> (char_set::quotation_mark));  // code point 3
+  p.input (std::begin (src), std::end (src)).eof ();
 
   EXPECT_FALSE (p.has_error ()) << "Expected the parse to succeed";
   EXPECT_FALSE (p.last_error ()) << "Expected the parse error to be zero";
