@@ -1,3 +1,16 @@
+//===- unittests/backtrace.cpp --------------------------------------------===//
+//*  _                _    _                       *
+//* | |__   __ _  ___| | _| |_ _ __ __ _  ___ ___  *
+//* | '_ \ / _` |/ __| |/ / __| '__/ _` |/ __/ _ \ *
+//* | |_) | (_| | (__|   <| |_| | | (_| | (_|  __/ *
+//* |_.__/ \__,_|\___|_|\_\\__|_|  \__,_|\___\___| *
+//*                                                *
+//===----------------------------------------------------------------------===//
+// Distributed under the Apache License v2.0.
+// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
+// for license information.
+// SPDX-License-Identifier: Apache-2.0
+//===----------------------------------------------------------------------===//
 #include "peejay/portab.hpp"
 
 #if (__linux__ || __APPLE__) && PEEJAY_HAVE_RANGES && PEEJAY_HAVE_CONCEPTS

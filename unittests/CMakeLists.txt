@@ -31,6 +31,7 @@ add_executable (
   test_small_vector.cpp
   test_stack.cpp
   test_string.cpp
+  test_utf.cpp
   test_whitespace.cpp
 )
 setup_target (pj-unittests)
