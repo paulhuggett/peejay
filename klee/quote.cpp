@@ -22,7 +22,7 @@ int main () {
 
   klee_make_symbolic (input.data (), size, "input");
   klee_assume (input[0] == static_cast<std::byte> ('"'));
-  klee_assume (input[size - 1] == 0);
+  klee_assume (input[size - 1] == std::byte{0});
 
   make_parser (peejay::null{}).input (input.begin (), input.end ()).eof ();
 }
