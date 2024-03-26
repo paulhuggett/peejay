@@ -127,7 +127,7 @@ inline u8string_view::const_iterator break_char (
 
 // convu8
 // ~~~~~~
-#if !PEEJAY_HAVE_CONCEPTS || !PEEJAVE_HAVE_RANGES
+#if !PEEJAY_HAVE_CONCEPTS || !PEEJAY_HAVE_RANGES
 inline std::string convu8 (u8string const& str) {
   std::string result;
   result.reserve (str.size ());
@@ -135,7 +135,7 @@ inline std::string convu8 (u8string const& str) {
                   [] (char8 const c) { return static_cast<char> (c); });
   return result;
 }
-#endif  // !PEEJAY_HAVE_CONCEPTS || !PEEJAVE_HAVE_RANGES
+#endif  // !PEEJAY_HAVE_CONCEPTS || !PEEJAY_HAVE_RANGES
 
 // emit object
 // ~~~~~~~~~~~
@@ -161,8 +161,8 @@ void emit_object (OStream& os, indent i, object const& obj) {
   indent const next_indent = i.next ();
   for (auto const& [key, value] : *obj) {
     os << separator << next_indent << '"';
-#if PEEJAY_HAVE_CONCEPTS && PEEJAVE_HAVE_RANGES
-    std::ranges::copy (key | std::transform ([] (char8 const c) {
+#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
+    std::ranges::copy (key | std::views::transform ([] (char8 const c) {
                          return static_cast<char> (c);
                        }),
                        std::ostream_iterator<char> (os));
