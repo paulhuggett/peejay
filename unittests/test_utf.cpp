@@ -11,25 +11,28 @@
 // for license information.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include "callbacks.hpp"
 #include "peejay/json.hpp"
 #include "peejay/small_vector.hpp"
 
-using peejay::parser;
-using peejay::u8string;
-
 class Utf : public testing::TestWithParam<std::vector<std::byte>> {};
 
-TEST_P (Utf, Utf) {
-  parser p{json_out_callbacks{}};
+// NOLINTNEXTLINE
+TEST_P (Utf, NullCallbackIsInvoked) {
+  using mocks = mock_json_callbacks<peejay::default_policies::integer_type>;
+  testing::StrictMock<mocks> callbacks;
+  testing::InSequence const _;
+  EXPECT_CALL (callbacks, null_value ()).Times (1);
+
+  peejay::parser p{callbacks_proxy<mocks>{callbacks}};
   auto const& src = GetParam ();
-  u8string const res = p.input (std::begin (src), std::end (src)).eof ();
+  p.input (std::begin (src), std::end (src)).eof ();
   EXPECT_FALSE (p.has_error ());
-  EXPECT_EQ (res, u8"null");
 }
 
+// NOLINTNEXTLINE
 INSTANTIATE_TEST_SUITE_P (
     NullKeyword, Utf,
     testing::Values (
@@ -43,9 +46,11 @@ INSTANTIATE_TEST_SUITE_P (
                                std::byte{'u'}, std::byte{0x00}, std::byte{'l'},
                                std::byte{0x00}, std::byte{'l'}},
         // UTF-16 LE
-        std::vector<std::byte>{std::byte{0xFF}, std::byte{0xFE}, std::byte{'n'},
-                               std::byte{0x00}, std::byte{'u'}, std::byte{0x00},
-                               std::byte{'l'}, std::byte{0x00}, std::byte{'l'},
+        std::vector<std::byte>{
+            std::byte{0xFF}, std::byte{0xFE},
+            std::byte{'n'}, std::byte{0x00},
+            std::byte{'u'}, std::byte{0x00},
+            std::byte{'l'}, std::byte{0x00}, std::byte{'l'},
                                std::byte{0x00}},
         // UTF-32 BE
         std::vector<std::byte>{
@@ -56,10 +61,10 @@ INSTANTIATE_TEST_SUITE_P (
             std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'l'}},
         // UTF-32 LE
         std::vector<std::byte>{
-            std::byte{0xFF}, std::byte{0xFE}, std::byte{0x00},
-            std::byte{0x00}, std::byte{'n'},  std::byte{0x00},
-            std::byte{0x00}, std::byte{0x00}, std::byte{'u'},
-            std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-            std::byte{'l'},  std::byte{0x00}, std::byte{0x00},
-            std::byte{0x00}, std::byte{'l'},  std::byte{0x00},
-            std::byte{0x00}, std::byte{0x00}}));
+            std::byte{0xFF}, std::byte{0xFE}, std::byte{0x00}, std::byte{0x00},
+            std::byte{'n'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{'u'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{'l'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{'l'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}}
+    )
+);

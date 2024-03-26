@@ -24,11 +24,17 @@
 
 template <typename Parser>
 Parser &input (Parser &parser, peejay::u8string_view const &str) {
+  auto const op = [] (peejay::char8 const c) {
+    return static_cast<std::byte> (c);
+  };
+#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
+  return parser.input (str | std::views::transform (op));
+#else
   peejay::small_vector<std::byte, 16> vec;
-  std::transform (
-      std::begin (str), std::end (str), std::back_inserter (vec),
-      [] (peejay::char8 const c) { return static_cast<std::byte> (c); });
+  std::transform (std::begin (str), std::end (str), std::back_inserter (vec),
+                  op);
   return parser.input (std::begin (vec), std::end (vec));
+#endif  // PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
 }
 
 template <typename IntegerType>

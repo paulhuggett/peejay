@@ -25,8 +25,9 @@ namespace {
 
 class Whitespace : public testing::Test {
 protected:
-  testing::StrictMock<mock_json_callbacks<std::uint64_t>> callbacks_;
-  callbacks_proxy<mock_json_callbacks<std::uint64_t>> proxy_{callbacks_};
+  using mocks = mock_json_callbacks<peejay::default_policies::integer_type>;
+  testing::StrictMock<mocks> callbacks_;
+  callbacks_proxy<mocks> proxy_{callbacks_};
 };
 
 }  // end of anonymous namespace
@@ -57,25 +58,38 @@ TEST_F (Whitespace, MultipleTrailingSpaces) {
 
 namespace {
 
-#define UTF32_AS_BYTES(cu)                                                     \
-  static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 24) & 0xFF),     \
-      static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 16) & 0xFF), \
-      static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 8) & 0xFF),  \
-      static_cast<std::byte> ((static_cast<std::uint32_t> (cu) >> 0) & 0xFF)
+constexpr decltype (auto) code_point_as_utf32be (char32_t code_point) {
+  return std::array{
+      static_cast<std::byte> (
+          (static_cast<std::uint_least32_t> (code_point) >> 24U) & 0xFFU),
+      static_cast<std::byte> (
+          (static_cast<std::uint_least32_t> (code_point) >> 16U) & 0xFFU),
+      static_cast<std::byte> (
+          (static_cast<std::uint_least32_t> (code_point) >> 8U) & 0xFFU),
+      static_cast<std::byte> (
+          (static_cast<std::uint_least32_t> (code_point) >> 0U) & 0xFFU),
+  };
+}
 
-std::array<std::byte, 7 * 4> const extra_ws_chars{{
-    std::byte{0x00},
-    std::byte{0x00},
-    std::byte{0xFE},
-    std::byte{0xFF},
-
-    UTF32_AS_BYTES (char_set::character_tabulation),
-    UTF32_AS_BYTES (char_set::vertical_tabulation),
-    UTF32_AS_BYTES (char_set::space),
-    UTF32_AS_BYTES (char_set::no_break_space),
-    UTF32_AS_BYTES (char_set::en_quad),
-    UTF32_AS_BYTES (char_set::digit_zero),
-}};
+template <typename Parser>
+Parser& input_whitespace_code_points (Parser& parser) {
+  std::array const code_points{
+      char_set::byte_order_mark,     char_set::character_tabulation,
+      char_set::vertical_tabulation, char_set::space,
+      char_set::no_break_space,      char_set::en_quad,
+      char_set::digit_zero,
+  };
+  std::for_each (std::begin (code_points), std::end (code_points),
+                 [&parser] (char32_t const code_point) {
+#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
+                   parser.input (code_point_as_utf32be (code_point));
+#else
+    auto const bytes = code_point_as_utf32be (code_point);
+    parser.input (std::begin (bytes), std::end (bytes));
+#endif
+                 });
+  return parser;
+}
 
 } // end anonymous namespace
 
@@ -83,14 +97,14 @@ std::array<std::byte, 7 * 4> const extra_ws_chars{{
 TEST_F (Whitespace, ExtendedWhitespaceCharactersEnabled) {
   EXPECT_CALL (callbacks_, integer_value (0)).Times (1);
   auto p = make_parser (proxy_, extensions::extra_whitespace);
-  p.input (std::begin (extra_ws_chars), std::end (extra_ws_chars)).eof ();
+  input_whitespace_code_points (p).eof ();
   EXPECT_FALSE (p.has_error ());
 }
 
 // NOLINTNEXTLINE
 TEST_F (Whitespace, ExtendedWhitespaceCharactersDisabled) {
   auto p = make_parser (proxy_);
-  p.input (std::begin (extra_ws_chars), std::end (extra_ws_chars)).eof ();
+  input_whitespace_code_points (p).eof ();
   EXPECT_TRUE (p.has_error ());
   EXPECT_EQ (p.last_error (), make_error_code (error::expected_token));
 }
