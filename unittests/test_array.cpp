@@ -47,8 +47,7 @@ TEST_F (JsonArray, Empty) {
   EXPECT_CALL (callbacks_, end_array ()).Times (1);
 
   auto p = make_parser (proxy_);
-  input (p, u8"[\n]\n"sv);
-  p.eof ();
+  input (p, u8"[\n]\n"sv).eof ();
   EXPECT_FALSE (p.last_error ()) << "Expected the parse to succeed";
   EXPECT_EQ (p.pos (), (coord{column{1U}, line{2U}}));
   EXPECT_EQ (p.input_pos (), (coord{column{1U}, line{3U}}));

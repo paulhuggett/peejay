@@ -127,18 +127,15 @@ inline u8string_view::const_iterator break_char (
 
 // convu8
 // ~~~~~~
+#if !PEEJAY_HAVE_CONCEPTS || !PEEJAY_HAVE_RANGES
 inline std::string convu8 (u8string const& str) {
   std::string result;
   result.reserve (str.size ());
-  auto const op = [] (char8 c) { return static_cast<char> (c); };
-#if __cpp_lib_ranges
-  std::ranges::transform (str, std::back_inserter (result), op);
-#else
   std::transform (std::begin (str), std::end (str), std::back_inserter (result),
-                  op);
-#endif
+                  [] (char8 const c) { return static_cast<char> (c); });
   return result;
 }
+#endif  // !PEEJAY_HAVE_CONCEPTS || !PEEJAY_HAVE_RANGES
 
 // emit object
 // ~~~~~~~~~~~
@@ -163,7 +160,16 @@ void emit_object (OStream& os, indent i, object const& obj) {
   auto const* separator = "";
   indent const next_indent = i.next ();
   for (auto const& [key, value] : *obj) {
-    os << separator << next_indent << '"' << convu8 (key) << "\": ";
+    os << separator << next_indent << '"';
+#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
+    std::ranges::copy (key | std::views::transform ([] (char8 const c) {
+                         return static_cast<char> (c);
+                       }),
+                       std::ostream_iterator<char> (os));
+#else
+    os << convu8 (key);
+#endif
+    os << "\": ";
     emit (os, next_indent, value);
     separator = ",\n";
   }

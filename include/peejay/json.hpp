@@ -36,6 +36,9 @@
 #if PEEJAY_HAVE_CONCEPTS
 #include <concepts>
 #endif
+#if PEEJAY_HAVE_RANGES
+#include <ranges>
+#endif
 
 #if PEEJAY_HAVE_SPAN
 #include <span>
@@ -338,6 +341,12 @@ public:
                                  InputIterator>::value_type>,
                              std::byte>)
   parser &input (InputIterator first, InputIterator last);
+#if PEEJAY_HAVE_RANGES
+  template <std::ranges::input_range Range>
+  parser &input (Range const &range) {
+    return this->input (range.begin (), range.end ());
+  }
+#endif  // PEEJAY_HAVE_RANGES
 #else
   template <typename InputIterator,
             typename = typename std::enable_if_t<
@@ -498,9 +507,10 @@ inline decltype (auto)
 }
 
 enum char_set : char32_t {
-  apostrophe = char32_t{0x0027},            // "'"
-  asterisk = char32_t{0x002A},              // '*'
-  backspace = char32_t{0x0008},             // '\b'
+  apostrophe = char32_t{0x0027},  // "'"
+  asterisk = char32_t{0x002A},    // '*'
+  backspace = char32_t{0x0008},   // '\b'
+  byte_order_mark = icubaby::byte_order_mark,
   carriage_return = char32_t{0x000D},       // '\r'
   character_tabulation = char32_t{0x0009},  // '\t'
   colon = char32_t{0x003A},                 // ':'
@@ -2969,6 +2979,7 @@ parser<Backend, Policies> &parser<Backend, Policies>::input (
     return *this;
   }
   std::array<char32_t, 2> code_points{{0}};
+  // NOLINTNEXTLINE(llvm-qualified-auto, readability-qualified-auto)
   auto const first_code_point = std::begin (code_points);
   while (first != last && !error_) {
     auto const last_code_point = utf_ (*first, first_code_point);
