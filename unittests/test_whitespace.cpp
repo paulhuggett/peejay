@@ -73,21 +73,19 @@ constexpr decltype (auto) code_point_as_utf32be (char32_t code_point) {
 
 template <typename Parser>
 Parser& input_whitespace_code_points (Parser& parser) {
-  std::array const code_points{
+  for (auto const code_point: {
       char_set::byte_order_mark,     char_set::character_tabulation,
       char_set::vertical_tabulation, char_set::space,
       char_set::no_break_space,      char_set::en_quad,
       char_set::digit_zero,
-  };
-  std::for_each (std::begin (code_points), std::end (code_points),
-                 [&parser] (char32_t const code_point) {
+  }) {
 #if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
-                   parser.input (code_point_as_utf32be (code_point));
+    parser.input (code_point_as_utf32be (code_point));
 #else
-    auto const bytes = code_point_as_utf32be (code_point);
+    auto const &bytes = code_point_as_utf32be (code_point);
     parser.input (std::begin (bytes), std::end (bytes));
 #endif
-                 });
+  }
   return parser;
 }
 
