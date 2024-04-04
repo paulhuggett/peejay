@@ -24,8 +24,9 @@
 /// there are a few of minor niggles with their usage.
 ///
 /// First, pointers sometimes take the value nullptr to indicate the end of a
-/// sequence. Consider the POSIX readdir() API or a traditional singly-linked
-/// list where the last element of the list has a 'next' pointer of nullptr.
+/// sequence rather than the "one beyond the end" definition used by iterators.
+/// Consider the POSIX readdir() API or a traditional singly-linked list where
+/// the last element of the list has a 'next' pointer of nullptr.
 ///
 /// Second, there’s no easy way to portably add debug-time checks to raw
 /// pointers. Having a class allows us to sanity-check the value of the pointer
@@ -59,10 +60,14 @@ public:
   using difference_type = std::ptrdiff_t;
   using pointer = value_type *;
   using reference = value_type &;
+#if PEEJAY_CXX20
+  using iterator_category = std::contiguous_iterator_tag;
+#else
   using iterator_category = std::random_access_iterator_tag;
-#if defined(__cpp_lib_concepts) && __cpp_lib_concepts >= 202207L
+#endif  // PEEJAY_CXX20
+#if PEEJAY_HAVE_CONCEPTS
   using iterator_concept = std::contiguous_iterator_tag;
-#endif  // __cpp_lib_concepts
+#endif  // PEEJAY_HAVE_CONCEPTS
 
   explicit constexpr pointer_based_iterator () noexcept = default;
   explicit constexpr pointer_based_iterator (std::nullptr_t) noexcept {}
@@ -108,11 +113,7 @@ public:
 
   constexpr pointer operator->() const noexcept { return pos_; }
   constexpr reference operator* () const noexcept { return *pos_; }
-
-  constexpr value_type &operator[] (std::size_t const n) noexcept {
-    return *(pos_ + n);
-  }
-  constexpr value_type const &operator[] (std::size_t const n) const noexcept {
+  constexpr reference operator[] (std::size_t const n) const noexcept {
     return *(pos_ + n);
   }
 
