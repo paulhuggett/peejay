@@ -190,7 +190,7 @@ endfunction (setup_gtest)
 if (PEEJAY_FUZZTEST)
   set (FUZZTEST_FUZZING_MODE On)
   include (FetchContent)
-  set (FUZZTEST_REPO_BRANCH "main" CACHE STRING "FuzzTest repository branch.")
+  set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
   message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
   FetchContent_Declare (
     fuzztest
