@@ -17,6 +17,7 @@
 #define PEEJAY_ARRAYVEC_HPP
 
 #include <array>
+#include <cstddef>
 #include <initializer_list>
 
 #include "peejay/avbase.hpp"
@@ -496,8 +497,10 @@ private:
   size_type size_ = 0;
   static_assert (std::numeric_limits<size_type>::max () >= Size);
 
-  std::array<typename std::aligned_storage_t<sizeof (T), alignof (T)>, Size>
-      data_;
+  struct aligned_storage {
+    alignas(T) std::byte v[sizeof(T)];
+  };
+  std::array<aligned_storage, Size> data_;
 };
 
 template <typename T, std::size_t LhsSize, std::size_t RhsSize>
