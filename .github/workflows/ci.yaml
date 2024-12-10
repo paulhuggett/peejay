@@ -15,13 +15,13 @@ jobs:
             build_type: Debug
             generator: Xcode
             options: -D PEEJAY_CXX17=No
-            os: macos-12
+            os: macos-15
 
           - name: macOS-12/Xcode/Release
             build_type: Release
             generator: Xcode
             options: -D PEEJAY_CXX17=No
-            os: macos-12
+            os: macos-15
 
           # Linux builds
           # ~~~~~~~~~~~~
