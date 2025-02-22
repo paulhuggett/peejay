@@ -15,17 +15,9 @@ function (klee_is_available result)
   if ((CMAKE_CXX_COMPILER_ID MATCHES "Clang$") AND (NOT "${KLEE_PATH}" STREQUAL
                                                     "KLEE_PATH-NOTFOUND")
   )
-    set (
-      ${result}
-      Yes
-      PARENT_SCOPE
-    )
+    set (${result} Yes PARENT_SCOPE)
   else ()
-    set (
-      ${result}
-      No
-      PARENT_SCOPE
-    )
+    set (${result} No PARENT_SCOPE)
   endif ()
 endfunction (klee_is_available)
 
