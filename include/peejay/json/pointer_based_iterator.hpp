@@ -1,4 +1,4 @@
-//===- include/peejay/pointer_based_iterator.hpp ----------*- mode: C++ -*-===//
+//===- include/peejay/json/pointer_based_iterator.hpp -----*- mode: C++ -*-===//
 //*              _       _              _                        _  *
 //*  _ __   ___ (_)_ __ | |_ ___ _ __  | |__   __ _ ___  ___  __| | *
 //* | '_ \ / _ \| | '_ \| __/ _ \ '__| | '_ \ / _` / __|/ _ \/ _` | *

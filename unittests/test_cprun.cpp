@@ -74,4 +74,3 @@ static void CodePointGrammarRuleNeverCrashes (char32_t cp) {
 }
 FUZZ_TEST (CodePointRun, CodePointGrammarRuleNeverCrashes);
 #endif
-

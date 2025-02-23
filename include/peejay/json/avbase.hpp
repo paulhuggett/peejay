@@ -1,4 +1,4 @@
-//===- include/peejay/avbase.hpp --------------------------*- mode: C++ -*-===//
+//===- include/peejay/json/avbase.hpp ---------------------*- mode: C++ -*-===//
 //*              _                     *
 //*   __ ___   _| |__   __ _ ___  ___  *
 //*  / _` \ \ / / '_ \ / _` / __|/ _ \ *
@@ -7,8 +7,7 @@
 //*                                    *
 //===----------------------------------------------------------------------===//
 // Distributed under the Apache License v2.0.
-// See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-// for license information.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 #ifndef PEEJAY_AVBASE_HPP
