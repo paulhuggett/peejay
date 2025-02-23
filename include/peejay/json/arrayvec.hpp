@@ -20,8 +20,8 @@
 #include <cstddef>
 #include <initializer_list>
 
-#include "peejay/avbase.hpp"
-#include "peejay/uinteger.hpp"
+#include "peejay/json/avbase.hpp"
+#include "peejay/json/uinteger.hpp"
 
 #if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
 #include <bit>
@@ -132,13 +132,13 @@ public:
   arrayvec &operator= (arrayvec<T, OtherSize> const &other);
   template <std::size_t OtherSize>
   arrayvec &operator= (arrayvec<T, OtherSize> &&other) noexcept (
-      std::is_nothrow_move_constructible_v<T>
-          &&std::is_nothrow_move_assignable_v<T>);
+      std::is_nothrow_move_constructible_v<T> &&
+      std::is_nothrow_move_assignable_v<T>);
 
   arrayvec &operator= (arrayvec const &other);
   arrayvec &operator= (arrayvec &&other) noexcept (
-      std::is_nothrow_move_constructible_v<T>
-          &&std::is_nothrow_move_assignable_v<T>);
+      std::is_nothrow_move_constructible_v<T> &&
+      std::is_nothrow_move_assignable_v<T>);
 
   /// \name Element access
   ///@{
@@ -408,8 +408,8 @@ public:
   /// \param value  Element value to insert.
   /// \returns  An iterator pointing to the new element.
   iterator insert (const_iterator pos, T &&value) noexcept (
-      std::is_nothrow_move_constructible_v<T>
-          &&std::is_nothrow_move_assignable_v<T>);
+      std::is_nothrow_move_constructible_v<T> &&
+      std::is_nothrow_move_assignable_v<T>);
 
   /// \brief Inserts \p count copies of \p value before \p pos.
   ///
@@ -498,7 +498,7 @@ private:
   static_assert (std::numeric_limits<size_type>::max () >= Size);
 
   struct aligned_storage {
-    alignas(T) std::byte v[sizeof(T)];
+    alignas (T) std::byte v[sizeof (T)];
   };
   std::array<aligned_storage, Size> data_;
 };
@@ -598,7 +598,7 @@ auto arrayvec<T, Size>::operator= (arrayvec<T, OtherSize> const &other)
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
   if (&other != this) {
-    this->operator=<Size> (other);
+    this->operator= <Size> (other);
   }
   return *this;
 }
@@ -606,8 +606,8 @@ auto arrayvec<T, Size>::operator= (arrayvec const &other) -> arrayvec & {
 template <typename T, std::size_t Size>
 template <std::size_t OtherSize>
 auto arrayvec<T, Size>::operator= (arrayvec<T, OtherSize> &&other) noexcept (
-    std::is_nothrow_move_constructible_v<T>
-        &&std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
+    std::is_nothrow_move_constructible_v<T> &&
+    std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
   details::avbase<T>::template operator_assign<true> (
       this->data (), &size_,
       std::make_pair (other.data (), static_cast<std::size_t> (other.size ())));
@@ -617,8 +617,8 @@ auto arrayvec<T, Size>::operator= (arrayvec<T, OtherSize> &&other) noexcept (
 
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::operator= (arrayvec &&other) noexcept (
-    std::is_nothrow_move_constructible_v<T>
-        &&std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
+    std::is_nothrow_move_constructible_v<T> &&
+    std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
   if (&other != this) {
     details::avbase<T>::template operator_assign<true> (
         this->data (), &size_,
@@ -809,8 +809,8 @@ auto arrayvec<T, Size>::insert (const_iterator pos, const_reference value)
 
 template <typename T, std::size_t Size>
 auto arrayvec<T, Size>::insert (const_iterator pos, T &&value) noexcept (
-    std::is_nothrow_move_constructible_v<T>
-        &&std::is_nothrow_move_assignable_v<T>) -> iterator {
+    std::is_nothrow_move_constructible_v<T> &&
+    std::is_nothrow_move_assignable_v<T>) -> iterator {
   assert (this->size () < this->max_size () && "Insert will cause overflow");
   assert (pos >= this->begin () && pos <= this->end () &&
           "Insert position is invalid");

@@ -19,8 +19,8 @@
 #include <string_view>
 #include <system_error>
 
-#include "peejay/json.hpp"
-#include "peejay/small_vector.hpp"
+#include "peejay/json/json.hpp"
+#include "peejay/json/small_vector.hpp"
 
 template <typename Parser>
 Parser &input (Parser &parser, peejay::u8string_view const &str) {

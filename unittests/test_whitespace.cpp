@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "callbacks.hpp"
-#include "peejay/json.hpp"
+#include "peejay/json/json.hpp"
 
 using namespace std::string_view_literals;
 using peejay::char_set;

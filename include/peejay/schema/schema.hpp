@@ -16,7 +16,7 @@
 #include <functional>
 #include <regex>
 
-#include "peejay/dom.hpp"
+#include "peejay/json/dom.hpp"
 
 namespace peejay::schema {
 

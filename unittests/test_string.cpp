@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 #include "callbacks.hpp"
-#include "peejay/json.hpp"
+#include "peejay/json/json.hpp"
 
 using namespace std::string_view_literals;
 using namespace std::string_literals;

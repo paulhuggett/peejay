@@ -19,8 +19,8 @@
 #include <limits>
 #include <stdexcept>
 
-#include "peejay/pointer_based_iterator.hpp"
-#include "peejay/portab.hpp"
+#include "peejay/json/pointer_based_iterator.hpp"
+#include "peejay/json/portab.hpp"
 
 namespace peejay::details {
 
@@ -38,7 +38,8 @@ protected:
                     InputIterator first, InputIterator last);
 
   template <typename SizeType, typename... Args>
-  static void init (pointer_based_iterator<T> begin, SizeType *size, SizeType count, Args &&...args);
+  static void init (pointer_based_iterator<T> begin, SizeType *size,
+                    SizeType count, Args &&...args);
 
   template <bool IsMove, typename SizeType, typename SrcType>
   static void operator_assign (

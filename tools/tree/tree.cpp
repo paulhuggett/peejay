@@ -24,9 +24,9 @@
 #include <unistd.h>
 #endif  // !_WIN32
 
-#include "peejay/dom.hpp"
-#include "peejay/emit.hpp"
-#include "peejay/portab.hpp"
+#include "peejay/json/dom.hpp"
+#include "peejay/json/emit.hpp"
+#include "peejay/json/portab.hpp"
 
 using pjparser = peejay::parser<peejay::dom<1024>>;
 

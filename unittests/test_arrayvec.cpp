@@ -10,7 +10,7 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#include "peejay/arrayvec.hpp"
+#include "peejay/json/arrayvec.hpp"
 
 // standard library
 #include <forward_list>

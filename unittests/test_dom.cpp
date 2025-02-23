@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 
 #include "callbacks.hpp"
-#include "peejay/dom.hpp"
+#include "peejay/json/dom.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

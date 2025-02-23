@@ -15,9 +15,9 @@
 #include <iostream>
 #include <string>
 
-#include "peejay/json.hpp"
-#include "peejay/null.hpp"
-#include "peejay/small_vector.hpp"
+#include "peejay/json/json.hpp"
+#include "peejay/json/null.hpp"
+#include "peejay/json/small_vector.hpp"
 
 using peejay::char8;
 using peejay::null;

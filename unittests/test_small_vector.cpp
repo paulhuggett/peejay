@@ -17,10 +17,11 @@
 #include <numeric>
 #include <sstream>
 
-#include "peejay/small_vector.hpp"
 #if __cpp_lib_ranges
 #include <ranges>
 #endif
+
+#include "peejay/json/small_vector.hpp"
 
 using peejay::small_vector;
 using testing::ElementsAre;

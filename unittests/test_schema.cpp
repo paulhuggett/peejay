@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "callbacks.hpp"
-#include "peejay/schema.hpp"
+#include "peejay/schema/schema.hpp"
 
 using peejay::dom;
 using peejay::element;

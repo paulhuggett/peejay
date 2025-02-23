@@ -14,8 +14,8 @@
 #include <gmock/gmock.h>
 
 #include "callbacks.hpp"
-#include "peejay/json.hpp"
-#include "peejay/small_vector.hpp"
+#include "peejay/json/json.hpp"
+#include "peejay/json/small_vector.hpp"
 
 class Utf : public testing::TestWithParam<std::vector<std::byte>> {};
 

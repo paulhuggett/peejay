@@ -17,7 +17,7 @@
 // for license information.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#include "peejay/pointer_based_iterator.hpp"
+#include "peejay/json/pointer_based_iterator.hpp"
 // Standard library
 #include <array>
 

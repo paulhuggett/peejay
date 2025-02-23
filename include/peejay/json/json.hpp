@@ -15,14 +15,14 @@
 #ifndef PEEJAY_JSON_HPP
 #define PEEJAY_JSON_HPP
 
-#include "peejay/arrayvec.hpp"
-#include "peejay/cbii.hpp"
-#include "peejay/cprun.hpp"
-#include "peejay/json_error.hpp"
-#include "peejay/stack.hpp"
+#include "peejay/json/arrayvec.hpp"
+#include "peejay/json/cbii.hpp"
+#include "peejay/json/cprun.hpp"
+#include "peejay/json/json_error.hpp"
+#include "peejay/json/stack.hpp"
 
 #define ICUBABY_INSIDE_NS peejay
-#include "peejay/icubaby.hpp"
+#include "peejay/json/icubaby.hpp"
 #undef ICUBABY_INSIDE_NS
 
 // Standard library
@@ -64,7 +64,7 @@ template <typename T, typename IntegerType = std::int64_t>
 concept backend = requires (T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
-  {v.result ()};
+  { v.result () };
 
   /// Called when a JSON string has been parsed.
   { v.string_value (u8string_view{}) } -> std::convertible_to<std::error_code>;
@@ -181,9 +181,10 @@ public:
 #if defined(__cpp_impl_three_way_comparison) && \
     __cpp_impl_three_way_comparison >= 201907L
   // https://github.com/llvm/llvm-project/issues/55919
-  _Pragma ("GCC diagnostic push")
-  _Pragma ("GCC diagnostic ignored \"-Wzero-as-null-pointer-constant\"")
-  constexpr auto operator<=> (coord const &) const noexcept = default;
+  _Pragma ("GCC diagnostic push") _Pragma (
+      "GCC diagnostic ignored "
+      "\"-Wzero-as-null-pointer-constant\"") constexpr auto
+  operator<=> (coord const &) const noexcept = default;
   _Pragma ("GCC diagnostic pop")
 #else
   constexpr bool operator== (coord const &rhs) const noexcept {
@@ -211,7 +212,8 @@ public:
   }
 #endif  // __cpp_impl_three_way_comparison
 
-  constexpr explicit operator line () const noexcept {
+      constexpr explicit
+      operator line () const noexcept {
     return line{line_};
   }
   constexpr explicit operator column () const noexcept {
@@ -587,9 +589,8 @@ PEEJAY_CONSTEXPR_CXX20 std::optional<grammar_rule> code_point_grammar_rule (
   auto const end = std::end (code_point_runs);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
   auto const it = std::lower_bound (
-      std::begin (code_point_runs), end,
-      cprun{code_point, 0, 0},
-      [] (cprun const& cpr, cprun const& value) {
+      std::begin (code_point_runs), end, cprun{code_point, 0, 0},
+      [] (cprun const &cpr, cprun const &value) {
         return cpr.code_point + cpr.length < value.code_point;
       });
   if (it != end && code_point >= it->code_point &&
@@ -626,10 +627,10 @@ public:
   /// \param ch If true, the character to be consumed. An empty value value indicates
   ///   end-of-file.
   /// \returns A pair consisting of a matcher pointer and a boolean. If non-null, the
-  ///   matcher is pushed onto the parse stack; if null the same matcher object is
-  ///   used to process the next character. The boolean value is false if the same
-  ///   character must be passed to the next consume() call; true indicates that
-  ///   the character was correctly matched by this consume() call.
+  ///   matcher is pushed onto the parse stack; if null the same matcher object
+  ///   is used to process the next character. The boolean value is false if the
+  ///   same character must be passed to the next consume() call; true indicates
+  ///   that the character was correctly matched by this consume() call.
   virtual std::pair<pointer, bool> consume (parser_type &parser,
                                             std::optional<char32_t> ch) = 0;
 
@@ -2634,7 +2635,7 @@ whitespace_matcher<Backend, Policies>::multi_line_comment_body (
     break;
   case char_set::line_feed: this->lf (parser); break;
   case char_set::character_tabulation: break;  // TODO(paul) tab expansion.
-  default: break;             // Just consume.
+  default: break;                              // Just consume.
   }
   return {null_pointer (), true};  // Consume this character.
 }
@@ -2895,8 +2896,9 @@ parser<Backend, Policies>::parser (parser &&rhs) noexcept (
 template <typename Backend, typename Policies>
 PEEJAY_CXX20REQUIRES ((policy<Policies> &&
                        backend<Backend, typename Policies::integer_type>))
-auto parser<Backend, Policies>::operator= (parser &&rhs) noexcept (
-    std::is_nothrow_move_assignable_v<Backend>) -> parser & {
+auto parser<Backend, Policies>::
+operator= (parser &&rhs) noexcept (std::is_nothrow_move_assignable_v<Backend>)
+    -> parser & {
   utf_ = std::move (rhs.utf_);
   stack_ = std::move (rhs.stack_);
   error_ = std::move (rhs.error_);

@@ -26,7 +26,7 @@
 #include <bit>
 #endif
 
-#include "peejay/dom.hpp"
+#include "peejay/json/dom.hpp"
 
 namespace peejay {
 
@@ -270,15 +270,14 @@ overloaded (Ts...) -> overloaded<Ts...>;
 template <typename OStream>
 OStream& emit (OStream& os, indent const i, element const& el) {
   std::visit (
-      overloaded{
-          [&os] (u8string const& s) { emit_string_view (os, s); },
-          [&os] (int64_t v) { os << v; }, [&os] (uint64_t v) { os << v; },
-          [&os] (double v) { os << v; },
-          [&os] (bool b) { os << (b ? "true" : "false"); },
-          [&os] (null) { os << "null"; },
-          [&os, i] (array const& arr) { emit_array (os, i, arr); },
-          [&os, i] (object const& obj) { emit_object (os, i, obj); },
-          [] (mark) { assert (false); }},
+      overloaded{[&os] (u8string const& s) { emit_string_view (os, s); },
+                 [&os] (int64_t v) { os << v; },
+                 [&os] (uint64_t v) { os << v; }, [&os] (double v) { os << v; },
+                 [&os] (bool b) { os << (b ? "true" : "false"); },
+                 [&os] (null) { os << "null"; },
+                 [&os, i] (array const& arr) { emit_array (os, i, arr); },
+                 [&os, i] (object const& obj) { emit_object (os, i, obj); },
+                 [] (mark) { assert (false); }},
       el);
   return os;
 }

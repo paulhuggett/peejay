@@ -11,26 +11,27 @@
 # SPDX-License-Identifier: Apache-2.0
 #===----------------------------------------------------------------------===//
 set (include_dir "${PEEJAY_ROOT}/include")
-set (CPRUN_HPP ${include_dir}/peejay/cprun.hpp)
+set (CPRUN_HPP ${include_dir}/peejay/json/cprun.hpp)
 set (
   include_files
-  "${include_dir}/peejay/almost_equal.hpp"
-  "${include_dir}/peejay/arrayvec.hpp"
-  "${include_dir}/peejay/avbase.hpp"
-  "${include_dir}/peejay/cbii.hpp"
-  "${include_dir}/peejay/dom.hpp"
-  "${include_dir}/peejay/emit.hpp"
-  "${include_dir}/peejay/icubaby.hpp"
-  "${include_dir}/peejay/json.hpp"
-  "${include_dir}/peejay/json_error.hpp"
-  "${include_dir}/peejay/null.hpp"
-  "${include_dir}/peejay/pointer_based_iterator.hpp"
-  "${include_dir}/peejay/portab.hpp"
-  "${include_dir}/peejay/schema.hpp"
-  "${include_dir}/peejay/small_vector.hpp"
-  "${include_dir}/peejay/stack.hpp"
-  "${include_dir}/peejay/uinteger.hpp"
+  "${include_dir}/peejay/json/arrayvec.hpp"
+  "${include_dir}/peejay/json/avbase.hpp"
+  "${include_dir}/peejay/json/cbii.hpp"
+  "${include_dir}/peejay/json/dom.hpp"
+  "${include_dir}/peejay/json/emit.hpp"
+  "${include_dir}/peejay/json/icubaby.hpp"
+  "${include_dir}/peejay/json/json.hpp"
+  "${include_dir}/peejay/json/json_error.hpp"
+  "${include_dir}/peejay/json/null.hpp"
+  "${include_dir}/peejay/json/pointer_based_iterator.hpp"
+  "${include_dir}/peejay/json/portab.hpp"
+  "${include_dir}/peejay/json/small_vector.hpp"
+  "${include_dir}/peejay/json/stack.hpp"
+  "${include_dir}/peejay/json/uinteger.hpp"
   "${CPRUN_HPP}"
+
+  "${include_dir}/peejay/schema/almost_equal.hpp"
+  "${include_dir}/peejay/schema/schema.hpp"
 )
 add_library (peejay STATIC dummy.cpp ${include_files})
 

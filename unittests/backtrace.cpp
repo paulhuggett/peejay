@@ -11,7 +11,7 @@
 // for license information.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#include "peejay/portab.hpp"
+#include "peejay/json/portab.hpp"
 
 #if (__linux__ || __APPLE__) && PEEJAY_HAVE_RANGES && PEEJAY_HAVE_CONCEPTS
 

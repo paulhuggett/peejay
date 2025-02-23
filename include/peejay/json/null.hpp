@@ -18,7 +18,7 @@
 #ifndef PEEJAY_NULL_HPP
 #define PEEJAY_NULL_HPP
 
-#include "peejay/json.hpp"
+#include "peejay/json/json.hpp"
 
 namespace peejay {
 

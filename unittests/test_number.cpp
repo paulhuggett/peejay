@@ -16,8 +16,8 @@
 #include <string_view>
 
 #include "callbacks.hpp"
-#include "peejay/json.hpp"
-#include "peejay/null.hpp"
+#include "peejay/json/json.hpp"
+#include "peejay/json/null.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

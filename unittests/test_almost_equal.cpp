@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 #include <gtest/gtest.h>
 
-#include "peejay/almost_equal.hpp"
+#include "peejay/schema/almost_equal.hpp"
 
 // NOLINTNEXTLINE
 TEST (AlmostEqual, TwoIdentical) {

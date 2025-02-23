@@ -22,9 +22,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "peejay/almost_equal.hpp"
-#include "peejay/json.hpp"
-#include "peejay/small_vector.hpp"
+#include "peejay/json/json.hpp"
+#include "peejay/json/small_vector.hpp"
+#include "peejay/schema/almost_equal.hpp"
 
 namespace peejay {
 
@@ -210,7 +210,7 @@ inline std::optional<variant> element::eval_relative_pointer (u8string_view s) {
   auto prefix = 0U;
   std::tie (s, prefix) = *d1;
 
-  auto * current = this;
+  auto *current = this;
   for (; prefix > 0U; --prefix) {
     if (current == nullptr) {
       return {};  // we've reached the root: fail.
@@ -311,7 +311,7 @@ inline element *element::apply_token (element *el, u8string const &token) {
     if (token == u8"-") {
       // the (nonexistent) member after the last array element
       // TODO(paul): implement support.
-      return nullptr; // Not supported ATM.
+      return nullptr;  // Not supported ATM.
     }
     if (std::optional<unsigned> const index = element::stoui (token)) {
       if (index >= (*arr)->size ()) {

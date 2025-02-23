@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <ostream>
 
-#include "peejay/json.hpp"
+#include "peejay/json/json.hpp"
 
 using peejay::grammar_rule;
 using peejay::details::code_point_grammar_rule;

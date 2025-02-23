@@ -17,7 +17,7 @@
 #include <cstring>
 #include <limits>
 
-#include "peejay/uinteger.hpp"
+#include "peejay/json/uinteger.hpp"
 
 namespace peejay {
 
@@ -29,7 +29,7 @@ using raw_bits = uinteger_t<8 * sizeof (FpType)>;
 template <typename FpType>
 union fp {
   explicit constexpr fp (FpType const v) noexcept : value{v} {}
-  FpType value;       ///< The floating-point number.
+  FpType value;           ///< The floating-point number.
   raw_bits<FpType> bits;  ///< The raw bits.
 };
 template <typename FpType>

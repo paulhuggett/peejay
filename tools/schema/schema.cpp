@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
 
-#include "peejay/schema.hpp"
+#include "peejay/schema/schema.hpp"
 
 #include <filesystem>
 #include <fstream>

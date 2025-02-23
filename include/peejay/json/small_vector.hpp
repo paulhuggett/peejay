@@ -25,7 +25,7 @@
 #include <variant>
 #include <vector>
 
-#include "peejay/arrayvec.hpp"
+#include "peejay/json/arrayvec.hpp"
 
 namespace peejay {
 
@@ -454,8 +454,8 @@ private:
                 std::is_same_v<SmallVector, small_vector> ||
                 std::is_same_v<SmallVector, small_vector const>>>
   static decltype (auto) visit (SmallVector &sv, Visitor visitor) noexcept (
-      std::is_nothrow_invocable_v<Visitor, small_type>
-          &&std::is_nothrow_invocable_v<Visitor, large_type>) {
+      std::is_nothrow_invocable_v<Visitor, small_type> &&
+      std::is_nothrow_invocable_v<Visitor, large_type>) {
     assert (!sv.arr_.valueless_by_exception ());
     if (auto *const s = std::get_if<small_type> (&sv.arr_)) {
       return visitor (*s);
