@@ -47,7 +47,8 @@ target_compile_options (
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
 )
-target_link_libraries (pj-unittests PUBLIC peejay)
+# FIXME: split the schema tests into their own test executable
+target_link_libraries (pj-unittests PUBLIC peejay schema)
 
 if (PEEJAY_FUZZTEST)
   target_link_libraries (pj-unittests PUBLIC gtest gmock)

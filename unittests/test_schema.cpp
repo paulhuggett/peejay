@@ -85,7 +85,8 @@ protected:
 };
 // NOLINTNEXTLINE
 TEST_F (SchemaTypeNumber, UintPassing) {
-  EXPECT_EQ (check (schema, parse (u8"1234"sv)), std::error_code{});
+  element const document = parse (u8"1234"sv);
+  EXPECT_EQ (check (schema, document), std::error_code{});
 }
 // NOLINTNEXTLINE
 TEST_F (SchemaTypeNumber, FloatPassing) {

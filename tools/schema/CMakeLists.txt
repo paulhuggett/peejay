@@ -11,5 +11,5 @@
 # SPDX-License-Identifier: Apache-2.0
 #===----------------------------------------------------------------------===//
 add_executable (pj-schema schema.cpp)
-target_link_libraries (pj-schema PUBLIC peejay)
+target_link_libraries (pj-schema PUBLIC peejay schema)
 setup_target (pj-schema)

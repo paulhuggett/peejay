@@ -29,9 +29,6 @@ set (
   "${include_dir}/peejay/json/stack.hpp"
   "${include_dir}/peejay/json/uinteger.hpp"
   "${CPRUN_HPP}"
-
-  "${include_dir}/peejay/schema/almost_equal.hpp"
-  "${include_dir}/peejay/schema/schema.hpp"
 )
 add_library (peejay STATIC dummy.cpp ${include_files})
 
