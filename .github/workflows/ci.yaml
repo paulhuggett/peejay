@@ -14,37 +14,37 @@ jobs:
           - name: macOS-15/Xcode/Debug
             build_type: Debug
             generator: Xcode
-            options: -D PEEJAY_CXX17=No
+            options:
             os: macos-15
 
           - name: macOS-15/Xcode/Release
             build_type: Release
             generator: Xcode
-            options: -D PEEJAY_CXX17=No
+            options:
             os: macos-15
 
           # Linux builds
           # ~~~~~~~~~~~~
-          - name: Ubuntu-20.04/clang-8/Debug/C++17
+          - name: Ubuntu-20.04/clang-8/Debug
             apt_install: clang-8 cmake libc++-8-dev libc++abi-8-dev ninja-build
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8
             generator: Ninja
-            options: -D PEEJAY_CXX17=Yes -D LIBCXX=Yes
+            options: -D LIBCXX=Yes
             os: ubuntu-20.04
 
           - name: Ubuntu-22.04/gcc-11/Debug
             apt_install: cmake ninja-build
             build_type: Debug
             generator: Ninja
-            options: -D PEEJAY_CXX17=No
+            options:
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/gcc-11/Release
             apt_install: cmake ninja-build
             build_type: Release
             generator: Ninja
-            options: -D PEEJAY_CXX17=No
+            options:
             os: ubuntu-22.04
 
           # It's current necesssary to use libc++ because builds witb libstdc++ fail
@@ -56,7 +56,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
-            options: -D PEEJAY_CXX17=No -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
+            options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
           - name: Ubuntu-22.04/clang-14/Release
@@ -64,15 +64,7 @@ jobs:
             build_type: Release
             cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
             generator: Ninja
-            options: -D PEEJAY_CXX17=No -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
-            os: ubuntu-22.04
-
-          - name: Ubuntu-22.04/clang-14/Release/C++17
-            apt_install: clang-14 cmake ninja-build
-            build_type: Release
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
-            generator: Ninja
-            options: -DPEEJAY_CXX17=Yes -DLIBCXX=Yes -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold
+            options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
             os: ubuntu-22.04
 
           # Windows builds
@@ -80,19 +72,13 @@ jobs:
           - name: Windows-latest/VS2022/Debug
             build_type: Debug
             generator: Visual Studio 17 2022
-            options: -D PEEJAY_CXX17=No
+            options:
             os: windows-latest
 
           - name: Windows-latest/VS2022/Release
             build_type: Release
             generator: Visual Studio 17 2022
-            options: -D PEEJAY_CXX17=No
-            os: windows-latest
-
-          - name: Windows-latest/VS2022/Debug/C++17
-            build_type: Debug
-            generator: Visual Studio 17 2022
-            options: -D PEEJAY_CXX17=Yes
+            options:
             os: windows-latest
 
     name: ${{ matrix.name }}

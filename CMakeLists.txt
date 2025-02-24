@@ -21,16 +21,9 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 cmake_policy (SET CMP0077 NEW)
 option (WERROR "Compiler warnings are errors")
-option (PEEJAY_CXX17 "Use C++17 (rather than C++20" Yes)
 option (LIBCXX "Use libc++ rather than libstdc++ (clang only)")
 option (PEEJAY_COVERAGE "Generate Source-based Coverage")
 option (PEEJAY_FUZZTEST "Enable fuzztest")
-
-if (PEEJAY_CXX17)
-  set (STANDARD 17)
-else ()
-  set (STANDARD 20)
-endif ()
 
 # A custom target from which the installs will hang.
 add_custom_target (
@@ -65,7 +58,7 @@ function (setup_target target)
     -wd4068 # unknown pragma
     -wd4324 # structure was padded due to alignment specifier
   )
-
+  target_compile_features(${target} PUBLIC cxx_std_20)
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
     check_cxx_compiler_flag (
       -Wno-return-std-move-in-c++11 CLANG_RETURN_STD_MOVE_IN_CXX11
@@ -121,12 +114,12 @@ function (setup_target target)
   target_link_options (
     ${target}
     PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
-    $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
-    $<$<CXX_COMPILER_ID:MSVC>:>
-    )
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
+      $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
+      $<$<CXX_COMPILER_ID:MSVC>:>
+  )
 
-      # If the link step supports -Wl,-Map generate a map file from the link.
+  # If the link step supports -Wl,-Map generate a map file from the link.
   check_linker_flag (CXX "-Wl,-Map=map.txt" map_supported)
   if (map_supported)
     target_link_options (${target} PRIVATE "-Wl,-Map=$<TARGET_FILE_DIR:${target}>/map.txt")
@@ -149,12 +142,7 @@ function (setup_gtest)
     add_subdirectory (googletest)
 
     foreach (target gtest gmock gmock_main gtest_main)
-      set_target_properties (
-        ${target}
-        PROPERTIES CXX_STANDARD ${STANDARD}
-                   CXX_STANDARD_REQUIRED Yes
-                   CXX_EXTENSIONS No
-      )
+      target_compile_features(${target} PUBLIC cxx_std_20)
 
       if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
         check_cxx_compiler_flag (
