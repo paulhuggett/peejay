@@ -20,7 +20,7 @@
 #include <klee/klee.h>
 
 #include "av_member.hpp"
-#include "peejay/arrayvec.hpp"
+#include "peejay/json/arrayvec.hpp"
 #include "vcommon.hpp"
 
 template <typename Container>

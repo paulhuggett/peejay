@@ -18,7 +18,7 @@
 //===----------------------------------------------------------------------===//
 #include <cstddef>
 
-#include "peejay/arrayvec.hpp"
+#include "peejay/json/arrayvec.hpp"
 #include "resize_count_value.hpp"
 
 int main() {

@@ -15,7 +15,7 @@
 #include <cstddef>
 
 #include "klee/klee.h"
-#include "peejay/null.hpp"
+#include "peejay/json/null.hpp"
 
 int main() {
   static constexpr std::size_t const size = 9;

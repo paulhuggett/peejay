@@ -26,7 +26,7 @@
 #include <klee/klee.h>
 
 #include "av_member.hpp"
-#include "peejay/arrayvec.hpp"
+#include "peejay/json/arrayvec.hpp"
 
 #define MAKE_SYMBOLIC(x) klee_make_symbolic(&(x), sizeof(x), #x)
 
