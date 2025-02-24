@@ -21,6 +21,6 @@
 #include "peejay/arrayvec.hpp"
 #include "resize_count_value.hpp"
 
-int main () {
-  resize_count_value<peejay::arrayvec<member, max_elements>> ();
+int main() {
+  resize_count_value<peejay::arrayvec<member, max_elements>>();
 }

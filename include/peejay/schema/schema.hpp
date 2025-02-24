@@ -20,38 +20,33 @@
 
 namespace peejay::schema {
 
-template <typename T>
-constexpr bool is_type (element const &el) {
-  return std::holds_alternative<T> (el);
+template <typename T> constexpr bool is_type(element const &el) {
+  return std::holds_alternative<T>(el);
 }
 
-constexpr bool is_number (element const &el) {
-  return is_type<std::int64_t> (el) || is_type<double> (el);
+constexpr bool is_number(element const &el) {
+  return is_type<std::int64_t>(el) || is_type<double>(el);
 }
-constexpr bool is_integer (element const &el) {
-  if (is_type<std::int64_t> (el)) {
+constexpr bool is_integer(element const &el) {
+  if (is_type<std::int64_t>(el)) {
     return true;
   }
-  if (auto const *const d = std::get_if<double> (&el)) {
-    return *d == std::rint (*d);
+  if (auto const *const d = std::get_if<double>(&el)) {
+    return *d == std::rint(*d);
   }
   return false;
 }
 
 class checker {
 public:
-  static std::error_code check_type (u8string const &type_name,
-                                     element const &instance);
-  static std::error_code check_type (element const &type_name,
-                                     element const &instance);
+  static std::error_code check_type(u8string const &type_name, element const &instance);
+  static std::error_code check_type(element const &type_name, element const &instance);
 
-  static std::error_code string_constraints (object const &schema,
-                                             u8string const &s);
-  static std::error_code object_constraints (object const &schema,
-                                             object const &obj);
-  static std::error_code check (element const &schema, element const &instance);
+  static std::error_code string_constraints(object const &schema, u8string const &s);
+  static std::error_code object_constraints(object const &schema, object const &obj);
+  static std::error_code check(element const &schema, element const &instance);
 
-  std::error_code root (element const &schema, element const &instance);
+  std::error_code root(element const &schema, element const &instance);
 
 private:
   u8string base_uri_;
@@ -59,8 +54,8 @@ private:
   std::optional<object const *> defs_;
 };
 
-inline std::error_code check (element const &schema, element const &instance) {
-  return checker{}.root (schema, instance);
+inline std::error_code check(element const &schema, element const &instance) {
+  return checker{}.root(schema, instance);
 }
 
 }  // end namespace peejay::schema

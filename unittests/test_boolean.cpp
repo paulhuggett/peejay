@@ -33,19 +33,19 @@ protected:
 }  // end anonymous namespace
 
 // NOLINTNEXTLINE
-TEST_F (JsonBoolean, True) {
-  EXPECT_CALL (callbacks_, boolean_value (true)).Times (1);
+TEST_F(JsonBoolean, True) {
+  EXPECT_CALL(callbacks_, boolean_value(true)).Times(1);
 
-  auto p = peejay::make_parser (proxy_);
-  input (p, u8"true"sv).eof ();
-  EXPECT_FALSE (p.has_error ());
+  auto p = peejay::make_parser(proxy_);
+  input(p, u8"true"sv).eof();
+  EXPECT_FALSE(p.has_error());
 }
 
 // NOLINTNEXTLINE
-TEST_F (JsonBoolean, False) {
-  EXPECT_CALL (callbacks_, boolean_value (false)).Times (1);
+TEST_F(JsonBoolean, False) {
+  EXPECT_CALL(callbacks_, boolean_value(false)).Times(1);
 
-  peejay::parser<decltype (proxy_)> p = peejay::make_parser (proxy_);
-  input (p, u8" false "sv).eof ();
-  EXPECT_FALSE (p.has_error ());
+  peejay::parser<decltype(proxy_)> p = peejay::make_parser(proxy_);
+  input(p, u8" false "sv).eof();
+  EXPECT_FALSE(p.has_error());
 }

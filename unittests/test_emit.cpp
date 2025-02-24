@@ -28,102 +28,102 @@ using peejay::null;
 using peejay::object;
 
 // NOLINTNEXTLINE
-TEST (Emit, Nothing) {
+TEST(Emit, Nothing) {
   std::stringstream os;
-  emit (os, std::nullopt);
-  EXPECT_EQ (os.str (), "\n");
+  emit(os, std::nullopt);
+  EXPECT_EQ(os.str(), "\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, Null) {
+TEST(Emit, Null) {
   std::stringstream os;
-  emit (os, element{null{}});
-  EXPECT_EQ (os.str (), "null\n");
+  emit(os, element{null{}});
+  EXPECT_EQ(os.str(), "null\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, True) {
+TEST(Emit, True) {
   std::stringstream os;
-  emit (os, element{true});
-  EXPECT_EQ (os.str (), "true\n");
+  emit(os, element{true});
+  EXPECT_EQ(os.str(), "true\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, False) {
+TEST(Emit, False) {
   std::stringstream os;
-  emit (os, element{false});
-  EXPECT_EQ (os.str (), "false\n");
+  emit(os, element{false});
+  EXPECT_EQ(os.str(), "false\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, Zero) {
+TEST(Emit, Zero) {
   std::stringstream os;
-  emit (os, element{std::int64_t{0}});
-  EXPECT_EQ (os.str (), "0\n");
+  emit(os, element{std::int64_t{0}});
+  EXPECT_EQ(os.str(), "0\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, One) {
+TEST(Emit, One) {
   std::stringstream os;
-  emit (os, element{std::int64_t{1}});
-  EXPECT_EQ (os.str (), "1\n");
+  emit(os, element{std::int64_t{1}});
+  EXPECT_EQ(os.str(), "1\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, MinusOne) {
+TEST(Emit, MinusOne) {
   std::stringstream os;
-  emit (os, element{std::int64_t{-1}});
-  EXPECT_EQ (os.str (), "-1\n");
+  emit(os, element{std::int64_t{-1}});
+  EXPECT_EQ(os.str(), "-1\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, Float) {
+TEST(Emit, Float) {
   std::stringstream os;
-  emit (os, element{2.2});
-  EXPECT_EQ (os.str (), "2.2\n");
+  emit(os, element{2.2});
+  EXPECT_EQ(os.str(), "2.2\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, StringNoEscapes) {
+TEST(Emit, StringNoEscapes) {
   std::stringstream os;
-  emit (os, element{peejay::u8string{u8"string"}});
-  EXPECT_EQ (os.str (), "\"string\"\n");
+  emit(os, element{peejay::u8string{u8"string"}});
+  EXPECT_EQ(os.str(), "\"string\"\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, StringBackslashT) {
+TEST(Emit, StringBackslashT) {
   std::stringstream os;
-  emit (os, element{peejay::u8string{u8"abc\tdef"}});
-  EXPECT_EQ (os.str (), "\"abc\\tdef\"\n");
+  emit(os, element{peejay::u8string{u8"abc\tdef"}});
+  EXPECT_EQ(os.str(), "\"abc\\tdef\"\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, EmptyArray) {
+TEST(Emit, EmptyArray) {
   std::stringstream os;
-  emit (os, std::make_shared<array::element_type> ());
-  EXPECT_EQ (os.str (), "[]\n");
+  emit(os, std::make_shared<array::element_type>());
+  EXPECT_EQ(os.str(), "[]\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, ArrayOneMember) {
+TEST(Emit, ArrayOneMember) {
   std::stringstream os;
-  auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (element{std::int64_t{1}});
-  emit (os, arr);
-  EXPECT_EQ (os.str (), R"([
+  auto arr = std::make_shared<array::element_type>();
+  arr->push_back(element{std::int64_t{1}});
+  emit(os, arr);
+  EXPECT_EQ(os.str(), R"([
   1
 ]
 )");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, ArrayTwoMembers) {
+TEST(Emit, ArrayTwoMembers) {
   std::stringstream os;
-  auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (std::int64_t{1});
-  arr->push_back (std::int64_t{2});
-  emit (os, arr);
-  EXPECT_EQ (os.str (), R"([
+  auto arr = std::make_shared<array::element_type>();
+  arr->push_back(std::int64_t{1});
+  arr->push_back(std::int64_t{2});
+  emit(os, arr);
+  EXPECT_EQ(os.str(), R"([
   1,
   2
 ]
@@ -131,34 +131,34 @@ TEST (Emit, ArrayTwoMembers) {
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, EmptyObject) {
+TEST(Emit, EmptyObject) {
   std::stringstream os;
-  emit (os, std::make_shared<object::element_type> ());
-  EXPECT_EQ (os.str (), "{}\n");
+  emit(os, std::make_shared<object::element_type>());
+  EXPECT_EQ(os.str(), "{}\n");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, ObjectOneMember) {
+TEST(Emit, ObjectOneMember) {
   std::stringstream os;
-  auto obj = std::make_shared<object::element_type> ();
+  auto obj = std::make_shared<object::element_type>();
   (*obj)[u8"key"] = element{u8"value"s};
-  emit (os, obj);
-  EXPECT_EQ (os.str (), R"({
+  emit(os, obj);
+  EXPECT_EQ(os.str(), R"({
   "key": "value"
 }
 )");
 }
 
 // NOLINTNEXTLINE
-TEST (Emit, ObjectArrayMember) {
+TEST(Emit, ObjectArrayMember) {
   std::stringstream os;
-  auto arr = std::make_shared<array::element_type> ();
-  arr->push_back (std::int64_t{1});
-  arr->push_back (std::int64_t{2});
-  auto obj = std::make_shared<object::element_type> ();
-  (*obj)[u8"key1"] = element{std::move (arr)};
-  emit (os, element{std::move (obj)});
-  EXPECT_EQ (os.str (), R"({
+  auto arr = std::make_shared<array::element_type>();
+  arr->push_back(std::int64_t{1});
+  arr->push_back(std::int64_t{2});
+  auto obj = std::make_shared<object::element_type>();
+  (*obj)[u8"key1"] = element{std::move(arr)};
+  emit(os, element{std::move(obj)});
+  EXPECT_EQ(os.str(), R"({
   "key1": [
     1,
     2

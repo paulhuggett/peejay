@@ -52,75 +52,65 @@ using u8string_view = icubaby::u8string_view;
 
 /// A type that is always false. Used to improve the failure mesages from
 /// static_assert().
-template <typename... T>
-[[maybe_unused]] constexpr bool always_false = false;
+template <typename... T> [[maybe_unused]] constexpr bool always_false = false;
 
 #if PEEJAY_HAVE_CONCEPTS
 template <typename Policy>
-concept policy = std::is_integral_v<decltype (Policy::max_length)> &&
-                 std::is_integral_v<typename Policy::integer_type>;
+concept policy = std::is_integral_v<decltype(Policy::max_length)> && std::is_integral_v<typename Policy::integer_type>;
 
 template <typename T, typename IntegerType = std::int64_t>
-concept backend = requires (T &&v) {
+concept backend = requires(T &&v) {
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result.
-  { v.result () };
+  { v.result() };
 
   /// Called when a JSON string has been parsed.
-  { v.string_value (u8string_view{}) } -> std::convertible_to<std::error_code>;
+  { v.string_value(u8string_view{}) } -> std::convertible_to<std::error_code>;
   /// Called when an integer value has been parsed.
-  {
-    v.integer_value (std::make_signed_t<IntegerType>{})
-  } -> std::convertible_to<std::error_code>;
+  { v.integer_value(std::make_signed_t<IntegerType>{}) } -> std::convertible_to<std::error_code>;
   /// Called when a floating-point value has been parsed.
-  { v.double_value (double{}) } -> std::convertible_to<std::error_code>;
+  { v.double_value(double{}) } -> std::convertible_to<std::error_code>;
   /// Called when a boolean value has been parsed
-  { v.boolean_value (bool{}) } -> std::convertible_to<std::error_code>;
+  { v.boolean_value(bool{}) } -> std::convertible_to<std::error_code>;
   /// Called when a null value has been parsed.
-  { v.null_value () } -> std::convertible_to<std::error_code>;
+  { v.null_value() } -> std::convertible_to<std::error_code>;
   /// Called to notify the start of an array. Subsequent event notifications are
   /// for members of this array until a matching call to end_array().
-  { v.begin_array () } -> std::convertible_to<std::error_code>;
+  { v.begin_array() } -> std::convertible_to<std::error_code>;
   /// Called indicate that an array has been completely parsed. This will always
   /// follow an earlier call to begin_array().
-  { v.end_array () } -> std::convertible_to<std::error_code>;
+  { v.end_array() } -> std::convertible_to<std::error_code>;
   /// Called to notify the start of an object. Subsequent event notifications
   /// are for members of this object until a matching call to end_object().
-  { v.begin_object () } -> std::convertible_to<std::error_code>;
+  { v.begin_object() } -> std::convertible_to<std::error_code>;
   /// Called when an object key string has been parsed.
-  { v.key (u8string_view{}) } -> std::convertible_to<std::error_code>;
+  { v.key(u8string_view{}) } -> std::convertible_to<std::error_code>;
   /// Called to indicate that an object has been completely parsed. This will
   /// always follow an earlier call to begin_object().
-  { v.end_object () } -> std::convertible_to<std::error_code>;
+  { v.end_object() } -> std::convertible_to<std::error_code>;
 };
 #endif  // PEEJAY_HAVE_CONCEPTS
 
 /// \brief JSON parser implementation details.
 namespace details {
 
-template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
-class matcher;
+template <typename Backend, typename Policies> PEEJAY_CXX20REQUIRES(backend<Backend>) class matcher;
 
-template <typename Backend, typename Policies>
-class root_matcher;
-template <typename Backend, typename Policies>
-class whitespace_matcher;
+template <typename Backend, typename Policies> class root_matcher;
+template <typename Backend, typename Policies> class whitespace_matcher;
 
-template <typename Backend, typename Policies>
-struct singletons;
+template <typename Backend, typename Policies> struct singletons;
 
 /// deleter is intended for use as a unique_ptr<> Deleter. It enables
 /// unique_ptr<> to be used with a mixture of heap-allocated and
 /// placement-new-allocated objects.
-template <typename T>
-class deleter {
+template <typename T> class deleter {
 public:
   enum class mode : char { do_delete, do_nothing };
 
   /// \param m One of the three modes: delete the object, call the destructor, or do nothing.
-  constexpr explicit deleter (mode const m) noexcept : mode_{m} {}
-  void operator() (T *const p) const noexcept {
+  constexpr explicit deleter(mode const m) noexcept : mode_{m} {}
+  void operator()(T *const p) const noexcept {
     switch (mode_) {
     case mode::do_delete: delete p; break;
     case mode::do_nothing: break;
@@ -132,11 +122,9 @@ private:
 };
 
 #if !PEEJAY_HAVE_CONCEPTS
-template <typename CharType, typename InputIterator>
-struct iterator_produces {
-  static constexpr bool value = std::is_same_v<
-      std::decay_t<typename std::iterator_traits<InputIterator>::value_type>,
-      CharType>;
+template <typename CharType, typename InputIterator> struct iterator_produces {
+  static constexpr bool value =
+      std::is_same_v<std::decay_t<typename std::iterator_traits<InputIterator>::value_type>, CharType>;
 };
 #endif  // !PEEJAY_HAVE_CONCEPTS
 
@@ -146,84 +134,66 @@ class coord {
 public:
   class line {
   public:
-    explicit constexpr line (unsigned x) noexcept : x_{x} {}
-    explicit constexpr operator unsigned () const noexcept { return x_; }
-    constexpr bool operator== (line const &rhs) const noexcept {
-      return x_ == rhs.x_;
-    }
-    constexpr bool operator!= (line const &rhs) const noexcept {
-      return !operator== (rhs);
-    }
+    explicit constexpr line(unsigned x) noexcept : x_{x} {}
+    explicit constexpr operator unsigned() const noexcept { return x_; }
+    constexpr bool operator==(line const &rhs) const noexcept { return x_ == rhs.x_; }
+    constexpr bool operator!=(line const &rhs) const noexcept { return !operator==(rhs); }
 
   private:
     unsigned x_;
   };
   class column {
   public:
-    explicit constexpr column (unsigned y) noexcept : y_{y} {}
-    explicit constexpr operator unsigned () const noexcept { return y_; }
-    constexpr bool operator== (column const &rhs) const noexcept {
-      return y_ == rhs.y_;
-    }
-    constexpr bool operator!= (column const &rhs) const noexcept {
-      return !operator== (rhs);
-    }
+    explicit constexpr column(unsigned y) noexcept : y_{y} {}
+    explicit constexpr operator unsigned() const noexcept { return y_; }
+    constexpr bool operator==(column const &rhs) const noexcept { return y_ == rhs.y_; }
+    constexpr bool operator!=(column const &rhs) const noexcept { return !operator==(rhs); }
 
   private:
     unsigned y_;
   };
 
   // (Using '{}' rather than '=default;' here to pacify clang-8.)
-  constexpr coord () noexcept {}
-  constexpr coord (column x, line y) noexcept : line_{y}, column_{x} {}
-  constexpr coord (line y, column x) noexcept : line_{y}, column_{x} {}
+  constexpr coord() noexcept {}
+  constexpr coord(column x, line y) noexcept : line_{y}, column_{x} {}
+  constexpr coord(line y, column x) noexcept : line_{y}, column_{x} {}
 
-#if defined(__cpp_impl_three_way_comparison) && \
-    __cpp_impl_three_way_comparison >= 201907L
+#if defined(__cpp_impl_three_way_comparison) && __cpp_impl_three_way_comparison >= 201907L
   // https://github.com/llvm/llvm-project/issues/55919
-  _Pragma ("GCC diagnostic push") _Pragma (
+  _Pragma("GCC diagnostic push") _Pragma(
       "GCC diagnostic ignored "
       "\"-Wzero-as-null-pointer-constant\"") constexpr auto
-  operator<=> (coord const &) const noexcept = default;
-  _Pragma ("GCC diagnostic pop")
+  operator<=>(coord const &) const noexcept = default;
+  _Pragma("GCC diagnostic pop")
 #else
-  constexpr bool operator== (coord const &rhs) const noexcept {
-    return std::make_pair (line_, column_) ==
-           std::make_pair (rhs.line_, rhs.column_);
+  constexpr bool operator==(coord const &rhs) const noexcept {
+    return std::make_pair(line_, column_) == std::make_pair(rhs.line_, rhs.column_);
   }
-  constexpr bool operator!= (coord const &rhs) const noexcept {
-    return !operator== (rhs);
+  constexpr bool operator!=(coord const &rhs) const noexcept { return !operator==(rhs); }
+  constexpr bool operator<(coord const &rhs) const noexcept {
+    return std::make_pair(line_, column_) < std::make_pair(rhs.line_, rhs.column_);
   }
-  constexpr bool operator< (coord const &rhs) const noexcept {
-    return std::make_pair (line_, column_) <
-           std::make_pair (rhs.line_, rhs.column_);
+  constexpr bool operator<=(coord const &rhs) const noexcept {
+    return std::make_pair(line_, column_) <= std::make_pair(rhs.line_, rhs.column_);
   }
-  constexpr bool operator<= (coord const &rhs) const noexcept {
-    return std::make_pair (line_, column_) <=
-           std::make_pair (rhs.line_, rhs.column_);
+  constexpr bool operator>(coord const &rhs) const noexcept {
+    return std::make_pair(line_, column_) > std::make_pair(rhs.line_, rhs.column_);
   }
-  constexpr bool operator> (coord const &rhs) const noexcept {
-    return std::make_pair (line_, column_) >
-           std::make_pair (rhs.line_, rhs.column_);
-  }
-  constexpr bool operator>= (coord const &rhs) const noexcept {
-    return std::make_pair (line_, column_) >=
-           std::make_pair (rhs.line_, rhs.column_);
+  constexpr bool operator>=(coord const &rhs) const noexcept {
+    return std::make_pair(line_, column_) >= std::make_pair(rhs.line_, rhs.column_);
   }
 #endif  // __cpp_impl_three_way_comparison
 
       constexpr explicit
-      operator line () const noexcept {
+      operator line() const noexcept {
     return line{line_};
   }
-  constexpr explicit operator column () const noexcept {
-    return column{column_};
-  }
+  constexpr explicit operator column() const noexcept { return column{column_}; }
 
-  void next_line () noexcept { ++line_; }
-  void next_column () noexcept { ++column_; }
+  void next_line() noexcept { ++line_; }
+  void next_column() noexcept { ++column_; }
 
-  void reset_column () noexcept {
+  void reset_column() noexcept {
     // The column number is set to 0. This is because the outer parse loop
     // automatically advances the column number for each character consumed.
     // This happens after the row is advanced by a matcher's consume() function.
@@ -254,11 +224,10 @@ enum class extensions : unsigned {
   all = ~none,
 };
 
-constexpr extensions operator| (extensions a, extensions b) noexcept {
+constexpr extensions operator|(extensions a, extensions b) noexcept {
   using ut = std::underlying_type_t<extensions>;
-  static_assert (std::is_unsigned_v<ut>,
-                 "The extensions type must be unsigned");
-  return static_cast<extensions> (static_cast<ut> (a) | static_cast<ut> (b));
+  static_assert(std::is_unsigned_v<ut>, "The extensions type must be unsigned");
+  return static_cast<extensions>(static_cast<ut>(a) | static_cast<ut>(b));
 }
 
 struct default_policies {
@@ -280,42 +249,35 @@ struct default_policies {
 /// \tparam Policies  A type which contains a collection of policies which
 ///                   control the behaviour of the parser.
 template <typename Backend, typename Policies = default_policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
 class parser {
   friend class details::matcher<Backend, Policies>;
   friend class details::root_matcher<Backend, Policies>;
   friend class details::whitespace_matcher<Backend, Policies>;
 
 public:
-  explicit parser (extensions extensions = extensions::none)
-      : parser (Backend{}, extensions) {}
+  explicit parser(extensions extensions = extensions::none) : parser(Backend{}, extensions) {}
 
 #if PEEJAY_HAVE_CONCEPTS
   template <typename OtherBackend>
-    requires (backend<OtherBackend>)
+    requires(backend<OtherBackend>)
 #else
   template <
       typename OtherBackend,
       typename std::enable_if_t<
-          !std::is_same_v<parser<Backend>,
-                          typename std::remove_cv_t<
-                              typename std::remove_reference_t<OtherBackend>>>,
+          !std::is_same_v<parser<Backend>, typename std::remove_cv_t<typename std::remove_reference_t<OtherBackend>>>,
           int> /*unnamed */
       = 0>
 #endif
-  explicit parser (OtherBackend &&backend,
-                   extensions extensions = extensions::none);
+  explicit parser(OtherBackend &&backend, extensions extensions = extensions::none);
 
-  parser (parser const &) = delete;
-  parser (parser &&rhs) noexcept (
-      std::is_nothrow_move_constructible_v<Backend>);
+  parser(parser const &) = delete;
+  parser(parser &&rhs) noexcept(std::is_nothrow_move_constructible_v<Backend>);
 
-  ~parser () noexcept = default;
+  ~parser() noexcept = default;
 
-  parser &operator= (parser const &) = delete;
-  parser &operator= (parser &&rhs) noexcept (
-      std::is_nothrow_move_assignable_v<Backend>);
+  parser &operator=(parser const &) = delete;
+  parser &operator=(parser &&rhs) noexcept(std::is_nothrow_move_assignable_v<Backend>);
 
   ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
@@ -325,35 +287,29 @@ public:
 
 #if PEEJAY_HAVE_SPAN
   /// \param span The span of bytes to be parsed.
-  template <std::size_t Extent>
-  parser &input (std::span<std::byte, Extent> const &span) {
-    return this->input (std::begin (span), std::end (span));
+  template <std::size_t Extent> parser &input(std::span<std::byte, Extent> const &span) {
+    return this->input(std::begin(span), std::end(span));
   }
   /// \param span The span of bytes to be parsed.
-  template <std::size_t Extent>
-  parser &input (std::span<std::byte const, Extent> const &span) {
-    return this->input (std::begin (span), std::end (span));
+  template <std::size_t Extent> parser &input(std::span<std::byte const, Extent> const &span) {
+    return this->input(std::begin(span), std::end(span));
   }
 #endif  // PEEJAY_HAVE_SPAN
   /// \param first The element in the half-open range of bytes to be parsed.
   /// \param last The end of the range of bytes to be parsed.
 #if PEEJAY_HAVE_CONCEPTS
   template <std::input_iterator InputIterator>
-    requires (std::is_same_v<std::decay_t<typename std::iterator_traits<
-                                 InputIterator>::value_type>,
-                             std::byte>)
-  parser &input (InputIterator first, InputIterator last);
+    requires(std::is_same_v<std::decay_t<typename std::iterator_traits<InputIterator>::value_type>, std::byte>)
+  parser &input(InputIterator first, InputIterator last);
 #if PEEJAY_HAVE_RANGES
-  template <std::ranges::input_range Range>
-  parser &input (Range const &range) {
-    return this->input (range.begin (), range.end ());
+  template <std::ranges::input_range Range> parser &input(Range const &range) {
+    return this->input(range.begin(), range.end());
   }
 #endif  // PEEJAY_HAVE_RANGES
 #else
   template <typename InputIterator,
-            typename = typename std::enable_if_t<
-                details::iterator_produces<std::byte, InputIterator>::value>>
-  parser &input (InputIterator first, InputIterator last);
+            typename = typename std::enable_if_t<details::iterator_produces<std::byte, InputIterator>::value>>
+  parser &input(InputIterator first, InputIterator last);
 #endif  // PEEJAY_HAVE_CONCEPTS
   ///@}
 
@@ -362,67 +318,60 @@ public:
   ///
   /// \returns If the parse completes successfully, Backend::result()
   /// is called and its result returned.
-  decltype (auto) eof ();
+  decltype(auto) eof();
 
   ///@{
 
   /// \returns True if the parser has signalled an error.
-  [[nodiscard]] constexpr bool has_error () const noexcept {
-    return static_cast<bool> (error_);
-  }
+  [[nodiscard]] constexpr bool has_error() const noexcept { return static_cast<bool>(error_); }
   /// \returns The error code held by the parser.
-  [[nodiscard]] constexpr std::error_code const &last_error () const noexcept {
-    return error_;
-  }
+  [[nodiscard]] constexpr std::error_code const &last_error() const noexcept { return error_; }
 
   ///@{
-  [[nodiscard]] constexpr Backend &backend () noexcept { return backend_; }
-  [[nodiscard]] constexpr Backend const &backend () const noexcept {
-    return backend_;
-  }
+  [[nodiscard]] constexpr Backend &backend() noexcept { return backend_; }
+  [[nodiscard]] constexpr Backend const &backend() const noexcept { return backend_; }
   ///@}
 
   /// \param flag  A selection of bits from the parser_extensions enum.
   /// \returns True if any of the extensions given by \p flag are enabled by the parser.
-  [[nodiscard]] constexpr bool extension_enabled (
-      extensions const flag) const noexcept {
+  [[nodiscard]] constexpr bool extension_enabled(extensions const flag) const noexcept {
     using ut = std::underlying_type_t<extensions>;
-    return (static_cast<ut> (extensions_) & static_cast<ut> (flag)) != 0U;
+    return (static_cast<ut>(extensions_) & static_cast<ut>(flag)) != 0U;
   }
 
   /// Returns the parser's position in the input text.
-  [[nodiscard]] constexpr coord input_pos () const noexcept { return pos_; }
+  [[nodiscard]] constexpr coord input_pos() const noexcept { return pos_; }
   /// Returns the position of the most recent token in the input text.
-  [[nodiscard]] constexpr coord pos () const noexcept { return matcher_pos_; }
+  [[nodiscard]] constexpr coord pos() const noexcept { return matcher_pos_; }
 
 private:
   using matcher = details::matcher<Backend, Policies>;
   using pointer = std::unique_ptr<matcher, details::deleter<matcher>>;
 
-  static constexpr auto null_pointer () {
+  static constexpr auto null_pointer() {
     using deleter = typename pointer::deleter_type;
     return pointer{nullptr, deleter{deleter::mode::do_nothing}};
   }
 
-  void consume_code_point (char32_t code_point);
+  void consume_code_point(char32_t code_point);
 
   ///@{
   /// \brief Managing the column and row number (the "coordinate").
 
   /// Increments the column number.
-  void advance_column () noexcept { pos_.next_column (); }
+  void advance_column() noexcept { pos_.next_column(); }
 
   /// Increments the row number and resets the column.
-  void advance_row () noexcept {
+  void advance_row() noexcept {
     // The column number is set to 0. This is because the outer parse loop
     // automatically advances the column number for each character consumed.
     // This happens after the row is advanced by a matcher's consume() function.
-    this->reset_column ();
-    pos_.next_line ();
+    this->reset_column();
+    pos_.next_line();
   }
 
   /// Resets the column count but does not affect the row number.
-  void reset_column () noexcept { pos_.reset_column (); }
+  void reset_column() noexcept { pos_.reset_column(); }
   ///@}
 
   /// Records an error for this parse. The parse will stop as soon as a non-zero
@@ -430,23 +379,22 @@ private:
   /// parse; all subsequent text is ignored.
   ///
   /// \param err  The json error code to be stored in the parser.
-  bool set_error (std::error_code const &err) noexcept {
-    assert (!error_ || err);
+  bool set_error(std::error_code const &err) noexcept {
+    assert(!error_ || err);
     error_ = err;
-    return this->has_error ();
+    return this->has_error();
   }
   ///@}
 
-  pointer make_root_matcher ();
-  pointer make_whitespace_matcher ();
-  pointer make_string_matcher (bool object_key, char32_t enclosing_char);
-  pointer make_identifier_matcher ();
+  pointer make_root_matcher();
+  pointer make_whitespace_matcher();
+  pointer make_string_matcher(bool object_key, char32_t enclosing_char);
+  pointer make_identifier_matcher();
 
   template <typename Matcher, typename... Args>
-  PEEJAY_CXX20REQUIRES ((std::derived_from<Matcher, matcher>))
-  pointer make_terminal_matcher (Args &&...args) {
-    Matcher &m = singletons_.terminals.template emplace<Matcher> (
-        std::forward<Args> (args)...);
+  PEEJAY_CXX20REQUIRES((std::derived_from<Matcher, matcher>))
+  pointer make_terminal_matcher(Args &&...args) {
+    Matcher &m = singletons_.terminals.template emplace<Matcher>(std::forward<Args>(args)...);
     using deleter = typename pointer::deleter_type;
     return pointer{&m, deleter{deleter::mode::do_nothing}};
   }
@@ -454,7 +402,7 @@ private:
   /// The parse stack likely contains pointers into the singletons_ object.
   /// After move-construction or move-assignment, this function adjusts those
   /// pointers so that they point to this object rather than the original.
-  void reseat_stack_after_move (parser const &rhs) noexcept;
+  void reseat_stack_after_move(parser const &rhs) noexcept;
 
   /// The maximum depth to which we allow the parse stack to grow. This value
   /// should be sufficient for any reasonable input: its intention is to prevent
@@ -484,28 +432,19 @@ private:
 };
 
 template <typename Backend, typename Policies = default_policies>
-parser (Backend, Policies) -> parser<Backend, Policies>;
-template <typename Backend>
-parser (Backend) -> parser<Backend, default_policies>;
+parser(Backend, Policies) -> parser<Backend, Policies>;
+template <typename Backend> parser(Backend) -> parser<Backend, default_policies>;
 
 template <typename Policies, typename Backend>
-PEEJAY_CXX20REQUIRES ((
-    policy<Policies> &&
-    backend<std::remove_reference_t<Backend>, typename Policies::integer_type>))
-inline decltype (auto)
-    make_parser (Backend &&backend,
-                 extensions const extensions = extensions::none) {
-  return parser<std::remove_reference_t<Backend>, Policies>{
-      std::forward<Backend> (backend), extensions};
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<std::remove_reference_t<Backend>, typename Policies::integer_type>))
+inline decltype(auto) make_parser(Backend &&backend, extensions const extensions = extensions::none) {
+  return parser<std::remove_reference_t<Backend>, Policies>{std::forward<Backend>(backend), extensions};
 }
 
 template <typename Backend>
-PEEJAY_CXX20REQUIRES (backend<std::remove_reference_t<Backend>>)
-inline decltype (auto)
-    make_parser (Backend &&backend,
-                 extensions const extensions = extensions::none) {
-  return parser<std::remove_reference_t<Backend>>{
-      std::forward<Backend> (backend), extensions};
+PEEJAY_CXX20REQUIRES(backend<std::remove_reference_t<Backend>>)
+inline decltype(auto) make_parser(Backend &&backend, extensions const extensions = extensions::none) {
+  return parser<std::remove_reference_t<Backend>>{std::forward<Backend>(backend), extensions};
 }
 
 enum char_set : char32_t {
@@ -566,36 +505,28 @@ enum char_set : char32_t {
 
 namespace details {
 
-constexpr std::optional<uint_least16_t> digit_offset (
-    char32_t code_point) noexcept {
-  if (code_point >= char_set::digit_zero &&
-      code_point <= char_set::digit_nine) {
-    return static_cast<uint_least16_t> (char_set::digit_zero);
+constexpr std::optional<uint_least16_t> digit_offset(char32_t code_point) noexcept {
+  if (code_point >= char_set::digit_zero && code_point <= char_set::digit_nine) {
+    return static_cast<uint_least16_t>(char_set::digit_zero);
   }
-  if (code_point >= char_set::latin_small_letter_a &&
-      code_point <= char_set::latin_small_letter_f) {
-    return static_cast<uint_least16_t> (char_set::latin_small_letter_a - 10U);
+  if (code_point >= char_set::latin_small_letter_a && code_point <= char_set::latin_small_letter_f) {
+    return static_cast<uint_least16_t>(char_set::latin_small_letter_a - 10U);
   }
-  if (code_point >= char_set::latin_capital_letter_a &&
-      code_point <= char_set::latin_capital_letter_f) {
-    return static_cast<uint_least16_t> (char_set::latin_capital_letter_a - 10U);
+  if (code_point >= char_set::latin_capital_letter_a && code_point <= char_set::latin_capital_letter_f) {
+    return static_cast<uint_least16_t>(char_set::latin_capital_letter_a - 10U);
   }
   return std::nullopt;
 }
 
-PEEJAY_CONSTEXPR_CXX20 std::optional<grammar_rule> code_point_grammar_rule (
-    char32_t const code_point) noexcept {
+PEEJAY_CONSTEXPR_CXX20 std::optional<grammar_rule> code_point_grammar_rule(char32_t const code_point) noexcept {
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
-  auto const end = std::end (code_point_runs);
+  auto const end = std::end(code_point_runs);
   // NOLINTNEXTLINE(llvm-qualified-auto,readability-qualified-auto)
-  auto const it = std::lower_bound (
-      std::begin (code_point_runs), end, cprun{code_point, 0, 0},
-      [] (cprun const &cpr, cprun const &value) {
-        return cpr.code_point + cpr.length < value.code_point;
-      });
-  if (it != end && code_point >= it->code_point &&
-      code_point < static_cast<char32_t> (it->code_point + it->length)) {
-    return static_cast<grammar_rule> (it->rule);
+  auto const it = std::lower_bound(
+      std::begin(code_point_runs), end, cprun{code_point, 0, 0},
+      [](cprun const &cpr, cprun const &value) { return cpr.code_point + cpr.length < value.code_point; });
+  if (it != end && code_point >= it->code_point && code_point < static_cast<char32_t>(it->code_point + it->length)) {
+    return static_cast<grammar_rule>(it->rule);
   }
   return {};
 }
@@ -607,19 +538,16 @@ PEEJAY_CONSTEXPR_CXX20 std::optional<grammar_rule> code_point_grammar_rule (
 //*                                  *
 /// \brief The base class for the various state machines ("matchers") which
 ///   implement the productions of the JSON grammar.
-template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES (backend<Backend>)
-class matcher {
-  template <int FirstHexState, int LastHexState, int PostState>
-  friend class hex_consumer;
+template <typename Backend, typename Policies> PEEJAY_CXX20REQUIRES(backend<Backend>) class matcher {
+  template <int FirstHexState, int LastHexState, int PostState> friend class hex_consumer;
 
 public:
   using parser_type = parser<Backend, Policies>;
   using pointer = std::unique_ptr<matcher, deleter<matcher>>;
 
-  matcher (matcher const &) = delete;
-  virtual ~matcher () noexcept = default;
-  matcher &operator= (matcher const &) = delete;
+  matcher(matcher const &) = delete;
+  virtual ~matcher() noexcept = default;
+  matcher &operator=(matcher const &) = delete;
 
   /// Called for each character as it is consumed from the input.
   ///
@@ -631,26 +559,24 @@ public:
   ///   is used to process the next character. The boolean value is false if the
   ///   same character must be passed to the next consume() call; true indicates
   ///   that the character was correctly matched by this consume() call.
-  virtual std::pair<pointer, bool> consume (parser_type &parser,
-                                            std::optional<char32_t> ch) = 0;
+  virtual std::pair<pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) = 0;
 
   /// \returns True if this matcher has completed (and reached it's "done" state). The
   /// parser will pop this instance from the parse stack before continuing.
-  [[nodiscard]] bool is_done () const noexcept { return state_ == done; }
+  [[nodiscard]] bool is_done() const noexcept { return state_ == done; }
 
 protected:
-  explicit constexpr matcher (int const initial_state) noexcept
-      : state_{initial_state} {}
+  explicit constexpr matcher(int const initial_state) noexcept : state_{initial_state} {}
 
-  matcher (matcher &&) noexcept = default;
-  matcher &operator= (matcher &&) noexcept = default;
+  matcher(matcher &&) noexcept = default;
+  matcher &operator=(matcher &&) noexcept = default;
 
   ///@{
   /// \brief Errors
 
   /// \returns True if the parser is in an error state.
-  bool set_error (parser_type &parser, std::error_code const &err) noexcept {
-    bool const has_error = parser.set_error (err);
+  bool set_error(parser_type &parser, std::error_code const &err) noexcept {
+    bool const has_error = parser.set_error(err);
     if (has_error) {
       state_ = done;
     }
@@ -658,27 +584,18 @@ protected:
   }
   ///@}
 
-  pointer make_root_matcher (parser_type &parser) {
-    return parser.make_root_matcher ();
+  pointer make_root_matcher(parser_type &parser) { return parser.make_root_matcher(); }
+  pointer make_whitespace_matcher(parser_type &parser) { return parser.make_whitespace_matcher(); }
+  pointer make_string_matcher(parser_type &parser, bool object_key, char32_t enclosing_char) {
+    return parser.make_string_matcher(object_key, enclosing_char);
   }
-  pointer make_whitespace_matcher (parser_type &parser) {
-    return parser.make_whitespace_matcher ();
-  }
-  pointer make_string_matcher (parser_type &parser, bool object_key,
-                               char32_t enclosing_char) {
-    return parser.make_string_matcher (object_key, enclosing_char);
-  }
-  pointer make_identifier_matcher (parser_type &parser) {
-    return parser.make_identifier_matcher ();
+  pointer make_identifier_matcher(parser_type &parser) { return parser.make_identifier_matcher(); }
+
+  template <typename Matcher, typename... Args> pointer make_terminal_matcher(parser_type &parser, Args &&...args) {
+    return parser.template make_terminal_matcher<Matcher, Args...>(std::forward<Args>(args)...);
   }
 
-  template <typename Matcher, typename... Args>
-  pointer make_terminal_matcher (parser_type &parser, Args &&...args) {
-    return parser.template make_terminal_matcher<Matcher, Args...> (
-        std::forward<Args> (args)...);
-  }
-
-  static constexpr auto null_pointer () { return parser_type::null_pointer (); }
+  static constexpr auto null_pointer() { return parser_type::null_pointer(); }
 
   /// The value to be used for the "done" state in the each of the matcher state
   /// machines.
@@ -694,44 +611,38 @@ protected:
 //*                                                            *
 class token_consumer {
 public:
-  constexpr token_consumer () noexcept = default;
-  explicit constexpr token_consumer (u8string_view text) noexcept
-      : text_{text} {}
+  constexpr token_consumer() noexcept = default;
+  explicit constexpr token_consumer(u8string_view text) noexcept : text_{text} {}
   enum class result { match, fail, more };
 
-  void set_text (u8string_view text) noexcept { text_ = text; }
+  void set_text(u8string_view text) noexcept { text_ = text; }
 
-  result match (char32_t const code_point) noexcept {
-    auto const c = text_.front ();
-    assert (icubaby::is_code_point_start (c) &&
-            is_identifier_cp (static_cast<char32_t> (c)));
-    if (code_point != static_cast<char32_t> (c)) {
+  result match(char32_t const code_point) noexcept {
+    auto const c = text_.front();
+    assert(icubaby::is_code_point_start(c) && is_identifier_cp(static_cast<char32_t>(c)));
+    if (code_point != static_cast<char32_t>(c)) {
       return result::fail;
     }
-    text_.remove_prefix (1);
-    return text_.empty () ? result::match : result::more;
+    text_.remove_prefix(1);
+    return text_.empty() ? result::match : result::more;
   }
 
   /// Checks if the given code point is valid in an identifier.
-  static constexpr bool is_identifier_cp (char32_t const code_point) noexcept {
-    if (code_point >= char_set::digit_zero &&
-        code_point <= char_set::digit_nine) {
+  static constexpr bool is_identifier_cp(char32_t const code_point) noexcept {
+    if (code_point >= char_set::digit_zero && code_point <= char_set::digit_nine) {
       return true;
     }
-    if (code_point >= char_set::latin_capital_letter_a &&
-        code_point <= char_set::latin_capital_letter_z) {
+    if (code_point >= char_set::latin_capital_letter_a && code_point <= char_set::latin_capital_letter_z) {
       return true;
     }
-    if (code_point >= char_set::latin_small_letter_a &&
-        code_point <= char_set::latin_small_letter_z) {
+    if (code_point >= char_set::latin_small_letter_a && code_point <= char_set::latin_small_letter_z) {
       return true;
     }
     // U+0080 Is where the Latin-1 supplement starts. Consult the table for
     // code points beyond this point.
     if (code_point >= 0x80) {
-      if ((static_cast<std::underlying_type_t<grammar_rule>> (
-               code_point_grammar_rule (code_point)
-                   .value_or (static_cast<grammar_rule> (0))) &
+      if ((static_cast<std::underlying_type_t<grammar_rule>>(
+               code_point_grammar_rule(code_point).value_or(static_cast<grammar_rule>(0))) &
            idmask) != 0U) {
         return true;
       }
@@ -752,9 +663,7 @@ private:
 ///   "false", or "null".
 /// \tparam Backend  The parser callback structure.
 template <typename Backend, typename Policies, typename DoneFunction>
-PEEJAY_CXX20REQUIRES (
-    (backend<Backend> &&
-     std::invocable<DoneFunction, parser<Backend, Policies> &>))
+PEEJAY_CXX20REQUIRES((backend<Backend> && std::invocable<DoneFunction, parser<Backend, Policies> &>))
 class token_matcher : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
@@ -763,11 +672,10 @@ public:
 
   /// \param text  The string to be matched.
   /// \param donefn  The function called when the source string is matched.
-  constexpr token_matcher (u8string_view text, DoneFunction donefn) noexcept
-      : inherited (start_state), text_{text}, done_{donefn} {}
+  constexpr token_matcher(u8string_view text, DoneFunction donefn) noexcept
+      : inherited(start_state), text_{text}, done_{donefn} {}
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::state_;
@@ -787,44 +695,39 @@ private:
 };
 
 template <typename Backend, typename Policies, typename DoneFunction>
-PEEJAY_CXX20REQUIRES (
-    (backend<Backend> &&
-     std::invocable<DoneFunction, parser<Backend, Policies> &>))
-auto token_matcher<Backend, Policies, DoneFunction>::consume (
-    parser_type &parser, std::optional<char32_t> ch)
+PEEJAY_CXX20REQUIRES((backend<Backend> && std::invocable<DoneFunction, parser<Backend, Policies> &>))
+auto token_matcher<Backend, Policies, DoneFunction>::consume(parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   bool match = true;
   switch (state_) {
   case start_state:
-    assert (!ch || icubaby::is_code_point_start (*ch));
+    assert(!ch || icubaby::is_code_point_start(*ch));
     if (!ch) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error(parser, error::unrecognized_token);
       break;
     }
-    switch (text_.match (*ch)) {
-    case token_consumer::result::fail:
-      this->set_error (parser, error::unrecognized_token);
-      break;
+    switch (text_.match(*ch)) {
+    case token_consumer::result::fail: this->set_error(parser, error::unrecognized_token); break;
     case token_consumer::result::more: break;
     case token_consumer::result::match: state_ = last_state; break;
     }
     break;
   case last_state:
     if (ch) {
-      if (token_consumer::is_identifier_cp (*ch)) {
-        this->set_error (parser, error::unrecognized_token);
-        return {matcher<Backend, Policies>::null_pointer (), true};
+      if (token_consumer::is_identifier_cp(*ch)) {
+        this->set_error(parser, error::unrecognized_token);
+        return {matcher<Backend, Policies>::null_pointer(), true};
       }
       match = false;
     }
-    this->set_error (parser, done_ (parser));
+    this->set_error(parser, done_(parser));
     state_ = done_state;
     break;
   case done_state:
-  default: unreachable (); break;
+  default: unreachable(); break;
   }
 
-  return {matcher<Backend, Policies>::null_pointer (), match};
+  return {matcher<Backend, Policies>::null_pointer(), match};
 }
 
 //*   __      _           _       _             *
@@ -833,22 +736,15 @@ auto token_matcher<Backend, Policies, DoneFunction>::consume (
 //* |_| \__,_|_/__/\___|  \__\___/_\_\___|_||_| *
 //*                                             *
 /// A function object invoked when the "false" token is matched.
-template <typename Backend, typename Policies>
-struct false_complete {
-  std::error_code operator() (parser<Backend, Policies> &p) const {
-    return p.backend ().boolean_value (false);
-  }
+template <typename Backend, typename Policies> struct false_complete {
+  std::error_code operator()(parser<Backend, Policies> &p) const { return p.backend().boolean_value(false); }
 };
 
 /// Matches a "false" token.
 template <typename Backend, typename Policies>
-class false_token_matcher
-    : public token_matcher<Backend, Policies,
-                           false_complete<Backend, Policies>> {
+class false_token_matcher : public token_matcher<Backend, Policies, false_complete<Backend, Policies>> {
 public:
-  false_token_matcher ()
-      : token_matcher<Backend, Policies, false_complete<Backend, Policies>> (
-            u8"false", {}) {}
+  false_token_matcher() : token_matcher<Backend, Policies, false_complete<Backend, Policies>>(u8"false", {}) {}
 };
 
 //*  _                  _       _             *
@@ -857,22 +753,15 @@ public:
 //*  \__|_|  \_,_\___|  \__\___/_\_\___|_||_| *
 //*                                           *
 /// A function object invoked when the "true" token is matched.
-template <typename Backend, typename Policies>
-struct true_complete {
-  std::error_code operator() (parser<Backend, Policies> &p) const {
-    return p.backend ().boolean_value (true);
-  }
+template <typename Backend, typename Policies> struct true_complete {
+  std::error_code operator()(parser<Backend, Policies> &p) const { return p.backend().boolean_value(true); }
 };
 
 /// Matches a "true" token.
 template <typename Backend, typename Policies>
-class true_token_matcher
-    : public token_matcher<Backend, Policies,
-                           true_complete<Backend, Policies>> {
+class true_token_matcher : public token_matcher<Backend, Policies, true_complete<Backend, Policies>> {
 public:
-  true_token_matcher ()
-      : token_matcher<Backend, Policies, true_complete<Backend, Policies>> (
-            u8"true", {}) {}
+  true_token_matcher() : token_matcher<Backend, Policies, true_complete<Backend, Policies>>(u8"true", {}) {}
 };
 
 //*           _ _   _       _             *
@@ -881,22 +770,15 @@ public:
 //* |_||_\_,_|_|_|  \__\___/_\_\___|_||_| *
 //*                                       *
 /// A function object invoked when the "null" token is matched.
-template <typename Backend, typename Policies>
-struct null_complete {
-  std::error_code operator() (parser<Backend, Policies> &p) const {
-    return p.backend ().null_value ();
-  }
+template <typename Backend, typename Policies> struct null_complete {
+  std::error_code operator()(parser<Backend, Policies> &p) const { return p.backend().null_value(); }
 };
 
 /// Matches a "null" token.
 template <typename Backend, typename Policies>
-class null_token_matcher
-    : public token_matcher<Backend, Policies,
-                           null_complete<Backend, Policies>> {
+class null_token_matcher : public token_matcher<Backend, Policies, null_complete<Backend, Policies>> {
 public:
-  null_token_matcher ()
-      : token_matcher<Backend, Policies, null_complete<Backend, Policies>> (
-            u8"null", {}) {}
+  null_token_matcher() : token_matcher<Backend, Policies, null_complete<Backend, Policies>>(u8"null", {}) {}
 };
 
 //*  _       __ _      _ _          _       _             *
@@ -905,22 +787,17 @@ public:
 //* |_|_||_|_| |_|_||_|_|\__|\_, |  \__\___/_\_\___|_||_| *
 //*                          |__/                         *
 /// A function object invoked when the "Infinity" token is matched.
-template <typename Backend, typename Policies>
-struct infinity_complete {
-  std::error_code operator() (parser<Backend, Policies> &p) const {
-    return p.backend ().double_value (std::numeric_limits<double>::infinity ());
+template <typename Backend, typename Policies> struct infinity_complete {
+  std::error_code operator()(parser<Backend, Policies> &p) const {
+    return p.backend().double_value(std::numeric_limits<double>::infinity());
   }
 };
 
 /// Matches an "Infinity" token.
 template <typename Backend, typename Policies>
-class infinity_token_matcher
-    : public token_matcher<Backend, Policies,
-                           infinity_complete<Backend, Policies>> {
+class infinity_token_matcher : public token_matcher<Backend, Policies, infinity_complete<Backend, Policies>> {
 public:
-  infinity_token_matcher ()
-      : token_matcher<Backend, Policies, infinity_complete<Backend, Policies>> (
-            u8"Infinity", {}) {}
+  infinity_token_matcher() : token_matcher<Backend, Policies, infinity_complete<Backend, Policies>>(u8"Infinity", {}) {}
 };
 
 //*                   _       _             *
@@ -929,22 +806,17 @@ public:
 //* |_||_\__,_|_||_|  \__\___/_\_\___|_||_| *
 //*                                         *
 /// A function object invoked when the "NaN" token is matched.
-template <typename Backend, typename Policies>
-struct nan_complete {
-  std::error_code operator() (parser<Backend, Policies> &p) const {
-    return p.backend ().double_value (
-        std::numeric_limits<double>::quiet_NaN ());
+template <typename Backend, typename Policies> struct nan_complete {
+  std::error_code operator()(parser<Backend, Policies> &p) const {
+    return p.backend().double_value(std::numeric_limits<double>::quiet_NaN());
   }
 };
 
 /// Matches an "NaN" token.
 template <typename Backend, typename Policies>
-class nan_token_matcher
-    : public token_matcher<Backend, Policies, nan_complete<Backend, Policies>> {
+class nan_token_matcher : public token_matcher<Backend, Policies, nan_complete<Backend, Policies>> {
 public:
-  nan_token_matcher ()
-      : token_matcher<Backend, Policies, nan_complete<Backend, Policies>> (
-            u8"NaN", {}) {}
+  nan_token_matcher() : token_matcher<Backend, Policies, nan_complete<Backend, Policies>>(u8"NaN", {}) {}
 };
 
 //*                 _              *
@@ -964,8 +836,7 @@ public:
 //     plus = %x2B                ; +
 //     zero = %x30                ; 0
 /// Matches a number.
-template <typename Backend, typename Policies>
-class number_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class number_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
@@ -973,31 +844,30 @@ public:
   using uinteger_type = std::make_unsigned_t<typename Policies::integer_type>;
   using sinteger_type = std::make_signed_t<typename Policies::integer_type>;
 
-  constexpr number_matcher () noexcept : inherited (leading_minus_state) {}
+  constexpr number_matcher() noexcept : inherited(leading_minus_state) {}
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::null_pointer;
   using inherited::state_;
-  [[nodiscard]] bool in_terminal_state () const;
+  [[nodiscard]] bool in_terminal_state() const;
 
-  bool do_leading_minus_state (parser_type &parser, char32_t c);
+  bool do_leading_minus_state(parser_type &parser, char32_t c);
   /// Implements the first character of the 'int' production.
-  bool do_integer_initial_digit_state (parser_type &parser, char32_t c);
-  bool do_integer_digit_state (parser_type &parser, char32_t c);
-  bool do_frac_state (parser_type &parser, char32_t c);
-  bool do_frac_digit_state (parser_type &parser, char32_t c);
-  bool do_exponent_sign_state (parser_type &parser, char32_t c);
-  bool do_exponent_digit_state (parser_type &parser, char32_t c);
-  bool do_hex_digits_state (parser_type &parser, char32_t c);
+  bool do_integer_initial_digit_state(parser_type &parser, char32_t c);
+  bool do_integer_digit_state(parser_type &parser, char32_t c);
+  bool do_frac_state(parser_type &parser, char32_t c);
+  bool do_frac_digit_state(parser_type &parser, char32_t c);
+  bool do_exponent_sign_state(parser_type &parser, char32_t c);
+  bool do_exponent_digit_state(parser_type &parser, char32_t c);
+  bool do_hex_digits_state(parser_type &parser, char32_t c);
 
-  void complete (parser_type &parser);
-  void number_is_float ();
+  void complete(parser_type &parser);
+  void number_is_float();
 
-  void make_result (parser_type &parser);
-  std::pair<typename inherited::pointer, bool> end (parser_type &parser);
+  void make_result(parser_type &parser);
+  std::pair<typename inherited::pointer, bool> end(parser_type &parser);
 
   enum state {
     done_state = inherited::done,
@@ -1030,12 +900,11 @@ private:
   bool is_neg_ = false;
   struct float_accumulator {
     /// Promote from integer.
-    explicit constexpr float_accumulator (uinteger_type v) noexcept
-        : whole_part{static_cast<double> (v)} {}
+    explicit constexpr float_accumulator(uinteger_type v) noexcept : whole_part{static_cast<double>(v)} {}
     /// Assign an explicit double.
-    explicit constexpr float_accumulator (double v) noexcept : whole_part{v} {}
+    explicit constexpr float_accumulator(double v) noexcept : whole_part{v} {}
 
-    void add_digit (unsigned const digit) {
+    void add_digit(unsigned const digit) {
       frac_part = frac_part * 10.0 + digit;
       frac_scale *= 10;
     }
@@ -1053,17 +922,15 @@ private:
 
 // number is float
 // ~~~~~~~~~~~~~~~
-template <typename Backend, typename Policies>
-void number_matcher<Backend, Policies>::number_is_float () {
-  if (std::holds_alternative<uinteger_type> (acc_)) {
-    acc_ = float_accumulator{std::get<uinteger_type> (acc_)};
+template <typename Backend, typename Policies> void number_matcher<Backend, Policies>::number_is_float() {
+  if (std::holds_alternative<uinteger_type>(acc_)) {
+    acc_ = float_accumulator{std::get<uinteger_type>(acc_)};
   }
 }
 
 // in terminal state
 // ~~~~~~~~~~~~~~~~~
-template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::in_terminal_state () const {
+template <typename Backend, typename Policies> bool number_matcher<Backend, Policies>::in_terminal_state() const {
   switch (state_) {
   case end_token_state:
   case exponent_digit_state:
@@ -1079,25 +946,24 @@ bool number_matcher<Backend, Policies>::in_terminal_state () const {
 // leading minus state
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_leading_minus_state (
-    parser_type &parser, char32_t c) {
+bool number_matcher<Backend, Policies>::do_leading_minus_state(parser_type &parser, char32_t c) {
   bool match = true;
   if (c == char_set::hyphen_minus) {
     state_ = integer_initial_digit_state;
     is_neg_ = true;
   } else if (c == char_set::plus_sign) {
-    assert (parser.extension_enabled (extensions::leading_plus));
+    assert(parser.extension_enabled(extensions::leading_plus));
     state_ = integer_initial_digit_state;
   } else if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
     state_ = integer_initial_digit_state;
-    match = do_integer_initial_digit_state (parser, c);
+    match = do_integer_initial_digit_state(parser, c);
   } else if (c == char_set::full_stop) {
-    assert (parser.extension_enabled (extensions::numbers));
+    assert(parser.extension_enabled(extensions::numbers));
     state_ = initial_dot_state;
   } else {
     // minus MUST be followed by the 'int' production.
-    this->set_error (parser, error::number_out_of_range);
-    unreachable ();
+    this->set_error(parser, error::number_out_of_range);
+    unreachable();
   }
   return match;
 }
@@ -1105,8 +971,7 @@ bool number_matcher<Backend, Policies>::do_leading_minus_state (
 // frac state
 // ~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
-                                                       char32_t const c) {
+bool number_matcher<Backend, Policies>::do_frac_state(parser_type &parser, char32_t const c) {
   bool match = true;
   switch (c) {
   case char_set::full_stop: state_ = frac_initial_digit_state; break;
@@ -1124,20 +989,20 @@ bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
   case char_set::digit_nine:
     // digits are definitely not part of the next token so we can issue an error
     // right here.
-    this->set_error (parser, error::number_out_of_range);
+    this->set_error(parser, error::number_out_of_range);
     break;
   case char_set::latin_small_letter_x:
   case char_set::latin_capital_letter_x:
-    if (parser.extension_enabled (extensions::numbers)) {
+    if (parser.extension_enabled(extensions::numbers)) {
       state_ = initial_hex_digit;
     } else {
-      this->set_error (parser, error::number_out_of_range);
+      this->set_error(parser, error::number_out_of_range);
     }
     break;
   default:
     // the 'frac' production is optional.
     match = false;
-    this->complete (parser);
+    this->complete(parser);
     break;
   }
   return match;
@@ -1146,19 +1011,17 @@ bool number_matcher<Backend, Policies>::do_frac_state (parser_type &parser,
 // frac digit
 // ~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_frac_digit_state (
-    parser_type &parser, char32_t const c) {
-  auto const state =
-      (state_ == initial_dot_state) ? frac_initial_digit_state : state_;
-  assert (state == frac_initial_digit_state || state == frac_digit_state);
+bool number_matcher<Backend, Policies>::do_frac_digit_state(parser_type &parser, char32_t const c) {
+  auto const state = (state_ == initial_dot_state) ? frac_initial_digit_state : state_;
+  assert(state == frac_initial_digit_state || state == frac_digit_state);
 
   bool match = true;
   switch (c) {
   case char_set::latin_small_letter_e:
   case char_set::latin_capital_letter_e:
-    this->number_is_float ();
+    this->number_is_float();
     if (state == frac_initial_digit_state) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error(parser, error::unrecognized_token);
     } else {
       state_ = exponent_sign_state;
     }
@@ -1174,19 +1037,18 @@ bool number_matcher<Backend, Policies>::do_frac_digit_state (
   case char_set::digit_seven:
   case char_set::digit_eight:
   case char_set::digit_nine: {
-    this->number_is_float ();
-    std::get<float_accumulator> (acc_).add_digit (c - char_set::digit_zero);
+    this->number_is_float();
+    std::get<float_accumulator>(acc_).add_digit(c - char_set::digit_zero);
     state_ = frac_digit_state;
   } break;
 
   default:
-    if ((state == frac_initial_digit_state &&
-         !parser.extension_enabled (extensions::numbers)) ||
+    if ((state == frac_initial_digit_state && !parser.extension_enabled(extensions::numbers)) ||
         this->state_ == initial_dot_state) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error(parser, error::unrecognized_token);
     } else {
       match = false;
-      this->complete (parser);
+      this->complete(parser);
     }
     break;
   }
@@ -1196,49 +1058,44 @@ bool number_matcher<Backend, Policies>::do_frac_digit_state (
 // exponent sign state
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_exponent_sign_state (
-    parser_type &parser, char32_t c) {
+bool number_matcher<Backend, Policies>::do_exponent_sign_state(parser_type &parser, char32_t c) {
   bool match = true;
-  this->number_is_float ();
-  auto &fp_acc = std::get<float_accumulator> (acc_);
+  this->number_is_float();
+  auto &fp_acc = std::get<float_accumulator>(acc_);
   state_ = exponent_initial_digit_state;
   switch (c) {
   case '+': fp_acc.exp_is_negative = false; break;
   case '-': fp_acc.exp_is_negative = true; break;
-  default: match = this->do_exponent_digit_state (parser, c); break;
+  default: match = this->do_exponent_digit_state(parser, c); break;
   }
   return match;
 }
 
 // complete
 // ~~~~~~~~
-template <typename Backend, typename Policies>
-void number_matcher<Backend, Policies>::complete (parser_type &parser) {
+template <typename Backend, typename Policies> void number_matcher<Backend, Policies>::complete(parser_type &parser) {
   state_ = done_state;
-  this->make_result (parser);
+  this->make_result(parser);
 }
 
 // exponent digit
 // ~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_exponent_digit_state (
-    parser_type &parser, char32_t const c) {
-  assert (state_ == exponent_digit_state ||
-          state_ == exponent_initial_digit_state);
-  assert (std::holds_alternative<float_accumulator> (acc_));
+bool number_matcher<Backend, Policies>::do_exponent_digit_state(parser_type &parser, char32_t const c) {
+  assert(state_ == exponent_digit_state || state_ == exponent_initial_digit_state);
+  assert(std::holds_alternative<float_accumulator>(acc_));
 
   bool match = true;
   if (c >= char_set::digit_zero && c <= char_set::digit_nine) {
-    auto &fp_acc = std::get<float_accumulator> (acc_);
-    fp_acc.exponent = fp_acc.exponent * 10U +
-                      static_cast<unsigned> (c - char_set::digit_zero);
+    auto &fp_acc = std::get<float_accumulator>(acc_);
+    fp_acc.exponent = fp_acc.exponent * 10U + static_cast<unsigned>(c - char_set::digit_zero);
     state_ = exponent_digit_state;
   } else {
     if (state_ == exponent_initial_digit_state) {
-      this->set_error (parser, error::unrecognized_token);
+      this->set_error(parser, error::unrecognized_token);
     } else {
       match = false;
-      this->complete (parser);
+      this->complete(parser);
     }
   }
   return match;
@@ -1247,27 +1104,25 @@ bool number_matcher<Backend, Policies>::do_exponent_digit_state (
 // do integer initial digit state
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
-    parser_type &parser, char32_t const c) {
+bool number_matcher<Backend, Policies>::do_integer_initial_digit_state(parser_type &parser, char32_t const c) {
   using namespace std::string_view_literals;
 
-  assert (state_ == integer_initial_digit_state);
-  assert (std::holds_alternative<uinteger_type> (acc_));
+  assert(state_ == integer_initial_digit_state);
+  assert(std::holds_alternative<uinteger_type>(acc_));
   if (c == char_set::digit_zero) {
     state_ = frac_state;
   } else if (c >= char_set::digit_one && c <= char_set::digit_nine) {
-    assert (std::get<uinteger_type> (acc_) == 0);
-    std::get<uinteger_type> (acc_) =
-        static_cast<uinteger_type> (c) - char_set::digit_zero;
+    assert(std::get<uinteger_type>(acc_) == 0);
+    std::get<uinteger_type>(acc_) = static_cast<uinteger_type>(c) - char_set::digit_zero;
     state_ = integer_digit_state;
   } else if (c == char_set::latin_capital_letter_i) {
-    text_.set_text (u8"nfinity"sv);
+    text_.set_text(u8"nfinity"sv);
     state_ = match_token_infinity_state;
   } else if (c == char_set::latin_capital_letter_n) {
-    text_.set_text (u8"aN"sv);
+    text_.set_text(u8"aN"sv);
     state_ = match_token_nan_state;
   } else {
-    this->set_error (parser, error::unrecognized_token);
+    this->set_error(parser, error::unrecognized_token);
   }
   return true;
 }
@@ -1275,30 +1130,27 @@ bool number_matcher<Backend, Policies>::do_integer_initial_digit_state (
 // do integer digit state
 // ~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_integer_digit_state (
-    parser_type &parser, char32_t const c) {
-  assert (state_ == integer_digit_state);
-  assert (std::holds_alternative<uinteger_type> (acc_));
+bool number_matcher<Backend, Policies>::do_integer_digit_state(parser_type &parser, char32_t const c) {
+  assert(state_ == integer_digit_state);
+  assert(std::holds_alternative<uinteger_type>(acc_));
 
   bool match = true;
   if (c == char_set::full_stop) {
     state_ = frac_initial_digit_state;
-    number_is_float ();
-  } else if (c == char_set::latin_small_letter_e ||
-             c == char_set::latin_capital_letter_e) {
+    number_is_float();
+  } else if (c == char_set::latin_small_letter_e || c == char_set::latin_capital_letter_e) {
     state_ = exponent_sign_state;
-    number_is_float ();
+    number_is_float();
   } else if (c >= '0' && c <= '9') {
-    auto &int_acc = std::get<uinteger_type> (acc_);
-    auto const new_acc = static_cast<uinteger_type> (
-        int_acc * 10U + static_cast<uinteger_type> (c) - '0');
+    auto &int_acc = std::get<uinteger_type>(acc_);
+    auto const new_acc = static_cast<uinteger_type>(int_acc * 10U + static_cast<uinteger_type>(c) - '0');
     if (new_acc < int_acc) {  // Did this overflow?
-      this->set_error (parser, error::number_out_of_range);
+      this->set_error(parser, error::number_out_of_range);
     }
     int_acc = new_acc;
   } else {
     match = false;
-    this->complete (parser);
+    this->complete(parser);
   }
   return match;
 }
@@ -1306,19 +1158,17 @@ bool number_matcher<Backend, Policies>::do_integer_digit_state (
 // do hex digits state
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-bool number_matcher<Backend, Policies>::do_hex_digits_state (
-    parser_type &parser, char32_t const c) {
-  auto const offset = digit_offset (c);
+bool number_matcher<Backend, Policies>::do_hex_digits_state(parser_type &parser, char32_t const c) {
+  auto const offset = digit_offset(c);
   if (!offset) {
-    this->complete (parser);
+    this->complete(parser);
     return false;
   }
 
-  auto &int_acc = std::get<uinteger_type> (acc_);
-  auto const new_acc = static_cast<uinteger_type> (
-      int_acc * 16U + static_cast<uinteger_type> (c) - *offset);
+  auto &int_acc = std::get<uinteger_type>(acc_);
+  auto const new_acc = static_cast<uinteger_type>(int_acc * 16U + static_cast<uinteger_type>(c) - *offset);
   if (new_acc < int_acc) {  // Did this overflow?
-    this->set_error (parser, error::number_out_of_range);
+    this->set_error(parser, error::number_out_of_range);
   }
   int_acc = new_acc;
   return true;
@@ -1327,147 +1177,125 @@ bool number_matcher<Backend, Policies>::do_hex_digits_state (
 // end
 // ~~~
 template <typename Backend, typename Policies>
-auto number_matcher<Backend, Policies>::end (parser_type &parser)
-    -> std::pair<typename inherited::pointer, bool> {
-  assert (!parser.has_error ());
-  if (!this->in_terminal_state ()) {
+auto number_matcher<Backend, Policies>::end(parser_type &parser) -> std::pair<typename inherited::pointer, bool> {
+  assert(!parser.has_error());
+  if (!this->in_terminal_state()) {
     switch (state_) {
     case match_token_infinity_state:
-    case match_token_nan_state:
-      this->set_error (parser, error::unrecognized_token);
-      break;
+    case match_token_nan_state: this->set_error(parser, error::unrecognized_token); break;
     case frac_initial_digit_state:
       // A trailing dot.
-      if (parser.extension_enabled (extensions::numbers)) {
+      if (parser.extension_enabled(extensions::numbers)) {
         break;
       }
       [[fallthrough]];
-    default: this->set_error (parser, error::expected_digits); break;
+    default: this->set_error(parser, error::expected_digits); break;
     }
   }
-  this->complete (parser);
-  return {null_pointer (), true};
+  this->complete(parser);
+  return {null_pointer(), true};
 }
 
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto number_matcher<Backend, Policies>::consume (parser_type &parser,
-                                                 std::optional<char32_t> ch)
+auto number_matcher<Backend, Policies>::consume(parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
-    return this->end (parser);
+    return this->end(parser);
   }
 
   bool match = true;
   auto const c = *ch;
   switch (state_) {
-  case leading_minus_state:
-    match = this->do_leading_minus_state (parser, c);
-    break;
-  case integer_initial_digit_state:
-    match = this->do_integer_initial_digit_state (parser, c);
-    break;
-  case integer_digit_state:
-    match = this->do_integer_digit_state (parser, c);
-    break;
-  case frac_state: match = this->do_frac_state (parser, c); break;
+  case leading_minus_state: match = this->do_leading_minus_state(parser, c); break;
+  case integer_initial_digit_state: match = this->do_integer_initial_digit_state(parser, c); break;
+  case integer_digit_state: match = this->do_integer_digit_state(parser, c); break;
+  case frac_state: match = this->do_frac_state(parser, c); break;
   case initial_dot_state:
   case frac_initial_digit_state:
-  case frac_digit_state: match = this->do_frac_digit_state (parser, c); break;
-  case exponent_sign_state:
-    match = this->do_exponent_sign_state (parser, c);
-    break;
+  case frac_digit_state: match = this->do_frac_digit_state(parser, c); break;
+  case exponent_sign_state: match = this->do_exponent_sign_state(parser, c); break;
   case exponent_initial_digit_state:
-  case exponent_digit_state:
-    match = this->do_exponent_digit_state (parser, c);
-    break;
+  case exponent_digit_state: match = this->do_exponent_digit_state(parser, c); break;
   case initial_hex_digit:
-    if (!digit_offset (c)) {
-      this->set_error (parser, error::expected_digits);
+    if (!digit_offset(c)) {
+      this->set_error(parser, error::expected_digits);
       break;
     }
     state_ = hex_digits;
     [[fallthrough]];
-  case hex_digits: match = this->do_hex_digits_state (parser, c); break;
+  case hex_digits: match = this->do_hex_digits_state(parser, c); break;
 
   case match_token_infinity_state:
   case match_token_nan_state:
-    switch (text_.match (*ch)) {
-    case token_consumer::result::fail:
-      this->set_error (parser, error::unrecognized_token);
-      break;
+    switch (text_.match(*ch)) {
+    case token_consumer::result::fail: this->set_error(parser, error::unrecognized_token); break;
     case token_consumer::result::more: break;
     case token_consumer::result::match:
-      acc_ = float_accumulator{state_ == match_token_infinity_state
-                                   ? std::numeric_limits<double>::infinity ()
-                                   : std::numeric_limits<double>::quiet_NaN ()};
+      acc_ = float_accumulator{state_ == match_token_infinity_state ? std::numeric_limits<double>::infinity()
+                                                                    : std::numeric_limits<double>::quiet_NaN()};
       state_ = end_token_state;
       break;
     }
     break;
   case end_token_state:
     if (ch) {
-      if (token_consumer::is_identifier_cp (*ch)) {
-        this->set_error (parser, error::unrecognized_token);
-        return {null_pointer (), true};
+      if (token_consumer::is_identifier_cp(*ch)) {
+        this->set_error(parser, error::unrecognized_token);
+        return {null_pointer(), true};
       }
       match = false;
     }
-    this->complete (parser);
+    this->complete(parser);
     break;
 
   case done_state:
-  default: unreachable (); break;
+  default: unreachable(); break;
   }
 
-  return {null_pointer (), match};
+  return {null_pointer(), match};
 }
 
 // make result
 // ~~~~~~~~~~~
 template <typename Backend, typename Policies>
-void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
-  if (parser.has_error ()) {
+void number_matcher<Backend, Policies>::make_result(parser_type &parser) {
+  if (parser.has_error()) {
     return;
   }
-  assert (this->in_terminal_state ());
+  assert(this->in_terminal_state());
 
-  if (std::holds_alternative<uinteger_type> (acc_)) {
-    constexpr auto min = std::numeric_limits<sinteger_type>::min ();
-    constexpr auto umin = static_cast<uinteger_type> (min);
-    constexpr auto umax =
-        static_cast<uinteger_type> (std::numeric_limits<sinteger_type>::max ());
+  if (std::holds_alternative<uinteger_type>(acc_)) {
+    constexpr auto min = std::numeric_limits<sinteger_type>::min();
+    constexpr auto umin = static_cast<uinteger_type>(min);
+    constexpr auto umax = static_cast<uinteger_type>(std::numeric_limits<sinteger_type>::max());
 
     // TODO: this doesn't automatically promote v. large integers to float.
     // Perhaps it should?
-    auto &int_acc = std::get<uinteger_type> (acc_);
+    auto &int_acc = std::get<uinteger_type>(acc_);
     if (is_neg_) {
       if (int_acc > umin) {
-        this->set_error (parser, error::number_out_of_range);
+        this->set_error(parser, error::number_out_of_range);
       } else {
-        this->set_error (
-            parser,
-            parser.backend ().integer_value (
-                (int_acc == umin) ? min
-                                  : -static_cast<sinteger_type> (int_acc)));
+        this->set_error(parser,
+                        parser.backend().integer_value((int_acc == umin) ? min : -static_cast<sinteger_type>(int_acc)));
       }
     } else {
       if (int_acc > umax) {
-        this->set_error (parser, error::number_out_of_range);
+        this->set_error(parser, error::number_out_of_range);
       } else {
-        this->set_error (parser, parser.backend ().integer_value (
-                                     static_cast<sinteger_type> (int_acc)));
+        this->set_error(parser, parser.backend().integer_value(static_cast<sinteger_type>(int_acc)));
       }
     }
     return;
   }
 
-  auto &fp_acc = std::get<float_accumulator> (acc_);
+  auto &fp_acc = std::get<float_accumulator>(acc_);
   auto xf = (fp_acc.whole_part + fp_acc.frac_part / fp_acc.frac_scale);
-  auto exp = std::pow (10, fp_acc.exponent);
-  if (std::isinf (exp)) {
-    this->set_error (parser, error::number_out_of_range);
+  auto exp = std::pow(10, fp_acc.exponent);
+  if (std::isinf(exp)) {
+    this->set_error(parser, error::number_out_of_range);
     return;
   }
   if (fp_acc.exp_is_negative) {
@@ -1482,17 +1310,13 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
   // Is the fractional part of the float 0 (i.e. could we potentially cast it to
   // one of the integer types)? This enables us to treat input such as "1.0" in
   // the same way as "1".
-  if (std::rint (xf) == xf &&
-      xf >= static_cast<decltype (xf)> (
-                std::numeric_limits<sinteger_type>::min ()) &&
-      xf <= static_cast<decltype (xf)> (
-                std::numeric_limits<sinteger_type>::max ())) {
-    this->set_error (parser, parser.backend ().integer_value (
-                                 static_cast<sinteger_type> (xf)));
+  if (std::rint(xf) == xf && xf >= static_cast<decltype(xf)>(std::numeric_limits<sinteger_type>::min()) &&
+      xf <= static_cast<decltype(xf)>(std::numeric_limits<sinteger_type>::max())) {
+    this->set_error(parser, parser.backend().integer_value(static_cast<sinteger_type>(xf)));
     return;
   }
 
-  this->set_error (parser, parser.backend ().double_value (xf));
+  this->set_error(parser, parser.backend().double_value(xf));
 }
 
 //*  _                                                 *
@@ -1507,23 +1331,20 @@ void number_matcher<Backend, Policies>::make_result (parser_type &parser) {
 /// \tparam LastHexState The final hex character state.
 /// \tparam PostState The state to which the matcher will be switched after
 ///                   the four hex characters have been consumed.
-template <int FirstHexState, int LastHexState, int PostState>
-class hex_consumer {
+template <int FirstHexState, int LastHexState, int PostState> class hex_consumer {
 public:
   static constexpr auto first_hex_state = FirstHexState;
   static constexpr auto last_hex_state = LastHexState;
   static constexpr auto post_hex_state = PostState;
 
   /// Returns true if we have processed a part of a UTF-16 high/surrogate pair.
-  [[nodiscard]] constexpr bool partial () const noexcept {
-    return utf_16_to_8_.partial ();
-  }
+  [[nodiscard]] constexpr bool partial() const noexcept { return utf_16_to_8_.partial(); }
 
   /// Signal the start of a two or four hex digit sequence.
   ///
   /// \p is_utf_16  Pass true if expecting a four digit UTF-16 sequence,
   ///               false if two digit UTF-8 hex digits should follow.
-  void start (bool const is_utf_16) noexcept {
+  void start(bool const is_utf_16) noexcept {
     utf16_ = is_utf_16;
     hex_ = 0U;
   }
@@ -1535,33 +1356,31 @@ public:
   /// \p code_point  The Unicode code point to be added to the hex sequence.
   /// \returns Either an integer representing the next state that the matcher should assume or an error code.
   template <typename OutputIterator>
-  std::variant<std::error_code, std::pair<int, OutputIterator>> consume (
-      int const state, char32_t const code_point, OutputIterator out) noexcept {
-    assert (state >= first_hex_state && state <= last_hex_state &&
-            "must be one of the hex states");
-    auto const offset = digit_offset (code_point);
+  std::variant<std::error_code, std::pair<int, OutputIterator>> consume(int const state, char32_t const code_point,
+                                                                        OutputIterator out) noexcept {
+    assert(state >= first_hex_state && state <= last_hex_state && "must be one of the hex states");
+    auto const offset = digit_offset(code_point);
     if (!offset) {
       return error::invalid_hex_char;
     }
-    hex_ = static_cast<uint_least16_t> (
-        16U * hex_ + static_cast<uint_least16_t> (code_point) - *offset);
+    hex_ = static_cast<uint_least16_t>(16U * hex_ + static_cast<uint_least16_t>(code_point) - *offset);
     if (state < LastHexState) {
       // More hex characters to go.
-      return std::make_pair (state + 1, out);
+      return std::make_pair(state + 1, out);
     }
     // Convert the hex characters to either UTF-8 or -16.
     if (utf16_) {
-      out = utf_16_to_8_ (hex_, out);
-      if (!utf_16_to_8_.well_formed ()) {
+      out = utf_16_to_8_(hex_, out);
+      if (!utf_16_to_8_.well_formed()) {
         return error::bad_unicode_code_point;
       }
     } else {
-      assert (hex_ <= 0xFF && "Two hex digits can't produce a value > 0xFF!");
-      *(out++) = static_cast<char8> (hex_);
+      assert(hex_ <= 0xFF && "Two hex digits can't produce a value > 0xFF!");
+      *(out++) = static_cast<char8>(hex_);
     }
     // Reset hex_ for the next sequence.
     hex_ = 0;
-    return std::make_pair (PostState, out);
+    return std::make_pair(PostState, out);
   }
 
 private:
@@ -1596,25 +1415,19 @@ constexpr auto post_hex_state = 6;
 //* /__/\__|_| |_|_||_\__, | *
 //*                   |___/  *
 /// Matches a string.
-template <typename Backend, typename Policies>
-class string_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class string_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  string_matcher (arrayvec<char8, Policies::max_length> *const str,
-                  bool object_key, char32_t enclosing_char) noexcept
-      : inherited (start_state),
-        is_object_key_{object_key},
-        enclosing_char_{enclosing_char},
-        str_{str} {
-    assert (str != nullptr);
-    str->clear ();
+  string_matcher(arrayvec<char8, Policies::max_length> *const str, bool object_key, char32_t enclosing_char) noexcept
+      : inherited(start_state), is_object_key_{object_key}, enclosing_char_{enclosing_char}, str_{str} {
+    assert(str != nullptr);
+    str->clear();
   }
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::null_pointer;
@@ -1632,10 +1445,8 @@ private:
     skip_lf_state,
   };
 
-  std::variant<state, std::error_code> consume_normal (parser_type &p,
-                                                       bool is_object_key,
-                                                       char32_t enclosing_char,
-                                                       char32_t code_point);
+  std::variant<state, std::error_code> consume_normal(parser_type &p, bool is_object_key, char32_t enclosing_char,
+                                                      char32_t code_point);
 
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
   /// character. This function wraps consume_normal(). That function does the
@@ -1644,15 +1455,13 @@ private:
   ///
   /// \param p  The parent parser instance.
   /// \param code_point  The Unicode character being processed.
-  void normal (parser_type &p, char32_t code_point);
+  void normal(parser_type &p, char32_t code_point);
 
-  std::variant<state, error> consume_escape_state (parser_type &parser,
-                                                   char32_t code_point);
-  void escape (parser_type &p, char32_t code_point);
+  std::variant<state, error> consume_escape_state(parser_type &parser, char32_t code_point);
+  void escape(parser_type &p, char32_t code_point);
 
-  static constexpr bool is_hex_state (enum state const state) noexcept {
-    return state == hex1_state || state == hex2_state || state == hex3_state ||
-           state == hex4_state;
+  static constexpr bool is_hex_state(enum state const state) noexcept {
+    return state == hex1_state || state == hex2_state || state == hex3_state || state == hex4_state;
   }
 
   bool is_object_key_;
@@ -1661,33 +1470,29 @@ private:
   hex_consumer<hex1_state, hex4_state, normal_char_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
 
-  static_assert (decltype (hex_)::first_hex_state == first_hex_state);
-  static_assert (decltype (hex_)::last_hex_state == last_hex_state);
-  static_assert (decltype (hex_)::post_hex_state == post_hex_state);
+  static_assert(decltype(hex_)::first_hex_state == first_hex_state);
+  static_assert(decltype(hex_)::last_hex_state == last_hex_state);
+  static_assert(decltype(hex_)::post_hex_state == post_hex_state);
 };
 
 // consume normal
 // ~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-auto string_matcher<Backend, Policies>::consume_normal (parser_type &p,
-                                                        bool is_object_key,
-                                                        char32_t enclosing_char,
-                                                        char32_t code_point)
-    -> std::variant<state, std::error_code> {
+auto string_matcher<Backend, Policies>::consume_normal(parser_type &p, bool is_object_key, char32_t enclosing_char,
+                                                       char32_t code_point) -> std::variant<state, std::error_code> {
   if (code_point == char_set::reverse_solidus) {
     return escape_state;
   }
   // We processed part of a Unicode UTF-16 code point. The rest needs to be
   // expressed using the '\u' escape.
-  if (hex_.partial ()) {
+  if (hex_.partial()) {
     return error::bad_unicode_code_point;
   }
   if (code_point == enclosing_char) {
     // Consume the closing quote character.
-    auto &n = p.backend ();
-    u8string_view const result{str_->data (), str_->size ()};
-    if (std::error_code const error =
-            is_object_key ? n.key (result) : n.string_value (result)) {
+    auto &n = p.backend();
+    u8string_view const result{str_->data(), str_->size()};
+    if (std::error_code const error = is_object_key ? n.key(result) : n.string_value(result)) {
       return error;
     }
     return done_state;
@@ -1699,10 +1504,9 @@ auto string_matcher<Backend, Policies>::consume_normal (parser_type &p,
 
   // Remember this character.
   bool overflow = false;
-  auto it =
-      utf_32_to_8_ (code_point, checked_back_insert_iterator{str_, &overflow});
-  utf_32_to_8_.end_cp (it);
-  if (!utf_32_to_8_.well_formed ()) {
+  auto it = utf_32_to_8_(code_point, checked_back_insert_iterator{str_, &overflow});
+  utf_32_to_8_.end_cp(it);
+  if (!utf_32_to_8_.well_formed()) {
     return error::bad_unicode_code_point;
   }
   if (overflow) {
@@ -1714,27 +1518,26 @@ auto string_matcher<Backend, Policies>::consume_normal (parser_type &p,
 // normal
 // ~~~~~~
 template <typename Backend, typename Policies>
-void string_matcher<Backend, Policies>::normal (parser_type &p,
-                                                char32_t code_point) {
-  std::visit (
-      [this, &p] (auto &&arg) {
-        using T = std::decay_t<decltype (arg)>;
+void string_matcher<Backend, Policies>::normal(parser_type &p, char32_t code_point) {
+  std::visit(
+      [this, &p](auto &&arg) {
+        using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, std::error_code>) {
-          this->set_error (p, arg);
+          this->set_error(p, arg);
         } else if constexpr (std::is_same_v<T, state>) {
           this->state_ = arg;
         } else {
-          static_assert (always_false<T>, "non-exhaustive visitor");
+          static_assert(always_false<T>, "non-exhaustive visitor");
         }
       },
-      this->consume_normal (p, is_object_key_, enclosing_char_, code_point));
+      this->consume_normal(p, is_object_key_, enclosing_char_, code_point));
 }
 
 // consume escape state
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-auto string_matcher<Backend, Policies>::consume_escape_state (
-    parser_type &parser, char32_t code_point) -> std::variant<state, error> {
+auto string_matcher<Backend, Policies>::consume_escape_state(parser_type &parser, char32_t code_point)
+    -> std::variant<state, error> {
   state next_state = normal_char_state;
   switch (code_point) {
   case char_set::quotation_mark:
@@ -1745,37 +1548,33 @@ auto string_matcher<Backend, Policies>::consume_escape_state (
   case char_set::latin_small_letter_b: code_point = char_set::backspace; break;
   case char_set::latin_small_letter_f: code_point = char_set::form_feed; break;
   case char_set::latin_small_letter_n: code_point = char_set::line_feed; break;
-  case char_set::latin_small_letter_r:
-    code_point = char_set::carriage_return;
-    break;
-  case char_set::latin_small_letter_t:
-    code_point = char_set::character_tabulation;
-    break;
+  case char_set::latin_small_letter_r: code_point = char_set::carriage_return; break;
+  case char_set::latin_small_letter_t: code_point = char_set::character_tabulation; break;
   case char_set::latin_small_letter_u:
-    hex_.start (true);  // Signal the start of four hex-digit UTF-16.
+    hex_.start(true);  // Signal the start of four hex-digit UTF-16.
     return {hex1_state};
 
   case char_set::latin_small_letter_x:
-    if (parser.extension_enabled (extensions::string_escapes)) {
-      hex_.start (false);  // Signal the start of two hex-digit UTF-8.
+    if (parser.extension_enabled(extensions::string_escapes)) {
+      hex_.start(false);  // Signal the start of two hex-digit UTF-8.
       return {hex3_state};
     }
     return {error::invalid_escape_char};
 
   case char_set::apostrophe:
-    if (!parser.extension_enabled (extensions::string_escapes)) {
+    if (!parser.extension_enabled(extensions::string_escapes)) {
       return {error::invalid_escape_char};
     }
     // code points is appended as-is.
     break;
   case char_set::latin_small_letter_v:
-    if (!parser.extension_enabled (extensions::string_escapes)) {
+    if (!parser.extension_enabled(extensions::string_escapes)) {
       return {error::invalid_escape_char};
     }
     code_point = char_set::vertical_tabulation;
     break;
   case char_set::digit_zero:
-    if (!parser.extension_enabled (extensions::string_escapes)) {
+    if (!parser.extension_enabled(extensions::string_escapes)) {
       return {error::invalid_escape_char};
     }
     code_point = char_set::null_char;
@@ -1785,7 +1584,7 @@ auto string_matcher<Backend, Policies>::consume_escape_state (
   case char_set::carriage_return:
   case char_set::line_separator:
   case char_set::paragraph_separator:
-    if (parser.extension_enabled (extensions::string_escapes)) {
+    if (parser.extension_enabled(extensions::string_escapes)) {
       if (code_point == char_set::carriage_return) {
         // a special state to handle the potential line feed.
         next_state = skip_lf_state;
@@ -1796,10 +1595,10 @@ auto string_matcher<Backend, Policies>::consume_escape_state (
     [[fallthrough]];
   default: return {error::invalid_escape_char};
   }
-  assert (next_state == normal_char_state);
+  assert(next_state == normal_char_state);
   bool overflow = false;
-  utf_32_to_8_ (code_point, checked_back_insert_iterator (str_, &overflow));
-  assert (utf_32_to_8_.well_formed ());
+  utf_32_to_8_(code_point, checked_back_insert_iterator(str_, &overflow));
+  assert(utf_32_to_8_.well_formed());
   if (overflow) {
     return {error::string_too_long};
   }
@@ -1809,31 +1608,29 @@ auto string_matcher<Backend, Policies>::consume_escape_state (
 // escape
 // ~~~~~~
 template <typename Backend, typename Policies>
-void string_matcher<Backend, Policies>::escape (parser_type &p,
-                                                char32_t code_point) {
-  std::visit (
-      [this, &p] (auto &&arg) {
-        using T = std::decay_t<decltype (arg)>;
+void string_matcher<Backend, Policies>::escape(parser_type &p, char32_t code_point) {
+  std::visit(
+      [this, &p](auto &&arg) {
+        using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, error>) {
-          this->set_error (p, arg);
+          this->set_error(p, arg);
         } else if constexpr (std::is_same_v<T, state>) {
           this->state_ = arg;
         } else {
-          static_assert (always_false<T>, "non-exhaustive visitor");
+          static_assert(always_false<T>, "non-exhaustive visitor");
         }
       },
-      this->consume_escape_state (p, code_point));
+      this->consume_escape_state(p, code_point));
 }
 
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto string_matcher<Backend, Policies>::consume (parser_type &parser,
-                                                 std::optional<char32_t> ch)
+auto string_matcher<Backend, Policies>::consume(parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
-    this->set_error (parser, error::expected_close_quote);
-    return {null_pointer (), true};
+    this->set_error(parser, error::expected_close_quote);
+    return {null_pointer(), true};
   }
 
   auto const c = *ch;
@@ -1844,33 +1641,32 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
     if (c == enclosing_char_) {
       state_ = normal_char_state;
     } else {
-      this->set_error (parser, error::expected_token);
+      this->set_error(parser, error::expected_token);
     }
     break;
-  case normal_char_state: this->normal (parser, c); break;
-  case escape_state: this->escape (parser, c); break;
+  case normal_char_state: this->normal(parser, c); break;
+  case escape_state: this->escape(parser, c); break;
 
   case hex1_state:
   case hex2_state:
   case hex3_state:
   case hex4_state: {
     bool overflow = false;
-    auto const v =
-        hex_.consume (state_, c, checked_back_insert_iterator{str_, &overflow});
-    if (std::holds_alternative<std::error_code> (v)) {
-      assert (v.index () == 0);
-      this->set_error (parser, std::get<std::error_code> (v));
+    auto const v = hex_.consume(state_, c, checked_back_insert_iterator{str_, &overflow});
+    if (std::holds_alternative<std::error_code>(v)) {
+      assert(v.index() == 0);
+      this->set_error(parser, std::get<std::error_code>(v));
     } else if (overflow) {
-      this->set_error (parser, error::string_too_long);
+      this->set_error(parser, error::string_too_long);
     } else {
-      state_ = std::get<1> (v).first;
+      state_ = std::get<1>(v).first;
     }
   } break;
 
   // We saw a reverse solidus (backslash) followed by a carriage return.
   // Silently consume a subsequent line_feed.
   case skip_lf_state:
-    assert (parser.extension_enabled (extensions::string_escapes));
+    assert(parser.extension_enabled(extensions::string_escapes));
     state_ = normal_char_state;
     if (c != char_set::line_feed) {
       match = false;
@@ -1878,9 +1674,9 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
     break;
 
   case done_state:
-  default: assert (false); break;
+  default: assert(false); break;
   }
-  return {null_pointer (), match};
+  return {null_pointer(), match};
 }
 
 //*  _    _         _   _  __ _          *
@@ -1889,22 +1685,20 @@ auto string_matcher<Backend, Policies>::consume (parser_type &parser,
 //* |_\__,_\___|_||_\__|_|_| |_\___|_|   *
 //*                                      *
 /// Matches an identifier.
-template <typename Backend, typename Policies>
-class identifier_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class identifier_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  explicit constexpr identifier_matcher (
-      arrayvec<char8, Policies::max_length> *const str) noexcept
-      : inherited (start_state), str_{str} {
-    assert (str != nullptr);
-    str->clear ();
+  explicit constexpr identifier_matcher(arrayvec<char8, Policies::max_length> *const str) noexcept
+      : inherited(start_state), str_{str} {
+    assert(str != nullptr);
+    str->clear();
   }
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> code_point) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser,
+                                                       std::optional<char32_t> code_point) override;
 
 private:
   using inherited::null_pointer;
@@ -1927,11 +1721,11 @@ private:
   hex_consumer<hex1_state, hex4_state, part_state> hex_;
   icubaby::t32_8 utf_32_to_8_;
 
-  static_assert (decltype (hex_)::first_hex_state == first_hex_state);
-  static_assert (decltype (hex_)::last_hex_state == last_hex_state);
-  static_assert (decltype (hex_)::post_hex_state == post_hex_state);
+  static_assert(decltype(hex_)::first_hex_state == first_hex_state);
+  static_assert(decltype(hex_)::last_hex_state == last_hex_state);
+  static_assert(decltype(hex_)::post_hex_state == post_hex_state);
 
-  void hex_states (parser_type &parser, char32_t code_point);
+  void hex_states(parser_type &parser, char32_t code_point);
 
   /// \brief Checks if the given code point can begin an identifier.
   ///
@@ -1939,7 +1733,7 @@ private:
   ///
   /// \param code_point  The Unicode code-point to be checked.
   /// \returns True if the code-point can be used as the start of an identifier, false otherwise.
-  static constexpr bool is_identifier_start (char32_t code_point) noexcept;
+  static constexpr bool is_identifier_start(char32_t code_point) noexcept;
   /// \brief Checks if the given code point can be part of an identifier.
   ///
   /// The code point \p code_point must be categorized as either an identifier-
@@ -1947,41 +1741,36 @@ private:
   ///
   /// \param code_point  The Unicode code-point to be checked.
   /// \returns True if the code-point can be part of an identifier, false otherwise.
-  static constexpr bool is_identifier_member (char32_t code_point) noexcept;
+  static constexpr bool is_identifier_member(char32_t code_point) noexcept;
 };
 
 // hex states
 // ~~~~~~~~~~
 template <typename Backend, typename Policies>
-void identifier_matcher<Backend, Policies>::hex_states (
-    parser_type &parser, char32_t const code_point) {
+void identifier_matcher<Backend, Policies>::hex_states(parser_type &parser, char32_t const code_point) {
   auto const state = state_;
-  assert (state == hex1_state || state == hex2_state || state == hex3_state ||
-          state == hex4_state);
+  assert(state == hex1_state || state == hex2_state || state == hex3_state || state == hex4_state);
   bool overflow = false;
   auto out = checked_back_insert_iterator{str_, &overflow};
-  auto v = hex_.consume (state, code_point, out);
-  if (std::holds_alternative<std::error_code> (v)) {
-    assert (v.index () == 0);
-    this->set_error (parser, std::get<std::error_code> (v));
+  auto v = hex_.consume(state, code_point, out);
+  if (std::holds_alternative<std::error_code>(v)) {
+    assert(v.index() == 0);
+    this->set_error(parser, std::get<std::error_code>(v));
   } else if (overflow) {
-    this->set_error (parser, error::identifier_too_long);
+    this->set_error(parser, error::identifier_too_long);
   } else {
-    state_ = std::get<1> (v).first;
+    state_ = std::get<1>(v).first;
   }
 }
 
 // is identifier start
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-constexpr bool identifier_matcher<Backend, Policies>::is_identifier_start (
-    char32_t const code_point) noexcept {
-  if (code_point >= char_set::latin_capital_letter_a &&
-      code_point <= char_set::latin_capital_letter_z) {
+constexpr bool identifier_matcher<Backend, Policies>::is_identifier_start(char32_t const code_point) noexcept {
+  if (code_point >= char_set::latin_capital_letter_a && code_point <= char_set::latin_capital_letter_z) {
     return true;
   }
-  if (code_point >= char_set::latin_small_letter_a &&
-      code_point <= char_set::latin_small_letter_z) {
+  if (code_point >= char_set::latin_small_letter_a && code_point <= char_set::latin_small_letter_z) {
     return true;
   }
   if (code_point == char_set::dollar_sign || code_point == char_set::low_line) {
@@ -1989,8 +1778,7 @@ constexpr bool identifier_matcher<Backend, Policies>::is_identifier_start (
   }
   // U+0080 Is where the Latin-1 supplement starts. Consult the table for
   // code points beyond this.
-  if (code_point >= 0x80 &&
-      code_point_grammar_rule (code_point) == grammar_rule::identifier_start) {
+  if (code_point >= 0x80 && code_point_grammar_rule(code_point) == grammar_rule::identifier_start) {
     return true;
   }
   return false;
@@ -1999,72 +1787,67 @@ constexpr bool identifier_matcher<Backend, Policies>::is_identifier_start (
 // is identifier member
 // ~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-constexpr bool identifier_matcher<Backend, Policies>::is_identifier_member (
-    char32_t const code_point) noexcept {
-  if (code_point >= char_set::digit_zero &&
-      code_point <= char_set::digit_nine) {
+constexpr bool identifier_matcher<Backend, Policies>::is_identifier_member(char32_t const code_point) noexcept {
+  if (code_point >= char_set::digit_zero && code_point <= char_set::digit_nine) {
     return true;
   }
   if (code_point < 0x80) {
-    return is_identifier_start (code_point);
+    return is_identifier_start(code_point);
   }
-  return (static_cast<std::underlying_type_t<grammar_rule>> (
-              code_point_grammar_rule (code_point)
-                  .value_or (static_cast<grammar_rule> (0))) &
+  return (static_cast<std::underlying_type_t<grammar_rule>>(
+              code_point_grammar_rule(code_point).value_or(static_cast<grammar_rule>(0))) &
           idmask) != 0U;
 }
 
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto identifier_matcher<Backend, Policies>::consume (
-    parser_type &parser, std::optional<char32_t> code_point)
+auto identifier_matcher<Backend, Policies>::consume(parser_type &parser, std::optional<char32_t> code_point)
     -> std::pair<typename inherited::pointer, bool> {
   using return_type = std::pair<typename inherited::pointer, bool>;
-  auto consume_and_iterate = return_type{null_pointer (), true};
-  auto retry_char_and_iterate = return_type{null_pointer (), false};
-  auto install_error = [&] (error err) {
-    this->set_error (parser, err);
-    return return_type{null_pointer (), true};
+  auto consume_and_iterate = return_type{null_pointer(), true};
+  auto retry_char_and_iterate = return_type{null_pointer(), false};
+  auto install_error = [&](error err) {
+    this->set_error(parser, err);
+    return return_type{null_pointer(), true};
   };
-  auto change_state = [&] (enum state new_state) {
+  auto change_state = [&](enum state new_state) {
     state_ = new_state;
-    return return_type{null_pointer (), true};
+    return return_type{null_pointer(), true};
   };
 
   if (!code_point) {
-    return install_error (error::expected_close_quote);
+    return install_error(error::expected_close_quote);
   }
 
   char32_t const c = *code_point;
   switch (state_) {
   case start_state:
-    if (whitespace_matcher<Backend, Policies>::want_code_point (parser, c)) {
-      return {this->make_whitespace_matcher (parser), false};
+    if (whitespace_matcher<Backend, Policies>::want_code_point(parser, c)) {
+      return {this->make_whitespace_matcher(parser), false};
     }
     if (c == char_set::reverse_solidus) {
-      return change_state (u_state);
+      return change_state(u_state);
     }
-    if (!is_identifier_start (c)) {
-      return install_error (error::bad_identifier);
+    if (!is_identifier_start(c)) {
+      return install_error(error::bad_identifier);
     }
     state_ = part_state;
     // Record the character.
     break;
   case part_state:
     if (c == char_set::reverse_solidus) {
-      return change_state (u_state);
+      return change_state(u_state);
     }
     // We processed part of a Unicode UTF-16 code point. The rest needs to be
     // expressed using the '\u' escape.
-    if (hex_.partial ()) {
-      return install_error (error::bad_unicode_code_point);
+    if (hex_.partial()) {
+      return install_error(error::bad_unicode_code_point);
     }
-    if (!is_identifier_member (c)) {
+    if (!is_identifier_member(c)) {
       // This code point wasn't part of an identifier, so don't consume it.
-      if (std::error_code const error = parser.backend ().key (
-              u8string_view{str_->data (), str_->size ()})) {
-        this->set_error (parser, error);
+      if (std::error_code const error = parser.backend().key(u8string_view{str_->data(), str_->size()})) {
+        this->set_error(parser, error);
       }
       // TODO(paul) check whether identifier is empty?
       state_ = done_state;
@@ -2074,27 +1857,27 @@ auto identifier_matcher<Backend, Policies>::consume (
     break;
   case u_state:
     if (c != char_set::latin_small_letter_u) {
-      return install_error (error::expected_token);  // TODO(paul) expected 'u'?
+      return install_error(error::expected_token);  // TODO(paul) expected 'u'?
     }
-    hex_.start (true);  // Signal the start of four hex-digit UTF-16.
-    return change_state (hex1_state);
+    hex_.start(true);  // Signal the start of four hex-digit UTF-16.
+    return change_state(hex1_state);
   case hex1_state:
   case hex2_state:
   case hex3_state:
-  case hex4_state: this->hex_states (parser, c); return consume_and_iterate;
+  case hex4_state: this->hex_states(parser, c); return consume_and_iterate;
 
-  default: assert (false); break;
+  default: assert(false); break;
   }
 
-  if (str_->size () >= Policies::max_length) {
-    return install_error (error::identifier_too_long);
+  if (str_->size() >= Policies::max_length) {
+    return install_error(error::identifier_too_long);
   }
 
   // Remember this character.
-  auto it = utf_32_to_8_ (c, std::back_inserter (*str_));
-  utf_32_to_8_.end_cp (it);
-  if (!utf_32_to_8_.well_formed ()) {
-    this->set_error (parser, error::bad_unicode_code_point);
+  auto it = utf_32_to_8_(c, std::back_inserter(*str_));
+  utf_32_to_8_.end_cp(it);
+  if (!utf_32_to_8_.well_formed()) {
+    this->set_error(parser, error::bad_unicode_code_point);
   }
   return consume_and_iterate;
 }
@@ -2105,17 +1888,15 @@ auto identifier_matcher<Backend, Policies>::consume (
 //* \__,_|_| |_| \__,_|\_, | *
 //*                    |__/  *
 /// Matches an array.
-template <typename Backend, typename Policies>
-class array_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class array_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  constexpr array_matcher () noexcept : inherited (start_state) {}
+  constexpr array_matcher() noexcept : inherited(start_state) {}
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::null_pointer;
@@ -2129,67 +1910,63 @@ private:
     comma_state,
   };
 
-  void end_array (parser_type &parser);
+  void end_array(parser_type &parser);
 };
 
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto array_matcher<Backend, Policies>::consume (parser_type &p,
-                                                std::optional<char32_t> ch)
+auto array_matcher<Backend, Policies>::consume(parser_type &p, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
-    this->set_error (p, error::expected_array_member);
-    return {null_pointer (), true};
+    this->set_error(p, error::expected_array_member);
+    return {null_pointer(), true};
   }
   auto const c = *ch;
   switch (state_) {
   case start_state:
-    assert (c == '[');
-    if (this->set_error (p, p.backend ().begin_array ())) {
+    assert(c == '[');
+    if (this->set_error(p, p.backend().begin_array())) {
       break;
     }
     state_ = first_object_state;
     // Match this character and consume whitespace before the object (or close
     // bracket).
-    return {this->make_whitespace_matcher (p), true};
+    return {this->make_whitespace_matcher(p), true};
 
   case first_object_state:
     if (c == ']') {
-      this->end_array (p);
+      this->end_array(p);
       break;
     }
     [[fallthrough]];
   case object_state:
     state_ = comma_state;
-    return {this->make_root_matcher (p), false};
+    return {this->make_root_matcher(p), false};
     break;
   case comma_state:
-    if (whitespace_matcher<Backend, Policies>::want_code_point (p, c)) {
+    if (whitespace_matcher<Backend, Policies>::want_code_point(p, c)) {
       // just consume whitespace before a comma.
-      return {this->make_whitespace_matcher (p), false};
+      return {this->make_whitespace_matcher(p), false};
     }
     switch (c) {
     case ',':
-      state_ = p.extension_enabled (extensions::array_trailing_comma)
-                   ? first_object_state
-                   : object_state;
-      return {this->make_whitespace_matcher (p), true};
-    case ']': this->end_array (p); break;
-    default: this->set_error (p, error::expected_array_member); break;
+      state_ = p.extension_enabled(extensions::array_trailing_comma) ? first_object_state : object_state;
+      return {this->make_whitespace_matcher(p), true};
+    case ']': this->end_array(p); break;
+    default: this->set_error(p, error::expected_array_member); break;
     }
     break;
   case done_state:
-  default: unreachable (); break;
+  default: unreachable(); break;
   }
-  return {null_pointer (), true};
+  return {null_pointer(), true};
 }
 
 // end array
 // ~~~~~~~~~
-template <typename Backend, typename Policies>
-void array_matcher<Backend, Policies>::end_array (parser_type &parser) {
-  this->set_error (parser, parser.backend ().end_array ());
+template <typename Backend, typename Policies> void array_matcher<Backend, Policies>::end_array(parser_type &parser) {
+  this->set_error(parser, parser.backend().end_array());
   state_ = done_state;
 }
 
@@ -2199,17 +1976,15 @@ void array_matcher<Backend, Policies>::end_array (parser_type &parser) {
 //* \___/_.__// \___\__|\__| *
 //*         |__/             *
 /// Matches an object.
-template <typename Backend, typename Policies>
-class object_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class object_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  constexpr object_matcher () noexcept : inherited (start_state) {}
+  constexpr object_matcher() noexcept : inherited(start_state) {}
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::null_pointer;
@@ -2225,120 +2000,107 @@ private:
     comma_state,
   };
 
-  void end_object (parser_type &parser);
-  std::pair<typename inherited::pointer, bool> comma (parser_type &parser,
-                                                      char32_t code_point);
-  std::pair<typename inherited::pointer, bool> key (parser_type &parser,
-                                                    char32_t code_point);
+  void end_object(parser_type &parser);
+  std::pair<typename inherited::pointer, bool> comma(parser_type &parser, char32_t code_point);
+  std::pair<typename inherited::pointer, bool> key(parser_type &parser, char32_t code_point);
 };
 
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto object_matcher<Backend, Policies>::consume (parser_type &parser,
-                                                 std::optional<char32_t> ch)
+auto object_matcher<Backend, Policies>::consume(parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
-    this->set_error (parser, error::expected_object_member);
-    return {null_pointer (), true};
+    this->set_error(parser, error::expected_object_member);
+    return {null_pointer(), true};
   }
   auto const c = *ch;
   switch (state_) {
   case start_state:
-    assert (c == '{');
+    assert(c == '{');
     state_ = first_key_state;
-    if (this->set_error (parser, parser.backend ().begin_object ())) {
+    if (this->set_error(parser, parser.backend().begin_object())) {
       break;
     }
-    return {this->make_whitespace_matcher (parser), true};
+    return {this->make_whitespace_matcher(parser), true};
   case first_key_state:
     // We allow either a closing brace (to end the object) or a property name.
     if (c == '}') {
-      this->end_object (parser);
+      this->end_object(parser);
       break;
     }
     [[fallthrough]];
-  case key_state: return this->key (parser, c);
+  case key_state: return this->key(parser, c);
   case colon_state:
-    if (whitespace_matcher<Backend, Policies>::want_code_point (parser, c)) {
+    if (whitespace_matcher<Backend, Policies>::want_code_point(parser, c)) {
       // just consume whitespace before the colon.
-      return {this->make_whitespace_matcher (parser), false};
+      return {this->make_whitespace_matcher(parser), false};
     }
     if (c == char_set::colon) {
       state_ = value_state;
     } else {
-      this->set_error (parser, error::expected_colon);
+      this->set_error(parser, error::expected_colon);
     }
     break;
-  case value_state:
-    state_ = comma_state;
-    return {this->make_root_matcher (parser), false};
-  case comma_state: return this->comma (parser, c);
+  case value_state: state_ = comma_state; return {this->make_root_matcher(parser), false};
+  case comma_state: return this->comma(parser, c);
   case done_state:
-  default: unreachable (); break;
+  default: unreachable(); break;
   }
   // No change of matcher. Consume the input character.
-  return {null_pointer (), true};
+  return {null_pointer(), true};
 }
 
 // key
 // ~~~
 /// Match a property name then expect a colon.
 template <typename Backend, typename Policies>
-auto object_matcher<Backend, Policies>::key (parser_type &parser,
-                                             char32_t code_point)
+auto object_matcher<Backend, Policies>::key(parser_type &parser, char32_t code_point)
     -> std::pair<typename inherited::pointer, bool> {
   state_ = colon_state;
   if (code_point == char_set::quotation_mark ||
-      (code_point == apostrophe &&
-       parser.extension_enabled (extensions::single_quote_string))) {
-    return {this->make_string_matcher (parser, true /*object key*/, code_point),
-            false};
+      (code_point == apostrophe && parser.extension_enabled(extensions::single_quote_string))) {
+    return {this->make_string_matcher(parser, true /*object key*/, code_point), false};
   }
-  if (parser.extension_enabled (extensions::identifier_object_key)) {
-    return {this->make_identifier_matcher (parser), false};
+  if (parser.extension_enabled(extensions::identifier_object_key)) {
+    return {this->make_identifier_matcher(parser), false};
   }
 
-  this->set_error (parser, error::expected_object_key);
-  return {null_pointer (), true};
+  this->set_error(parser, error::expected_object_key);
+  return {null_pointer(), true};
 }
 
 // comma
 // ~~~~~
 template <typename Backend, typename Policies>
-auto object_matcher<Backend, Policies>::comma (parser_type &parser,
-                                               char32_t code_point)
+auto object_matcher<Backend, Policies>::comma(parser_type &parser, char32_t code_point)
     -> std::pair<typename inherited::pointer, bool> {
-  if (whitespace_matcher<Backend, Policies>::want_code_point (parser,
-                                                              code_point)) {
+  if (whitespace_matcher<Backend, Policies>::want_code_point(parser, code_point)) {
     // just consume whitespace before the comma.
-    return {this->make_whitespace_matcher (parser), false};
+    return {this->make_whitespace_matcher(parser), false};
   }
   if (code_point == ',') {
     // Strictly conforming JSON requires a property name following a comma but
     // we have an extension to allow an trailing comma which may be followed
     // by the object's closing brace.
-    state_ = parser.extension_enabled (extensions::object_trailing_comma)
-                 ? first_key_state
-                 : key_state;
+    state_ = parser.extension_enabled(extensions::object_trailing_comma) ? first_key_state : key_state;
     // Consume the comma and any whitespace before the close brace or property
     // name.
-    return {this->make_whitespace_matcher (parser), true};
+    return {this->make_whitespace_matcher(parser), true};
   }
   if (code_point == '}') {
-    this->end_object (parser);
+    this->end_object(parser);
   } else {
-    this->set_error (parser, error::expected_object_member);
+    this->set_error(parser, error::expected_object_member);
   }
   // No change of matcher. Consume the input character.
-  return {null_pointer (), true};
+  return {null_pointer(), true};
 }
 
 // end object
 // ~~~~~~~~~~~
-template <typename Backend, typename Policies>
-void object_matcher<Backend, Policies>::end_object (parser_type &parser) {
-  this->set_error (parser, parser.backend ().end_object ());
+template <typename Backend, typename Policies> void object_matcher<Backend, Policies>::end_object(parser_type &parser) {
+  this->set_error(parser, parser.backend().end_object());
   state_ = done_state;
 }
 
@@ -2352,25 +2114,22 @@ void object_matcher<Backend, Policies>::end_object (parser_type &parser) {
 /// This matcher consumes whitespace and updates the row number in response to
 /// the various combinations of CR and LF. Supports #, //, and /* style comments
 /// as an extension.
-template <typename Backend, typename Policies>
-class whitespace_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class whitespace_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  constexpr whitespace_matcher () noexcept : inherited (body_state) {}
+  constexpr whitespace_matcher() noexcept : inherited(body_state) {}
 
   /// Returns true if the argument \p code_point potentially represents the
   /// start of a whitespace sequence.
   ///
   /// \p parser  The owning parser instance.
   /// \p code_point  The Unicode code point which is to be tested.
-  static constexpr bool want_code_point (parser_type &parser,
-                                         char32_t code_point) noexcept;
+  static constexpr bool want_code_point(parser_type &parser, char32_t code_point) noexcept;
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::null_pointer;
@@ -2394,28 +2153,25 @@ private:
     multi_line_comment_crlf_state,
   };
 
-  std::pair<typename inherited::pointer, bool> consume_body (
-      parser_type &parser, char32_t c);
-  std::pair<typename inherited::pointer, bool> consume_comment_start (
-      parser_type &parser, char32_t c);
-  std::pair<typename inherited::pointer, bool> multi_line_comment_body (
-      parser_type &parser, char32_t c);
-  std::pair<typename inherited::pointer, bool> extra (char32_t c);
+  std::pair<typename inherited::pointer, bool> consume_body(parser_type &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> consume_comment_start(parser_type &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> multi_line_comment_body(parser_type &parser, char32_t c);
+  std::pair<typename inherited::pointer, bool> extra(char32_t c);
 
-  void cr (parser_type &parser, state next) {
-    assert (state_ == multi_line_comment_body_state || state_ == body_state);
-    parser.advance_row ();
+  void cr(parser_type &parser, state next) {
+    assert(state_ == multi_line_comment_body_state || state_ == body_state);
+    parser.advance_row();
     state_ = next;
   }
-  void lf (parser_type &parser) { parser.advance_row (); }
+  void lf(parser_type &parser) { parser.advance_row(); }
 
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
   /// if the character shoud be treated as whitespace.
-  bool crlf (parser_type &parser, char32_t c) {
+  bool crlf(parser_type &parser, char32_t c) {
     if (c != char_set::line_feed) {
       return false;
     }
-    parser.reset_column ();
+    parser.reset_column();
     return true;
   }
 };
@@ -2423,18 +2179,17 @@ private:
 // want code point
 // ~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-constexpr bool whitespace_matcher<Backend, Policies>::want_code_point (
-    parser_type &parser, char32_t code_point) noexcept {
+constexpr bool whitespace_matcher<Backend, Policies>::want_code_point(parser_type &parser,
+                                                                      char32_t code_point) noexcept {
   bool result = false;
   switch (code_point) {
   // The following two code points aren't whitespace but potentially introduce
   // a comment which from the parser's POV, counts as whitespace (assuming that
   // the associated extension has been enabled).
-  case char_set::number_sign:
-    return parser.extension_enabled (extensions::bash_comments);
+  case char_set::number_sign: return parser.extension_enabled(extensions::bash_comments);
   case char_set::solidus:
-    return parser.extension_enabled (extensions::multi_line_comments) ||
-           parser.extension_enabled (extensions::single_line_comments);
+    return parser.extension_enabled(extensions::multi_line_comments) ||
+           parser.extension_enabled(extensions::single_line_comments);
   case char_set::space:
   case char_set::character_tabulation:
   case char_set::carriage_return:
@@ -2447,46 +2202,42 @@ constexpr bool whitespace_matcher<Backend, Policies>::want_code_point (
     // are, by far, the most common). For code points above that, we need to
     // consult the table.
     if (code_point > 0xFF) {
-      result = code_point_grammar_rule (code_point) == grammar_rule::whitespace;
+      result = code_point_grammar_rule(code_point) == grammar_rule::whitespace;
     }
     break;
   }
-  assert (result ==
-          (code_point_grammar_rule (code_point) == grammar_rule::whitespace));
+  assert(result == (code_point_grammar_rule(code_point) == grammar_rule::whitespace));
   return result;
 }
 
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-std::pair<typename matcher<Backend, Policies>::pointer, bool>
-whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
-                                                std::optional<char32_t> ch) {
+std::pair<typename matcher<Backend, Policies>::pointer, bool> whitespace_matcher<Backend, Policies>::consume(
+    parser_type &parser, std::optional<char32_t> ch) {
   if (!ch) {
     switch (state_) {
     case multi_line_comment_body_state:
     case multi_line_comment_ending_state:
-    case multi_line_comment_crlf_state:
-      this->set_error (parser, error::unterminated_multiline_comment);
-      break;
+    case multi_line_comment_crlf_state: this->set_error(parser, error::unterminated_multiline_comment); break;
     default: state_ = done_state; break;
     }
-    return {null_pointer (), true};
+    return {null_pointer(), true};
   }
   auto const c = *ch;
   switch (state_) {
   // Handles the LF part of a Windows-style CR/LF pair.
   case crlf_state:
     state_ = body_state;
-    if (crlf (parser, c)) {
+    if (crlf(parser, c)) {
       break;
     }
     [[fallthrough]];
-  case body_state: return this->consume_body (parser, c);
-  case comment_start_state: return this->consume_comment_start (parser, c);
+  case body_state: return this->consume_body(parser, c);
+  case comment_start_state: return this->consume_comment_start(parser, c);
 
   case multi_line_comment_ending_state:
-    assert (parser.extension_enabled (extensions::multi_line_comments));
+    assert(parser.extension_enabled(extensions::multi_line_comments));
     switch (c) {
     // asterisk followed by a second asterisk so don't change state.
     case char_set::asterisk: break;
@@ -2499,35 +2250,33 @@ whitespace_matcher<Backend, Policies>::consume (parser_type &parser,
 
   case multi_line_comment_crlf_state:
     state_ = multi_line_comment_body_state;
-    if (crlf (parser, c)) {
+    if (crlf(parser, c)) {
       break;
     }
     [[fallthrough]];
-  case multi_line_comment_body_state:
-    return this->multi_line_comment_body (parser, c);
+  case multi_line_comment_body_state: return this->multi_line_comment_body(parser, c);
   case single_line_comment_state:
-    assert (parser.extension_enabled (extensions::bash_comments) ||
-            parser.extension_enabled (extensions::single_line_comments) ||
-            parser.extension_enabled (extensions::multi_line_comments));
+    assert(parser.extension_enabled(extensions::bash_comments) ||
+           parser.extension_enabled(extensions::single_line_comments) ||
+           parser.extension_enabled(extensions::multi_line_comments));
     if (c == char_set::carriage_return || c == char_set::line_feed) {
       // This character marks a bash/single-line comment end. Go back to
       // normal whitespace handling. Retry with the same character.
       state_ = body_state;
-      return {null_pointer (), false};
+      return {null_pointer(), false};
     }
     // Just consume the character.
     break;
 
-  default: assert (false); break;
+  default: assert(false); break;
   }
-  return {null_pointer (), true};
+  return {null_pointer(), true};
 }
 
 // extra
 // ~~~~~
 template <typename Backend, typename Policies>
-auto whitespace_matcher<Backend, Policies>::extra (char32_t c)
-    -> std::pair<typename inherited::pointer, bool> {
+auto whitespace_matcher<Backend, Policies>::extra(char32_t c) -> std::pair<typename inherited::pointer, bool> {
   bool is_ws = false;
   switch (c) {
   case char_set::vertical_tabulation:
@@ -2535,57 +2284,55 @@ auto whitespace_matcher<Backend, Policies>::extra (char32_t c)
   case char_set::no_break_space: is_ws = true; break;
   default:
     if (c > 0xFF) {
-      is_ws = code_point_grammar_rule (c) == grammar_rule::whitespace;
+      is_ws = code_point_grammar_rule(c) == grammar_rule::whitespace;
     }
     break;
   }
-  assert (is_ws == (code_point_grammar_rule (c) == grammar_rule::whitespace));
+  assert(is_ws == (code_point_grammar_rule(c) == grammar_rule::whitespace));
   if (is_ws) {
-    return {null_pointer (), true};  // Consume this character.
+    return {null_pointer(), true};  // Consume this character.
   }
   state_ = done_state;
-  return {null_pointer (),
-          false};  // Retry this character with a different matcher.
+  return {null_pointer(), false};  // Retry this character with a different matcher.
 }
 
 // consume body
 // ~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-auto whitespace_matcher<Backend, Policies>::consume_body (parser_type &parser,
-                                                          char32_t c)
+auto whitespace_matcher<Backend, Policies>::consume_body(parser_type &parser, char32_t c)
     -> std::pair<typename inherited::pointer, bool> {
-  auto const stop_retry = [this] () {
+  auto const stop_retry = [this]() {
     // Stop, pop this matcher, and retry with the same character.
     state_ = done_state;
-    return std::pair{null_pointer (), false};
+    return std::pair{null_pointer(), false};
   };
 
   switch (c) {
   case char_set::space:
   case char_set::character_tabulation:  // TODO(paul) tab expansion.
     break;
-  case char_set::carriage_return: this->cr (parser, crlf_state); break;
-  case char_set::line_feed: this->lf (parser); break;
+  case char_set::carriage_return: this->cr(parser, crlf_state); break;
+  case char_set::line_feed: this->lf(parser); break;
   case char_set::number_sign:
-    if (!parser.extension_enabled (extensions::bash_comments)) {
-      return stop_retry ();
+    if (!parser.extension_enabled(extensions::bash_comments)) {
+      return stop_retry();
     }
     state_ = single_line_comment_state;
     break;
   case char_set::solidus:
-    if (!parser.extension_enabled (extensions::single_line_comments) &&
-        !parser.extension_enabled (extensions::multi_line_comments)) {
-      return stop_retry ();
+    if (!parser.extension_enabled(extensions::single_line_comments) &&
+        !parser.extension_enabled(extensions::multi_line_comments)) {
+      return stop_retry();
     }
     state_ = comment_start_state;
     break;
   default:
-    if (parser.extension_enabled (extensions::extra_whitespace)) {
-      return this->extra (c);
+    if (parser.extension_enabled(extensions::extra_whitespace)) {
+      return this->extra(c);
     }
-    return stop_retry ();
+    return stop_retry();
   }
-  return {null_pointer (), true};  // Consume this character.
+  return {null_pointer(), true};  // Consume this character.
 }
 
 // consume comment start
@@ -2599,18 +2346,15 @@ auto whitespace_matcher<Backend, Policies>::consume_body (parser_type &parser,
 /// which of the three it is.
 template <typename Backend, typename Policies>
 std::pair<typename matcher<Backend, Policies>::pointer, bool>
-whitespace_matcher<Backend, Policies>::consume_comment_start (
-    parser_type &parser, char32_t c) {
-  if (c == char_set::solidus &&
-      parser.extension_enabled (extensions::single_line_comments)) {
+whitespace_matcher<Backend, Policies>::consume_comment_start(parser_type &parser, char32_t c) {
+  if (c == char_set::solidus && parser.extension_enabled(extensions::single_line_comments)) {
     state_ = single_line_comment_state;
-  } else if (c == char_set::asterisk &&
-             parser.extension_enabled (extensions::multi_line_comments)) {
+  } else if (c == char_set::asterisk && parser.extension_enabled(extensions::multi_line_comments)) {
     state_ = multi_line_comment_body_state;
   } else {
-    this->set_error (parser, error::expected_token);
+    this->set_error(parser, error::expected_token);
   }
-  return {null_pointer (), true};  // Consume this character.
+  return {null_pointer(), true};  // Consume this character.
 }
 
 // multi line comment body
@@ -2620,24 +2364,21 @@ whitespace_matcher<Backend, Policies>::consume_comment_start (
 /// indicate the end of the multi-line comment.
 template <typename Backend, typename Policies>
 std::pair<typename matcher<Backend, Policies>::pointer, bool>
-whitespace_matcher<Backend, Policies>::multi_line_comment_body (
-    parser_type &parser, char32_t c) {
-  assert (parser.extension_enabled (extensions::multi_line_comments));
-  assert (state_ == multi_line_comment_body_state);
+whitespace_matcher<Backend, Policies>::multi_line_comment_body(parser_type &parser, char32_t c) {
+  assert(parser.extension_enabled(extensions::multi_line_comments));
+  assert(state_ == multi_line_comment_body_state);
   switch (c) {
   case char_set::asterisk:
     // This could be a standalone star character or be followed by a slash
     // to end the multi-line comment.
     state_ = multi_line_comment_ending_state;
     break;
-  case char_set::carriage_return:
-    this->cr (parser, multi_line_comment_crlf_state);
-    break;
-  case char_set::line_feed: this->lf (parser); break;
+  case char_set::carriage_return: this->cr(parser, multi_line_comment_crlf_state); break;
+  case char_set::line_feed: this->lf(parser); break;
   case char_set::character_tabulation: break;  // TODO(paul) tab expansion.
   default: break;                              // Just consume.
   }
-  return {null_pointer (), true};  // Consume this character.
+  return {null_pointer(), true};  // Consume this character.
 }
 
 //*           __  *
@@ -2646,17 +2387,15 @@ whitespace_matcher<Backend, Policies>::multi_line_comment_body (
 //* \___\___/_|   *
 //*               *
 /// Matches the end of the input.
-template <typename Backend, typename Policies>
-class eof_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class eof_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  constexpr eof_matcher () noexcept : inherited (start_state) {}
+  constexpr eof_matcher() noexcept : inherited(start_state) {}
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::state_;
@@ -2669,15 +2408,14 @@ private:
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto eof_matcher<Backend, Policies>::consume (parser_type &parser,
-                                              std::optional<char32_t> const ch)
+auto eof_matcher<Backend, Policies>::consume(parser_type &parser, std::optional<char32_t> const ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (ch) {
-    this->set_error (parser, error::unexpected_extra_input);
+    this->set_error(parser, error::unexpected_extra_input);
   } else {
     state_ = done_state;
   }
-  return {inherited::null_pointer (), true};
+  return {inherited::null_pointer(), true};
 }
 
 //*               _                _      _             *
@@ -2685,17 +2423,15 @@ auto eof_matcher<Backend, Policies>::consume (parser_type &parser,
 //* | '_/ _ \/ _ \  _| | '  \/ _` |  _/ _| ' \/ -_) '_| *
 //* |_| \___/\___/\__| |_|_|_\__,_|\__\__|_||_\___|_|   *
 //*                                                     *
-template <typename Backend, typename Policies>
-class root_matcher final : public matcher<Backend, Policies> {
+template <typename Backend, typename Policies> class root_matcher final : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
 public:
   using parser_type = typename inherited::parser_type;
 
-  constexpr root_matcher () noexcept : inherited (start_state) {}
+  constexpr root_matcher() noexcept : inherited(start_state) {}
 
-  std::pair<typename inherited::pointer, bool> consume (
-      parser_type &parser, std::optional<char32_t> ch) override;
+  std::pair<typename inherited::pointer, bool> consume(parser_type &parser, std::optional<char32_t> ch) override;
 
 private:
   using inherited::null_pointer;
@@ -2711,12 +2447,11 @@ private:
 // consume
 // ~~~~~~~
 template <typename Backend, typename Policies>
-auto root_matcher<Backend, Policies>::consume (parser_type &parser,
-                                               std::optional<char32_t> ch)
+auto root_matcher<Backend, Policies>::consume(parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   if (!ch) {
-    this->set_error (parser, error::expected_token);
-    return {null_pointer (), true};
+    this->set_error(parser, error::expected_token);
+    return {null_pointer(), true};
   }
 
   using pointer = typename inherited::pointer;
@@ -2724,8 +2459,8 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
   switch (state_) {
   case start_state:
     state_ = new_token_state;
-    if (whitespace_matcher<Backend, Policies>::want_code_point (parser, *ch)) {
-      return {this->make_whitespace_matcher (parser), false};
+    if (whitespace_matcher<Backend, Policies>::want_code_point(parser, *ch)) {
+      return {this->make_whitespace_matcher(parser), false};
     }
     [[fallthrough]];
   case new_token_state: {
@@ -2733,12 +2468,10 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
     switch (*ch) {
     case char_set::plus_sign:
     case char_set::full_stop:
-      if ((*ch == char_set::plus_sign &&
-           !parser.extension_enabled (extensions::leading_plus)) ||
-          (*ch == char_set::full_stop &&
-           !parser.extension_enabled (extensions::numbers))) {
-        this->set_error (parser, error::expected_token);
-        return {null_pointer (), true};
+      if ((*ch == char_set::plus_sign && !parser.extension_enabled(extensions::leading_plus)) ||
+          (*ch == char_set::full_stop && !parser.extension_enabled(extensions::numbers))) {
+        this->set_error(parser, error::expected_token);
+        return {null_pointer(), true};
       }
       [[fallthrough]];
 
@@ -2753,64 +2486,39 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
     case char_set::digit_seven:
     case char_set::digit_eight:
     case char_set::digit_nine:
-      return {this->template make_terminal_matcher<
-                  number_matcher<Backend, Policies>> (parser),
-              false};
+      return {this->template make_terminal_matcher<number_matcher<Backend, Policies>>(parser), false};
     case '\'':
-      if (!parser.extension_enabled (extensions::single_quote_string)) {
-        this->set_error (parser, error::expected_token);
-        return {null_pointer (), true};
+      if (!parser.extension_enabled(extensions::single_quote_string)) {
+        this->set_error(parser, error::expected_token);
+        return {null_pointer(), true};
       }
       [[fallthrough]];
-    case '"':
-      return {this->make_string_matcher (parser, false /*object key?*/, *ch),
-              false};
+    case '"': return {this->make_string_matcher(parser, false /*object key?*/, *ch), false};
     case char_set::latin_capital_letter_i:
-      if (parser.extension_enabled (extensions::numbers)) {
-        return {this->template make_terminal_matcher<
-                    infinity_token_matcher<Backend, Policies>> (parser),
-                false};
+      if (parser.extension_enabled(extensions::numbers)) {
+        return {this->template make_terminal_matcher<infinity_token_matcher<Backend, Policies>>(parser), false};
       }
-      this->set_error (parser, error::expected_token);
-      return {null_pointer (), true};
+      this->set_error(parser, error::expected_token);
+      return {null_pointer(), true};
 
     case char_set::latin_capital_letter_n:
-      if (parser.extension_enabled (extensions::numbers)) {
-        return {this->template make_terminal_matcher<
-                    nan_token_matcher<Backend, Policies>> (parser),
-                false};
+      if (parser.extension_enabled(extensions::numbers)) {
+        return {this->template make_terminal_matcher<nan_token_matcher<Backend, Policies>>(parser), false};
       }
-      this->set_error (parser, error::expected_token);
-      return {null_pointer (), true};
+      this->set_error(parser, error::expected_token);
+      return {null_pointer(), true};
 
-    case 't':
-      return {this->template make_terminal_matcher<
-                  true_token_matcher<Backend, Policies>> (parser),
-              false};
-    case 'f':
-      return {this->template make_terminal_matcher<
-                  false_token_matcher<Backend, Policies>> (parser),
-              false};
-    case 'n':
-      return {this->template make_terminal_matcher<
-                  null_token_matcher<Backend, Policies>> (parser),
-              false};
-    case '[':
-      return {pointer{new array_matcher<Backend, Policies> (),
-                      deleter{deleter::mode::do_delete}},
-              false};
-    case '{':
-      return {pointer{new object_matcher<Backend, Policies> (),
-                      deleter{deleter::mode::do_delete}},
-              false};
-    default:
-      this->set_error (parser, error::expected_token);
-      return {null_pointer (), true};
+    case 't': return {this->template make_terminal_matcher<true_token_matcher<Backend, Policies>>(parser), false};
+    case 'f': return {this->template make_terminal_matcher<false_token_matcher<Backend, Policies>>(parser), false};
+    case 'n': return {this->template make_terminal_matcher<null_token_matcher<Backend, Policies>>(parser), false};
+    case '[': return {pointer{new array_matcher<Backend, Policies>(), deleter{deleter::mode::do_delete}}, false};
+    case '{': return {pointer{new object_matcher<Backend, Policies>(), deleter{deleter::mode::do_delete}}, false};
+    default: this->set_error(parser, error::expected_token); return {null_pointer(), true};
     }
   } break;
   default: break;
   }
-  unreachable ();
+  unreachable();
 }
 
 //*     _           _     _                *
@@ -2818,19 +2526,14 @@ auto root_matcher<Backend, Policies>::consume (parser_type &parser,
 //* (_-< | ' \/ _` | / -_)  _/ _ \ ' \(_-< *
 //* /__/_|_||_\__, |_\___|\__\___/_||_/__/ *
 //*           |___/                        *
-template <typename Backend, typename Policies>
-struct singletons {
+template <typename Backend, typename Policies> struct singletons {
   eof_matcher<Backend, Policies> eof;
   whitespace_matcher<Backend, Policies> trailing_ws;
   root_matcher<Backend, Policies> root;
-  std::variant<details::number_matcher<Backend, Policies>,
-               details::string_matcher<Backend, Policies>,
-               details::identifier_matcher<Backend, Policies>,
-               details::true_token_matcher<Backend, Policies>,
-               details::false_token_matcher<Backend, Policies>,
-               details::null_token_matcher<Backend, Policies>,
-               details::infinity_token_matcher<Backend, Policies>,
-               details::nan_token_matcher<Backend, Policies>,
+  std::variant<details::number_matcher<Backend, Policies>, details::string_matcher<Backend, Policies>,
+               details::identifier_matcher<Backend, Policies>, details::true_token_matcher<Backend, Policies>,
+               details::false_token_matcher<Backend, Policies>, details::null_token_matcher<Backend, Policies>,
+               details::infinity_token_matcher<Backend, Policies>, details::nan_token_matcher<Backend, Policies>,
                details::whitespace_matcher<Backend, Policies>>
       terminals;
 };
@@ -2840,122 +2543,102 @@ struct singletons {
 // (ctor)
 // ~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
 #if PEEJAY_HAVE_CONCEPTS
 template <typename OtherBackend>
-  requires (backend<OtherBackend>)
+  requires(backend<OtherBackend>)
 #else
 template <
     typename OtherBackend,
     typename std::enable_if_t<
-        !std::is_same_v<parser<Backend>,
-                        typename std::remove_cv_t<
-                            typename std::remove_reference_t<OtherBackend>>>,
+        !std::is_same_v<parser<Backend>, typename std::remove_cv_t<typename std::remove_reference_t<OtherBackend>>>,
         int> /* unnamed */>
 #endif
-parser<Backend, Policies>::parser (OtherBackend &&backend,
-                                   extensions const extensions)
-    : str_buffer_{std::make_unique<arrayvec<char8, Policies::max_length>> ()},
+parser<Backend, Policies>::parser(OtherBackend &&backend, extensions const extensions)
+    : str_buffer_{std::make_unique<arrayvec<char8, Policies::max_length>>()},
       extensions_{extensions},
-      backend_{std::forward<OtherBackend> (backend)} {
+      backend_{std::forward<OtherBackend>(backend)} {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
   // input JSON ends after a single top-level object.
-  stack_.push (mpointer (new (&singletons_.eof)
-                             details::eof_matcher<Backend, Policies>{},
-                         deleter{deleter::mode::do_nothing}));
+  stack_.push(
+      mpointer(new (&singletons_.eof) details::eof_matcher<Backend, Policies>{}, deleter{deleter::mode::do_nothing}));
   // We permit whitespace after the top-level object.
-  stack_.push (mpointer (new (&singletons_.trailing_ws)
-                             details::whitespace_matcher<Backend, Policies>{},
-                         deleter{deleter::mode::do_nothing}));
-  stack_.push (this->make_root_matcher ());
+  stack_.push(mpointer(new (&singletons_.trailing_ws) details::whitespace_matcher<Backend, Policies>{},
+                       deleter{deleter::mode::do_nothing}));
+  stack_.push(this->make_root_matcher());
 }
 
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-parser<Backend, Policies>::parser (parser &&rhs) noexcept (
-    std::is_nothrow_move_constructible_v<Backend>)
-    : utf_{std::move (rhs.utf_)},
-      stack_{std::move (rhs.stack_)},
-      error_{std::move (rhs.error_)},
-      singletons_{std::move (rhs.singletons_)},
-      str_buffer_{std::move (rhs.str_buffer_)},
-      pos_{std::move (rhs.pos_)},
-      matcher_pos_{std::move (rhs.matcher_pos_)},
-      extensions_{std::move (rhs.extensions_)},
-      backend_{std::move (rhs.backend_)} {
-  static_assert (std::is_move_constructible_v<decltype (singletons_)>);
-  reseat_stack_after_move (rhs);
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+parser<Backend, Policies>::parser(parser &&rhs) noexcept(std::is_nothrow_move_constructible_v<Backend>)
+    : utf_{std::move(rhs.utf_)},
+      stack_{std::move(rhs.stack_)},
+      error_{std::move(rhs.error_)},
+      singletons_{std::move(rhs.singletons_)},
+      str_buffer_{std::move(rhs.str_buffer_)},
+      pos_{std::move(rhs.pos_)},
+      matcher_pos_{std::move(rhs.matcher_pos_)},
+      extensions_{std::move(rhs.extensions_)},
+      backend_{std::move(rhs.backend_)} {
+  static_assert(std::is_move_constructible_v<decltype(singletons_)>);
+  reseat_stack_after_move(rhs);
 }
 
 // operator=
 // ~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-auto parser<Backend, Policies>::
-operator= (parser &&rhs) noexcept (std::is_nothrow_move_assignable_v<Backend>)
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+auto parser<Backend, Policies>::operator=(parser &&rhs) noexcept(std::is_nothrow_move_assignable_v<Backend>)
     -> parser & {
-  utf_ = std::move (rhs.utf_);
-  stack_ = std::move (rhs.stack_);
-  error_ = std::move (rhs.error_);
-  singletons_ = std::move (rhs.singletons_);
-  str_buffer_ = std::move (rhs.str_buffer_);
-  pos_ = std::move (rhs.pos_);
-  matcher_pos_ = std::move (rhs.matcher_pos_),
-  extensions_ = std::move (rhs.extensions_);
-  backend_ = std::move (rhs.backend_);
-  reseat_stack_after_move (rhs);
+  utf_ = std::move(rhs.utf_);
+  stack_ = std::move(rhs.stack_);
+  error_ = std::move(rhs.error_);
+  singletons_ = std::move(rhs.singletons_);
+  str_buffer_ = std::move(rhs.str_buffer_);
+  pos_ = std::move(rhs.pos_);
+  matcher_pos_ = std::move(rhs.matcher_pos_), extensions_ = std::move(rhs.extensions_);
+  backend_ = std::move(rhs.backend_);
+  reseat_stack_after_move(rhs);
   return *this;
 }
 
 // make root matcher
 // ~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-auto parser<Backend, Policies>::make_root_matcher () -> pointer {
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+auto parser<Backend, Policies>::make_root_matcher() -> pointer {
   using root_matcher = details::root_matcher<Backend, Policies>;
   using deleter = typename pointer::deleter_type;
-  return pointer (new (&singletons_.root) root_matcher (),
-                  deleter{deleter::mode::do_nothing});
+  return pointer(new (&singletons_.root) root_matcher(), deleter{deleter::mode::do_nothing});
 }
 
 // make whitespace matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-auto parser<Backend, Policies>::make_whitespace_matcher () -> pointer {
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+auto parser<Backend, Policies>::make_whitespace_matcher() -> pointer {
   using whitespace_matcher = details::whitespace_matcher<Backend, Policies>;
-  return this->make_terminal_matcher<whitespace_matcher> ();
+  return this->make_terminal_matcher<whitespace_matcher>();
 }
 
 // make string matcher
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-auto parser<Backend, Policies>::make_string_matcher (bool object_key,
-                                                     char32_t enclosing_char)
-    -> pointer {
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+auto parser<Backend, Policies>::make_string_matcher(bool object_key, char32_t enclosing_char) -> pointer {
   using string_matcher = details::string_matcher<Backend, Policies>;
-  return this->template make_terminal_matcher<string_matcher> (
-      str_buffer_.get (), object_key, enclosing_char);
+  return this->template make_terminal_matcher<string_matcher>(str_buffer_.get(), object_key, enclosing_char);
 }
 
 // make identifier matcher
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-auto parser<Backend, Policies>::make_identifier_matcher () -> pointer {
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+auto parser<Backend, Policies>::make_identifier_matcher() -> pointer {
   using identifier_matcher = details::identifier_matcher<Backend, Policies>;
-  return this->template make_terminal_matcher<identifier_matcher> (
-      str_buffer_.get ());
+  return this->template make_terminal_matcher<identifier_matcher>(str_buffer_.get());
 }
 
 // input
@@ -2964,37 +2647,32 @@ auto parser<Backend, Policies>::make_identifier_matcher () -> pointer {
 /// \param first The element in the half-open range of UTF-32 code-units to be parsed.
 /// \param last The end of the range of UTF-32 code-units to be parsed.
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
 #if PEEJAY_HAVE_CONCEPTS
 template <std::input_iterator InputIterator>
 #else
 template <typename InputIterator, typename>
 #endif  // PEEJAY_HAVE_CONCEPTS
-PEEJAY_CXX20REQUIRES (
-    (std::is_same_v<
-        std::decay_t<typename std::iterator_traits<InputIterator>::value_type>,
-        std::byte>))
-parser<Backend, Policies> &parser<Backend, Policies>::input (
-    InputIterator first, InputIterator last) {
+PEEJAY_CXX20REQUIRES(
+    (std::is_same_v<std::decay_t<typename std::iterator_traits<InputIterator>::value_type>, std::byte>))
+parser<Backend, Policies> &parser<Backend, Policies>::input(InputIterator first, InputIterator last) {
   if (error_) {
     return *this;
   }
   std::array<char32_t, 2> code_points{{0}};
   // NOLINTNEXTLINE(llvm-qualified-auto, readability-qualified-auto)
-  auto const first_code_point = std::begin (code_points);
+  auto const first_code_point = std::begin(code_points);
   while (first != last && !error_) {
-    auto const last_code_point = utf_ (*first, first_code_point);
+    auto const last_code_point = utf_(*first, first_code_point);
     ++first;
-    std::for_each (first_code_point, last_code_point,
-                   [this] (char32_t const code_point) {
-                     if (!error_) {
-                       this->consume_code_point (code_point);
-                     }
-                     if (!error_) {
-                       this->advance_column ();
-                     }
-                   });
+    std::for_each(first_code_point, last_code_point, [this](char32_t const code_point) {
+      if (!error_) {
+        this->consume_code_point(code_point);
+      }
+      if (!error_) {
+        this->advance_column();
+      }
+    });
   }
   return *this;
 }
@@ -3002,33 +2680,32 @@ parser<Backend, Policies> &parser<Backend, Policies>::input (
 // consume code point
 // ~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-void parser<Backend, Policies>::consume_code_point (char32_t code_point) {
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+void parser<Backend, Policies>::consume_code_point(char32_t code_point) {
   bool retry = false;
   do {
-    assert (!stack_.empty ());
-    auto &handler = stack_.top ();
-    auto res = handler->consume (*this, code_point);
+    assert(!stack_.empty());
+    auto &handler = stack_.top();
+    auto res = handler->consume(*this, code_point);
     if (error_) {
       return;
     }
-    if (handler->is_done ()) {
-      stack_.pop ();  // release the topmost matcher object.
+    if (handler->is_done()) {
+      stack_.pop();  // release the topmost matcher object.
       matcher_pos_ = pos_;
     }
 
     if (res.first != nullptr) {
-      if (stack_.size () > max_stack_depth_)
+      if (stack_.size() > max_stack_depth_)
         PEEJAY_UNLIKELY_ATTRIBUTE {
           // We've already hit the maximum allowed parse stack depth. Reject
           // this new matcher.
-          assert (!error_);
+          assert(!error_);
           error_ = error::nesting_too_deep;
           return;
         }
 
-      stack_.push (std::move (res.first));
+      stack_.push(std::move(res.first));
       matcher_pos_ = pos_;
     }
     retry = !res.second;
@@ -3038,31 +2715,29 @@ void parser<Backend, Policies>::consume_code_point (char32_t code_point) {
 // reseat stack after move
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-void parser<Backend, Policies>::reseat_stack_after_move (
-    parser const &rhs) noexcept {
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+void parser<Backend, Policies>::reseat_stack_after_move(parser const &rhs) noexcept {
   using deleter = typename pointer::deleter_type;
   constexpr auto d = deleter{deleter::mode::do_nothing};
 
-  auto pos = std::begin (stack_);
-  auto last = std::end (stack_);
+  auto pos = std::begin(stack_);
+  auto last = std::end(stack_);
   if (pos == last) {
     return;
   }
 
   // We know that there is at least one object on the stack.
-  std::advance (last, -1);
+  std::advance(last, -1);
 
   // First matcher on the stack is always the EOF checker.
-  assert (pos->get () == &rhs.singletons_.eof);
-  *pos = pointer (&singletons_.eof, d);
+  assert(pos->get() == &rhs.singletons_.eof);
+  *pos = pointer(&singletons_.eof, d);
   ++pos;
 
   if (pos != last) {
     // Next is the "trailing whitespace" matcher.
-    assert (pos->get () == &rhs.singletons_.trailing_ws);
-    *pos = pointer (&singletons_.trailing_ws, d);
+    assert(pos->get() == &rhs.singletons_.trailing_ws);
+    *pos = pointer(&singletons_.trailing_ws, d);
     ++pos;
   }
 
@@ -3070,28 +2745,25 @@ void parser<Backend, Policies>::reseat_stack_after_move (
   // Check that none of the intermediate stack entries point into the
   // singletons object.
   for (auto it2 = pos; it2 != last; ++it2) {
-    assert (it2->get () != &rhs.singletons_.eof &&
-            it2->get () != &rhs.singletons_.trailing_ws &&
-            it2->get () != &rhs.singletons_.root);
-    if (!rhs.singletons_.terminals.valueless_by_exception ()) {
-      std::visit ([&it2] (auto &v) { assert (it2->get () != &v); },
-                  rhs.singletons_.terminals);
+    assert(it2->get() != &rhs.singletons_.eof && it2->get() != &rhs.singletons_.trailing_ws &&
+           it2->get() != &rhs.singletons_.root);
+    if (!rhs.singletons_.terminals.valueless_by_exception()) {
+      std::visit([&it2](auto &v) { assert(it2->get() != &v); }, rhs.singletons_.terminals);
     }
   }
 #endif
 
-  auto &top = stack_.top ();
-  if (top.get () == &rhs.singletons_.root) {
-    top = pointer (&singletons_.root, d);
+  auto &top = stack_.top();
+  if (top.get() == &rhs.singletons_.root) {
+    top = pointer(&singletons_.root, d);
   } else {
-    assert (top.get () != &rhs.singletons_.eof &&
-            top.get () != &rhs.singletons_.trailing_ws);
-    if (!rhs.singletons_.terminals.valueless_by_exception ()) {
-      std::visit (
-          [&top, d, this] (auto &v) {
-            if (top.get () == &v) {
-              using T = std::decay_t<decltype (v)>;
-              top = pointer (&std::get<T> (singletons_.terminals), d);
+    assert(top.get() != &rhs.singletons_.eof && top.get() != &rhs.singletons_.trailing_ws);
+    if (!rhs.singletons_.terminals.valueless_by_exception()) {
+      std::visit(
+          [&top, d, this](auto &v) {
+            if (top.get() == &v) {
+              using T = std::decay_t<decltype(v)>;
+              top = pointer(&std::get<T>(singletons_.terminals), d);
             }
           },
           rhs.singletons_.terminals);
@@ -3102,17 +2774,16 @@ void parser<Backend, Policies>::reseat_stack_after_move (
 // eof
 // ~~~
 template <typename Backend, typename Policies>
-PEEJAY_CXX20REQUIRES ((policy<Policies> &&
-                       backend<Backend, typename Policies::integer_type>))
-decltype (auto) parser<Backend, Policies>::eof () {
-  while (!stack_.empty () && !has_error ()) {
-    auto &handler = stack_.top ();
-    auto res = handler->consume (*this, std::optional<char>{std::nullopt});
-    assert (handler->is_done ());
-    assert (res.second);
-    stack_.pop ();  // release the topmost matcher object.
+PEEJAY_CXX20REQUIRES((policy<Policies> && backend<Backend, typename Policies::integer_type>))
+decltype(auto) parser<Backend, Policies>::eof() {
+  while (!stack_.empty() && !has_error()) {
+    auto &handler = stack_.top();
+    auto res = handler->consume(*this, std::optional<char>{std::nullopt});
+    assert(handler->is_done());
+    assert(res.second);
+    stack_.pop();  // release the topmost matcher object.
   }
-  return this->backend ().result ();
+  return this->backend().result();
 }
 
 }  // namespace peejay

@@ -23,42 +23,42 @@
 #include "peejay/arrayvec.hpp"
 #include "vcommon.hpp"
 
-int main () {
+int main() {
   try {
     constexpr auto max_elements = std::size_t{8};
-    MAKE_SYMBOLIC (member::throw_number);
+    MAKE_SYMBOLIC(member::throw_number);
 
     peejay::arrayvec<member, max_elements> av;
 
     std::size_t size;
-    MAKE_SYMBOLIC (size);
-    klee_assume (size <= max_elements);
+    MAKE_SYMBOLIC(size);
+    klee_assume(size <= max_elements);
 
-    decltype (av)::difference_type pos;
-    MAKE_SYMBOLIC (pos);
-    klee_assume (pos >= 0);
-    klee_assume (pos <= av.size ());
+    decltype(av)::difference_type pos;
+    MAKE_SYMBOLIC(pos);
+    klee_assume(pos >= 0);
+    klee_assume(pos <= av.size());
 
     std::size_t first;
     std::size_t last;
-    MAKE_SYMBOLIC (first);
-    MAKE_SYMBOLIC (last);
+    MAKE_SYMBOLIC(first);
+    MAKE_SYMBOLIC(last);
     // range check 'first' and 'last'.
-    klee_assume (last <= av_size);
-    klee_assume (first <= last);
+    klee_assume(last <= av_size);
+    klee_assume(first <= last);
     // Don't overflow the container.
-    klee_assume (av.size () + (last - first) <= max_elements);
+    klee_assume(av.size() + (last - first) <= max_elements);
 
-    auto b = std::begin (primes);
+    auto b = std::begin(primes);
     // Call the function under test.
-    av.insert (av.begin () + pos, b + first, b + last);
+    av.insert(av.begin() + pos, b + first, b + last);
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v, size);
+    populate(v, size);
     // A mirror call to std::vector<>::insert() for comparison.
-    v.insert (v.begin () + pos, b + first, b + last);
-    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
+    v.insert(v.begin() + pos, b + first, b + last);
+    if (!std::equal(av.begin(), av.end(), v.begin(), v.end())) {
       std::cerr << "** Fail!\n";
       return EXIT_FAILURE;
     }
@@ -67,7 +67,7 @@ int main () {
     // catch and ignore.
   }
 #ifdef KLEE_RUN
-  if (auto const inst = member::instances (); inst != 0) {
+  if (auto const inst = member::instances(); inst != 0) {
     std::cerr << "** Fail: instances = " << inst << '\n';
     return EXIT_FAILURE;
   }

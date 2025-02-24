@@ -23,32 +23,32 @@
 #include "peejay/arrayvec.hpp"
 #include "vcommon.hpp"
 
-int main () {
+int main() {
   try {
     constexpr auto max_elements = std::size_t{7};
-    MAKE_SYMBOLIC (member::throw_number);
+    MAKE_SYMBOLIC(member::throw_number);
 
     std::size_t size;
-    MAKE_SYMBOLIC (size);
-    klee_assume (size <= max_elements);
+    MAKE_SYMBOLIC(size);
+    klee_assume(size <= max_elements);
 
     peejay::arrayvec<member, av_size>::size_type count;
-    MAKE_SYMBOLIC (count);
-    klee_assume (count <= max_elements);
+    MAKE_SYMBOLIC(count);
+    klee_assume(count <= max_elements);
 
     peejay::arrayvec<member, max_elements> av;
-    populate (av, size);
+    populate(av, size);
 
     // Call the function under test.
-    av.assign (count, member{99});
+    av.assign(count, member{99});
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v, size);
+    populate(v, size);
     // A mirror call to std::vector<>::assign for comparison.
-    v.assign (count, member{99});
+    v.assign(count, member{99});
 
-    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
+    if (!std::equal(av.begin(), av.end(), v.begin(), v.end())) {
       std::cerr << "** Fail!\n";
       return EXIT_FAILURE;
     }
@@ -57,7 +57,7 @@ int main () {
     // catch and ignore.
   }
 #ifdef KLEE_RUN
-  if (auto const inst = member::instances (); inst != 0) {
+  if (auto const inst = member::instances(); inst != 0) {
     std::cerr << "** Fail: instances = " << inst << '\n';
     return EXIT_FAILURE;
   }

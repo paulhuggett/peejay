@@ -25,52 +25,46 @@ using peejay::grammar_rule;
 using peejay::details::code_point_grammar_rule;
 
 // NOLINTNEXTLINE
-TEST (CodePointRun, LatinSmallLetterA) {
+TEST(CodePointRun, LatinSmallLetterA) {
   constexpr auto a = char32_t{0x0061};  // LATIN SMALL LETTER A
 
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{a - 1}));
-  EXPECT_EQ (code_point_grammar_rule (a),
-             std::optional{grammar_rule::identifier_start});
-  EXPECT_EQ (code_point_grammar_rule (char32_t{a + 1}),
-             std::optional{grammar_rule::identifier_start});
-  EXPECT_EQ (code_point_grammar_rule (char32_t{a + 25}),
-             std::optional{grammar_rule::identifier_start});
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{a + 26}));
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{a - 1}));
+  EXPECT_EQ(code_point_grammar_rule(a), std::optional{grammar_rule::identifier_start});
+  EXPECT_EQ(code_point_grammar_rule(char32_t{a + 1}), std::optional{grammar_rule::identifier_start});
+  EXPECT_EQ(code_point_grammar_rule(char32_t{a + 25}), std::optional{grammar_rule::identifier_start});
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{a + 26}));
 }
 
 // NOLINTNEXTLINE
-TEST (CodePointRun, Null) {
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{0}));
+TEST(CodePointRun, Null) {
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{0}));
 }
 
 // NOLINTNEXTLINE
-TEST (CodePointRun, Space) {
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{0x001F}));
-  EXPECT_EQ (code_point_grammar_rule (char32_t{0x0020}),
-             std::optional{grammar_rule::whitespace});
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{0x0021}));
+TEST(CodePointRun, Space) {
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{0x001F}));
+  EXPECT_EQ(code_point_grammar_rule(char32_t{0x0020}), std::optional{grammar_rule::whitespace});
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{0x0021}));
 }
 
 // NOLINTNEXTLINE
-TEST (CodePointRun, MaxCodePoint) {
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{0x0010FFFF}));
+TEST(CodePointRun, MaxCodePoint) {
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{0x0010FFFF}));
 }
 
 // NOLINTNEXTLINE
-TEST (CodePointRun, VariationSelector17) {
+TEST(CodePointRun, VariationSelector17) {
   static constexpr auto vs17 = char32_t{0xe0100};  // VARIATION SELECTOR-17
 
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{vs17 - 1}));
-  EXPECT_EQ (code_point_grammar_rule (char32_t{vs17}),
-             std::optional{grammar_rule::identifier_part});
-  EXPECT_EQ (code_point_grammar_rule (char32_t{vs17 + 239}),
-             std::optional{grammar_rule::identifier_part});
-  EXPECT_FALSE (code_point_grammar_rule (char32_t{vs17 + 240}));
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{vs17 - 1}));
+  EXPECT_EQ(code_point_grammar_rule(char32_t{vs17}), std::optional{grammar_rule::identifier_part});
+  EXPECT_EQ(code_point_grammar_rule(char32_t{vs17 + 239}), std::optional{grammar_rule::identifier_part});
+  EXPECT_FALSE(code_point_grammar_rule(char32_t{vs17 + 240}));
 }
 
 #if PEEJAY_FUZZTEST
-static void CodePointGrammarRuleNeverCrashes (char32_t cp) {
-  code_point_grammar_rule (cp);
+static void CodePointGrammarRuleNeverCrashes(char32_t cp) {
+  code_point_grammar_rule(cp);
 }
-FUZZ_TEST (CodePointRun, CodePointGrammarRuleNeverCrashes);
+FUZZ_TEST(CodePointRun, CodePointGrammarRuleNeverCrashes);
 #endif

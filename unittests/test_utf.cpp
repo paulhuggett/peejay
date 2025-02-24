@@ -19,51 +19,38 @@
 class Utf : public testing::TestWithParam<std::vector<std::byte>> {};
 
 // NOLINTNEXTLINE
-TEST_P (Utf, NullCallbackIsInvoked) {
+TEST_P(Utf, NullCallbackIsInvoked) {
   using mocks = mock_json_callbacks<peejay::default_policies::integer_type>;
   testing::StrictMock<mocks> callbacks;
   testing::InSequence const _;
-  EXPECT_CALL (callbacks, null_value ()).Times (1);
+  EXPECT_CALL(callbacks, null_value()).Times(1);
 
   peejay::parser p{callbacks_proxy<mocks>{callbacks}};
-  auto const& src = GetParam ();
-  p.input (std::begin (src), std::end (src)).eof ();
-  EXPECT_FALSE (p.has_error ());
+  auto const& src = GetParam();
+  p.input(std::begin(src), std::end(src)).eof();
+  EXPECT_FALSE(p.has_error());
 }
 
 // NOLINTNEXTLINE
-INSTANTIATE_TEST_SUITE_P (
+INSTANTIATE_TEST_SUITE_P(
     NullKeyword, Utf,
-    testing::Values (
+    testing::Values(
         // UTF-8
-        std::vector<std::byte>{std::byte{0xEF}, std::byte{0xBB},
-                               std::byte{0xBF}, std::byte{'n'}, std::byte{'u'},
+        std::vector<std::byte>{std::byte{0xEF}, std::byte{0xBB}, std::byte{0xBF}, std::byte{'n'}, std::byte{'u'},
                                std::byte{'l'}, std::byte{'l'}},
         // UTF-16 BE
-        std::vector<std::byte>{std::byte{0xFE}, std::byte{0xFF},
-                               std::byte{0x00}, std::byte{'n'}, std::byte{0x00},
-                               std::byte{'u'}, std::byte{0x00}, std::byte{'l'},
-                               std::byte{0x00}, std::byte{'l'}},
+        std::vector<std::byte>{std::byte{0xFE}, std::byte{0xFF}, std::byte{0x00}, std::byte{'n'}, std::byte{0x00},
+                               std::byte{'u'}, std::byte{0x00}, std::byte{'l'}, std::byte{0x00}, std::byte{'l'}},
         // UTF-16 LE
-        std::vector<std::byte>{
-            std::byte{0xFF}, std::byte{0xFE},
-            std::byte{'n'}, std::byte{0x00},
-            std::byte{'u'}, std::byte{0x00},
-            std::byte{'l'}, std::byte{0x00}, std::byte{'l'},
-                               std::byte{0x00}},
+        std::vector<std::byte>{std::byte{0xFF}, std::byte{0xFE}, std::byte{'n'}, std::byte{0x00}, std::byte{'u'},
+                               std::byte{0x00}, std::byte{'l'}, std::byte{0x00}, std::byte{'l'}, std::byte{0x00}},
         // UTF-32 BE
-        std::vector<std::byte>{
-            std::byte{0x00}, std::byte{0x00}, std::byte{0xFE}, std::byte{0xFF},
-            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'n'},
-            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'u'},
-            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'l'},
-            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'l'}},
+        std::vector<std::byte>{std::byte{0x00}, std::byte{0x00}, std::byte{0xFE}, std::byte{0xFF}, std::byte{0x00},
+                               std::byte{0x00}, std::byte{0x00}, std::byte{'n'},  std::byte{0x00}, std::byte{0x00},
+                               std::byte{0x00}, std::byte{'u'},  std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+                               std::byte{'l'},  std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'l'}},
         // UTF-32 LE
-        std::vector<std::byte>{
-            std::byte{0xFF}, std::byte{0xFE}, std::byte{0x00}, std::byte{0x00},
-            std::byte{'n'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-            std::byte{'u'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-            std::byte{'l'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-            std::byte{'l'}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}}
-    )
-);
+        std::vector<std::byte>{std::byte{0xFF}, std::byte{0xFE}, std::byte{0x00}, std::byte{0x00}, std::byte{'n'},
+                               std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{'u'},  std::byte{0x00},
+                               std::byte{0x00}, std::byte{0x00}, std::byte{'l'},  std::byte{0x00}, std::byte{0x00},
+                               std::byte{0x00}, std::byte{'l'},  std::byte{0x00}, std::byte{0x00}, std::byte{0x00}}));

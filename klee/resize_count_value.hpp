@@ -22,41 +22,38 @@
 #include "av_member.hpp"
 #include "vcommon.hpp"
 
-template <typename Container>
-void resize_test (Container &c, std::size_t size,
-                  typename Container::size_type count) {
-  populate (c, size);
+template <typename Container> void resize_test(Container &c, std::size_t size, typename Container::size_type count) {
+  populate(c, size);
   member value{99};
   // Call the function under test.
-  c.resize (count, value);
+  c.resize(count, value);
 }
 
 constexpr std::size_t max_elements = 13;
 
-template <typename TestVector>
-void resize_count_value () {
+template <typename TestVector> void resize_count_value() {
   try {
-    MAKE_SYMBOLIC (member::throw_number);
+    MAKE_SYMBOLIC(member::throw_number);
 
     std::size_t initial_size;
-    MAKE_SYMBOLIC (initial_size);
-    klee_assume (initial_size <= max_elements);
+    MAKE_SYMBOLIC(initial_size);
+    klee_assume(initial_size <= max_elements);
 
     typename TestVector::size_type new_size;
-    MAKE_SYMBOLIC (new_size);
-    klee_assume (new_size <= max_elements);
+    MAKE_SYMBOLIC(new_size);
+    klee_assume(new_size <= max_elements);
 
     TestVector sv;
-    resize_test (sv, initial_size, new_size);
+    resize_test(sv, initial_size, new_size);
 #ifdef KLEE_RUN
     std::vector<member> v;
-    resize_test (v, initial_size, new_size);
-    check_equal (sv, v);
+    resize_test(v, initial_size, new_size);
+    check_equal(sv, v);
 #endif  // KLEE_RUN
   } catch (memberex const &) {
     // catch and ignore.
   }
-  check_instances ();
+  check_instances();
 #ifdef KLEE_RUN
   std::cerr << "Pass!\n";
 #endif  // KLEE_RUN

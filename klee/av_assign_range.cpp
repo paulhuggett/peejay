@@ -24,44 +24,43 @@
 #include "vcommon.hpp"
 
 template <typename Container>
-void assign_first_last (Container &c, std::size_t size, std::size_t first,
-                        std::size_t last) {
-  populate (c, size);
+void assign_first_last(Container &c, std::size_t size, std::size_t first, std::size_t last) {
+  populate(c, size);
 
-  auto b = std::begin (primes);
+  auto b = std::begin(primes);
   // Call the function under test.
-  c.assign (b + first, b + last);
+  c.assign(b + first, b + last);
 }
 
-int main () {
+int main() {
   try {
     constexpr auto max_elements = std::size_t{8};
-    MAKE_SYMBOLIC (member::throw_number);
+    MAKE_SYMBOLIC(member::throw_number);
 
     std::size_t size;
-    MAKE_SYMBOLIC (size);
-    klee_assume (size <= max_elements);
+    MAKE_SYMBOLIC(size);
+    klee_assume(size <= max_elements);
 
     std::size_t first;
     std::size_t last;
-    MAKE_SYMBOLIC (first);
-    MAKE_SYMBOLIC (last);
+    MAKE_SYMBOLIC(first);
+    MAKE_SYMBOLIC(last);
     // range check 'first' and 'last'.
-    klee_assume (last < av_size);
-    klee_assume (first <= last);
-    klee_assume (last - first <= max_elements);
+    klee_assume(last < av_size);
+    klee_assume(first <= last);
+    klee_assume(last - first <= max_elements);
 
     peejay::arrayvec<member, max_elements> av;
-    assign_first_last (av, size, first, last);
+    assign_first_last(av, size, first, last);
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    assign_first_last (v, size, first, last);
-    check_equal (av, v);
+    assign_first_last(v, size, first, last);
+    check_equal(av, v);
 #endif  // KLEE_RUN
-  } catch (memberex const&) {
+  } catch (memberex const &) {
     // catch and ignore.
   }
-  check_instances ();
+  check_instances();
   return EXIT_SUCCESS;
 }

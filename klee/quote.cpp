@@ -16,13 +16,13 @@
 #include "klee/klee.h"
 #include "peejay/null.hpp"
 
-int main () {
+int main() {
   static constexpr std::size_t const size = 5;
   std::array<std::byte, size> input;
 
-  klee_make_symbolic (input.data (), size, "input");
-  klee_assume (input[0] == static_cast<std::byte> ('"'));
-  klee_assume (input[size - 1] == std::byte{0});
+  klee_make_symbolic(input.data(), size, "input");
+  klee_assume(input[0] == static_cast<std::byte>('"'));
+  klee_assume(input[size - 1] == std::byte{0});
 
-  make_parser (peejay::null{}).input (input.begin (), input.end ()).eof ();
+  make_parser(peejay::null{}).input(input.begin(), input.end()).eof();
 }

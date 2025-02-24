@@ -25,37 +25,37 @@ namespace peejay {
 /// A PJ JSON parser backend which simply discards all of its input.
 class null {
 public:
-  static constexpr void result () noexcept {
+  static constexpr void result() noexcept {
     // The null output produces no result at all.
   }
 
-  static std::error_code string_value (u8string_view const &sv) noexcept {
+  static std::error_code string_value(u8string_view const &sv) noexcept {
     (void)sv;
     return {};
   }
-  static std::error_code integer_value (std::int64_t v) noexcept {
+  static std::error_code integer_value(std::int64_t v) noexcept {
     (void)v;
     return {};
   }
-  static std::error_code double_value (double v) noexcept {
+  static std::error_code double_value(double v) noexcept {
     (void)v;
     return {};
   }
-  static std::error_code boolean_value (bool b) noexcept {
+  static std::error_code boolean_value(bool b) noexcept {
     (void)b;
     return {};
   }
-  static std::error_code null_value () noexcept { return {}; }
+  static std::error_code null_value() noexcept { return {}; }
 
-  static std::error_code begin_array () noexcept { return {}; }
-  static std::error_code end_array () noexcept { return {}; }
+  static std::error_code begin_array() noexcept { return {}; }
+  static std::error_code end_array() noexcept { return {}; }
 
-  static std::error_code begin_object () noexcept { return {}; }
-  static std::error_code key (peejay::u8string_view const &sv) noexcept {
+  static std::error_code begin_object() noexcept { return {}; }
+  static std::error_code key(peejay::u8string_view const &sv) noexcept {
     (void)sv;
     return {};
   }
-  static std::error_code end_object () noexcept { return {}; }
+  static std::error_code end_object() noexcept { return {}; }
 };
 
 }  // end namespace peejay

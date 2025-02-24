@@ -2,9 +2,12 @@
 ---
 BasedOnStyle : Google
 
+IndentWidth: 2
+
 AccessModifierOffset    : -2
+ColumnLimit             : 120
 CommentPragmas          :  '^\\.+'
-SpaceBeforeParens       : Always
+SpaceBeforeParens       : ControlStatements
 SpaceInEmptyParentheses : false
 Standard                : c++20
 
@@ -15,5 +18,9 @@ AllowShortFunctionsOnASingleLine    : InlineOnly
 AllowShortIfStatementsOnASingleLine : false
 AllowShortLambdasOnASingleLine      : true
 AllowShortLoopsOnASingleLine        : false
+AlwaysBreakTemplateDeclarations     : MultiLine
 IndentCaseLabels                    : false
 
+IndentRequiresClause : true
+RequiresClausePosition : OwnLine
+RequiresExpressionIndentation : OuterScope

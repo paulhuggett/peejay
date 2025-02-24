@@ -30,8 +30,7 @@ namespace peejay {
 /// The container's push_back() member function is called when the iterator
 /// (whether dereferenced or not) is assigned to unless an overflow is
 /// detected. Incrementing the checked_back_insert_iterator is a no-op.
-template <typename Container>
-class checked_back_insert_iterator {
+template <typename Container> class checked_back_insert_iterator {
 public:
   using iterator_category = std::output_iterator_tag;
   using value_type = void;
@@ -40,36 +39,33 @@ public:
   using reference = void;
   using container_type = Container;
 
-  constexpr checked_back_insert_iterator (Container *const container,
-                                          bool *const overflow) noexcept
+  constexpr checked_back_insert_iterator(Container *const container, bool *const overflow) noexcept
       : container_{container}, overflow_{overflow} {
-    if (container_->size () > container_->max_size ()) {
+    if (container_->size() > container_->max_size()) {
       *overflow_ = true;
     }
   }
 
-  constexpr checked_back_insert_iterator &operator= (
-      typename Container::value_type const &value) {
-    if (container_->size () >= container_->max_size ()) {
+  constexpr checked_back_insert_iterator &operator=(typename Container::value_type const &value) {
+    if (container_->size() >= container_->max_size()) {
       *overflow_ = true;
     } else {
-      container_->push_back (value);
+      container_->push_back(value);
     }
     return *this;
   }
-  constexpr checked_back_insert_iterator &operator= (
-      typename Container::value_type &&value) {
-    if (container_->size () >= container_->max_size ()) {
+  constexpr checked_back_insert_iterator &operator=(typename Container::value_type &&value) {
+    if (container_->size() >= container_->max_size()) {
       *overflow_ = true;
     } else {
-      container_->push_back (std::move (value));
+      container_->push_back(std::move(value));
     }
     return *this;
   }
 
-  constexpr checked_back_insert_iterator &operator* () { return *this; }
-  constexpr checked_back_insert_iterator &operator++ () { return *this; }
-  constexpr checked_back_insert_iterator operator++ (int) { return *this; }
+  constexpr checked_back_insert_iterator &operator*() { return *this; }
+  constexpr checked_back_insert_iterator &operator++() { return *this; }
+  constexpr checked_back_insert_iterator operator++(int) { return *this; }
 
 private:
   Container *container_;
@@ -77,8 +73,7 @@ private:
 };
 
 template <typename Container>
-checked_back_insert_iterator (Container *, bool *)
-    -> checked_back_insert_iterator<Container>;
+checked_back_insert_iterator(Container *, bool *) -> checked_back_insert_iterator<Container>;
 
 }  // end namespace peejay
 

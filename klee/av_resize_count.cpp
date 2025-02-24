@@ -22,36 +22,34 @@
 #include "av_member.hpp"
 #include "peejay/arrayvec.hpp"
 
-template <typename Container>
-void populate (Container& c) {
-  c.emplace_back (1);
-  c.emplace_back (3);
-  c.emplace_back (5);
+template <typename Container> void populate(Container& c) {
+  c.emplace_back(1);
+  c.emplace_back(3);
+  c.emplace_back(5);
 }
 
-int main () {
+int main() {
   try {
     constexpr std::size_t av_size = 8;
 
     peejay::arrayvec<member, av_size>::size_type count;
-    klee_make_symbolic (&count, sizeof (count), "count");
-    klee_assume (count <= av_size);
-    klee_make_symbolic (&member::throw_number, sizeof (member::throw_number),
-                        "throw_number");
+    klee_make_symbolic(&count, sizeof(count), "count");
+    klee_assume(count <= av_size);
+    klee_make_symbolic(&member::throw_number, sizeof(member::throw_number), "throw_number");
 
     peejay::arrayvec<member, av_size> av;
-    populate (av);
+    populate(av);
 
     // Call the function under test.
-    av.resize (count);
+    av.resize(count);
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v);
+    populate(v);
     // A mirror call to std::vector<>::assign for comparison.
-    v.resize (count);
+    v.resize(count);
 
-    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
+    if (!std::equal(av.begin(), av.end(), v.begin(), v.end())) {
       std::cerr << "** Fail!\n";
       return EXIT_FAILURE;
     }
@@ -59,7 +57,7 @@ int main () {
   } catch (memberex const&) {
   }
 #ifdef KLEE_RUN
-  if (auto const inst = member::instances (); inst != 0) {
+  if (auto const inst = member::instances(); inst != 0) {
     std::cerr << "** Fail: instances = " << inst << '\n';
     return EXIT_FAILURE;
   }

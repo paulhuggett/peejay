@@ -23,38 +23,37 @@
 #include "peejay/arrayvec.hpp"
 #include "vcommon.hpp"
 
-int main () {
+int main() {
   try {
     using arrayvec_type = peejay::arrayvec<member, av_size>;
 
-    MAKE_SYMBOLIC (member::throw_number);
+    MAKE_SYMBOLIC(member::throw_number);
 
     std::size_t size;
-    MAKE_SYMBOLIC (size);
-    klee_assume (size > 0);
-    klee_assume (size <= av_size);
+    MAKE_SYMBOLIC(size);
+    klee_assume(size > 0);
+    klee_assume(size <= av_size);
 
     arrayvec_type::difference_type pos;
-    MAKE_SYMBOLIC (pos);
+    MAKE_SYMBOLIC(pos);
     // (The end iterator is not valid for erase().)
-    klee_assume (pos >= 0);
-    klee_assume (static_cast<std::make_unsigned_t<decltype (pos)>> (pos) <
-                 size);
+    klee_assume(pos >= 0);
+    klee_assume(static_cast<std::make_unsigned_t<decltype(pos)>>(pos) < size);
 
     arrayvec_type av;
-    populate (av, size);
+    populate(av, size);
 
     // Call the function under test.
-    av.erase (av.begin () + pos);
+    av.erase(av.begin() + pos);
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v, size);
+    populate(v, size);
 
     // A mirror call to std::vector<>::insert for comparison.
-    v.erase (v.begin () + pos);
+    v.erase(v.begin() + pos);
 
-    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
+    if (!std::equal(av.begin(), av.end(), v.begin(), v.end())) {
       std::cerr << "** Fail!\n";
       return EXIT_FAILURE;
     }
@@ -62,7 +61,7 @@ int main () {
   } catch (memberex const&) {
   }
 #ifdef KLEE_RUN
-  if (auto const inst = member::instances (); inst != 0) {
+  if (auto const inst = member::instances(); inst != 0) {
     std::cerr << "** Fail: instances = " << inst << '\n';
     return EXIT_FAILURE;
   }

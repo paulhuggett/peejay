@@ -74,8 +74,7 @@
 
 /// \brief Tests for the availability of library support for C++ 20 ranges.
 /// \hideinitializer
-#define PEEJAY_HAVE_RANGES \
-  (PEEJAY_CPP_LIB_RANGES_DEFINED && __cpp_lib_ranges >= 201811L)
+#define PEEJAY_HAVE_RANGES (PEEJAY_CPP_LIB_RANGES_DEFINED && __cpp_lib_ranges >= 201811L)
 
 #if PEEJAY_CXX20 && defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
 #define PEEJAY_HAVE_SPAN (1)
@@ -103,43 +102,37 @@ namespace peejay {
 // to address
 // ~~~~~~~~~~
 #if defined(__cpp_lib_to_address)
-template <typename T>
-[[nodiscard]] constexpr auto to_address (T&& p) noexcept {
-  return std::to_address (std::forward<T> (p));
+template <typename T> [[nodiscard]] constexpr auto to_address(T&& p) noexcept {
+  return std::to_address(std::forward<T>(p));
 }
 #else
 // True if std::pointer_traits<T>::to_address is available.
-template <typename T, typename = void>
-inline constexpr bool has_to_address = false;
+template <typename T, typename = void> inline constexpr bool has_to_address = false;
 template <typename T>
 inline constexpr bool
-    has_to_address<T, std::void_t<decltype (std::pointer_traits<T>::to_address (
-                          std::declval<T const&> ()))>> = true;
+    has_to_address<T, std::void_t<decltype(std::pointer_traits<T>::to_address(std::declval<T const&>()))>> = true;
 
-template <typename T>
-[[nodiscard]] constexpr T* to_address (T* const p) noexcept {
-  static_assert (!std::is_function_v<T>, "T must not be a function type");
+template <typename T> [[nodiscard]] constexpr T* to_address(T* const p) noexcept {
+  static_assert(!std::is_function_v<T>, "T must not be a function type");
   return p;
 }
-template <typename T>
-[[nodiscard]] constexpr auto to_address (T&& p) noexcept {
+template <typename T> [[nodiscard]] constexpr auto to_address(T&& p) noexcept {
   using P = std::decay_t<T>;
   if constexpr (has_to_address<P>) {
-    return std::pointer_traits<P>::to_address (std::forward<T> (p));
+    return std::pointer_traits<P>::to_address(std::forward<T>(p));
   } else {
-    return to_address (p.operator->());
+    return to_address(p.operator->());
   }
 }
 #endif  // defined(__cpp_lib_to_address)
 
 // pointer cast
 // ~~~~~~~~~~~~
-template <typename To, typename From>
-constexpr To* pointer_cast (From* const p) noexcept {
+template <typename To, typename From> constexpr To* pointer_cast(From* const p) noexcept {
 #if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
-  return std::bit_cast<To*> (p);
+  return std::bit_cast<To*>(p);
 #else
-  return reinterpret_cast<To*> (p);
+  return reinterpret_cast<To*>(p);
 #endif
 }
 
@@ -149,11 +142,9 @@ constexpr To* pointer_cast (From* const p) noexcept {
 using std::construct_at;
 #else
 /// Creates a T object initialized with arguments args... at given address p.
-template <typename T, typename... Args>
-constexpr T* construct_at (T* const p, Args&&... args) {
-  static_assert (!std::is_const_v<T>,
-                 "Can't construct an object in const memory!");
-  return ::new (p) T (std::forward<Args> (args)...);
+template <typename T, typename... Args> constexpr T* construct_at(T* const p, Args&&... args) {
+  static_assert(!std::is_const_v<T>, "Can't construct an object in const memory!");
+  return ::new (p) T(std::forward<Args>(args)...);
 }
 #endif  // PEEJAY_CXX20
 
@@ -164,9 +155,8 @@ template <typename Iterator>
 concept forward_iterator = std::forward_iterator<Iterator>;
 #else
 template <typename Iterator>
-constexpr bool forward_iterator = std::is_convertible_v<
-    typename std::iterator_traits<Iterator>::iterator_category,
-    std::forward_iterator_tag>;
+constexpr bool forward_iterator =
+    std::is_convertible_v<typename std::iterator_traits<Iterator>::iterator_category, std::forward_iterator_tag>;
 #endif  // PEEJAY_HAVE_CONCEPTS
 
 // input iterator
@@ -176,9 +166,8 @@ template <typename Iterator>
 concept input_iterator = std::input_iterator<Iterator>;
 #else
 template <typename Iterator>
-constexpr bool input_iterator = std::is_convertible_v<
-    typename std::iterator_traits<Iterator>::iterator_category,
-    std::input_iterator_tag>;
+constexpr bool input_iterator =
+    std::is_convertible_v<typename std::iterator_traits<Iterator>::iterator_category, std::input_iterator_tag>;
 #endif  // PEEJAY_HAVE_CONCEPTS
 
 // unreachable
@@ -188,21 +177,21 @@ constexpr bool input_iterator = std::is_convertible_v<
 ///
 /// An implementation may, for example, optimize impossible code branches away
 /// or trap to prevent further execution.
-[[noreturn, maybe_unused]] inline void unreachable () {
-  std::unreachable ();
+[[noreturn, maybe_unused]] inline void unreachable() {
+  std::unreachable();
 }
 #elif defined(__GNUC__)  // GCC 4.8+, Clang, Intel and other compilers
-[[noreturn]] inline __attribute__ ((always_inline)) void unreachable () {
-  __builtin_unreachable ();
+[[noreturn]] inline __attribute__((always_inline)) void unreachable() {
+  __builtin_unreachable();
 }
 #elif defined(_MSC_VER)
-[[noreturn, maybe_unused]] __forceinline void unreachable () {
-  __assume (false);
+[[noreturn, maybe_unused]] __forceinline void unreachable() {
+  __assume(false);
 }
 #else
 // Unknown compiler so no extension is used, Undefined behavior is still raised
 // by an empty function body and the noreturn attribute.
-[[noreturn, maybe_unused]] inline void unreachable () {
+[[noreturn, maybe_unused]] inline void unreachable() {
 }
 #endif
 

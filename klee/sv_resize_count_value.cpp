@@ -21,6 +21,6 @@
 #include "peejay/small_vector.hpp"
 #include "resize_count_value.hpp"
 
-int main () {
-  resize_count_value<peejay::small_vector<member, 5>> ();
+int main() {
+  resize_count_value<peejay::small_vector<member, 5>>();
 }

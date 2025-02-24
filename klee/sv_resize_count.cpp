@@ -23,34 +23,34 @@
 #include "peejay/small_vector.hpp"
 #include "vcommon.hpp"
 
-int main () {
+int main() {
   try {
     constexpr std::size_t body_elements = 5;
     constexpr std::size_t max_elements = 13;
 
-    MAKE_SYMBOLIC (member::throw_number);
+    MAKE_SYMBOLIC(member::throw_number);
 
     peejay::small_vector<member, body_elements>::size_type initial_size;
-    MAKE_SYMBOLIC (initial_size);
-    klee_assume (initial_size <= av_size);
+    MAKE_SYMBOLIC(initial_size);
+    klee_assume(initial_size <= av_size);
 
     peejay::small_vector<member, body_elements>::size_type new_size;
-    MAKE_SYMBOLIC (new_size);
-    klee_assume (new_size <= max_elements);
+    MAKE_SYMBOLIC(new_size);
+    klee_assume(new_size <= max_elements);
 
     peejay::small_vector<member, body_elements> av;
-    populate (av, initial_size);
+    populate(av, initial_size);
 
     // Call the function under test.
-    av.resize (new_size);
+    av.resize(new_size);
 
 #ifdef KLEE_RUN
     std::vector<member> v;
-    populate (v, initial_size);
+    populate(v, initial_size);
     // A mirror call to std::vector<>::assign for comparison.
-    v.resize (new_size);
+    v.resize(new_size);
 
-    if (!std::equal (av.begin (), av.end (), v.begin (), v.end ())) {
+    if (!std::equal(av.begin(), av.end(), v.begin(), v.end())) {
       std::cerr << "** Fail!\n";
       return EXIT_FAILURE;
     }
@@ -58,7 +58,7 @@ int main () {
   } catch (memberex const&) {
   }
 #ifdef KLEE_RUN
-  if (auto const inst = member::instances (); inst != 0) {
+  if (auto const inst = member::instances(); inst != 0) {
     std::cerr << "** Fail: instances = " << inst << '\n';
     return EXIT_FAILURE;
   }
