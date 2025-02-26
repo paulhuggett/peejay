@@ -42,19 +42,6 @@ enum class error : int {
   unterminated_multiline_comment,
   identifier_too_long,
   string_too_long,
-
-  schema_defs_must_be_object,
-  schema_enum_must_be_array,
-  schema_not_boolean_or_object,
-  schema_expected_integer,
-  schema_expected_number,
-  schema_expected_non_negative_integer,
-  schema_expected_string,
-  schema_pattern_string,
-  schema_properties_must_be_object,
-  schema_type_string_or_string_array,
-  schema_type_name_invalid,
-  schema_validation,
 };
 
 // ******************
@@ -94,19 +81,6 @@ public:
     case error::unterminated_multiline_comment: return "unterminated /* comment";
     case error::identifier_too_long: return "identifier too long";
     case error::string_too_long: return "string too long";
-
-    case error::schema_defs_must_be_object: return "schema $defs value must be an object";
-    case error::schema_enum_must_be_array: return "schema enum value must be an array";
-    case error::schema_expected_integer: return "schema expected an integer";
-    case error::schema_expected_number: return "schema expected a number";
-    case error::schema_expected_non_negative_integer: return "schema expected a non-negative integer";
-    case error::schema_expected_string: return "schema expected a string";
-    case error::schema_not_boolean_or_object: return "schema must be boolean or object";
-    case error::schema_properties_must_be_object: return "schema properties keyword value must be an object";
-    case error::schema_type_name_invalid: return "schema type name invalid";
-    case error::schema_type_string_or_string_array: return "schema type constraint was not a string or an array";
-    case error::schema_pattern_string: return "schema pattern constraint was not a string";
-    case error::schema_validation: return "schema validation failed";
     }
     assert(false && "bad error code");
     return "unknown PJ error code";

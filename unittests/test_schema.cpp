@@ -13,13 +13,14 @@
 #include <gtest/gtest.h>
 
 #include "callbacks.hpp"
+#include "peejay/schema/error.hpp"
 #include "peejay/schema/schema.hpp"
 
 using peejay::dom;
 using peejay::element;
-using peejay::error;
 using peejay::make_parser;
 using peejay::schema::check;
+using peejay::schema::error;
 
 using namespace std::literals;
 using testing::Test;
@@ -69,11 +70,11 @@ TEST_F(SchemaEnum, StringPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaEnum, StringFailing) {
-  EXPECT_EQ(check(schema, parse(u8R"("bar")"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8R"("bar")"sv)), make_error_code(error::validation));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaEnum, ObjectFailing) {
-  EXPECT_EQ(check(schema, parse(u8R"({"a":1,"b":2})"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8R"({"a":1,"b":2})"sv)), make_error_code(error::validation));
 }
 
 class SchemaTypeNumber : public Test {
@@ -95,7 +96,7 @@ TEST_F(SchemaTypeNumber, SIntPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaTypeNumber, StringFailing) {
-  EXPECT_EQ(check(schema, parse(u8R"("foo")"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8R"("foo")"sv)), make_error_code(error::validation));
 }
 
 class SchemaTypeInteger : public Test {
@@ -116,11 +117,11 @@ TEST_F(SchemaTypeInteger, SIntPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaTypeInteger, StringFailing) {
-  EXPECT_EQ(check(schema, parse(u8R"("foo")"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8R"("foo")"sv)), make_error_code(error::validation));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaTypeInteger, RationalFailing) {
-  EXPECT_EQ(check(schema, parse(u8"12.01"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8"12.01"sv)), make_error_code(error::validation));
 }
 
 class SchemaTypeArray : public Test {
@@ -137,7 +138,7 @@ TEST_F(SchemaTypeArray, NullPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaTypeArray, UIntFailing) {
-  EXPECT_EQ(check(schema, parse(u8"0"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8"0"sv)), make_error_code(error::validation));
 }
 
 class SchemaMaxLength : public Test {
@@ -154,12 +155,12 @@ TEST_F(SchemaMaxLength, NotStringPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMaxLength, LongStringFailing) {
-  EXPECT_EQ(check(schema, parse(u8R"("abc")"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema, parse(u8R"("abc")"sv)), make_error_code(error::validation));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMaxLength, BadSchemaValue) {
   element const bad_schema = parse(u8R"({ "maxLength": "foo" })"sv);
-  EXPECT_EQ(check(bad_schema, parse(u8R"("ab")"sv)), make_error_code(error::schema_expected_non_negative_integer));
+  EXPECT_EQ(check(bad_schema, parse(u8R"("ab")"sv)), make_error_code(error::expected_non_negative_integer));
 }
 
 class SchemaMinLength : public Test {
@@ -168,7 +169,7 @@ protected:
 };
 // NOLINTNEXTLINE
 TEST_F(SchemaMinLength, ShortStringFailing) {
-  EXPECT_EQ(check(schema_, parse(u8R"("a")"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema_, parse(u8R"("a")"sv)), make_error_code(error::validation));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMinLength, NotStringPassing) {
@@ -181,7 +182,7 @@ TEST_F(SchemaMinLength, LongStringPassing) {
 // NOLINTNEXTLINE
 TEST_F(SchemaMinLength, BadSchemaValue) {
   EXPECT_EQ(check(parse(u8R"({ "minLength": "foo" })"sv), parse(u8R"("ab")"sv)),
-            make_error_code(error::schema_expected_non_negative_integer));
+            make_error_code(error::expected_non_negative_integer));
 }
 
 class SchemaProperties : public Test {
@@ -219,7 +220,7 @@ TEST_F(SchemaProperties, NoApplicablePropertiesPassing) {
 // NOLINTNEXTLINE
 TEST_F(SchemaProperties, PropertyHasWrongTypeFailing) {
   // invalid - The `name` property value must be a string.
-  EXPECT_EQ(check(schema_, parse(u8R"({ "name": 123 })")), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema_, parse(u8R"({ "name": 123 })")), make_error_code(error::validation));
 }
 
 class SchemaMaxProperties : public Test {
@@ -232,7 +233,7 @@ TEST_F(SchemaMaxProperties, ObjectPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMaxProperties, ObjectFailing) {
-  EXPECT_EQ(check(schema_, parse(u8R"({ "a": 1, "b": 2, "c": 3 })")), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema_, parse(u8R"({ "a": 1, "b": 2, "c": 3 })")), make_error_code(error::validation));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMaxProperties, NonObjectPassing) {
@@ -241,12 +242,12 @@ TEST_F(SchemaMaxProperties, NonObjectPassing) {
 // NOLINTNEXTLINE
 TEST_F(SchemaMaxProperties, MaxPropertiesValueIsNegative) {
   EXPECT_EQ(check(parse(u8R"({ "maxProperties": -2 })"sv), parse(u8"{}")),
-            make_error_code(error::schema_expected_non_negative_integer));
+            make_error_code(error::expected_non_negative_integer));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMaxProperties, MaxPropertiesValueIsWrongType) {
   EXPECT_EQ(check(parse(u8R"({ "maxProperties": "one" })"sv), parse(u8"{}")),
-            make_error_code(error::schema_expected_non_negative_integer));
+            make_error_code(error::expected_non_negative_integer));
 }
 
 class SchemaMinProperties : public Test {
@@ -259,7 +260,7 @@ TEST_F(SchemaMinProperties, ObjectPassing) {
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMinProperties, ObjectFailing) {
-  EXPECT_EQ(check(schema_, parse(u8R"({ "a": 1 })")), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(schema_, parse(u8R"({ "a": 1 })")), make_error_code(error::validation));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMinProperties, NonObjectPassing) {
@@ -268,22 +269,25 @@ TEST_F(SchemaMinProperties, NonObjectPassing) {
 // NOLINTNEXTLINE
 TEST_F(SchemaMinProperties, MaxPropertiesValueIsNegative) {
   EXPECT_EQ(check(parse(u8R"({ "minProperties": -2 })"sv), parse(u8"{}")),
-            make_error_code(error::schema_expected_non_negative_integer));
+            make_error_code(error::expected_non_negative_integer));
 }
 // NOLINTNEXTLINE
 TEST_F(SchemaMinProperties, MaxPropertiesValueIsWrongType) {
   EXPECT_EQ(check(parse(u8R"({ "minProperties": "one" })"sv), parse(u8"{}")),
-            make_error_code(error::schema_expected_non_negative_integer));
+            make_error_code(error::expected_non_negative_integer));
 }
 
 // NOLINTNEXTLINE
 TEST(SchemaNumberInstanceChecks, MultipleOf) {
   EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2 })"sv), parse(u8"2"sv)), std::error_code{});
-  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2 })"sv), parse(u8"3"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2 })"sv), parse(u8"3"sv)), make_error_code(error::validation));
   EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.5 })"sv), parse(u8"5"sv)), std::error_code{});
-  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.5 })"sv), parse(u8"4"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.5 })"sv), parse(u8"4"sv)), make_error_code(error::validation));
   EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.4 })"sv), parse(u8"4.8"sv)), std::error_code{});
-  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.4 })"sv), parse(u8"4.9"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.4 })"sv), parse(u8"4.9"sv)), make_error_code(error::validation));
+
+  EXPECT_EQ(check(parse(u8R"({ "multipleOf": 2.5 })"sv), parse(u8"-5"sv)), std::error_code{});
+  EXPECT_EQ(check(parse(u8R"({ "multipleOf": -2.5 })"sv), parse(u8"-5"sv)), std::error_code{});
 }
 
 // NOLINTNEXTLINE
@@ -291,8 +295,8 @@ TEST(SchemaNumberInstanceChecks, MaximumInteger) {
   auto two = parse(u8R"({ "maximum": 2 })"sv);
   EXPECT_EQ(check(two, parse(u8"2"sv)), std::error_code{});
   EXPECT_EQ(check(two, parse(u8"-1"sv)), std::error_code{});
-  EXPECT_EQ(check(two, parse(u8"2.1"sv)), make_error_code(error::schema_validation));
-  EXPECT_EQ(check(two, parse(u8"3"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(two, parse(u8"2.1"sv)), make_error_code(error::validation));
+  EXPECT_EQ(check(two, parse(u8"3"sv)), make_error_code(error::validation));
 }
 
 // NOLINTNEXTLINE
@@ -301,8 +305,8 @@ TEST(SchemaNumberInstanceChecks, MaximumFp) {
   EXPECT_EQ(check(pi, parse(u8"2"sv)), std::error_code{});
   EXPECT_EQ(check(pi, parse(u8"-1"sv)), std::error_code{});
   EXPECT_EQ(check(pi, parse(u8"3.14"sv)), std::error_code{});
-  EXPECT_EQ(check(pi, parse(u8"3.15"sv)), make_error_code(error::schema_validation));
-  EXPECT_EQ(check(pi, parse(u8"4"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(pi, parse(u8"3.15"sv)), make_error_code(error::validation));
+  EXPECT_EQ(check(pi, parse(u8"4"sv)), make_error_code(error::validation));
 }
 
 // NOLINTNEXTLINE
@@ -312,7 +316,7 @@ TEST(SchemaNumberInstanceChecks, ExclusiveMaximumInteger) {
   EXPECT_EQ(check(three, parse(u8"-1"sv)), std::error_code{});
   EXPECT_EQ(check(three, parse(u8"2.1"sv)), std::error_code{});
   EXPECT_EQ(check(three, parse(u8"2.9999"sv)), std::error_code{});
-  EXPECT_EQ(check(three, parse(u8"3"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(three, parse(u8"3"sv)), make_error_code(error::validation));
 }
 
 // NOLINTNEXTLINE
@@ -321,7 +325,7 @@ TEST(SchemaNumberInstanceChecks, ExclusiveMaximumFp) {
   EXPECT_EQ(check(pi, parse(u8"2"sv)), std::error_code{});
   EXPECT_EQ(check(pi, parse(u8"-1"sv)), std::error_code{});
   EXPECT_EQ(check(pi, parse(u8"3.13999"sv)), std::error_code{});
-  EXPECT_EQ(check(pi, parse(u8"3.14"sv)), make_error_code(error::schema_validation));
-  EXPECT_EQ(check(pi, parse(u8"3.15"sv)), make_error_code(error::schema_validation));
-  EXPECT_EQ(check(pi, parse(u8"4"sv)), make_error_code(error::schema_validation));
+  EXPECT_EQ(check(pi, parse(u8"3.14"sv)), make_error_code(error::validation));
+  EXPECT_EQ(check(pi, parse(u8"3.15"sv)), make_error_code(error::validation));
+  EXPECT_EQ(check(pi, parse(u8"4"sv)), make_error_code(error::validation));
 }

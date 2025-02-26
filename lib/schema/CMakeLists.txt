@@ -14,6 +14,7 @@ set (include_dir "${PEEJAY_ROOT}/include")
 set (
   include_files
   "${include_dir}/peejay/schema/almost_equal.hpp"
+  "${include_dir}/peejay/schema/error.hpp"
   "${include_dir}/peejay/schema/schema.hpp"
 )
 add_library (schema STATIC schema.cpp ${include_files})

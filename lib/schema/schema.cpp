@@ -1,25 +1,36 @@
+//===- lib/schema/schema.cpp ----------------------------------------------===//
+//*           _                           *
+//*  ___  ___| |__   ___ _ __ ___   __ _  *
+//* / __|/ __| '_ \ / _ \ '_ ` _ \ / _` | *
+//* \__ \ (__| | | |  __/ | | | | | (_| | *
+//* |___/\___|_| |_|\___|_| |_| |_|\__,_| *
+//*                                       *
+//===----------------------------------------------------------------------===//
+// Distributed under the Apache License v2.0.
+// See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
+// SPDX-License-Identifier: Apache-2.0
+//===----------------------------------------------------------------------===//
 #include "peejay/schema/schema.hpp"
+
+#include "peejay/schema/error.hpp"
 
 namespace {
 
 std::error_code bool_to_error(bool b) {
-  if (b) {
-    return {};
-  }
-  return peejay::error::schema_validation;
+  return b ? peejay::schema::error::none : peejay::schema::error::validation;
 }
 
 constexpr bool is_multiple_of(int64_t a, int64_t mo) noexcept {
-  return a / mo * mo == a;
+  return a % mo == 0;
 }
-inline bool is_multiple_of(double a, double mo) noexcept {
+constexpr bool is_multiple_of(double a, double mo) noexcept {
   auto const t = a / mo;
   return t == std::floor(t);
 }
-inline bool is_multiple_of(double a, int64_t mo) noexcept {
+constexpr bool is_multiple_of(double a, int64_t mo) noexcept {
   return is_multiple_of(a, static_cast<double>(mo));
 }
-inline bool is_multiple_of(int64_t a, double mo) noexcept {
+constexpr bool is_multiple_of(int64_t a, double mo) noexcept {
   return is_multiple_of(static_cast<double>(a), mo);
 }
 
@@ -27,14 +38,14 @@ template <typename T1, typename T2>
 using math_type =
     std::conditional_t<std::is_floating_point_v<T1> || std::is_floating_point_v<T2>, double, std::int64_t>;
 
-template <typename Predicate> static std::error_code check_number(peejay::element const &el, Predicate pred) {
+template <typename Predicate> std::error_code check_number(peejay::element const &el, Predicate pred) {
   if (auto const *const integer = std::get_if<std::int64_t>(&el)) {
     return bool_to_error(pred(*integer));
   }
   if (auto const *const fp = std::get_if<double>(&el)) {
     return bool_to_error(pred(*fp));
   }
-  return peejay::error::schema_expected_number;
+  return peejay::schema::error::expected_number;
 }
 
 template <typename NumberType> std::error_code number_constraints(peejay::object const &schema, NumberType const num) {
@@ -122,14 +133,14 @@ std::error_code schema::checker::check_type(peejay::u8string const &type_name, p
   if (auto const pos = map.find(type_name); pos != map.end()) {
     return bool_to_error(pos->second(instance));
   }
-  return peejay::error::schema_type_name_invalid;
+  return peejay::schema::error::type_name_invalid;
 }
 
 std::error_code schema::checker::check_type(element const &type_name, element const &instance) {
   if (auto const *const name = std::get_if<u8string>(&type_name)) {
     return check_type(*name, instance);
   }
-  return error::schema_type_name_invalid;
+  return error::type_name_invalid;
 }
 
 template <typename Predicate>
@@ -140,7 +151,7 @@ static std::error_code non_negative_constraint(object const &schema, u8string co
   }
   auto const *const v = std::get_if<std::int64_t>(&pos->second);
   if (v == nullptr || *v < 0) {
-    return error::schema_expected_non_negative_integer;
+    return schema::error::expected_non_negative_integer;
   }
   return bool_to_error(predicate(*v));
 }
@@ -184,7 +195,7 @@ std::error_code schema::checker::string_constraints(object const &schema, u8stri
       // }
       //  TODO: basic_regex and char8?
     } else {
-      return error::schema_pattern_string;
+      return error::pattern_string;
     }
   }
   return {};
@@ -212,7 +223,7 @@ std::error_code schema::checker::object_constraints(object const &schema, object
         }
       }
     } else {
-      return error::schema_properties_must_be_object;
+      return error::properties_must_be_object;
     }
   }
 
@@ -249,27 +260,27 @@ std::error_code schema::checker::object_constraints(object const &schema, object
 std::error_code schema::checker::check(element const &schema, element const &instance) {
   // A schema or a sub-schema may be either an object or a boolean.
   if (auto const *const b = std::get_if<bool>(&schema)) {
-    return *b ? std::error_code{} : make_error_code(error::schema_validation);
+    return *b ? std::error_code{} : make_error_code(error::validation);
   }
   auto const *const schema_obj = std::get_if<object>(&schema);
   if (schema_obj == nullptr) {
-    return error::schema_not_boolean_or_object;
+    return error::not_boolean_or_object;
   }
   auto const &map = **schema_obj;
   auto const end = map.end();
 
   if (auto const &const_pos = map.find(u8"const"); const_pos != end) {
     if (instance != const_pos->second) {
-      return error::schema_validation;
+      return error::validation;
     }
   }
   if (auto const &enum_pos = map.find(u8"enum"); enum_pos != end) {
     if (auto const *const arr = std::get_if<array>(&enum_pos->second)) {
       if (!std::any_of(std::begin(**arr), std::end(**arr), [&instance](element const &el) { return el == instance; })) {
-        return error::schema_validation;
+        return error::validation;
       }
     } else {
-      return error::schema_enum_must_be_array;
+      return error::enum_must_be_array;
     }
   }
   if (auto const &type_pos = map.find(u8"type"); type_pos != end) {
@@ -278,7 +289,7 @@ std::error_code schema::checker::check(element const &schema, element const &ins
         return erc;
       }
     } else if (auto const *const name_array = std::get_if<array>(&type_pos->second)) {
-      auto erc = make_error_code(error::schema_validation);
+      auto erc = make_error_code(error::validation);
       for (auto it = std::begin(**name_array), na_end = std::end(**name_array); it != na_end && erc; ++it) {
         erc = check_type(*it, instance);
       }
@@ -286,7 +297,7 @@ std::error_code schema::checker::check(element const &schema, element const &ins
         return erc;  // none of the types match.
       }
     } else {
-      return error::schema_type_string_or_string_array;
+      return error::type_string_or_string_array;
     }
   }
 
@@ -326,7 +337,7 @@ std::error_code schema::checker::root(element const &schema, element const &inst
   }
   auto const *const obj = std::get_if<object>(&schema);
   if (obj == nullptr) {
-    return error::schema_not_boolean_or_object;
+    return error::not_boolean_or_object;
   }
 
   auto const &map = **obj;
@@ -336,7 +347,7 @@ std::error_code schema::checker::root(element const &schema, element const &inst
     if (auto const *const base_uri = std::get_if<u8string>(&base_uri_pos->second)) {
       base_uri_ = *base_uri;
     } else {
-      return error::schema_expected_string;
+      return error::expected_string;
     }
   }
 
@@ -344,7 +355,7 @@ std::error_code schema::checker::root(element const &schema, element const &inst
     if (auto const *const defs = std::get_if<object>(&defs_pos->second)) {
       defs_ = defs;
     } else {
-      return error::schema_defs_must_be_object;
+      return error::defs_must_be_object;
     }
   }
 
