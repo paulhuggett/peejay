@@ -25,47 +25,39 @@ jobs:
 
           # Linux builds
           # ~~~~~~~~~~~~
-          - name: Ubuntu-20.04/clang-8/Debug
-            apt_install: clang-8 cmake libc++-8-dev libc++abi-8-dev ninja-build
-            build_type: Debug
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8
-            generator: Ninja
-            options: -D LIBCXX=Yes
-            os: ubuntu-20.04
-
-          - name: Ubuntu-22.04/gcc-11/Debug
+          - name: Ubuntu-24.04/clang-18/Debug
             apt_install: cmake ninja-build
+            llvm_install: 18
+            build_type: Debug
+            cxx_compiler: -D CMAKE_CXX_COMPILER=clang++-18 -D CMAKE_C_COMPILER=clang-18
+            generator: Ninja
+            options:
+            os: ubuntu-24.04
+
+          - name: Ubuntu-24.04/clang-18/Release
+            apt_install: cmake ninja-build
+            llvm_install: 18
+            build_type: Release
+            cxx_compiler: -D CMAKE_CXX_COMPILER=clang++-18 -D CMAKE_C_COMPILER=clang-18
+            generator: Ninja
+            options:
+            os: ubuntu-24.04
+
+          - name: Ubuntu-24.04/gcc-13/Debug
+            apt_install: cmake ninja-build
+            gcc_install: 13
             build_type: Debug
             generator: Ninja
             options:
-            os: ubuntu-22.04
+            os: ubuntu-24.04
 
-          - name: Ubuntu-22.04/gcc-11/Release
+          - name: Ubuntu-24.04/gcc-13/Release
             apt_install: cmake ninja-build
+            gcc_install: 13
             build_type: Release
             generator: Ninja
             options:
-            os: ubuntu-22.04
-
-          # It's current necesssary to use libc++ because builds witb libstdc++ fail
-          # They fail due to this bug:
-          # https://github.com/llvm/llvm-project/issues/55560
-
-          - name: Ubuntu-22.04/clang-14/Debug
-            apt_install: clang-14 cmake libc++-dev libc++abi-dev ninja-build
-            build_type: Debug
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
-            generator: Ninja
-            options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
-            os: ubuntu-22.04
-
-          - name: Ubuntu-22.04/clang-14/Release
-            apt_install: clang-14 cmake libc++-dev libc++abi-dev ninja-build
-            build_type: Release
-            cxx_compiler: -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
-            generator: Ninja
-            options: -DLIBCXX=Yes '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold'
-            os: ubuntu-22.04
+            os: ubuntu-24.04
 
           # Windows builds
           # ~~~~~~~~~~~~~~
@@ -98,6 +90,19 @@ jobs:
       - name: Install Dependencies (Linux)
         if: startsWith (matrix.os, 'ubuntu-') && matrix.apt_install != ''
         run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt_install }}
+
+      - name: Install Dependencies (GCC)
+        if: matrix.gcc_install != ''
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt install -y "g++-${{ matrix.gcc_install }}" \
+                              "libstdc++-${{ matrix.gcc_install }}-dev"
+
+      - name: Install Dependencies (LLVM)
+        if: matrix.llvm_install != ''
+        uses: paulhuggett/install-llvm@ad897b4b1cf03f54c1218ec6d97a23ff4b10b870 # v1.0
+        with:
+          version: ${{matrix.llvm_install}}
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ github.workspace }}/build
