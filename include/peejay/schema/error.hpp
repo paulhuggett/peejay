@@ -67,6 +67,7 @@ public:
     case error::type_string_or_string_array: return "schema type constraint was not a string or an array";
     case error::pattern_string: return "schema pattern constraint was not a string";
     case error::validation: return "schema validation failed";
+    default: break;
     }
     assert(false && "bad error code");
     return "unknown PJ schema error code";

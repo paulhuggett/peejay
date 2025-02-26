@@ -81,6 +81,7 @@ public:
     case error::unterminated_multiline_comment: return "unterminated /* comment";
     case error::identifier_too_long: return "identifier too long";
     case error::string_too_long: return "string too long";
+    default: break;
     }
     assert(false && "bad error code");
     return "unknown PJ error code";

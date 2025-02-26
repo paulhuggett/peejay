@@ -562,6 +562,7 @@ static std::ostream &operator<<(std::ostream &os, action a) {
   case action::deleted: str = "deleted"; break;
   case action::copy_assign: str = "copy_assign"; break;
   case action::move_assign: str = "move_assign"; break;
+  default: str = "unknown"; break;
   }
   return os << str;
 }
