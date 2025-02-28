@@ -29,13 +29,13 @@
 #include <cctype>
 #include <cmath>
 #include <compare>
+#include <concepts>
 #include <cstring>
 #include <optional>
-#include <tuple>
-#include <variant>
-#include <concepts>
 #include <ranges>
 #include <span>
+#include <tuple>
+#include <variant>
 
 namespace peejay {
 
@@ -85,7 +85,9 @@ concept backend = requires(T &&v) {
 /// \brief JSON parser implementation details.
 namespace details {
 
-template <typename Backend, typename Policies> requires(backend<Backend>) class matcher;
+template <typename Backend, typename Policies>
+  requires(backend<Backend>)
+class matcher;
 
 template <typename Backend, typename Policies> class root_matcher;
 template <typename Backend, typename Policies> class whitespace_matcher;
@@ -105,8 +107,7 @@ public:
     switch (mode_) {
     case mode::do_delete: delete p; break;
     case mode::do_nothing:
-    default:
-      break;
+    default: break;
     }
   }
 
@@ -212,7 +213,7 @@ struct default_policies {
 /// \tparam Policies  A type which contains a collection of policies which
 ///                   control the behaviour of the parser.
 template <typename Backend, typename Policies = default_policies>
-requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 class parser {
   friend class details::matcher<Backend, Policies>;
   friend class details::root_matcher<Backend, Policies>;
@@ -381,7 +382,7 @@ parser(Backend, Policies) -> parser<Backend, Policies>;
 template <typename Backend> parser(Backend) -> parser<Backend, default_policies>;
 
 template <typename Policies, typename Backend>
-  requires (policy<Policies> && backend<std::remove_reference_t<Backend>, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<std::remove_reference_t<Backend>, typename Policies::integer_type>)
 inline decltype(auto) make_parser(Backend &&backend, extensions const extensions = extensions::none) {
   return parser<std::remove_reference_t<Backend>, Policies>{std::forward<Backend>(backend), extensions};
 }
@@ -483,7 +484,9 @@ constexpr std::optional<grammar_rule> code_point_grammar_rule(char32_t const cod
 //*                                  *
 /// \brief The base class for the various state machines ("matchers") which
 ///   implement the productions of the JSON grammar.
-template <typename Backend, typename Policies> requires(backend<Backend>) class matcher {
+template <typename Backend, typename Policies>
+  requires(backend<Backend>)
+class matcher {
   template <int FirstHexState, int LastHexState, int PostState> friend class hex_consumer;
 
 public:
@@ -608,7 +611,7 @@ private:
 ///   "false", or "null".
 /// \tparam Backend  The parser callback structure.
 template <typename Backend, typename Policies, typename DoneFunction>
-  requires (backend<Backend> && std::invocable<DoneFunction, parser<Backend, Policies> &>)
+  requires(backend<Backend> && std::invocable<DoneFunction, parser<Backend, Policies> &>)
 class token_matcher : public matcher<Backend, Policies> {
   using inherited = matcher<Backend, Policies>;
 
@@ -640,7 +643,7 @@ private:
 };
 
 template <typename Backend, typename Policies, typename DoneFunction>
-  requires (backend<Backend> && std::invocable<DoneFunction, parser<Backend, Policies> &>)
+  requires(backend<Backend> && std::invocable<DoneFunction, parser<Backend, Policies> &>)
 auto token_matcher<Backend, Policies, DoneFunction>::consume(parser_type &parser, std::optional<char32_t> ch)
     -> std::pair<typename inherited::pointer, bool> {
   bool match = true;
@@ -653,8 +656,9 @@ auto token_matcher<Backend, Policies, DoneFunction>::consume(parser_type &parser
     }
     switch (text_.match(*ch)) {
     case token_consumer::result::fail: this->set_error(parser, error::unrecognized_token); break;
-    case token_consumer::result::more: break;
     case token_consumer::result::match: state_ = last_state; break;
+    case token_consumer::result::more:
+    default: break;
     }
     break;
   case last_state:
@@ -2526,7 +2530,7 @@ parser<Backend, Policies>::parser(parser &&rhs) noexcept(std::is_nothrow_move_co
 // operator=
 // ~~~~~~~~~
 template <typename Backend, typename Policies>
-requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 auto parser<Backend, Policies>::operator=(parser &&rhs) noexcept(std::is_nothrow_move_assignable_v<Backend>)
     -> parser & {
   utf_ = std::move(rhs.utf_);
@@ -2563,7 +2567,7 @@ auto parser<Backend, Policies>::make_whitespace_matcher() -> pointer {
 // make string matcher
 // ~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-  requires (policy<Policies> && backend<Backend, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 auto parser<Backend, Policies>::make_string_matcher(bool object_key, char32_t enclosing_char) -> pointer {
   using string_matcher = details::string_matcher<Backend, Policies>;
   return this->template make_terminal_matcher<string_matcher>(str_buffer_.get(), object_key, enclosing_char);
@@ -2586,8 +2590,7 @@ auto parser<Backend, Policies>::make_identifier_matcher() -> pointer {
 template <typename Backend, typename Policies>
   requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 template <std::input_iterator InputIterator>
-requires
-    (std::is_same_v<std::decay_t<typename std::iterator_traits<InputIterator>::value_type>, std::byte>)
+  requires(std::is_same_v<std::decay_t<typename std::iterator_traits<InputIterator>::value_type>, std::byte>)
 parser<Backend, Policies> &parser<Backend, Policies>::input(InputIterator first, InputIterator last) {
   if (error_) {
     return *this;
@@ -2613,7 +2616,7 @@ parser<Backend, Policies> &parser<Backend, Policies>::input(InputIterator first,
 // consume code point
 // ~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 void parser<Backend, Policies>::consume_code_point(char32_t code_point) {
   bool retry = false;
   do {
@@ -2648,7 +2651,7 @@ void parser<Backend, Policies>::consume_code_point(char32_t code_point) {
 // reseat stack after move
 // ~~~~~~~~~~~~~~~~~~~~~~~
 template <typename Backend, typename Policies>
-requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 void parser<Backend, Policies>::reseat_stack_after_move(parser const &rhs) noexcept {
   using deleter = typename pointer::deleter_type;
   constexpr auto d = deleter{deleter::mode::do_nothing};
@@ -2707,7 +2710,7 @@ void parser<Backend, Policies>::reseat_stack_after_move(parser const &rhs) noexc
 // eof
 // ~~~
 template <typename Backend, typename Policies>
-requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
 decltype(auto) parser<Backend, Policies>::eof() {
   while (!stack_.empty() && !has_error()) {
     auto &handler = stack_.top();
