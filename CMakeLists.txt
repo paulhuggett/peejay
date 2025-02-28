@@ -50,6 +50,7 @@ function (setup_target target)
     -Wno-padded
     -Wno-undef
     -Wno-weak-vtables
+    -Wno-covered-switch-default
   )
   set (gcc_options -Wall -Wextra -pedantic -Wno-maybe-uninitialized)
   set (
