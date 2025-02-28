@@ -104,7 +104,9 @@ public:
   void operator()(T *const p) const noexcept {
     switch (mode_) {
     case mode::do_delete: delete p; break;
-    case mode::do_nothing: break;
+    case mode::do_nothing:
+    default:
+      break;
     }
   }
 
