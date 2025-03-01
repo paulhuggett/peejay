@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUILD_DIR: build_fuzztest
-      CLANG_VERSION: 15
+      CLANG_VERSION: 18
       CONFIG: RelWithDebug
 
     steps:
@@ -29,12 +29,14 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y            \
-            "clang-${CLANG_VERSION}"         \
-            cmake                            \
-            "libc++-${CLANG_VERSION}-dev"    \
-            "libc++abi-${CLANG_VERSION}-dev" \
+          sudo apt-get install -y \
+            cmake                 \
             ninja-build
+
+      - name: Install Dependencies (LLVM)
+        uses: paulhuggett/install-llvm@ad897b4b1cf03f54c1218ec6d97a23ff4b10b870 # v1.0
+        with:
+          version: ${{ env.CLANG_VERSION }}
 
       - name: Configure
         run: |
