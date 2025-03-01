@@ -18,7 +18,7 @@
 //===----------------------------------------------------------------------===//
 #include <cstddef>
 
-#include "peejay/small_vector.hpp"
+#include "peejay/json/small_vector.hpp"
 #include "resize_count_value.hpp"
 
 int main() {
