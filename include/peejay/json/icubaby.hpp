@@ -1327,6 +1327,8 @@ public:
 
     case states::run_32be_byte3:
     case states::run_32le_byte3: dest = this->run32(value, dest); break;
+
+    default: assert(false && "Unknown state for the byte transcoder"); break;
     }
     return dest;
   }
