@@ -23,14 +23,14 @@ std::error_code bool_to_error(bool b) {
 constexpr bool is_multiple_of(int64_t a, int64_t mo) noexcept {
   return a % mo == 0;
 }
-constexpr bool is_multiple_of(double a, double mo) noexcept {
+bool is_multiple_of(double a, double mo) noexcept {
   auto const t = a / mo;
   return t == std::floor(t);
 }
-constexpr bool is_multiple_of(double a, int64_t mo) noexcept {
+bool is_multiple_of(double a, int64_t mo) noexcept {
   return is_multiple_of(a, static_cast<double>(mo));
 }
-constexpr bool is_multiple_of(int64_t a, double mo) noexcept {
+bool is_multiple_of(int64_t a, double mo) noexcept {
   return is_multiple_of(static_cast<double>(a), mo);
 }
 
