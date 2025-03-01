@@ -1179,13 +1179,15 @@ auto number_matcher<Backend, Policies>::consume(parser_type &parser, std::option
   case match_token_infinity_state:
   case match_token_nan_state:
     switch (text_.match(*ch)) {
-    case token_consumer::result::fail: this->set_error(parser, error::unrecognized_token); break;
     case token_consumer::result::more: break;
     case token_consumer::result::match:
       acc_ = float_accumulator{state_ == match_token_infinity_state ? std::numeric_limits<double>::infinity()
                                                                     : std::numeric_limits<double>::quiet_NaN()};
       state_ = end_token_state;
       break;
+    case token_consumer::result::fail:
+    default:
+      this->set_error(parser, error::unrecognized_token); break;
     }
     break;
   case end_token_state:
