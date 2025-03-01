@@ -50,7 +50,7 @@ public:
 
 private:
   u8string base_uri_;
-  element const *root_;
+  element const *root_ = nullptr;
   std::optional<object const *> defs_;
 };
 
