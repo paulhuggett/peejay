@@ -20,7 +20,7 @@
 #include <klee/klee.h>
 
 #include "av_member.hpp"
-#include "peejay/small_vector.hpp"
+#include "peejay/json/small_vector.hpp"
 #include "vcommon.hpp"
 
 int main() {
