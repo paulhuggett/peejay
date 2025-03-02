@@ -128,8 +128,7 @@ public:
   public:
     explicit constexpr line(unsigned x) noexcept : x_{x} {}
     explicit constexpr operator unsigned() const noexcept { return x_; }
-    constexpr bool operator==(line const &rhs) const noexcept { return x_ == rhs.x_; }
-    constexpr bool operator!=(line const &rhs) const noexcept { return !operator==(rhs); }
+    constexpr bool operator==(line const &rhs) const noexcept = default;
 
   private:
     unsigned x_;
@@ -138,8 +137,7 @@ public:
   public:
     explicit constexpr column(unsigned y) noexcept : y_{y} {}
     explicit constexpr operator unsigned() const noexcept { return y_; }
-    constexpr bool operator==(column const &rhs) const noexcept { return y_ == rhs.y_; }
-    constexpr bool operator!=(column const &rhs) const noexcept { return !operator==(rhs); }
+    constexpr bool operator==(column const &rhs) const noexcept = default;
 
   private:
     unsigned y_;
@@ -151,8 +149,8 @@ public:
 
   constexpr std::strong_ordering operator<=>(coord const &) const noexcept = default;
 
-  constexpr explicit operator line() const noexcept { return line{line_}; }
-  constexpr explicit operator column() const noexcept { return column{column_}; }
+  constexpr auto get_line() const noexcept { return line_; }
+  constexpr auto get_column() const noexcept { return column_; }
 
   void next_line() noexcept { ++line_; }
   void next_column() noexcept { ++column_; }
@@ -168,9 +166,6 @@ private:
   unsigned line_ = 1U;
   unsigned column_ = 1U;
 };
-
-using line = coord::line;
-using column = coord::column;
 
 enum class extensions : unsigned {
   none = 0U,

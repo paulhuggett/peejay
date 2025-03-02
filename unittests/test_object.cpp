@@ -23,11 +23,11 @@ using testing::InSequence;
 using testing::StrictMock;
 
 using peejay::char8;
-using peejay::column;
+using column = peejay::coord::column;
 using peejay::coord;
 using peejay::error;
 using peejay::extensions;
-using peejay::line;
+using line = peejay::coord::line;
 using peejay::make_parser;
 using peejay::null;
 using peejay::parser;

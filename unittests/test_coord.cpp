@@ -20,22 +20,22 @@ using peejay::coord;
 // NOLINTNEXTLINE
 TEST(Coord, DefaultCtor) {
   coord c;
-  EXPECT_EQ(coord::line(c), coord::line{1U});
-  EXPECT_EQ(coord::column(c), coord::column{1U});
+  EXPECT_EQ(c.get_line(), 1U);
+  EXPECT_EQ(c.get_column(), 1U);
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, RowThenColumnInit) {
   coord c{coord::line{2U}, coord::column{3U}};
-  EXPECT_EQ(coord::line(c), coord::line{2U});
-  EXPECT_EQ(coord::column(c), coord::column{3U});
+  EXPECT_EQ(c.get_line(), 2U);
+  EXPECT_EQ(c.get_column(), 3U);
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, ColumnThenRowInit) {
   coord c{coord::column{2U}, coord::line{3U}};
-  EXPECT_EQ(coord::line(c), coord::line{3U});
-  EXPECT_EQ(coord::column(c), coord::column{2U});
+  EXPECT_EQ(c.get_line(), 3U);
+  EXPECT_EQ(c.get_column(), 2U);
 }
 
 // NOLINTNEXTLINE

@@ -20,11 +20,11 @@ using testing::StrictMock;
 
 using peejay::char8;
 using peejay::char_set;
-using peejay::column;
+using column = peejay::coord::column;
 using peejay::coord;
 using peejay::error;
 using peejay::extensions;
-using peejay::line;
+using line = peejay::coord::line;
 using peejay::make_parser;
 using peejay::u8string_view;
 

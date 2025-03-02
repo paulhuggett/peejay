@@ -22,10 +22,10 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using testing::StrictMock;
 
-using peejay::column;
+using column = peejay::coord::column;
+using line = peejay::coord::line;
 using peejay::coord;
 using peejay::error;
-using peejay::line;
 using peejay::null;
 using peejay::parser;
 using peejay::u8string;

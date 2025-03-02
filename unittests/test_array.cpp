@@ -16,11 +16,11 @@
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
-using peejay::column;
+using column = peejay::coord::column;
+using line = peejay::coord::line;
 using peejay::coord;
 using peejay::error;
 using peejay::extensions;
-using peejay::line;
 using peejay::make_parser;
 using peejay::parser;
 using peejay::u8string;
