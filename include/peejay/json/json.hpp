@@ -222,9 +222,8 @@ class parser {
 public:
   explicit parser(extensions extensions = extensions::none) : parser(Backend{}, extensions) {}
 
-  template <typename OtherBackend>
-    requires(backend<OtherBackend>)
-  explicit parser(OtherBackend &&backend, extensions extensions = extensions::none);
+  explicit parser(Backend const &backend, extensions extensions = extensions::none);
+  explicit parser(Backend &&backend, extensions extensions = extensions::none);
 
   parser(parser const &) = delete;
   parser(parser &&rhs) noexcept(std::is_nothrow_move_constructible_v<Backend>);
@@ -337,6 +336,8 @@ private:
   pointer make_string_matcher(bool object_key, char32_t enclosing_char);
   pointer make_identifier_matcher();
 
+  void init_stack();
+
   template <typename Matcher, typename... Args>
     requires(std::derived_from<Matcher, matcher>)
   pointer make_terminal_matcher(Args &&...args) {
@@ -388,7 +389,7 @@ inline decltype(auto) make_parser(Backend &&backend, extensions const extensions
 }
 
 template <typename Backend>
-  requires(backend<std::remove_reference_t<Backend>>)
+  requires(backend<Backend>)
 inline decltype(auto) make_parser(Backend &&backend, extensions const extensions = extensions::none) {
   return parser<std::remove_reference_t<Backend>>{std::forward<Backend>(backend), extensions};
 }
@@ -2491,16 +2492,11 @@ template <typename Backend, typename Policies> struct singletons {
 
 }  // end namespace details
 
-// (ctor)
-// ~~~~~~
+// init stack
+// ~~~~~~~~~~
 template <typename Backend, typename Policies>
   requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
-template <typename OtherBackend>
-  requires(backend<OtherBackend>)
-parser<Backend, Policies>::parser(OtherBackend &&backend, extensions const extensions)
-    : str_buffer_{std::make_unique<arrayvec<char8, Policies::max_length>>()},
-      extensions_{extensions},
-      backend_{std::forward<OtherBackend>(backend)} {
+void parser<Backend, Policies>::init_stack() {
   using mpointer = typename matcher::pointer;
   using deleter = typename mpointer::deleter_type;
   // The EOF matcher is placed at the bottom of the stack to ensure that the
@@ -2511,6 +2507,26 @@ parser<Backend, Policies>::parser(OtherBackend &&backend, extensions const exten
   stack_.push(mpointer(new (&singletons_.trailing_ws) details::whitespace_matcher<Backend, Policies>{},
                        deleter{deleter::mode::do_nothing}));
   stack_.push(this->make_root_matcher());
+}
+
+// (ctor)
+// ~~~~~~
+template <typename Backend, typename Policies>
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+parser<Backend, Policies>::parser(Backend &&backend, extensions const extensions)
+    : str_buffer_{std::make_unique<arrayvec<char8, Policies::max_length>>()},
+      extensions_{extensions},
+      backend_{std::move(backend)} {
+  this->init_stack();
+}
+
+template <typename Backend, typename Policies>
+  requires(policy<Policies> && backend<Backend, typename Policies::integer_type>)
+parser<Backend, Policies>::parser(Backend const &backend, extensions const extensions)
+    : str_buffer_{std::make_unique<arrayvec<char8, Policies::max_length>>()},
+      extensions_{extensions},
+      backend_{backend} {
+  this->init_stack();
 }
 
 template <typename Backend, typename Policies>
