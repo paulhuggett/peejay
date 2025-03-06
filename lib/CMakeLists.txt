@@ -10,5 +10,6 @@
 # See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 # SPDX-License-Identifier: Apache-2.0
 #===----------------------------------------------------------------------===//
-add_subdirectory (peejay)
-add_subdirectory (schema)
+add_subdirectory(peejay)
+add_subdirectory(schema)
+add_subdirectory(uri)
