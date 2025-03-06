@@ -56,4 +56,4 @@ jobs:
 
       - name: Fuzz
         run: |
-          "$BUILD_DIR/unittests/pj-unittests" --fuzz_for 10s
+          find "$BUILD_DIR" -type f -executable -name \*unittests -exec {} --fuzz_for 10s \;
