@@ -14,11 +14,9 @@ add_executable (pj-check check.cpp)
 target_link_libraries (pj-check PUBLIC peejay)
 setup_target (pj-check)
 
-if (TARGET gtest)
-  set (prelink_target pj-check)
-  set (test_target pj-unittests)
+function(run_test prelink_target test_target)
   set (out_xml "${CMAKE_BINARY_DIR}/${test_target}.xml")
-  add_dependencies (pj-check pj-unittests)
+  add_dependencies (${prelink_target} ${test_target})
   add_custom_command (
     TARGET ${prelink_target}
     PRE_LINK
@@ -28,4 +26,9 @@ if (TARGET gtest)
     BYPRODUCTS ${out_xml}
     VERBATIM
   )
+endfunction(run_test)
+
+if (TARGET gtest)
+  run_test(pj-check pj-unittests)
+  run_test(pj-check pj-schema-unittests)
 endif ()
