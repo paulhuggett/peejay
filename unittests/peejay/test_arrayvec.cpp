@@ -648,15 +648,6 @@ constexpr bool operator==(trackee const &lhs, int rhs) {
 constexpr bool operator==(int lhs, trackee const &rhs) {
   return lhs == rhs.get();
 }
-constexpr bool operator!=(trackee const &lhs, trackee const &rhs) {
-  return !operator==(lhs, rhs);
-}
-constexpr bool operator!=(trackee const &lhs, int rhs) {
-  return !operator==(lhs, rhs);
-}
-constexpr bool operator!=(int lhs, trackee const &rhs) {
-  return !operator==(lhs, rhs);
-}
 
 static std::ostream &operator<<(std::ostream &os, trackee const &t) {
   return os << t.get();
@@ -1142,8 +1133,6 @@ public:
   }
   constexpr bool operator==(member const &rhs) const noexcept { return v_ == rhs.v_; }
   constexpr bool operator==(int const &rhs) const noexcept { return v_ == rhs; }
-  constexpr bool operator!=(member const &rhs) const noexcept { return v_ != rhs.v_; }
-  constexpr bool operator!=(int const &rhs) const noexcept { return v_ != rhs; }
 
 private:
   int v_ = 0;

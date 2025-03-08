@@ -467,11 +467,6 @@ bool operator==(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs
 }
 
 template <typename T, std::size_t LhsSize, std::size_t RhsSize>
-bool operator!=(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename T, std::size_t LhsSize, std::size_t RhsSize>
 bool operator<(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
   return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
 }

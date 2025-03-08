@@ -87,9 +87,6 @@ public:
   template <typename Other> constexpr bool operator==(pointer_based_iterator<Other> const &other) const noexcept {
     return pos_ == to_address(other);
   }
-  template <typename Other> constexpr bool operator!=(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ != to_address(other);
-  }
 
   template <typename Other>
   constexpr pointer_based_iterator &operator=(pointer_based_iterator<Other> const &other) noexcept {

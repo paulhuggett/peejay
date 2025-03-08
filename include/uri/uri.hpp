@@ -80,8 +80,7 @@ struct parts {
     [[nodiscard]] bool valid () const noexcept;
     explicit operator std::string () const;
     explicit operator std::filesystem::path () const;
-    bool operator== (path const& rhs) const;
-    bool operator!= (path const& rhs) const { return !operator== (rhs); }
+    bool operator==(path const& rhs) const;
   };
   struct authority {
     std::optional<std::string_view> userinfo;
@@ -90,8 +89,7 @@ struct parts {
 
     [[nodiscard]] bool valid () const noexcept;
 
-    bool operator== (authority const& rhs) const;
-    bool operator!= (authority const& rhs) const { return !operator== (rhs); }
+    bool operator==(authority const& rhs) const;
   };
 
   std::optional<std::string_view> scheme;
@@ -107,8 +105,7 @@ struct parts {
   struct authority& ensure_authority () {
     return authority.has_value () ? *authority : authority.emplace ();
   }
-  bool operator== (parts const& rhs) const;
-  bool operator!= (parts const& rhs) const { return !operator== (rhs); }
+  bool operator==(parts const& rhs) const;
 };
 
 std::ostream& operator<< (std::ostream& os, struct parts::path const& path);

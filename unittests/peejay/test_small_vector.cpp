@@ -57,9 +57,7 @@ struct copy_throws {
   copy_throws& operator=(copy_throws&&) noexcept = default;
 
   constexpr bool operator==(copy_throws const& rhs) const noexcept { return throws == rhs.throws && v == rhs.v; }
-  constexpr bool operator!=(copy_throws const& rhs) const noexcept { return !operator==(rhs); }
   constexpr bool operator==(int rhs) const noexcept { return v == rhs; }
-  constexpr bool operator!=(int rhs) const noexcept { return !operator==(rhs); }
   /// This member variable is present to defeat a warning that the copy ctor
   /// should be declared with attribute noreturn.
   bool throws = true;
@@ -96,8 +94,7 @@ struct move_throws {
     return *this;
   }
 
-  bool operator==(move_throws const& rhs) const noexcept { return throws == rhs.throws && v == rhs.v; }
-  bool operator!=(move_throws const& rhs) const noexcept { return !operator==(rhs); }
+  constexpr bool operator==(move_throws const& rhs) const noexcept { return throws == rhs.throws && v == rhs.v; }
 
   /// Much like in the copy_throws class, this member variable is present to
   /// defeat a warning that moves should be declared with attribute noreturn.

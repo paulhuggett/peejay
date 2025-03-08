@@ -37,16 +37,10 @@ namespace peejay {
 struct element;
 struct null {
   bool operator==(null /*unused*/) const noexcept { return true; }
-#if !PEEJAY_CXX20
-  bool operator!=(null /*unused*/) const noexcept { return false; }
-#endif  // !PEEJAY_CXX20
 };
 
 struct mark {
   bool operator==(mark /*unused*/) const noexcept { return true; }
-#if !PEEJAY_CXX20
-  bool operator!=(mark /*unused*/) const noexcept { return false; }
-#endif  // !PEEJAY_CXX20
 };
 using object = std::shared_ptr<std::unordered_map<u8string, element>>;
 using array = std::shared_ptr<small_vector<element, 8>>;
@@ -65,7 +59,6 @@ struct element : variant {
   element &operator=(element &&rhs) noexcept;
 
   bool operator==(element const &rhs) const;
-  bool operator!=(element const &rhs) const { return !operator==(rhs); }
 
   /// Evaluate a JSON pointer (RFC6901).
   element *eval_pointer(u8string_view s);
@@ -533,12 +526,6 @@ constexpr bool operator==(typename dom<Size1>::element const &lhs, typename dom<
   return static_cast<typename dom<Size1>::variant const &>(lhs) ==
          static_cast<typename dom<Size2>::variant const &>(rhs);
 }
-#if !PEEJAY_CXX20
-template <std::size_t Size1, std::size_t Size2>
-constexpr bool operator!=(typename dom<Size1>::element const &lhs, typename dom<Size2>::element const &rhs) {
-  return !operator==(lhs, rhs);
-}
-#endif  // !PEEJAY_CXX20
 
 }  // end namespace peejay
 
