@@ -59,14 +59,8 @@ public:
   using difference_type = std::ptrdiff_t;
   using pointer = value_type *;
   using reference = value_type &;
-#if PEEJAY_CXX20
   using iterator_category = std::contiguous_iterator_tag;
-#else
-  using iterator_category = std::random_access_iterator_tag;
-#endif  // PEEJAY_CXX20
-#if PEEJAY_HAVE_CONCEPTS
   using iterator_concept = std::contiguous_iterator_tag;
-#endif  // PEEJAY_HAVE_CONCEPTS
 
   explicit constexpr pointer_based_iterator() noexcept = default;
   explicit constexpr pointer_based_iterator(std::nullptr_t) noexcept {}
@@ -74,14 +68,16 @@ public:
   /// Copy constructor. Allows for implicit conversion from a regular iterator
   /// to a const_iterator
   // NOLINTNEXTLINE(hicpp-explicit-conversions)
-  template <typename OtherType, typename = typename std::enable_if_t<std::is_const_v<T> && !std::is_const_v<OtherType>>>
-  constexpr pointer_based_iterator(pointer_based_iterator<OtherType> rhs) noexcept : pos_{rhs.operator->()} {}
+  template <typename Other>
+    requires(std::is_const_v<T> && !std::is_const_v<Other>)
+  constexpr pointer_based_iterator(pointer_based_iterator<Other> rhs) noexcept : pos_{rhs.operator->()} {}
 
-  template <typename Other, typename = std::enable_if_t<std::is_const_v<T> && !std::is_const_v<Other>>>
+  template <typename Other>
+    requires(std::is_const_v<T> && !std::is_const_v<Other>)
   explicit constexpr pointer_based_iterator(Other const *const pos) noexcept : pos_{pos} {}
 
-  template <typename Other,
-            typename = std::enable_if_t<std::is_const_v<T> || std::is_const_v<T> == std::is_const_v<Other>>>
+  template <typename Other>
+    requires(std::is_const_v<T> || std::is_const_v<T> == std::is_const_v<Other>)
   explicit constexpr pointer_based_iterator(Other *const pos) noexcept : pos_{pos} {}
 
   template <typename Other> constexpr bool operator==(pointer_based_iterator<Other> const &other) const noexcept {
@@ -117,28 +113,17 @@ public:
     return prev;
   }
 
-  template <typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
-  pointer_based_iterator &operator+=(U const n) noexcept {
+  template <std::integral U> pointer_based_iterator &operator+=(U const n) noexcept {
     pos_ += n;
     return *this;
   }
-  template <typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
-  pointer_based_iterator &operator-=(U const n) noexcept {
+  template <std::integral U> pointer_based_iterator &operator-=(U const n) noexcept {
     pos_ -= n;
     return *this;
   }
 
-  template <typename Other> constexpr bool operator<(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ < &*other;
-  }
-  template <typename Other> constexpr bool operator>(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ > &*other;
-  }
-  template <typename Other> constexpr bool operator<=(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ <= &*other;
-  }
-  template <typename Other> constexpr bool operator>=(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ >= &*other;
+  template <typename Other> constexpr auto operator<=>(pointer_based_iterator<Other> const &other) const noexcept {
+    return pos_ <=> &*other;
   }
 
 private:
@@ -151,7 +136,7 @@ private:
 /// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T, typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
+template <typename T, std::integral U>
 inline pointer_based_iterator<T> operator+(pointer_based_iterator<T> const i, U const n) noexcept {
   auto temp = i;
   return temp += n;
@@ -163,7 +148,7 @@ inline pointer_based_iterator<T> operator+(pointer_based_iterator<T> const i, U 
 /// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T, typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
+template <typename T, std::integral U>
 inline pointer_based_iterator<T> operator+(U const n, pointer_based_iterator<T> const i) noexcept {
   auto temp = i;
   return temp += n;
@@ -175,7 +160,7 @@ inline pointer_based_iterator<T> operator+(U const n, pointer_based_iterator<T> 
 /// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T, typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
+template <typename T, std::integral U>
 inline pointer_based_iterator<T> operator-(pointer_based_iterator<T> const i, U const n) noexcept {
   auto temp = i;
   return temp -= n;
@@ -187,7 +172,7 @@ inline pointer_based_iterator<T> operator-(pointer_based_iterator<T> const i, U 
 /// \param i  The iterator to be moved.
 /// \param n  The distance by which iterator \p i should be moved.
 /// \returns  The new iterator.
-template <typename T, typename U, typename = std::enable_if_t<std::is_integral_v<U>>>
+template <typename T, std::integral U>
 inline pointer_based_iterator<T> operator-(U const n, pointer_based_iterator<T> const i) noexcept {
   auto temp = i;
   return temp -= n;
@@ -198,8 +183,8 @@ inline pointer_based_iterator<T> operator-(U const n, pointer_based_iterator<T> 
 /// \param b  The first iterator.
 /// \param a  The second iterator.
 /// \returns  distance between two iterators \p b - \p a.
-template <typename LhsT, typename RhsT,
-          typename = std::enable_if_t<std::is_same_v<std::remove_const_t<LhsT>, std::remove_const_t<RhsT>>>>
+template <typename LhsT, typename RhsT>
+  requires(std::is_same_v<std::remove_const_t<LhsT>, std::remove_const_t<RhsT>>)
 constexpr typename pointer_based_iterator<LhsT>::difference_type operator-(pointer_based_iterator<LhsT> b,
                                                                            pointer_based_iterator<RhsT> a) noexcept {
   return to_address(b) - to_address(a);

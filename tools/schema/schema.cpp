@@ -25,7 +25,9 @@ using pjparser = parser<dom<1024>>;
 
 namespace {
 
-template <typename T> PEEJAY_CXX20REQUIRES(std::is_integral_v<T>) constexpr auto as_unsigned(T v) {
+template <typename T>
+  requires(std::is_integral_v<T>)
+constexpr auto as_unsigned(T v) {
   return static_cast<std::make_unsigned_t<T>>(std::max(T{0}, v));
 }
 
@@ -49,11 +51,7 @@ std::optional<element> parse(std::filesystem::path const& file_path) {
     in.read(data, buffer.size());
     auto const available = as_unsigned(in.gcount());
     // TODO(paul) I just assume that the IStream yields UTF-8.
-#if PEEJAY_HAVE_SPAN
     p.input(std::span{pointer_cast<std::byte const>(data), available});
-#else
-    p.input(pointer_cast<std::byte const>(data), pointer_cast<std::byte const>(data + available));
-#endif  // PEEJAY_HAVE_SPAN
     if (auto const err = p.last_error()) {
       parse_error(p, file_path);
       std::exit(EXIT_FAILURE);

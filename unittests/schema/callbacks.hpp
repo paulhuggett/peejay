@@ -24,13 +24,7 @@
 
 template <typename Parser> Parser &input(Parser &parser, peejay::u8string_view const &str) {
   auto const op = [](peejay::char8 const c) { return static_cast<std::byte>(c); };
-#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
   return parser.input(str | std::views::transform(op));
-#else
-  peejay::small_vector<std::byte, 16> vec;
-  std::transform(std::begin(str), std::end(str), std::back_inserter(vec), op);
-  return parser.input(std::begin(vec), std::end(vec));
-#endif  // PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
 }
 
 template <typename IntegerType> class json_callbacks_base {
@@ -130,7 +124,9 @@ private:
 template <typename T> callbacks_proxy(testing::StrictMock<T> &) -> callbacks_proxy<T>;
 template <typename T> callbacks_proxy(T &) -> callbacks_proxy<T>;
 
-template <typename T> PEEJAY_CXX20REQUIRES(std::is_arithmetic_v<T>) peejay::u8string to_u8string(T v) {
+template <typename T>
+  requires(std::is_arithmetic_v<T>)
+peejay::u8string to_u8string(T v) {
   std::string s = std::to_string(v);
   peejay::u8string resl;
   resl.reserve(s.size());

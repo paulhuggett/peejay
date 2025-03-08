@@ -22,8 +22,7 @@
 
 namespace peejay {
 
-template <typename T, typename = typename std::enable_if_t<std::is_unsigned_v<T>>>
-constexpr unsigned bits_required(T value) {
+template <std::unsigned_integral T> constexpr unsigned bits_required(T value) {
   if (value == 0U) {
     return 0U;
   }
@@ -31,7 +30,9 @@ constexpr unsigned bits_required(T value) {
 }
 
 /// \brief Yields the smallest unsigned integral type with at least \p N bits.
-template <std::size_t N, typename = typename std::enable_if_t<(N <= 64)>> struct uinteger {
+template <std::size_t N>
+  requires(N <= 64)
+struct uinteger {
   /// The type of an unsigned integral with at least \p N bits.
   using type = typename uinteger<N + 1>::type;
 };

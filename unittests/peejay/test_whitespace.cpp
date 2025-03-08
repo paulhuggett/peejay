@@ -77,12 +77,7 @@ template <typename Parser> Parser& input_whitespace_code_points(Parser& parser) 
            char_set::en_quad,
            char_set::digit_zero,
        }) {
-#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
     parser.input(code_point_as_utf32be(code_point));
-#else
-    auto const& bytes = code_point_as_utf32be(code_point);
-    parser.input(std::begin(bytes), std::end(bytes));
-#endif
   }
   return parser;
 }

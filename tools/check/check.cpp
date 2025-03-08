@@ -44,20 +44,11 @@ bool slurp(std::istream& in, char const* file_name) {
     static_assert(sizeof(c) == sizeof(std::byte));
     return static_cast<std::byte>(c);
   };
-#if !PEEJAY_HAVE_RANGES || !PEEJAY_HAVE_CONCEPTS
-  peejay::small_vector<std::byte, 256> byte_line;
-#endif  // !PEEJAY_HAVE_RANGES || !PEEJAY_HAVE_CONCEPTS
+
   while (in.rdstate() == std::ios_base::goodbit) {
     std::getline(in, line);
     line += '\n';
-#if PEEJAY_HAVE_RANGES && PEEJAY_HAVE_CONCEPTS
     p.input(line | std::views::transform(op));
-#else
-    byte_line.clear();
-    byte_line.reserve(line.size());
-    std::transform(std::begin(line), std::end(line), std::back_inserter(byte_line), op);
-    p.input(std::begin(byte_line), std::end(byte_line));
-#endif  // PEEJAY_HAVE_RANGES && PEEJAY_HAVE_CONCEPTS
     if (auto const err = p.last_error()) {
       return report_error(p, file_name, line);
     }
@@ -74,7 +65,6 @@ bool slurp(std::istream& in, char const* file_name) {
   return true;
 }
 
-#if PEEJAY_HAVE_SPAN
 std::pair<std::istream&, char const*> open(std::span<char const*> argv, std::ifstream& file) {
   if (argv.size() < 2U) {
     return {std::cin, "<stdin>"};
@@ -83,16 +73,6 @@ std::pair<std::istream&, char const*> open(std::span<char const*> argv, std::ifs
   file.open(path);
   return {file, path};
 }
-#else
-std::pair<std::istream&, char const*> open(int argc, char const* argv[], std::ifstream& file) {
-  if (argc < 2) {
-    return {std::cin, "<stdin>"};
-  }
-  auto const* path = argv[1];
-  file.open(path);
-  return {file, path};
-}
-#endif  // PEEJAY_HAVE_SPAN
 
 }  // end anonymous namespace
 
@@ -100,16 +80,9 @@ int main(int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
   try {
     std::ifstream file;
-#if PEEJAY_HAVE_SPAN
     if (!std::apply(slurp, open(std::span{argv, argv + argc}, file))) {
       exit_code = EXIT_FAILURE;
     }
-#else
-    if (!std::apply(slurp, open(argc, argv, file))) {
-      exit_code = EXIT_FAILURE;
-    }
-#endif  // PEEJAY_HAVE_SPAN
-
   } catch (std::exception const& ex) {
     std::cerr << "error: " << ex.what() << '\n';
     exit_code = EXIT_FAILURE;

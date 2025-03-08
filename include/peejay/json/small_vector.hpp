@@ -70,8 +70,7 @@ public:
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
-  template <typename InputIterator, typename = std::enable_if_t<input_iterator<InputIterator>>>
-  small_vector(InputIterator first, InputIterator last);
+  template <std::input_iterator InputIterator> small_vector(InputIterator first, InputIterator last);
   /// Constructs the container with the given initial number of elements.
   explicit small_vector(size_type required_elements);
   /// Constructs the container with \p count copies of elements with value
@@ -391,9 +390,8 @@ private:
     });
   }
 
-  template <typename SmallVector, typename Visitor,
-            typename = std::enable_if_t<std::is_same_v<SmallVector, small_vector> ||
-                                        std::is_same_v<SmallVector, small_vector const>>>
+  template <typename SmallVector, typename Visitor>
+    requires(std::is_same_v<SmallVector, small_vector> || std::is_same_v<SmallVector, small_vector const>)
   static decltype(auto) visit(SmallVector &sv,
                               Visitor visitor) noexcept(std::is_nothrow_invocable_v<Visitor, small_type> &&
                                                         std::is_nothrow_invocable_v<Visitor, large_type>) {
@@ -419,7 +417,7 @@ template <typename ElementType> small_vector(ElementType) -> small_vector<Elemen
 // (ctor)
 // ~~~~~~
 template <typename ElementType, std::size_t BodyElements, typename Allocator>
-template <typename InputIterator, typename>
+template <std::input_iterator InputIterator>
 small_vector<ElementType, BodyElements, Allocator>::small_vector(InputIterator first, InputIterator last) {
   if constexpr (forward_iterator<InputIterator>) {
     if (auto const count = std::distance(first, last);

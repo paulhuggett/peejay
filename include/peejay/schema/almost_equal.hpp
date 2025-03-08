@@ -83,8 +83,7 @@ template <typename FpType> raw_bits<FpType> distance_between(FpType const f1, Fp
 /// \param lhs  One of the two values to be compared.
 /// \param rhs  One of the two values to be compared.
 /// \returns True if \p rhs and \p lhs are "pretty much" equal, false otherwise.
-template <typename FpType, unsigned MaxULPs = 4, typename = std::enable_if_t<std::is_floating_point_v<FpType>>>
-bool almost_equal(FpType const lhs, FpType const rhs) {
+template <std::floating_point FpType, unsigned MaxULPs = 4> bool almost_equal(FpType const lhs, FpType const rhs) {
   if (std::isnan(lhs) || std::isnan(rhs)) {
     return false;  // Comparison between NaNs is always false.
   }

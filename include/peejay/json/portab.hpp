@@ -32,12 +32,6 @@
 #define PEEJAY_CXX20 (0)
 #endif
 
-#if PEEJAY_CXX20
-#define PEEJAY_CONSTEXPR_CXX20 constexpr
-#else
-#define PEEJAY_CONSTEXPR_CXX20 inline
-#endif
-
 #ifdef __has_include
 #if __has_include(<version>)
 #include <version>
@@ -47,22 +41,6 @@
 #if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
 #include <bit>
 #endif
-
-#if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
-#define PEEJAY_HAVE_CONCEPTS (1)
-#else
-#define PEEJAY_HAVE_CONCEPTS (0)
-#endif
-
-#if PEEJAY_HAVE_CONCEPTS
-// This macro can't be written using a constexpr template function.
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define PEEJAY_CXX20REQUIRES(x) requires x
-#define PEEJAY_CONCEPT_INPUT_ITERATOR std::input_iterator
-#else
-#define PEEJAY_CXX20REQUIRES(x)
-#define PEEJAY_CONCEPT_INPUT_ITERATOR typename
-#endif  // PEEJAY_HAVE_CONCEPTS
 
 /// \brief Defined as 1 if the standard library's __cpp_lib_ranges macro is available and 0 otherwise.
 /// \hideinitializer
@@ -75,12 +53,6 @@
 /// \brief Tests for the availability of library support for C++ 20 ranges.
 /// \hideinitializer
 #define PEEJAY_HAVE_RANGES (PEEJAY_CPP_LIB_RANGES_DEFINED && __cpp_lib_ranges >= 201811L)
-
-#if PEEJAY_CXX20 && defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
-#define PEEJAY_HAVE_SPAN (1)
-#else
-#define PEEJAY_HAVE_SPAN (0)
-#endif
 
 #if PEEJAY_CXX20 && defined(__has_cpp_attribute)
 #if __has_cpp_attribute(unlikely) >= 201803L
@@ -135,18 +107,6 @@ template <typename To, typename From> constexpr To* pointer_cast(From* const p) 
   return reinterpret_cast<To*>(p);
 #endif
 }
-
-// construct at
-// ~~~~~~~~~~~~
-#if PEEJAY_CXX20
-using std::construct_at;
-#else
-/// Creates a T object initialized with arguments args... at given address p.
-template <typename T, typename... Args> constexpr T* construct_at(T* const p, Args&&... args) {
-  static_assert(!std::is_const_v<T>, "Can't construct an object in const memory!");
-  return ::new (p) T(std::forward<Args>(args)...);
-}
-#endif  // PEEJAY_CXX20
 
 // forward iterator
 // ~~~~~~~~~~~~~~~~

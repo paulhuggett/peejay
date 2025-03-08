@@ -16,15 +16,9 @@
 #ifndef PEEJAY_EMIT_HPP
 #define PEEJAY_EMIT_HPP
 
-#include <ios>
-
-#if PEEJAY_HAVE_SPAN
-#include <span>
-#endif
-
-#if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
 #include <bit>
-#endif
+#include <ios>
+#include <span>
 
 #include "peejay/json/dom.hpp"
 
@@ -114,18 +108,6 @@ inline u8string_view::const_iterator break_char(u8string_view::const_iterator fi
   });
 }
 
-// convu8
-// ~~~~~~
-#if !PEEJAY_HAVE_CONCEPTS || !PEEJAY_HAVE_RANGES
-inline std::string convu8(u8string const& str) {
-  std::string result;
-  result.reserve(str.size());
-  std::transform(std::begin(str), std::end(str), std::back_inserter(result),
-                 [](char8 const c) { return static_cast<char>(c); });
-  return result;
-}
-#endif  // !PEEJAY_HAVE_CONCEPTS || !PEEJAY_HAVE_RANGES
-
 // emit object
 // ~~~~~~~~~~~
 /// \brief Writes a DOM object instance \p obj to output stream \p os.
@@ -149,12 +131,8 @@ template <typename OStream> void emit_object(OStream& os, indent i, object const
   indent const next_indent = i.next();
   for (auto const& [key, value] : *obj) {
     os << separator << next_indent << '"';
-#if PEEJAY_HAVE_CONCEPTS && PEEJAY_HAVE_RANGES
     std::ranges::copy(key | std::views::transform([](char8 const c) { return static_cast<char>(c); }),
                       std::ostream_iterator<char>(os));
-#else
-    os << convu8(key);
-#endif
     os << "\": ";
     emit(os, next_indent, value);
     separator = ",\n";

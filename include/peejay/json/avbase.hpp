@@ -30,7 +30,7 @@ namespace peejay::details {
 //*                               *
 template <typename T> class avbase {
 protected:
-  template <typename SizeType, typename InputIterator, typename = std::enable_if_t<input_iterator<InputIterator>>>
+  template <typename SizeType, std::input_iterator InputIterator>
   static void init(pointer_based_iterator<T> begin, SizeType *size, InputIterator first, InputIterator last);
 
   template <typename SizeType, typename... Args>
@@ -76,7 +76,7 @@ protected:
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
-  template <typename SizeType, typename InputIterator, typename = std::enable_if_t<input_iterator<InputIterator>>>
+  template <typename SizeType, std::input_iterator InputIterator>
   static pointer_based_iterator<T> insert(pointer_based_iterator<T> begin, SizeType *size,
                                           pointer_based_iterator<T> pos, InputIterator first, InputIterator last);
 
@@ -103,12 +103,12 @@ protected:
 // init
 // ~~~~
 template <typename T>
-template <typename SizeType, typename InputIterator, typename>
+template <typename SizeType, std::input_iterator InputIterator>
 void avbase<T>::init(pointer_based_iterator<T> begin, SizeType *const size, InputIterator first, InputIterator last) {
   auto out = begin;
   try {
     for (; first != last; ++first) {
-      construct_at(to_address(out), *first);
+      std::construct_at(to_address(out), *first);
       ++(*size);
       ++out;
     }
@@ -124,7 +124,7 @@ void avbase<T>::init(pointer_based_iterator<T> begin, SizeType *const size, Size
   *size = 0;
   try {
     for (auto it = begin, end = begin + count; it != end; ++it) {
-      construct_at(to_address(it), args...);
+      std::construct_at(to_address(it), args...);
       ++(*size);
     }
   } catch (...) {
@@ -162,9 +162,9 @@ void avbase<T>::operator_assign(
   // Step 2: target memory does not contain constructed members.
   for (; dest_ptr < destp + src.second; ++src_ptr, ++dest_ptr) {
     if constexpr (IsMove) {
-      construct_at(dest_ptr, std::move(*src_ptr));
+      std::construct_at(dest_ptr, std::move(*src_ptr));
     } else {
-      construct_at(dest_ptr, *src_ptr);
+      std::construct_at(dest_ptr, *src_ptr);
     }
     ++(*destsize);
   }
@@ -205,7 +205,7 @@ void avbase<T>::resize(pointer_based_iterator<T> const begin, SizeType *const si
   auto it = end;
   try {
     for (; it != new_end; ++it) {
-      construct_at(to_address(it), std::forward<Args>(args)...);
+      std::construct_at(to_address(it), std::forward<Args>(args)...);
       (*size)++;
     }
   } catch (...) {
@@ -231,7 +231,7 @@ void avbase<T>::assign(pointer_based_iterator<T> begin, SizeType *const size, st
     return;
   }
   for (auto pos = end_actual; pos < end_desired; ++pos) {
-    construct_at(to_address(pos), value);
+    std::construct_at(to_address(pos), value);
     ++(*size);
   }
 }
@@ -250,7 +250,7 @@ void avbase<T>::move_range(pointer_based_iterator<T> const from, pointer_based_i
 
   auto dest = new_end - num_uninit;
   for (auto src = end - num_uninit; src < end; ++src) {
-    construct_at(to_address(dest), std::move(*src));
+    std::construct_at(to_address(dest), std::move(*src));
     ++dest;
   }
   std::move_backward(from, from + num_to_move - num_uninit, new_end - num_uninit);
@@ -296,13 +296,13 @@ pointer_based_iterator<T> avbase<T>::insert(pointer_based_iterator<T> const data
 
   // Copy-construct into uninitialized elements.
   for (auto it = current_end; it < to; ++it) {
-    construct_at(to_address(it), value);
+    std::construct_at(to_address(it), value);
     ++(*size);
   }
   // Move existing elements into uninitialized space.
   auto dest = new_end - num_uninit;
   for (auto src = current_end - num_uninit; src < current_end; ++src) {
-    construct_at(to_address(dest), std::move(*src));
+    std::construct_at(to_address(dest), std::move(*src));
     ++dest;
     ++(*size);
   }
@@ -321,7 +321,7 @@ pointer_based_iterator<T> avbase<T>::insert(pointer_based_iterator<T> begin, Siz
                                                                 std::is_nothrow_move_assignable_v<T>) {
   static_assert(std::is_move_assignable_v<T>, "avbase::insert: type T must be move-constructible");
   if (auto const end = begin + *size; pos == end) {
-    construct_at(to_address(pos), std::move(value));
+    std::construct_at(to_address(pos), std::move(value));
   } else {
     avbase<T>::move_range(pos, end, pos + 1);
     *pos = std::move(value);
@@ -331,14 +331,14 @@ pointer_based_iterator<T> avbase<T>::insert(pointer_based_iterator<T> begin, Siz
 }
 
 template <typename T>
-template <typename SizeType, typename InputIterator, typename>
+template <typename SizeType, std::input_iterator InputIterator>
 pointer_based_iterator<T> avbase<T>::insert(pointer_based_iterator<T> const begin, SizeType *const size,
                                             pointer_based_iterator<T> pos, InputIterator first, InputIterator last) {
   assert(pos >= begin && pos <= begin + *size && "pos must lie within the allocated array");
   pointer_based_iterator<T> end = begin + *size;
   if (pos == end) {
     std::for_each(first, last, [&end, size](auto const &v) {
-      construct_at(to_address(end), v);
+      std::construct_at(to_address(end), v);
       ++(*size);
       ++end;
     });
@@ -381,14 +381,14 @@ template <typename SizeType, typename... Args>
 pointer_based_iterator<T> avbase<T>::emplace(pointer_based_iterator<T> end, SizeType *const size,
                                              pointer_based_iterator<T> pos, Args &&...args) {
   if (pos == end) {
-    construct_at(to_address(pos), std::forward<Args>(args)...);
+    std::construct_at(to_address(pos), std::forward<Args>(args)...);
   } else {
     if constexpr (std::is_nothrow_constructible_v<T, Args...>) {
       avbase::move_range(pos, end, pos + 1);
       // After destroying the object at 'pos', we can construct in-place.
       auto *const p = to_address(pos);
       std::destroy_at(p);
-      construct_at(p, std::forward<Args>(args)...);
+      std::construct_at(p, std::forward<Args>(args)...);
     } else {
       // Constructing the object might throw and the location is already
       // occupied by an element so we first make a temporary instance then

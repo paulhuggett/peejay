@@ -17,15 +17,12 @@
 #define PEEJAY_ARRAYVEC_HPP
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <initializer_list>
 
 #include "peejay/json/avbase.hpp"
 #include "peejay/json/uinteger.hpp"
-
-#if PEEJAY_CXX20 && defined(__has_include) && __has_include(<bit>)
-#include <bit>
-#endif
 
 namespace peejay {
 
@@ -97,8 +94,7 @@ public:
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
-  template <typename InputIterator, typename = std::enable_if_t<input_iterator<InputIterator>>>
-  arrayvec(InputIterator first, InputIterator last);
+  template <std::input_iterator InputIterator> arrayvec(InputIterator first, InputIterator last);
 
   /// \brief Constructs the container with \p count default-inserted instances
   ///   of T.
@@ -340,8 +336,7 @@ public:
   ///   inserted. Must meet the requirements of LegacyInputIterator.
   /// \param first  The first of the range from which elements are to be copied.
   /// \param last  The last of the range from which elements are to be copied.
-  template <typename InputIterator, typename = std::enable_if_t<input_iterator<InputIterator>>>
-  void assign(InputIterator first, InputIterator last);
+  template <std::input_iterator InputIterator> void assign(InputIterator first, InputIterator last);
   /// \brief Replaces the contents with the elements from the initializer
   ///   list \p ilist
   ///
@@ -390,7 +385,7 @@ public:
   ///   be an iterator into the container for which insert() is called.
   /// \returns  Iterator pointing to the first element inserted, or \p pos
   ///   if \p first == \p last.
-  template <typename InputIterator, typename = std::enable_if_t<input_iterator<InputIterator>>>
+  template <std::input_iterator InputIterator>
   iterator insert(const_iterator pos, InputIterator first, InputIterator last);
   /// \brief Inserts elements from the initializer list \p ilist before \p pos.
   ///
@@ -497,14 +492,14 @@ arrayvec<T, Size>::arrayvec(arrayvec &&other) noexcept(std::is_nothrow_move_cons
   this->flood();
   auto *dest = this->data();
   for (auto src = other.begin(), src_end = other.end(); src != src_end; ++src) {
-    construct_at(to_address(dest), std::move(*src));
+    std::construct_at(to_address(dest), std::move(*src));
     ++dest;
     ++size_;
   }
 }
 
 template <typename T, std::size_t Size>
-template <typename InputIterator, typename>
+template <std::input_iterator InputIterator>
 arrayvec<T, Size>::arrayvec(InputIterator first, InputIterator last) {
   this->flood();
   details::avbase<T>::init(this->begin(), &size_, first, last);
@@ -638,14 +633,14 @@ template <typename T, std::size_t Size> void arrayvec<T, Size>::resize(size_type
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back(const_reference value) noexcept(std::is_nothrow_copy_constructible_v<T>) {
   assert(this->size() < this->max_size());
-  construct_at(to_address(this->end()), value);
+  std::construct_at(to_address(this->end()), value);
   ++size_;
 }
 
 template <typename T, std::size_t Size>
 void arrayvec<T, Size>::push_back(T &&value) noexcept(std::is_nothrow_move_constructible_v<T>) {
   assert(this->size() < this->max_size());
-  construct_at(to_address(this->end()), std::move(value));
+  std::construct_at(to_address(this->end()), std::move(value));
   ++size_;
 }
 
@@ -656,7 +651,7 @@ template <typename... Args>
 auto arrayvec<T, Size>::emplace_back(Args &&...args) -> reference {
   assert(this->size() < this->max_size());
   auto pos = this->end();
-  construct_at(to_address(pos), std::forward<Args>(args)...);
+  std::construct_at(to_address(pos), std::forward<Args>(args)...);
   ++size_;
   return *pos;
 }
@@ -669,7 +664,7 @@ template <typename T, std::size_t Size> void arrayvec<T, Size>::assign(size_type
 }
 
 template <typename T, std::size_t Size>
-template <typename InputIterator, typename>
+template <std::input_iterator InputIterator>
 void arrayvec<T, Size>::assign(InputIterator first, InputIterator last) {
   // TODO(paul): this would be better done in a single pass.
   this->clear();
@@ -725,7 +720,7 @@ auto arrayvec<T, Size>::insert(const_iterator pos, T &&value) noexcept(std::is_n
 }
 
 template <typename T, std::size_t Size>
-template <typename InputIterator, typename>
+template <std::input_iterator InputIterator>
 auto arrayvec<T, Size>::insert(const_iterator pos, InputIterator first, InputIterator last) -> iterator {
   assert(pos >= this->begin() && pos <= this->end() && "Insert position is invalid");
   return details::avbase<T>::insert(this->begin(), &size_, this->to_non_const_iterator(pos), first, last);

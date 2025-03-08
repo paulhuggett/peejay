@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 #include "peejay/json/portab.hpp"
 
-#if (__linux__ || __APPLE__) && PEEJAY_HAVE_RANGES && PEEJAY_HAVE_CONCEPTS
+#if (__linux__ || __APPLE__)
 
 #include <execinfo.h>
 #include <unistd.h>
@@ -126,5 +126,4 @@ extern sigsegv_backtrace backtracer;
 // NOLINTNEXTLINE(cert-err58-cpp,cppcoreguidelines-avoid-non-const-global-variables)
 sigsegv_backtrace backtracer;
 
-#endif  // (__linux__ || __APPLE__) && ICUBABY_HAVE_RANGES &&
-        // ICUBABY_HAVE_CONCEPTS
+#endif  // (__linux__ || __APPLE__)
