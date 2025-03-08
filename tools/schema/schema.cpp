@@ -31,8 +31,7 @@ template <typename T> PEEJAY_CXX20REQUIRES(std::is_integral_v<T>) constexpr auto
 
 void parse_error(pjparser const& p) {
   auto const& pos = p.pos();
-  std::cerr << pos.get_line() << ':' << pos.get_column() << ':'
-            << " error: " << p.last_error().message() << '\n';
+  std::cerr << pos.get_line() << ':' << pos.get_column() << ':' << " error: " << p.last_error().message() << '\n';
 }
 
 void parse_error(pjparser& p, std::filesystem::path const& file_path) {

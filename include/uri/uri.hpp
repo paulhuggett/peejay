@@ -75,11 +75,11 @@ struct parts {
     std::vector<std::string_view> segments;
 
     // Remove dot segments from the path.
-    void remove_dot_segments ();
+    void remove_dot_segments();
     [[nodiscard]] constexpr bool empty() const noexcept { return segments.empty(); }
-    [[nodiscard]] bool valid () const noexcept;
-    explicit operator std::string () const;
-    explicit operator std::filesystem::path () const;
+    [[nodiscard]] bool valid() const noexcept;
+    explicit operator std::string() const;
+    explicit operator std::filesystem::path() const;
     friend constexpr bool operator==(path const& lhs, path const& rhs) {
       return lhs.absolute == rhs.absolute && lhs.segments == rhs.segments;
     }
@@ -89,7 +89,7 @@ struct parts {
     std::string_view host;
     std::optional<std::string_view> port;
 
-    [[nodiscard]] bool valid () const noexcept;
+    [[nodiscard]] bool valid() const noexcept;
 
     friend constexpr bool operator==(authority const& lhs, authority const& rhs) {
       return lhs.userinfo == rhs.userinfo && lhs.host == rhs.host && lhs.port == rhs.port;
@@ -102,13 +102,11 @@ struct parts {
   std::optional<std::string_view> query;
   std::optional<std::string_view> fragment;
 
-  [[nodiscard]] bool valid () const noexcept;
+  [[nodiscard]] bool valid() const noexcept;
 
   /// If an authority instance is present, return it otherwise an instance is
   /// created and returned.
-  struct authority& ensure_authority () {
-    return authority.has_value () ? *authority : authority.emplace ();
-  }
+  struct authority& ensure_authority() { return authority.has_value() ? *authority : authority.emplace(); }
   friend constexpr bool operator==(parts const& lhs, parts const& rhs) {
     if (lhs.scheme != rhs.scheme || lhs.authority != rhs.authority || lhs.query != rhs.query ||
         lhs.fragment != rhs.fragment) {
@@ -128,20 +126,18 @@ struct parts {
   }
 };
 
-std::ostream& operator<< (std::ostream& os, struct parts::path const& path);
-std::ostream& operator<< (std::ostream& os,
-                          struct parts::authority const& auth);
-std::ostream& operator<< (std::ostream& os, parts const& p);
+std::ostream& operator<<(std::ostream& os, struct parts::path const& path);
+std::ostream& operator<<(std::ostream& os, struct parts::authority const& auth);
+std::ostream& operator<<(std::ostream& os, parts const& p);
 
-std::optional<parts> split (std::string_view in);
-std::optional<parts> split_reference (std::string_view in);
+std::optional<parts> split(std::string_view in);
+std::optional<parts> split_reference(std::string_view in);
 
-parts join (parts const& base, parts const& reference, bool strict = true);
-std::optional<parts> join (std::string_view Base, std::string_view R,
-                           bool strict = true);
+parts join(parts const& base, parts const& reference, bool strict = true);
+std::optional<parts> join(std::string_view Base, std::string_view R, bool strict = true);
 
-std::string compose (parts const& p);
-std::ostream& compose (std::ostream& os, parts const& p);
+std::string compose(parts const& p);
+std::ostream& compose(std::ostream& os, parts const& p);
 
 }  // end namespace uri
 

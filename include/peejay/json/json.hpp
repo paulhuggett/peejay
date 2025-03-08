@@ -1182,8 +1182,7 @@ auto number_matcher<Backend, Policies>::consume(parser_type &parser, std::option
       state_ = end_token_state;
       break;
     case token_consumer::result::fail:
-    default:
-      this->set_error(parser, error::unrecognized_token); break;
+    default: this->set_error(parser, error::unrecognized_token); break;
     }
     break;
   case end_token_state:
