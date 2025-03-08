@@ -756,10 +756,6 @@ struct uri::parts::path merge (uri::parts const& base, uri::parts const& ref) {
 
 namespace uri {
 
-bool parts::path::operator== (path const& rhs) const {
-  return absolute == rhs.absolute && segments == rhs.segments;
-}
-
 // remove dot segments
 // ~~~~~~~~~~~~~~~~~~~
 // This function removes the special "." and ".." complete path segments from a
@@ -834,10 +830,6 @@ bool parts::path::valid () const noexcept {
   return true;
 }
 
-bool parts::authority::operator== (authority const& rhs) const {
-  return userinfo == rhs.userinfo && host == rhs.host && port == rhs.port;
-}
-
 bool parts::authority::valid () const noexcept {
   if (userinfo.has_value () &&
       !rule{userinfo.value ()}.concat (userinfofn).done ()) {
@@ -870,25 +862,6 @@ bool parts::valid () const noexcept {
   if (this->fragment.has_value () &&
       !rule{this->fragment.value ()}.concat (fragmentfn).done ()) {
     return false;
-  }
-  return true;
-}
-
-bool parts::operator== (parts const& rhs) const {
-  if (scheme != rhs.scheme || authority != rhs.authority ||
-      query != rhs.query || fragment != rhs.fragment) {
-    return false;
-  }
-
-  if (this->authority && rhs.authority) {
-    // Ignore the 'absolute' field. Both are implicitly absolute paths.
-    if (path.segments != rhs.path.segments) {
-      return false;
-    }
-  } else {
-    if (path != rhs.path) {
-      return false;
-    }
   }
   return true;
 }

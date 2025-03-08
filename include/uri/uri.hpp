@@ -76,11 +76,13 @@ struct parts {
 
     // Remove dot segments from the path.
     void remove_dot_segments ();
-    [[nodiscard]] bool empty () const noexcept { return segments.empty (); }
+    [[nodiscard]] constexpr bool empty() const noexcept { return segments.empty(); }
     [[nodiscard]] bool valid () const noexcept;
     explicit operator std::string () const;
     explicit operator std::filesystem::path () const;
-    bool operator==(path const& rhs) const;
+    friend constexpr bool operator==(path const& lhs, path const& rhs) {
+      return lhs.absolute == rhs.absolute && lhs.segments == rhs.segments;
+    }
   };
   struct authority {
     std::optional<std::string_view> userinfo;
@@ -89,7 +91,9 @@ struct parts {
 
     [[nodiscard]] bool valid () const noexcept;
 
-    bool operator==(authority const& rhs) const;
+    friend constexpr bool operator==(authority const& lhs, authority const& rhs) {
+      return lhs.userinfo == rhs.userinfo && lhs.host == rhs.host && lhs.port == rhs.port;
+    }
   };
 
   std::optional<std::string_view> scheme;
@@ -105,7 +109,23 @@ struct parts {
   struct authority& ensure_authority () {
     return authority.has_value () ? *authority : authority.emplace ();
   }
-  bool operator==(parts const& rhs) const;
+  friend constexpr bool operator==(parts const& lhs, parts const& rhs) {
+    if (lhs.scheme != rhs.scheme || lhs.authority != rhs.authority || lhs.query != rhs.query ||
+        lhs.fragment != rhs.fragment) {
+      return false;
+    }
+    if (lhs.authority && rhs.authority) {
+      // Ignore the 'absolute' field. Both are implicitly absolute paths.
+      if (lhs.path.segments != rhs.path.segments) {
+        return false;
+      }
+    } else {
+      if (lhs.path != rhs.path) {
+        return false;
+      }
+    }
+    return true;
+  }
 };
 
 std::ostream& operator<< (std::ostream& os, struct parts::path const& path);
