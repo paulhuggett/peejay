@@ -10,8 +10,8 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef URI_PUNYCODE_HPP
-#define URI_PUNYCODE_HPP
+#ifndef PEEJAY_URI_PUNYCODE_HPP
+#define PEEJAY_URI_PUNYCODE_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -336,4 +336,4 @@ decode_result<std::ranges::iterator_t<Range>> decode(Range&& input) {
 
 }  // end namespace uri::punycode
 
-#endif  // URI_PUNYCODE_HPP
+#endif  // PEEJAY_URI_PUNYCODE_HPP

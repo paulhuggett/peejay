@@ -10,8 +10,8 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef URI_STARTS_WITH_HPP
-#define URI_STARTS_WITH_HPP
+#ifndef PEEJAY_URI_STARTS_WITH_HPP
+#define PEEJAY_URI_STARTS_WITH_HPP
 
 #include <cstdint>
 #include <functional>
@@ -48,4 +48,4 @@ inline constexpr starts_with_fn starts_with{};
 
 }  // end namespace uri
 
-#endif  // URI_STARTS_WITH_HPP
+#endif  // PEEJAY_URI_STARTS_WITH_HPP

@@ -76,8 +76,8 @@
 /// stops as soon as one is matched. Care needs to be taken where there is
 /// potential ambiguity between alternative rules.
 
-#ifndef URI_RULE_HPP
-#define URI_RULE_HPP
+#ifndef PEEJAY_URI_RULE_HPP
+#define PEEJAY_URI_RULE_HPP
 
 #include <cctype>
 #include <functional>
@@ -330,4 +330,4 @@ inline auto hexdig(rule const& r) {
 
 }  // end namespace uri
 
-#endif  // URI_RULE_HPP
+#endif  // PEEJAY_URI_RULE_HPP

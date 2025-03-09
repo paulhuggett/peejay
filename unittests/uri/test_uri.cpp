@@ -20,7 +20,7 @@
 
 // google test
 #include <gmock/gmock.h>
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 #include <fuzztest/fuzztest.h>
 #endif
 
@@ -1319,13 +1319,13 @@ TEST(UriSplit, 0100) {
   EXPECT_FALSE(x->fragment);
 }
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 static void UriSplitNeverCrashes(std::string const& input) {
   uri::split(input);
 }
 // NOLINTNEXTLINE
 FUZZ_TEST(UriSplitFuzz, UriSplitNeverCrashes);
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
 // NOLINTNEXTLINE
 TEST(RemoveDotSegments, LeadingDotDotSlash) {
@@ -1691,7 +1691,7 @@ TEST(UriCompose, EmptyStrings) {
   EXPECT_EQ(p, *p2);
 }
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 static void SplitComposeEqual(std::string const& s) {
   if (auto const& p = uri::split(s)) {
     std::string const& s2 = uri::compose(*p);
@@ -1700,7 +1700,7 @@ static void SplitComposeEqual(std::string const& s) {
 }
 // NOLINTNEXTLINE
 FUZZ_TEST(UriCompose, SplitComposeEqual);
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
 // NOLINTNEXTLINE
 TEST(PartsValid, SchemeEmpty) {

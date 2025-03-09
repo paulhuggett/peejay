@@ -14,7 +14,7 @@
 
 // google test/fuzz.
 #include "gmock/gmock.h"
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 #include "fuzztest/fuzztest.h"
 #endif
 
@@ -73,7 +73,7 @@ INSTANTIATE_TEST_SUITE_P(UriPctDecode, UriPctDecode,
                                          std::make_tuple("ab%1q"sv, "ab%1q"sv)         // percent then one hex
                                          ));
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 static void PctDecodeNeverCrashes(std::string const& input) {
   std::string out;
   std::copy(uri::pctdecode_begin(input), uri::pctdecode_end(input), std::back_inserter(out));
@@ -92,4 +92,4 @@ FUZZ_TEST(PctDecodeFuzz, PctDecodeViewNeverCrashes);
 
 #endif  // __cpp_lib_ranges
 
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST

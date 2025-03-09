@@ -14,7 +14,7 @@
 
 #include "peejay/uri/punycode.hpp"
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 #include "fuzztest/fuzztest.h"
 #endif
 
@@ -416,7 +416,7 @@ TEST(Punycode, BadInputInPlainAsciiPart) {
   EXPECT_EQ(std::get<0U>(decoded), make_error_code(uri::punycode::decode_error_code::bad_input));
 }
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 static void EncodeNeverCrashes(std::u32string const& s) {
   std::string actual;
   uri::punycode::encode(s, false, std::back_inserter(actual));
@@ -429,9 +429,9 @@ static void DecodeNeverCrashes(std::string const& s) {
 }
 // NOLINTNEXTLINE
 FUZZ_TEST(Punycode, DecodeNeverCrashes);
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 namespace {
 
 inline constexpr auto max_code_point = char32_t{0x10FFFF};
@@ -456,7 +456,7 @@ void EncodeDecodeRoundTrip(std::u32string const& s) {
 
 // NOLINTNEXTLINE
 FUZZ_TEST(Punycode, EncodeDecodeRoundTrip).WithDomains(U32String());
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
 namespace {
 
@@ -487,10 +487,10 @@ void DecodeEncodeRoundTrip(std::string_view original) {
 
 }  // end anonymous namespace
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 // NOLINTNEXTLINE
 FUZZ_TEST(Punycode, DecodeEncodeRoundTrip);
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
 // NOLINTNEXTLINE
 TEST(Punycode, DecodeEncodeRoundTripEmpty) {

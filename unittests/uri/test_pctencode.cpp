@@ -20,7 +20,7 @@
 #include "peejay/uri/pctdecode.hpp"
 #include "peejay/uri/pctencode.hpp"
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 #include "fuzztest/fuzztest.h"
 #endif
 
@@ -106,7 +106,7 @@ TEST(PctEncode, CodePointNeedsEncodeExhaustive) {
   }
 }
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 static void EncodeNeverCrashes(std::string const& s, uri::pctencode_set encodeset) {
   std::string encoded;
   uri::pctencode(std::begin(s), std::end(s), std::back_inserter(encoded), encodeset);
@@ -119,9 +119,9 @@ static auto AnyEncodeSet() {
 }
 // NOLINTNEXTLINE
 FUZZ_TEST(PctEncodeFuzz, EncodeNeverCrashes).WithDomains(fuzztest::String(), AnyEncodeSet());
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 static void RoundTrip(std::string const& s, uri::pctencode_set encodeset) {
   std::string encoded;
   uri::pctencode(std::begin(s), std::end(s), std::back_inserter(encoded), encodeset);
@@ -133,4 +133,4 @@ static void RoundTrip(std::string const& s, uri::pctencode_set encodeset) {
 }
 // NOLINTNEXTLINE
 FUZZ_TEST(PctEncodeFuzz, RoundTrip).WithDomains(fuzztest::String(), AnyEncodeSet());
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST

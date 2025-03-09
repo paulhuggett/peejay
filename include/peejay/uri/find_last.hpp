@@ -10,8 +10,8 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef URI_FIND_LAST_HPP
-#define URI_FIND_LAST_HPP
+#ifndef PEEJAY_URI_FIND_LAST_HPP
+#define PEEJAY_URI_FIND_LAST_HPP
 
 #include <functional>
 #include <optional>
@@ -99,4 +99,4 @@ inline constexpr details::find_last_fn find_last;
 
 }  // end namespace uri
 
-#endif  // URI_FIND_LAST_HPP
+#endif  // PEEJAY_URI_FIND_LAST_HPP

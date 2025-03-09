@@ -10,8 +10,8 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef URI_URI_HPP
-#define URI_URI_HPP
+#ifndef PEEJAY_URI_URI_HPP
+#define PEEJAY_URI_URI_HPP
 
 #include <filesystem>
 #include <iosfwd>
@@ -141,4 +141,4 @@ std::ostream& compose(std::ostream& os, parts const& p);
 
 }  // end namespace uri
 
-#endif  // URI_URI_HPP
+#endif  // PEEJAY_URI_URI_HPP

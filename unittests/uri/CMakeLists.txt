@@ -32,13 +32,13 @@ target_compile_options (
       -wd4702>
 )
 target_link_libraries (pj-uri-unittests PUBLIC uri)
-setup_target (pj-uri-unittests PEDANTIC $<NOT:$<BOOL:${URI_FUZZTEST}>>)
+setup_target (pj-uri-unittests PEDANTIC $<NOT:$<BOOL:${PEEJAY_FUZZTEST}>>)
 add_test(NAME pj-uri-unittests COMMAND pj-uri-unittests)
 
-if (URI_FUZZTEST)
+if (PEEJAY_FUZZTEST)
   target_link_libraries (pj-uri-unittests PUBLIC gtest gmock)
   link_fuzztest (pj-uri-unittests)
   gtest_discover_tests (pj-uri-unittests)
 else ()
   target_link_libraries (pj-uri-unittests PUBLIC gmock_main)
-endif (URI_FUZZTEST)
+endif (PEEJAY_FUZZTEST)

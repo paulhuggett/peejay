@@ -10,8 +10,8 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef URI_PARTS_HPP
-#define URI_PARTS_HPP
+#ifndef PEEJAY_URI_PARTS_HPP
+#define PEEJAY_URI_PARTS_HPP
 
 #include <bitset>
 
@@ -354,4 +354,4 @@ std::variant<std::error_code, parts> decode(VectorContainer& store, parts const&
 
 }  // end namespace uri
 
-#endif  // URI_PARTS_HPP
+#endif  // PEEJAY_URI_PARTS_HPP

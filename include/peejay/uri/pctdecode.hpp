@@ -10,8 +10,8 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#ifndef URI_PCTDECODE_HPP
-#define URI_PCTDECODE_HPP
+#ifndef PEEJAY_URI_PCTDECODE_HPP
+#define PEEJAY_URI_PCTDECODE_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -314,4 +314,4 @@ inline std::string pctdecode(std::string_view s) {
 
 }  // end namespace uri
 
-#endif  // URI_PCTDECODE_HPP
+#endif  // PEEJAY_URI_PCTDECODE_HPP

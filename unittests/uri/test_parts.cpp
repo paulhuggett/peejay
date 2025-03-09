@@ -15,7 +15,7 @@
 
 #include "peejay/uri/parts.hpp"
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 #include <fuzztest/fuzztest.h>
 #endif
 
@@ -254,7 +254,7 @@ struct parts_without_authority {
   }
 };
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 
 static void EncodeAndComposeValidAlwaysAgree(parts_without_authority const& base, opt_authority&& auth) {
   std::vector<char> store;
@@ -266,7 +266,7 @@ static void EncodeAndComposeValidAlwaysAgree(parts_without_authority const& base
 // NOLINTNEXTLINE
 FUZZ_TEST(Parts, EncodeAndComposeValidAlwaysAgree);
 
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
 static void EncodeDecodeRoundTrip(parts_without_authority const& base, opt_authority&& auth) {
   if (auth && (auth->host.starts_with("xn--") || auth->host.find(".xn--") != std::string_view::npos)) {
@@ -296,10 +296,10 @@ static void EncodeDecodeRoundTrip(parts_without_authority const& base, opt_autho
   }
 }
 
-#if URI_FUZZTEST
+#if PEEJAY_FUZZTEST
 // NOLINTNEXTLINE
 FUZZ_TEST(Parts, EncodeDecodeRoundTrip);
-#endif  // URI_FUZZTEST
+#endif  // PEEJAY_FUZZTEST
 
 TEST(Parts, EncodeDecodeRoundTripRegression2) {
   using auth = struct uri::parts::authority;
