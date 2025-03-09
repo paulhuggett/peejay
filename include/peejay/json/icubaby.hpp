@@ -1327,7 +1327,7 @@ public:
     case states::utf32_or_16_le_bom_byte1:
     case states::utf32_or_16_be_bom_byte1:
     case states::utf32_be_bom_byte2:
-      assert (this->get_byte_no () == 1 || this->get_byte_no () == 2 && "This must be byte #1 or #2");
+      assert ((this->get_byte_no () == 1 || this->get_byte_no () == 2) && "This must be byte #1 or #2");
       buffer_[this->get_byte_no ()] = value;
       if (value == this->bom_value ()) {
         state_ = this->next_byte ();
