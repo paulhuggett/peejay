@@ -15,7 +15,7 @@
 
 #include <bitset>
 
-#include "uri/icubaby.hpp"
+#include "peejay/json/icubaby.hpp"
 #include "uri/pctdecode.hpp"
 #include "uri/pctencode.hpp"
 #include "uri/punycode.hpp"

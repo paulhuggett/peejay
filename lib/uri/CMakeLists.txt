@@ -13,7 +13,6 @@
 set (URI_INCLUDE_DIR "${PEEJAY_ROOT}/include")
 add_library (uri STATIC
     "${URI_INCLUDE_DIR}/uri/find_last.hpp"
-    "${URI_INCLUDE_DIR}/uri/icubaby.hpp"
     "${URI_INCLUDE_DIR}/uri/parts.hpp"
     "${URI_INCLUDE_DIR}/uri/pctdecode.hpp"
     "${URI_INCLUDE_DIR}/uri/pctencode.hpp"
@@ -31,3 +30,4 @@ setup_target (uri)
 target_include_directories (
   uri PUBLIC $<BUILD_INTERFACE:${URI_INCLUDE_DIR}> $<INSTALL_INTERFACE:uri>
 )
+target_link_libraries(uri PUBLIC peejay)

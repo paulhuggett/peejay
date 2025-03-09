@@ -15,7 +15,6 @@
 #include <concepts>
 #include <iterator>
 
-#include "uri/icubaby.hpp"
 #include "uri/pctdecode.hpp"
 #include "uri/pctencode.hpp"
 

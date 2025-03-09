@@ -13,7 +13,6 @@
 
 #include <gmock/gmock.h>
 
-#include "uri/icubaby.hpp"
 #include "uri/parts.hpp"
 
 #if URI_FUZZTEST
