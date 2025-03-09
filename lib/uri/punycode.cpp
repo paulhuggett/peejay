@@ -10,7 +10,7 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#include "uri/punycode.hpp"
+#include "peejay/uri/punycode.hpp"
 
 #include <cstdint>
 #include <limits>

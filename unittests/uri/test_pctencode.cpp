@@ -10,14 +10,15 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
+#include <gmock/gmock.h>
+
 #include <iterator>
 #include <limits>
 #include <numeric>
 #include <string_view>
 
-#include "gmock/gmock.h"
-#include "uri/pctdecode.hpp"
-#include "uri/pctencode.hpp"
+#include "peejay/uri/pctdecode.hpp"
+#include "peejay/uri/pctencode.hpp"
 
 #if URI_FUZZTEST
 #include "fuzztest/fuzztest.h"

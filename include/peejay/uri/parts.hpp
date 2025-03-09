@@ -1,4 +1,4 @@
-//===- include/uri/parts.hpp ------------------------------*- mode: C++ -*-===//
+//===- include/peejay/uri/parts.hpp -----------------------*- mode: C++ -*-===//
 //*                   _        *
 //*  _ __   __ _ _ __| |_ ___  *
 //* | '_ \ / _` | '__| __/ __| *
@@ -16,10 +16,10 @@
 #include <bitset>
 
 #include "peejay/json/icubaby.hpp"
-#include "uri/pctdecode.hpp"
-#include "uri/pctencode.hpp"
-#include "uri/punycode.hpp"
-#include "uri/uri.hpp"
+#include "peejay/uri/pctdecode.hpp"
+#include "peejay/uri/pctencode.hpp"
+#include "peejay/uri/punycode.hpp"
+#include "peejay/uri/uri.hpp"
 
 namespace uri {
 

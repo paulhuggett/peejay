@@ -13,7 +13,7 @@
 
 #include <gmock/gmock.h>
 
-#include "uri/parts.hpp"
+#include "peejay/uri/parts.hpp"
 
 #if URI_FUZZTEST
 #include <fuzztest/fuzztest.h>

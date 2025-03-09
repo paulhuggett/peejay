@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-#include "uri/rule.hpp"
+#include "peejay/uri/rule.hpp"
 
 using namespace std::string_literals;
 

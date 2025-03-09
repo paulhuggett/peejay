@@ -1,4 +1,4 @@
-//===- include/uri/punycode.hpp ---------------------------*- mode: C++ -*-===//
+//===- include/peejay/uri/punycode.hpp --------------------*- mode: C++ -*-===//
 //*                                        _       *
 //*  _ __  _   _ _ __  _   _  ___ ___   __| | ___  *
 //* | '_ \| | | | '_ \| | | |/ __/ _ \ / _` |/ _ \ *
@@ -29,8 +29,8 @@
 #include <ranges>
 #endif
 
-#include "uri/find_last.hpp"
-#include "uri/starts_with.hpp"
+#include "peejay/uri/find_last.hpp"
+#include "peejay/uri/starts_with.hpp"
 
 namespace uri::punycode {
 

@@ -10,13 +10,13 @@
 // See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
 // SPDX-License-Identifier: Apache-2.0
 //===----------------------------------------------------------------------===//
-#include "uri/parts.hpp"
+#include "peejay/uri/parts.hpp"
 
 #include <concepts>
 #include <iterator>
 
-#include "uri/pctdecode.hpp"
-#include "uri/pctencode.hpp"
+#include "peejay/uri/pctdecode.hpp"
+#include "peejay/uri/pctencode.hpp"
 
 namespace uri::details {
 

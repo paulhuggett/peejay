@@ -12,14 +12,14 @@
 #===----------------------------------------------------------------------===//
 set (URI_INCLUDE_DIR "${PEEJAY_ROOT}/include")
 add_library (uri STATIC
-    "${URI_INCLUDE_DIR}/uri/find_last.hpp"
-    "${URI_INCLUDE_DIR}/uri/parts.hpp"
-    "${URI_INCLUDE_DIR}/uri/pctdecode.hpp"
-    "${URI_INCLUDE_DIR}/uri/pctencode.hpp"
-    "${URI_INCLUDE_DIR}/uri/punycode.hpp"
-    "${URI_INCLUDE_DIR}/uri/rule.hpp"
-    "${URI_INCLUDE_DIR}/uri/starts_with.hpp"
-    "${URI_INCLUDE_DIR}/uri/uri.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/find_last.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/parts.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/pctdecode.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/pctencode.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/punycode.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/rule.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/starts_with.hpp"
+    "${URI_INCLUDE_DIR}/peejay/uri/uri.hpp"
     parts.cpp
     pctencode.cpp
     punycode.cpp

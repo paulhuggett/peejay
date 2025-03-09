@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 #include <gmock/gmock.h>
 
-#include "uri/punycode.hpp"
+#include "peejay/uri/punycode.hpp"
 
 #if URI_FUZZTEST
 #include "fuzztest/fuzztest.h"

@@ -24,9 +24,9 @@
 #include <fuzztest/fuzztest.h>
 #endif
 
-#include "uri/parts.hpp"
-#include "uri/pctencode.hpp"
-#include "uri/uri.hpp"
+#include "peejay/uri/parts.hpp"
+#include "peejay/uri/pctencode.hpp"
+#include "peejay/uri/uri.hpp"
 
 // to address
 // ~~~~~~~~~~

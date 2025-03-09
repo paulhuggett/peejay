@@ -16,7 +16,7 @@
 #include <forward_list>
 #include <vector>
 
-#include "uri/find_last.hpp"
+#include "peejay/uri/find_last.hpp"
 
 using namespace std::string_view_literals;
 
