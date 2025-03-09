@@ -34,11 +34,14 @@ bool is_multiple_of(int64_t a, double mo) noexcept {
   return is_multiple_of(static_cast<double>(a), mo);
 }
 
-template <typename T1, typename T2>
+template <typename T>
+concept numeric = std::integral<T> || std::floating_point<T>;
+
+template <numeric T1, numeric T2>
 using math_type =
     std::conditional_t<std::is_floating_point_v<T1> || std::is_floating_point_v<T2>, double, std::int64_t>;
 
-template <typename Predicate> std::error_code check_number(peejay::element const &el, Predicate pred) {
+template <std::invocable<double> Predicate> std::error_code check_number(peejay::element const &el, Predicate pred) {
   if (auto const *const integer = std::get_if<std::int64_t>(&el)) {
     return bool_to_error(pred(*integer));
   }
@@ -48,7 +51,7 @@ template <typename Predicate> std::error_code check_number(peejay::element const
   return peejay::schema::error::expected_number;
 }
 
-template <typename NumberType> std::error_code number_constraints(peejay::object const &schema, NumberType const num) {
+template <numeric NumberType> std::error_code number_constraints(peejay::object const &schema, NumberType const num) {
   using namespace peejay;
   auto const end = schema->end();
 
@@ -143,7 +146,7 @@ std::error_code schema::checker::check_type(element const &type_name, element co
   return error::type_name_invalid;
 }
 
-template <typename Predicate>
+template <std::invocable<std::uint64_t> Predicate>
 static std::error_code non_negative_constraint(object const &schema, u8string const &name, Predicate predicate) {
   auto const pos = schema->find(name);
   if (pos == schema->end()) {
