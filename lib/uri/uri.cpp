@@ -24,13 +24,13 @@ using namespace uri;
 namespace {
 
 constexpr auto single_code_point(rule const& r, code_point const cp) {
-  assert(peejay::to_underlying(cp) <= std::numeric_limits<char>::max());
+  assert(peejay::to_underlying(cp) <= static_cast<unsigned char>(std::numeric_limits<char>::max()));
   return r.single_char(static_cast<char>(cp));
 }
 
 constexpr auto code_point_range(code_point const first, code_point const last) {
-  assert(peejay::to_underlying(first) <= std::numeric_limits<char>::max());
-  assert(peejay::to_underlying(last) <= std::numeric_limits<char>::max());
+  assert(peejay::to_underlying(first) <= static_cast<unsigned char>(std::numeric_limits<char>::max()));
+  assert(peejay::to_underlying(last) <= static_cast<unsigned char>(std::numeric_limits<char>::max()));
   return [f = std::tolower(static_cast<int>(first)), l = std::tolower(static_cast<int>(last))](rule const& r) {
     return r.single_char([=](char const c) {
       auto const cl = std::tolower(static_cast<int>(c));
