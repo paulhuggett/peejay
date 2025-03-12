@@ -22,17 +22,28 @@ using namespace uri;
 
 namespace {
 
-inline auto single_code_point(rule const& r, code_point const cp) {
-  assert(static_cast<std::underlying_type_t<code_point>>(cp) <=
-         static_cast<std::underlying_type_t<code_point>>(std::numeric_limits<char>::max()));
+/// Converts an enumeration value to its underlying type
+///
+/// \param e  The enumeration value to convert
+/// \returns The integer value of the underlying type of Enum, converted from \p e.
+template <typename Enum>
+  requires(std::is_enum_v<Enum>)
+[[nodiscard]] constexpr std::underlying_type_t<Enum> to_underlying(Enum const e) noexcept {
+#if defined(__cpp_lib_to_underlying) && __cpp_lib_to_underlying > 202102L
+  return std::to_underlying(e);
+#else
+  return static_cast<std::underlying_type_t<Enum>>(e);
+#endif
+}
+
+constexpr auto single_code_point(rule const& r, code_point const cp) {
+  assert(to_underlying(cp) <= std::numeric_limits<char>::max());
   return r.single_char(static_cast<char>(cp));
 }
 
-inline auto code_point_range(code_point const first, code_point const last) {
-  assert(static_cast<std::underlying_type_t<code_point>>(first) <=
-         static_cast<std::underlying_type_t<code_point>>(std::numeric_limits<char>::max()));
-  assert(static_cast<std::underlying_type_t<code_point>>(last) <=
-         static_cast<std::underlying_type_t<code_point>>(std::numeric_limits<char>::max()));
+constexpr auto code_point_range(code_point const first, code_point const last) {
+  assert(to_underlying(first) <= std::numeric_limits<char>::max());
+  assert(to_underlying(last) <= std::numeric_limits<char>::max());
   return [f = std::tolower(static_cast<int>(first)), l = std::tolower(static_cast<int>(last))](rule const& r) {
     return r.single_char([=](char const c) {
       auto const cl = std::tolower(static_cast<int>(c));
@@ -41,49 +52,49 @@ inline auto code_point_range(code_point const first, code_point const last) {
   };
 }
 
-inline auto commercial_at(rule const& r) {
+constexpr auto commercial_at(rule const& r) {
   return single_code_point(r, code_point::commercial_at);
 }
-inline auto colon(rule const& r) {
+constexpr auto colon(rule const& r) {
   return single_code_point(r, code_point::colon);
 }
-inline auto hash(rule const& r) {
+constexpr auto hash(rule const& r) {
   return single_code_point(r, code_point::number_sign);
 }
-inline auto plus(rule const& r) {
+constexpr auto plus(rule const& r) {
   return single_code_point(r, code_point::plus_sign);
 }
-inline auto minus(rule const& r) {
+constexpr auto minus(rule const& r) {
   return single_code_point(r, code_point::hyphen_minus);
 }
-inline auto solidus(rule const& r) {
+constexpr auto solidus(rule const& r) {
   return single_code_point(r, code_point::solidus);
 }
-inline auto question_mark(rule const& r) {
+constexpr auto question_mark(rule const& r) {
   return single_code_point(r, code_point::question_mark);
 }
-inline auto full_stop(rule const& r) {
+constexpr auto full_stop(rule const& r) {
   return single_code_point(r, code_point::full_stop);
 }
-inline auto left_square_bracket(rule const& r) {
+constexpr auto left_square_bracket(rule const& r) {
   return single_code_point(r, code_point::left_square_bracket);
 }
-inline auto right_square_bracket(rule const& r) {
+constexpr auto right_square_bracket(rule const& r) {
   return single_code_point(r, code_point::right_square_bracket);
 }
-inline auto percent_sign(rule const& r) {
+constexpr auto percent_sign(rule const& r) {
   return single_code_point(r, code_point::percent_sign);
 }
-inline auto digit_one(rule const& r) {
+constexpr auto digit_one(rule const& r) {
   return single_code_point(r, code_point::digit_one);
 }
-inline auto digit_two(rule const& r) {
+constexpr auto digit_two(rule const& r) {
   return single_code_point(r, code_point::digit_two);
 }
-inline auto digit_five(rule const& r) {
+constexpr auto digit_five(rule const& r) {
   return single_code_point(r, code_point::digit_five);
 }
-inline auto latin_small_letter_v(rule const& r) {
+constexpr auto latin_small_letter_v(rule const& r) {
   return single_code_point(r, code_point::latin_small_letter_v);
 }
 
