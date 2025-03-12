@@ -138,7 +138,7 @@ public:
     if (auto const cmp = lhs.size() <=> rhs.size(); cmp != std::strong_ordering::equal) {
       return cmp;
     }
-    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+    return peejay::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
   }
 
   /// \name Element access
