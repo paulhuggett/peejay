@@ -128,6 +128,19 @@ public:
   arrayvec &operator=(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                  std::is_nothrow_move_assignable_v<T>);
 
+  template <std::size_t RhsSize>
+  friend constexpr bool operator==(arrayvec const &lhs, arrayvec<T, RhsSize> const &rhs) {
+    return lhs.size() == rhs.size() && std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+  }
+
+  template <std::size_t RhsSize>
+  friend constexpr auto operator<=>(arrayvec const &lhs, arrayvec<T, RhsSize> const &rhs) {
+    if (auto const cmp = lhs.size() <=> rhs.size(); cmp != std::strong_ordering::equal) {
+      return cmp;
+    }
+    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+  }
+
   /// \name Element access
   ///@{
 
@@ -455,31 +468,6 @@ private:
   };
   std::array<aligned_storage, Size> data_;
 };
-
-template <typename T, std::size_t LhsSize, std::size_t RhsSize>
-bool operator==(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
-  return lhs.size() == rhs.size() && std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
-}
-
-template <typename T, std::size_t LhsSize, std::size_t RhsSize>
-bool operator<(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
-  return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
-}
-
-template <typename T, std::size_t LhsSize, std::size_t RhsSize>
-bool operator<=(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
-  return !(rhs < lhs);
-}
-
-template <typename T, std::size_t LhsSize, std::size_t RhsSize>
-bool operator>(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
-  return rhs < lhs;
-}
-
-template <typename T, std::size_t LhsSize, std::size_t RhsSize>
-bool operator>=(arrayvec<T, LhsSize> const &lhs, arrayvec<T, RhsSize> const &rhs) {
-  return !(lhs < rhs);
-}
 
 // (ctor)
 // ~~~~~~
