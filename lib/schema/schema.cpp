@@ -16,21 +16,21 @@
 
 namespace {
 
-std::error_code bool_to_error(bool b) {
+std::error_code bool_to_error(bool const b) {
   return b ? peejay::schema::error::none : peejay::schema::error::validation;
 }
 
-constexpr bool is_multiple_of(int64_t a, int64_t mo) noexcept {
+constexpr bool is_multiple_of(std::int64_t const a, std::int64_t const mo) noexcept {
   return a % mo == 0;
 }
-bool is_multiple_of(double a, double mo) noexcept {
+bool is_multiple_of(double const a, double const mo) noexcept {
   auto const t = a / mo;
   return t == std::floor(t);
 }
-bool is_multiple_of(double a, int64_t mo) noexcept {
+bool is_multiple_of(double const a, std::int64_t const mo) noexcept {
   return is_multiple_of(a, static_cast<double>(mo));
 }
-bool is_multiple_of(int64_t a, double mo) noexcept {
+bool is_multiple_of(std::int64_t const a, double const mo) noexcept {
   return is_multiple_of(static_cast<double>(a), mo);
 }
 
@@ -120,7 +120,22 @@ template <numeric NumberType> std::error_code number_constraints(peejay::object 
   return {};
 }
 
-}  // namespace
+template <std::invocable<std::uint64_t> Predicate>
+std::error_code non_negative_constraint(peejay::object const &schema, peejay::u8string const &name,
+                                        Predicate predicate) {
+  auto const pos = schema->find(name);
+  if (pos == schema->end()) {
+    return {};  // key was not found.
+  }
+  auto const *const v = std::get_if<std::int64_t>(&pos->second);
+  if (v == nullptr || *v < 0) {
+    return peejay::schema::error::expected_non_negative_integer;
+  }
+  return bool_to_error(predicate(*v));
+}
+
+}  // end anonymous namespace
+
 namespace peejay {
 
 std::error_code schema::checker::check_type(peejay::u8string const &type_name, peejay::element const &instance) {
@@ -144,19 +159,6 @@ std::error_code schema::checker::check_type(element const &type_name, element co
     return check_type(*name, instance);
   }
   return error::type_name_invalid;
-}
-
-template <std::invocable<std::uint64_t> Predicate>
-static std::error_code non_negative_constraint(object const &schema, u8string const &name, Predicate predicate) {
-  auto const pos = schema->find(name);
-  if (pos == schema->end()) {
-    return {};  // key was not found.
-  }
-  auto const *const v = std::get_if<std::int64_t>(&pos->second);
-  if (v == nullptr || *v < 0) {
-    return schema::error::expected_non_negative_integer;
-  }
-  return bool_to_error(predicate(*v));
 }
 
 std::error_code schema::checker::string_constraints(object const &schema, u8string const &s) {
@@ -191,9 +193,8 @@ std::error_code schema::checker::string_constraints(object const &schema, u8stri
 
   if (auto const pattern_pos = schema->find(u8"pattern"); pattern_pos != end) {
     if (auto const *const pattern = std::get_if<u8string>(&pattern_pos->second)) {
-      // std::basic_regex<char8> self_regex(*pattern,
-      // std::regex_constants::ECMAScript); if
-      // (!std::regex_search(*string_inst, self_regex)) {
+      // std::basic_regex<char8> self_regex(*pattern, std::regex_constants::ECMAScript);
+      // if (!std::regex_search(*string_inst, self_regex)) {
       //   return false;
       // }
       //  TODO: basic_regex and char8?
@@ -252,10 +253,13 @@ std::error_code schema::checker::object_constraints(object const &schema, object
   }
 
   if (schema->find(u8"patternProperties") != end) {
+    // TODO
   }
   if (schema->find(u8"additionalProperties") != end) {
+    // TODO
   }
   if (schema->find(u8"propertyNames") != end) {
+    // TODO
   }
   return {};
 }
@@ -348,6 +352,9 @@ std::error_code schema::checker::root(element const &schema, element const &inst
 
   if (auto const base_uri_pos = map.find(u8"$id"); base_uri_pos != end) {
     if (auto const *const base_uri = std::get_if<u8string>(&base_uri_pos->second)) {
+      auto url = *base_uri;
+      // std::optional<parts> split(std::string_view const in) {
+
       base_uri_ = *base_uri;
     } else {
       return error::expected_string;

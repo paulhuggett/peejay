@@ -154,8 +154,13 @@ public:
 
   [[nodiscard]] matched_result matched(char const* name, rule const& in) const;
 
-  template <typename Predicate> [[nodiscard]] matched_result single_char(Predicate pred) const;
-  [[nodiscard]] matched_result single_char(char const c) const {
+  template <typename Predicate> [[nodiscard]] constexpr matched_result single_char(Predicate pred) const {
+    if (auto const sv = this->tail(); sv && !sv->empty() && pred(sv->front())) {
+      return std::make_tuple(sv->substr(0, 1), acceptor_container{});
+    }
+    return {};
+  }
+  [[nodiscard]] constexpr matched_result single_char(char const c) const {
     return single_char(
         [c2 = std::tolower(static_cast<int>(c))](char d) { return c2 == std::tolower(static_cast<int>(d)); });
   }
@@ -297,16 +302,7 @@ rule rule::concat_impl(MatchFunction match, AcceptFunction accept, bool optional
   return {};  // Matching failed: yield nothing or failure.
 }
 
-// single char
-// ~~~~~~~~~~~
-template <typename Predicate> auto rule::single_char(Predicate const pred) const -> matched_result {
-  if (auto const sv = this->tail(); sv && !sv->empty() && pred(sv->front())) {
-    return std::make_tuple(sv->substr(0, 1), acceptor_container{});
-  }
-  return {};
-}
-
-inline auto single_char(char const first) {
+constexpr auto single_char(char const first) {
   return [=](rule const& r) { return r.single_char(first); };
 }
 inline auto char_range(char const first, char const last) {
@@ -318,13 +314,13 @@ inline auto char_range(char const first, char const last) {
   };
 }
 
-inline auto alpha(rule const& r) {
+constexpr auto alpha(rule const& r) {
   return r.single_char([](char const c) { return std::isalpha(static_cast<int>(c)); });
 }
-inline auto digit(rule const& r) {
+constexpr auto digit(rule const& r) {
   return r.single_char([](char const c) { return std::isdigit(static_cast<int>(c)); });
 }
-inline auto hexdig(rule const& r) {
+constexpr auto hexdig(rule const& r) {
   return r.single_char([](char const c) { return std::isxdigit(static_cast<int>(c)); });
 }
 
