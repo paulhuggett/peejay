@@ -136,9 +136,16 @@ constexpr auto lexicographical_compare_three_way(InputIt1 first1, InputIt1 last1
                    : (!exhaust2 ? std::strong_ordering::less : std::strong_ordering::equal);
 }
 
+struct compare_three_way {
+  template <typename T1, typename T2>
+  constexpr auto operator()(T1&& t, T2&& u) const noexcept(noexcept(std::forward<T1>(t) <=> std::forward<T2>(u))) {
+    return std::forward<T1>(t) <=> std::forward<T2>(u);
+  }
+};
+
 template <typename InputIt1, typename InputIt2>
 constexpr auto lexicographical_compare_three_way(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
-  return peejay::lexicographical_compare_three_way(first1, last1, first2, last2, std::compare_three_way());
+  return peejay::lexicographical_compare_three_way(first1, last1, first2, last2, compare_three_way{});
 }
 #endif  // __cpp_lib_three_way_comparison
 
