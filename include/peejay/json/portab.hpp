@@ -98,6 +98,20 @@ template <typename T> [[nodiscard]] constexpr auto to_address(T&& p) noexcept {
 }
 #endif  // defined(__cpp_lib_to_address)
 
+/// Converts an enumeration value to its underlying type
+///
+/// \param e  The enumeration value to convert
+/// \returns The integer value of the underlying type of Enum, converted from \p e.
+template <typename Enum>
+  requires(std::is_enum_v<Enum>)
+[[nodiscard]] constexpr std::underlying_type_t<Enum> to_underlying(Enum const e) noexcept {
+#if defined(__cpp_lib_to_underlying) && __cpp_lib_to_underlying > 202102L
+  return std::to_underlying(e);
+#else
+  return static_cast<std::underlying_type_t<Enum>>(e);
+#endif
+}
+
 // pointer cast
 // ~~~~~~~~~~~~
 template <typename To, typename From> constexpr To* pointer_cast(From* const p) noexcept {

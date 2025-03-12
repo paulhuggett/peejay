@@ -12,32 +12,34 @@
 //===----------------------------------------------------------------------===//
 #include "peejay/uri/pctencode.hpp"
 
+#include "peejay/json/portab.hpp"
 #include "peejay/uri/uri.hpp"
 
 namespace {
 
 constexpr bool operator<=(unsigned const x, uri::code_point const y) noexcept {
-  return x <= static_cast<std::underlying_type_t<uri::code_point>>(y);
+  return x <= peejay::to_underlying(y);
 }
 constexpr bool operator>(unsigned const x, uri::code_point const y) noexcept {
-  return x > static_cast<std::underlying_type_t<uri::code_point>>(y);
+  return x > peejay::to_underlying(y);
 }
 constexpr bool operator>=(unsigned const x, uri::code_point const y) noexcept {
-  return x >= static_cast<std::underlying_type_t<uri::code_point>>(y);
+  return x >= peejay::to_underlying(y);
 }
 
 constexpr uri::code_point operator+(uri::code_point const x, unsigned const y) noexcept {
-  return static_cast<uri::code_point>(static_cast<std::underlying_type_t<uri::code_point>>(x) + y);
+  using peejay::to_underlying;
+  return static_cast<uri::code_point>(peejay::to_underlying(x) + y);
 }
 constexpr uri::code_point operator-(uri::code_point const x, uri::code_point const y) noexcept {
-  using ut = std::underlying_type_t<uri::code_point>;
-  assert(static_cast<ut>(x) >= static_cast<ut>(y));
-  return static_cast<uri::code_point>(static_cast<ut>(x) - static_cast<ut>(y));
+  using peejay::to_underlying;
+  assert(to_underlying(x) >= to_underlying(y));
+  return static_cast<uri::code_point>(to_underlying(x) - to_underlying(y));
 }
 constexpr uri::code_point operator-(unsigned const x, uri::code_point const y) noexcept {
-  using ut = std::underlying_type_t<uri::code_point>;
-  assert(x >= static_cast<ut>(y));
-  return static_cast<uri::code_point>(x - static_cast<ut>(y));
+  using peejay::to_underlying;
+  assert(x >= to_underlying(y));
+  return static_cast<uri::code_point>(x - to_underlying(y));
 }
 std::uint_least8_t& operator-=(std::uint_least8_t& x, uri::code_point const y) {
   x = static_cast<std::uint_least8_t>(x - y);
@@ -119,7 +121,7 @@ bool needs_pctencode(std::uint_least8_t c, pctencode_set es) noexcept {
     return false;
   }
   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-  return (encode[c] & static_cast<std::underlying_type_t<pctencode_set>>(es)) != 0U;
+  return (encode[c] & peejay::to_underlying(es)) != 0U;
 }
 
 bool needs_pctencode(std::string_view s, pctencode_set es) {

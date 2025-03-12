@@ -276,7 +276,7 @@ public:
   /// \returns True if any of the extensions given by \p flag are enabled by the parser.
   [[nodiscard]] constexpr bool extension_enabled(extensions const flag) const noexcept {
     using ut = std::underlying_type_t<extensions>;
-    return (static_cast<ut>(extensions_) & static_cast<ut>(flag)) != 0U;
+    return (to_underlying(extensions_) & static_cast<ut>(flag)) != 0U;
   }
 
   /// Returns the parser's position in the input text.
@@ -585,9 +585,7 @@ public:
     // U+0080 Is where the Latin-1 supplement starts. Consult the table for
     // code points beyond this point.
     if (code_point >= 0x80) {
-      if ((static_cast<std::underlying_type_t<grammar_rule>>(
-               code_point_grammar_rule(code_point).value_or(static_cast<grammar_rule>(0))) &
-           idmask) != 0U) {
+      if ((to_underlying(code_point_grammar_rule(code_point).value_or(static_cast<grammar_rule>(0))) & idmask) != 0U) {
         return true;
       }
     }
@@ -1740,9 +1738,7 @@ constexpr bool identifier_matcher<Backend, Policies>::is_identifier_member(char3
   if (code_point < 0x80) {
     return is_identifier_start(code_point);
   }
-  return (static_cast<std::underlying_type_t<grammar_rule>>(
-              code_point_grammar_rule(code_point).value_or(static_cast<grammar_rule>(0))) &
-          idmask) != 0U;
+  return (to_underlying(code_point_grammar_rule(code_point).value_or(static_cast<grammar_rule>(0))) & idmask) != 0U;
 }
 
 // consume

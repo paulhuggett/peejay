@@ -15,6 +15,7 @@
 #include <cassert>
 #include <sstream>
 
+#include "peejay/json/portab.hpp"
 #include "peejay/uri/pctencode.hpp"
 #include "peejay/uri/rule.hpp"
 
@@ -22,28 +23,14 @@ using namespace uri;
 
 namespace {
 
-/// Converts an enumeration value to its underlying type
-///
-/// \param e  The enumeration value to convert
-/// \returns The integer value of the underlying type of Enum, converted from \p e.
-template <typename Enum>
-  requires(std::is_enum_v<Enum>)
-[[nodiscard]] constexpr std::underlying_type_t<Enum> to_underlying(Enum const e) noexcept {
-#if defined(__cpp_lib_to_underlying) && __cpp_lib_to_underlying > 202102L
-  return std::to_underlying(e);
-#else
-  return static_cast<std::underlying_type_t<Enum>>(e);
-#endif
-}
-
 constexpr auto single_code_point(rule const& r, code_point const cp) {
-  assert(to_underlying(cp) <= std::numeric_limits<char>::max());
+  assert(peejay::to_underlying(cp) <= std::numeric_limits<char>::max());
   return r.single_char(static_cast<char>(cp));
 }
 
 constexpr auto code_point_range(code_point const first, code_point const last) {
-  assert(to_underlying(first) <= std::numeric_limits<char>::max());
-  assert(to_underlying(last) <= std::numeric_limits<char>::max());
+  assert(peejay::to_underlying(first) <= std::numeric_limits<char>::max());
+  assert(peejay::to_underlying(last) <= std::numeric_limits<char>::max());
   return [f = std::tolower(static_cast<int>(first)), l = std::tolower(static_cast<int>(last))](rule const& r) {
     return r.single_char([=](char const c) {
       auto const cl = std::tolower(static_cast<int>(c));
