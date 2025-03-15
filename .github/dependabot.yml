@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: daily
 
-  - package-ecosystems: gitsubmodule
+  - package-ecosystemx: gitsubmodule
     directory: /
     schedule:
       interval: weekly
