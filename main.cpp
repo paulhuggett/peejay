@@ -48,6 +48,7 @@ struct policy : public peejay::default_policies {
 /// A backend which prints tokens as they arrive.
 class null {
 public:
+  using policies = policy;
   static constexpr void result() noexcept {
     // The null output backend produces no result at all.
   }
@@ -109,7 +110,7 @@ int main() {
   using namespace std::string_view_literals;
 
   int exit_code = EXIT_SUCCESS;
-  peejay::parser<null, policy> p;
+  peejay::parser<null> p;
   p.input(u8R"(  { "a":123, "b" : [false,"c"], "c":true }  )"sv).eof();
   if (auto const err = p.last_error()) {
     std::cout << "Error: " << err.message() << '\n';
