@@ -67,13 +67,40 @@ template <backend Backend> class string_matcher;
 template <backend Backend> class token_matcher;
 template <backend Backend> class whitespace_matcher;
 
+template <details::group Group, backend Backend> struct group_to_matcher {};
+template <backend Backend> struct group_to_matcher<details::group::array, Backend> {
+  using type = array_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::eof, Backend> {
+  using type = eof_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::number, Backend> {
+  using type = number_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::object, Backend> {
+  using type = object_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::root, Backend> {
+  using type = root_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::string, Backend> {
+  using type = string_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::token, Backend> {
+  using type = token_matcher<Backend>;
+};
+template <backend Backend> struct group_to_matcher<details::group::whitespace, Backend> {
+  using type = whitespace_matcher<Backend>;
+};
+template <details::group Group, backend Backend> using group_to_matcher_t = group_to_matcher<Group, Backend>::type;
+
 }  // end namespace details
 
 template <bool> struct coord {};
 template <> struct coord<true> {
   constexpr std::strong_ordering operator<=>(coord const &) const noexcept = default;
   [[nodiscard]] std::string to_string() const { return std::format("({}:{})", line, column); }
-  constexpr std::ostream &operator<<(std::ostream &os) const { return os << this->to_string(); }
+  std::ostream &operator<<(std::ostream &os) const { return os << this->to_string(); }
   unsigned line = 1U;
   unsigned column = 1U;
 };
@@ -174,33 +201,6 @@ private:
   friend string_matcher;
   friend token_matcher;
   friend whitespace_matcher;
-
-  template <details::group Group> struct group_to_matcher {};
-  template <> struct group_to_matcher<details::group::array> {
-    using type = array_matcher;
-  };
-  template <> struct group_to_matcher<details::group::eof> {
-    using type = eof_matcher;
-  };
-  template <> struct group_to_matcher<details::group::number> {
-    using type = number_matcher;
-  };
-  template <> struct group_to_matcher<details::group::object> {
-    using type = object_matcher;
-  };
-  template <> struct group_to_matcher<details::group::root> {
-    using type = root_matcher;
-  };
-  template <> struct group_to_matcher<details::group::string> {
-    using type = string_matcher;
-  };
-  template <> struct group_to_matcher<details::group::token> {
-    using type = token_matcher;
-  };
-  template <> struct group_to_matcher<details::group::whitespace> {
-    using type = whitespace_matcher;
-  };
-  template <details::group Group> using group_to_matcher_t = group_to_matcher<Group>::type;
 
   /// Records an error for this parse. The parse will stop as soon as a non-zero
   /// error code is recorded. An error may be reported at any time during the
