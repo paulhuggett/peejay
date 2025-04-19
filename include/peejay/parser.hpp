@@ -72,7 +72,7 @@ template <backend Backend> class whitespace_matcher;
 template <bool> struct coord {};
 template <> struct coord<true> {
   constexpr std::strong_ordering operator<=>(coord const &) const noexcept = default;
-  [[nodiscard]] constexpr std::string to_string() const { return std::format("({}:{})", line, column); }
+  [[nodiscard]] std::string to_string() const { return std::format("({}:{})", line, column); }
   constexpr std::ostream &operator<<(std::ostream &os) const { return os << this->to_string(); }
   unsigned line = 1U;
   unsigned column = 1U;
@@ -117,17 +117,14 @@ public:
   parser &operator=(parser const &other) = default;
   parser &operator=(parser &&other) noexcept = default;
 
-  ///@{
   /// Parses a chunk of JSON input. This function may be called repeatedly with
   /// portions of the source data (for example, as the data is received from an
   /// external source). Once all of the data has been received, call the
   /// parser::eof() method.
-
   template <std::ranges::input_range Range>
     requires(std::is_same_v<std::decay_t<typename std::ranges::range_value_t<Range>>,
-                            std::decay_t<typename policies::char_type>>)
-  parser &input(Range const &range);
-  ///@}
+                            std::decay_t<typename parser<Backend>::policies::char_type>>)
+  parser<Backend> &input(Range const &range);
 
   /// Informs the parser that the complete input stream has been passed by calls
   /// to parser<>::input(). Brings the parser to the completed state to ensure that

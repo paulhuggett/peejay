@@ -58,7 +58,7 @@ concept policy = requires(Policy &&p) {
   /// The maximum depth to which we allow the parse stack to grow. This should be given a value
   /// sufficient for any reasonable input. The setting is intended to enable the memory required
   /// for the parse stack to be fixed.
-  requires requires { std::integral<decltype(p.max_stack_depth)> && requires { p.max_stack_depth >= 2; }; };
+  requires requires { requires std::integral<decltype(p.max_stack_depth)> && requires { p.max_stack_depth >= 2; }; };
 
   /// This boolean value determines whether the library tracks the line and column position in the
   /// input. These values can be used for reporting error to the user but can be disabled if they
@@ -93,7 +93,7 @@ concept backend = requires(T &&v) {
   } -> std::convertible_to<std::error_code>;
   /// Called when a floating-point value has been parsed.
   requires requires {
-    no_float<typename std::remove_reference_t<T>::policies::float_type> || requires {
+    requires no_float<typename std::remove_reference_t<T>::policies::float_type> || requires {
       {
         v.float_value(typename std::remove_reference_t<T>::policies::float_type{})
       } -> std::convertible_to<std::error_code>;
