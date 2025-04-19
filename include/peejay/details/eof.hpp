@@ -1,10 +1,10 @@
-//===- lib/peejay/dummy.cpp -----------------------------------------------===//
-//*      _                                  *
-//*   __| |_   _ _ __ ___  _ __ ___  _   _  *
-//*  / _` | | | | '_ ` _ \| '_ ` _ \| | | | *
-//* | (_| | |_| | | | | | | | | | | | |_| | *
-//*  \__,_|\__,_|_| |_| |_|_| |_| |_|\__, | *
-//*                                  |___/  *
+//===- include/peejay/details/eof.hpp ---------------------*- mode: C++ -*-===//
+//*              __  *
+//*   ___  ___  / _| *
+//*  / _ \/ _ \| |_  *
+//* |  __/ (_) |  _| *
+//*  \___|\___/|_|   *
+//*                  *
 //===----------------------------------------------------------------------===//
 // Copyright © 2025 Paul Bowen-Huggett
 //
@@ -29,5 +29,40 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-extern int dummy;
-int dummy;
+#ifndef PEEJAY_DETAILS_EOF_HPP
+#define PEEJAY_DETAILS_EOF_HPP
+
+#include <optional>
+
+#include "peejay/concepts.hpp"
+#include "peejay/details/whitespace.hpp"
+#include "peejay/error.hpp"
+
+#ifndef PEEJAY_DETAILS_PARSER_HPP
+#include "peejay/parser.hpp"
+#endif
+#ifndef PEEJAY_DETAILS_STATES_HPP
+#include "peejay/details/states.hpp"
+#endif
+
+namespace peejay::details {
+
+/// Matches the end of the input.
+template <backend Backend> class eof_matcher {
+public:
+  constexpr static bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
+    if (ch) {
+      // Allow whitespace and only whitespace between the top-level object and the end of input.
+      if (whitespace(parser, *ch)) {
+        return false;
+      }
+      parser.set_error(error::unexpected_extra_input);
+    }
+    parser.pop();
+    return true;
+  }
+};
+
+}  // end namespace peejay::details
+
+#endif  // PEEJAY_DETAILS_EOF_HPP

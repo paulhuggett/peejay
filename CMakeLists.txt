@@ -6,22 +6,37 @@
 #*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
 #*                                                   *
 #===----------------------------------------------------------------------===//
-# Distributed under the Apache License v2.0.
-# See <https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT>.
-# SPDX-License-Identifier: Apache-2.0
+# Copyright © 2025 Paul Bowen-Huggett
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# “Software”), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
-cmake_minimum_required (VERSION 3.13)
-
-project (peejay C CXX)
+cmake_minimum_required(VERSION 3.28)
+project (peejay VERSION 2.0 LANGUAGES CXX)
 
 include (CheckCXXCompilerFlag)
 include (CheckLinkerFlag)
 
-list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
-
 cmake_policy (SET CMP0077 NEW)
 option (WERROR "Compiler warnings are errors")
-option (LIBCXX "Use libc++ rather than libstdc++ (clang only)")
 option (PEEJAY_COVERAGE "Generate Source-based Coverage")
 option (PEEJAY_FUZZTEST "Enable fuzztest")
 
@@ -33,10 +48,9 @@ add_custom_target (
   USES_TERMINAL
 )
 
-set (PEEJAY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # setup target
-# ~~~
+# ~~~~~~~~~~~~
 function (setup_target target)
   set (
     clang_options
@@ -94,9 +108,6 @@ function (setup_target target)
     list (APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
   endif ()
 
-  if (LIBCXX)
-    list (APPEND clang_options -stdlib=libc++)
-  endif ()
   if (PEEJAY_FUZZTEST)
     target_compile_definitions (${target} PUBLIC PEEJAY_FUZZTEST=1)
   endif ()
@@ -125,90 +136,102 @@ function (setup_target target)
   if (map_supported)
     target_link_options (${target} PRIVATE "-Wl,-Map=$<TARGET_FILE_DIR:${target}>/map.txt")
   endif ()
-
 endfunction (setup_target)
 
-function (setup_gtest)
+
+
+set (include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(peejay_details
+  "${include_dir}/peejay/details/array.hpp"
+  "${include_dir}/peejay/details/arrayvec.hpp"
+  "${include_dir}/peejay/details/cbii.hpp"
+  "${include_dir}/peejay/details/eof.hpp"
+  "${include_dir}/peejay/details/number.hpp"
+  "${include_dir}/peejay/details/object.hpp"
+  "${include_dir}/peejay/details/parser_impl.hpp"
+  "${include_dir}/peejay/details/pointer_based_iterator.hpp"
+  "${include_dir}/peejay/details/portab.hpp"
+  "${include_dir}/peejay/details/root.hpp"
+  "${include_dir}/peejay/details/states.hpp"
+  "${include_dir}/peejay/details/string.hpp"
+  "${include_dir}/peejay/details/token.hpp"
+  "${include_dir}/peejay/details/uinteger.hpp"
+  "${include_dir}/peejay/details/type_list.hpp"
+  "${include_dir}/peejay/details/whitespace.hpp"
+)
+set(peejay_public
+  "${include_dir}/peejay/concepts.hpp"
+  "${include_dir}/peejay/error.hpp"
+  "${include_dir}/peejay/icubaby.hpp"
+  "${include_dir}/peejay/json.hpp"
+  "${include_dir}/peejay/null.hpp"
+  "${include_dir}/peejay/dom.hpp"
+  "${include_dir}/peejay/parser.hpp"
+)
+
+add_library(peejay STATIC
+  ${peejay_public}
+  ${peejay_details}
+  lib/peejay/dummy.cpp
+)
+source_group(public FILES ${peejay_public})
+source_group(details FILES ${peejay_details})
+
+target_include_directories(peejay PUBLIC "${include_dir}")
+setup_target(peejay)
+add_executable(dump main.cpp)
+target_link_libraries(dump PUBLIC peejay)
+
+
+# setup gtest
+# ~~~~~~~~~~~
+function(setup_gtest)
   # Check that we've got the googletest submodule checked out and that a parent project
   # didn't already create the gtest/gmock targets
-  if (TARGET gtest)
-  elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
+  if(TARGET gtest)
+  elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
     # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
     # Windows.
-    set (gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+    set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
     # We don't want to install either gtest or gmock.
-    set (INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-    set (INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+    set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+    set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
 
-    add_subdirectory (googletest)
+    add_subdirectory(googletest)
 
-    foreach (target gtest gmock gmock_main gtest_main)
+    foreach(target gtest gmock gmock_main gtest_main)
       target_compile_features(${target} PUBLIC cxx_std_20)
 
-      if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
+      if(CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
         check_cxx_compiler_flag (
           -Wno-implicit-int-float-conversion
           CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION
         )
-        if (${CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION})
-          list (APPEND gclang_options -Wno-implicit-int-float-conversion)
-        endif ()
-      endif ()
+        if(${CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION})
+          list(APPEND gclang_options -Wno-implicit-int-float-conversion)
+        endif()
+      endif()
 
-      if (LIBCXX)
+      if(LIBCXX)
         list (APPEND gclang_options -stdlib=libc++)
-      endif ()
+      endif()
 
-      target_compile_definitions (
+      target_compile_definitions(
         ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
       )
-      target_compile_options (
+      target_compile_options(
         ${target}
         PRIVATE
           $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
       )
-      target_link_options (
+      target_link_options(
         ${target}
         PRIVATE
           $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
       )
-    endforeach ()
-  endif ()
-endfunction (setup_gtest)
+    endforeach()
+  endif()
+endfunction(setup_gtest)
 
-if (PEEJAY_FUZZTEST)
-  set (FUZZTEST_FUZZING_MODE On)
-  include (FetchContent)
-  set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
-  message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
-  FetchContent_Declare (
-    fuzztest
-    GIT_REPOSITORY https://github.com/google/fuzztest.git
-    GIT_TAG ${FUZZTEST_REPO_BRANCH}
-  )
-  FetchContent_MakeAvailable (fuzztest)
-  enable_testing ()
-  include (GoogleTest)
-  fuzztest_setup_fuzzing_flags ()
-
-  foreach (target gtest gmock gmock_main gtest_main)
-    target_compile_features (${target} PUBLIC $<IF:$<BOOL:${PEEJAY_CXX17}>,cxx_std_17,cxx_std_20>)
-  endforeach()
-else ()
-  setup_gtest ()
-endif (PEEJAY_FUZZTEST)
-
-
-add_subdirectory (lib)
-if (TARGET gtest)
-  add_subdirectory (unittests)
-endif ()
-add_subdirectory (tools)
-add_subdirectory (klee)
-
-include (GNUInstallDirs)
-install (
-  EXPORT peejay
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
-  NAMESPACE peejay::
-)
+add_subdirectory(unit_tests)
+setup_gtest()

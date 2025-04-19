@@ -7,3 +7,6 @@
 [submodule "systemtests/JSONTestSuite"]
 	path = systemtests/JSONTestSuite
 	url = https://github.com/nst/JSONTestSuite.git
+[submodule "JSONTestSuite"]
+	path = JSONTestSuite
+	url = https://github.com/nst/JSONTestSuite.git

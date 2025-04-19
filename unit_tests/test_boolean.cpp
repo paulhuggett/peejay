@@ -1,10 +1,10 @@
-//===- lib/peejay/dummy.cpp -----------------------------------------------===//
-//*      _                                  *
-//*   __| |_   _ _ __ ___  _ __ ___  _   _  *
-//*  / _` | | | | '_ ` _ \| '_ ` _ \| | | | *
-//* | (_| | |_| | | | | | | | | | | | |_| | *
-//*  \__,_|\__,_|_| |_| |_|_| |_| |_|\__, | *
-//*                                  |___/  *
+//===- unit_tests/test_boolean.cpp ----------------------------------------===//
+//*  _                 _                   *
+//* | |__   ___   ___ | | ___  __ _ _ __   *
+//* | '_ \ / _ \ / _ \| |/ _ \/ _` | '_ \  *
+//* | |_) | (_) | (_) | |  __/ (_| | | | | *
+//* |_.__/ \___/ \___/|_|\___|\__,_|_| |_| *
+//*                                        *
 //===----------------------------------------------------------------------===//
 // Copyright © 2025 Paul Bowen-Huggett
 //
@@ -29,5 +29,42 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-extern int dummy;
-int dummy;
+#include "peejay/json.hpp"
+
+// Standard library
+#include <string>
+// 3rd party
+#include <gtest/gtest.h>
+// Local
+#include "callbacks.hpp"
+
+using testing::StrictMock;
+using namespace std::string_view_literals;
+
+namespace {
+
+class JsonBoolean : public testing::Test {
+protected:
+  StrictMock<mock_json_callbacks<std::uint64_t, double, char8_t>> callbacks_;
+  callbacks_proxy<mock_json_callbacks<std::uint64_t, double, char8_t>> proxy_{callbacks_};
+};
+
+}  // end anonymous namespace
+
+// NOLINTNEXTLINE
+TEST_F(JsonBoolean, True) {
+  EXPECT_CALL(callbacks_, boolean_value(true)).Times(1);
+
+  auto p = peejay::make_parser(proxy_);
+  p.input(u8"true"sv).eof();
+  EXPECT_FALSE(p.has_error());
+}
+
+// NOLINTNEXTLINE
+TEST_F(JsonBoolean, False) {
+  EXPECT_CALL(callbacks_, boolean_value(false)).Times(1);
+
+  peejay::parser p = peejay::make_parser(proxy_);
+  p.input(u8" false "sv).eof();
+  EXPECT_FALSE(p.has_error());
+}
