@@ -897,11 +897,11 @@ template <typename T, std::size_t Size>
 arrayvec<T, Size>::arrayvec(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T>) {
   this->flood();
   auto *dest = this->data();
-  for (auto src = other.begin(), src_end = other.end(); src != src_end; ++src) {
-    std::construct_at(std::to_address(dest), std::move(*src));
+  std::ranges::for_each(other, [this, &dest](T &src) {
+    std::construct_at(std::to_address(dest), std::move(src));
     ++dest;
     ++size_;
-  }
+  });
 }
 
 template <typename T, std::size_t Size>
