@@ -120,7 +120,7 @@ public:
   using string_view = std::basic_string_view<char_type>;
   using policies = Policies;
 
-  static constexpr void result() noexcept {}
+  static constexpr void result() noexcept { /* this backend produces no result */ }
 
   explicit callbacks_proxy(T &original) : original_(original) {}
   callbacks_proxy(callbacks_proxy const &) = default;

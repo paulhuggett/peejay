@@ -100,7 +100,7 @@ template <bool> struct coord {};
 template <> struct coord<true> {
   constexpr std::strong_ordering operator<=>(coord const &) const noexcept = default;
   [[nodiscard]] std::string to_string() const { return std::format("({}:{})", line, column); }
-  std::ostream &operator<<(std::ostream &os) const { return os << this->to_string(); }
+  friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) { return os << lhs.to_string(); }
   unsigned line = 1U;
   unsigned column = 1U;
 };

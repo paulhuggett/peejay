@@ -103,10 +103,9 @@ public:
     return *this;
   }
 
-  bool operator==(no_copy const &rhs) const noexcept = default;
-
   [[nodiscard]] int get() const noexcept { return v_; }
 
+  friend constexpr bool operator==(no_copy const &lhs, no_copy const &rhs) noexcept = default;
   friend std::ostream &operator<<(std::ostream &os, no_copy const &x) { return os << x.get(); }
 
 private:
@@ -123,10 +122,9 @@ public:
   no_move &operator=(no_move const &) = default;
   no_move &operator=(no_move &&other) noexcept = delete;
 
-  bool operator==(no_move const &rhs) const noexcept = default;
-
   [[nodiscard]] int get() const noexcept { return v_; }
 
+  friend constexpr bool operator==(no_move const &lhs, no_move const &rhs) noexcept = default;
   friend std::ostream &operator<<(std::ostream &os, no_move const &x) { return os << x.get(); }
 
 private:
@@ -398,7 +396,7 @@ namespace {
 class no_default_ctor {
 public:
   explicit constexpr no_default_ctor(int v) noexcept : v_{v} {}
-  constexpr bool operator==(no_default_ctor const &rhs) const noexcept = default;
+  friend constexpr bool operator==(no_default_ctor const &lhs, no_default_ctor const &rhs) noexcept = default;
 
 private:
   int v_;
@@ -1126,8 +1124,8 @@ public:
     }
     return *this;
   }
-  constexpr bool operator==(member const &rhs) const noexcept { return v_ == rhs.v_; }
-  constexpr bool operator==(int const &rhs) const noexcept { return v_ == rhs; }
+  friend constexpr bool operator==(member const &lhs, member const &rhs) noexcept = default;
+  friend constexpr bool operator==(member const &lhs, int const &rhs) noexcept { return lhs.v_ == rhs; }
 
 private:
   int v_ = 0;
