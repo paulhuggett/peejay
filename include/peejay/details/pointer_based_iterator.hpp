@@ -99,12 +99,12 @@ public:
     requires(std::is_const_v<T> || std::is_const_v<T> == std::is_const_v<Other>)
   explicit constexpr pointer_based_iterator(Other *const pos) noexcept : pos_{pos} {}
 
-  template <typename Other> constexpr bool operator==(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ == std::to_address(other);
-  }
   template <typename Other>
-  constexpr pointer_based_iterator &operator=(pointer_based_iterator<Other> const &other) noexcept {
-    pos_ = std::to_address(other);
+  friend constexpr bool operator==(pointer_based_iterator lhs, pointer_based_iterator<Other> rhs) noexcept {
+    return lhs.pos_ == std::to_address(rhs);
+  }
+  template <typename Other> constexpr pointer_based_iterator &operator=(pointer_based_iterator<Other> rhs) noexcept {
+    pos_ = std::to_address(rhs);
     return *this;
   }
 
@@ -140,8 +140,9 @@ public:
     return *this;
   }
 
-  template <typename Other> constexpr auto operator<=>(pointer_based_iterator<Other> const &other) const noexcept {
-    return pos_ <=> &*other;
+  template <typename Other>
+  friend constexpr auto operator<=>(pointer_based_iterator lhs, pointer_based_iterator<Other> rhs) noexcept {
+    return lhs.pos_ <=> &*rhs;
   }
 
   /// Returns the distance between two iterators \p b - \p a.
