@@ -76,11 +76,11 @@ public:
     requires(type_list::has_type_v<member_types, MemberType>)
   static constexpr element make(Args &&...args) {
     if constexpr (std::is_same_v<MemberType, array>) {
-      return {std::in_place_type_t<array_ptr>{}, std::forward<Args>(args)...};
+      return {tag{}, std::in_place_type_t<array_ptr>{}, std::forward<Args>(args)...};
     } else if constexpr (std::is_same_v<MemberType, object>) {
-      return {std::in_place_type_t<object_ptr>{}, std::forward<Args>(args)...};
+      return {tag{}, std::in_place_type_t<object_ptr>{}, std::forward<Args>(args)...};
     } else {
-      return {std::in_place_type_t<MemberType>{}, std::forward<Args>(args)...};
+      return {tag{}, std::in_place_type_t<MemberType>{}, std::forward<Args>(args)...};
     }
   }
 
@@ -147,7 +147,8 @@ private:
   static_assert(composite_types::size == internal_composite_types::size,
                 "There must be a one-to-one correspondence between internal and public composite types");
 
-  template <typename... Args> constexpr element(Args &&...args) : var_{std::forward<Args>(args)...} {}
+  struct tag {};
+  template <typename... Args> constexpr element(tag, Args &&...args) : var_{std::forward<Args>(args)...} {}
 
   type_list::to_variant<type_list::concat<simple_types, internal_composite_types>> var_;
 };
