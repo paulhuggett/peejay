@@ -50,6 +50,28 @@
 
 namespace peejay::details {
 
+template <typename FloatType, std::unsigned_integral UIntegerType> struct float_accumulator {
+  static_assert(std::is_floating_point_v<FloatType>);
+  /// Promote from integer.
+  explicit constexpr float_accumulator(UIntegerType v) noexcept : value{static_cast<FloatType>(v)} {}
+  /// Assign an explicit float.
+  explicit constexpr float_accumulator(FloatType v) noexcept : value{v} {}
+
+  void add_digit(unsigned const digit) {
+    assert(digit < 10);
+    ++frac_digits;
+    frac_part = frac_part * 10.0 + digit;
+  }
+
+  unsigned frac_digits = 0;
+  FloatType frac_part = 0.0;
+  FloatType value = 0.0;
+  bool exp_is_negative = false;
+  unsigned exponent = 0U;
+};
+
+template <std::unsigned_integral UIntegerType> struct float_accumulator<no_float_type, UIntegerType> {};
+
 //*                 _              *
 //*  _ _ _  _ _ __ | |__  ___ _ _  *
 //* | ' \ || | '  \| '_ \/ -_) '_| *
@@ -96,37 +118,16 @@ private:
   static constexpr bool is_digit(char32_t const c) noexcept { return c >= '0' && c <= '9'; }
 
   bool is_neg_ = false;
-  template <typename FloatType> struct float_accumulator {
-    static_assert(std::is_floating_point_v<FloatType>);
-    /// Promote from integer.
-    explicit constexpr float_accumulator(uinteger_type v) noexcept : value{static_cast<float_type>(v)} {}
-    /// Assign an explicit float.
-    explicit constexpr float_accumulator(float_type v) noexcept : value{v} {}
-
-    void add_digit(unsigned const digit) {
-      assert(digit < 10);
-      ++frac_digits;
-      frac_part = frac_part * 10.0 + digit;
-    }
-
-    unsigned frac_digits = 0;
-    float_type frac_part = 0.0;
-    float_type value = 0.0;
-    bool exp_is_negative = false;
-    unsigned exponent = 0U;
-  };
-  template <> struct float_accumulator<no_float_type> {};
-
-  float_accumulator<float_type> &number_is_float() {
+  float_accumulator<float_type, uinteger_type> &number_is_float() {
     if constexpr (!std::is_same_v<float_type, no_float_type>) {
       if (auto *const uit = std::get_if<uinteger_type>(&acc_)) {
-        acc_ = float_accumulator<float_type>{*uit};
+        acc_ = float_accumulator<float_type, uinteger_type>{*uit};
       }
     }
-    return std::get<float_accumulator<float_type>>(acc_);
+    return std::get<float_accumulator<float_type, uinteger_type>>(acc_);
   }
 
-  std::variant<uinteger_type, float_accumulator<float_type>> acc_;
+  std::variant<uinteger_type, float_accumulator<float_type, uinteger_type>> acc_;
 };
 
 // leading minus state
@@ -220,14 +221,14 @@ template <backend Backend> void number_matcher<Backend>::complete(parser_type &p
 // ~~~~~~~~~~~~~~
 template <backend Backend>
 bool number_matcher<Backend>::do_exponent_digit_state(parser_type &parser, char32_t const c) {
-  assert(std::holds_alternative<float_accumulator<float_type>>(acc_));
+  assert((std::holds_alternative<float_accumulator<float_type, uinteger_type>>(acc_)));
 
   bool match = true;
   if constexpr (std::is_same_v<float_type, no_float_type>) {
     parser.set_error(error::number_out_of_range);
   } else {
     if (is_digit(c)) {
-      auto &fp_acc = std::get<float_accumulator<float_type>>(acc_);
+      auto &fp_acc = std::get<float_accumulator<float_type, uinteger_type>>(acc_);
       fp_acc.exponent = fp_acc.exponent * 10U + static_cast<unsigned>(c - '0');
       parser.stack_.top() = state::number_exponent_digit;
     } else {
@@ -367,7 +368,7 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
   if constexpr (std::is_same_v<float_type, no_float_type>) {
     parser.set_error(error::number_out_of_range);
   } else {
-    auto &fp_acc = std::get<float_accumulator<float_type>>(acc_);
+    auto &fp_acc = std::get<float_accumulator<float_type, uinteger_type>>(acc_);
     float_type xf = fp_acc.value + fp_acc.frac_part / (std::pow(10, fp_acc.frac_digits));
     auto exp = std::pow(10, fp_acc.exponent);
     if (std::isinf(exp)) {

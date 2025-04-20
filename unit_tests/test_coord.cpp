@@ -52,14 +52,14 @@ TEST(Coord, RowThenColumnInit) {
 
 // NOLINTNEXTLINE
 TEST(Coord, ColumnThenRowInit) {
-  coord c{.column = 2U, .line = 3U};
+  coord c{.line = 3U, .column = 2U};
   EXPECT_EQ(c.line, 3U);
   EXPECT_EQ(c.column, 2U);
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, Eq) {
-  coord lhs{.column = 2U, .line = 3U};
+  coord lhs{.line = 3U, .column = 2U};
   coord rhs{.line = 3U, .column = 2U};
   EXPECT_TRUE(lhs == rhs);
   EXPECT_FALSE(lhs != rhs);
@@ -67,7 +67,7 @@ TEST(Coord, Eq) {
 
 // NOLINTNEXTLINE
 TEST(Coord, Neq) {
-  coord lhs{.column = 2U, .line = 3U};
+  coord lhs{.line = 3U, .column = 2U};
   coord rhs{.line = 5U, .column = 7U};
   EXPECT_TRUE(lhs != rhs);
   EXPECT_FALSE(lhs == rhs);

@@ -85,8 +85,7 @@ template <backend Backend> void parser<Backend>::pop() {
 // ~~~~~
 template <backend Backend>
 template <std::ranges::input_range Range>
-  requires(std::is_same_v<std::decay_t<typename std::ranges::range_value_t<Range>>,
-                          std::decay_t<typename parser<Backend>::policies::char_type>>)
+  requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename parser<Backend>::policies::char_type>)
 parser<Backend> &parser<Backend>::input(Range const &range) {
   if (error_) {
     return *this;

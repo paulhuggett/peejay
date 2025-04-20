@@ -73,16 +73,16 @@ public:
   using member_types = type_list::concat<simple_types, composite_types>;
 
   template <typename MemberType, typename... Args>
-    requires(type_list::has_type_v<member_types, std::decay_t<MemberType>>)
-  constexpr explicit element(std::in_place_type_t<MemberType> ipt, Args &&...args)
-      : var_{ipt, std::forward<Args>(args)...} {}
-
-  template <typename... Args>
-  constexpr explicit element<array>(std::in_place_type_t<array>, Args &&...args)
-      : var_{std::in_place_type_t<array_ptr>{}, std::make_unique<array>(std::forward<Args>(args)...)} {}
-  template <typename... Args>
-  constexpr explicit element<object>(std::in_place_type_t<object>, Args &&...args)
-      : var_{std::in_place_type_t<object_ptr>{}, std::make_unique<object>(std::forward<Args>(args)...)} {}
+    requires(type_list::has_type_v<member_types, MemberType>)
+  static constexpr element make(Args &&...args) {
+    if constexpr (std::is_same_v<MemberType, array>) {
+      return {std::in_place_type_t<array_ptr>{}, std::forward<Args>(args)...};
+    } else if constexpr (std::is_same_v<MemberType, object>) {
+      return {std::in_place_type_t<object_ptr>{}, std::forward<Args>(args)...};
+    } else {
+      return {std::in_place_type_t<MemberType>{}, std::forward<Args>(args)...};
+    }
+  }
 
   element(element const &rhs) = delete;
   constexpr element(element &&rhs) noexcept : var_{std::move(rhs.var_)} {}
@@ -97,20 +97,48 @@ public:
   /// \tparam MemberType one of the possible member types. See element::member_types.
   /// \returns true if the element currently holds the alternative MemberType, false otherwise.
   template <typename MemberType>
-    requires(type_list::has_type_v<member_types, std::decay_t<MemberType>>)
-  constexpr bool holds() const noexcept;
+    requires(type_list::has_type_v<member_types, MemberType>)
+  constexpr bool holds() const noexcept {
+    if constexpr (std::is_same_v<object, MemberType>) {
+      return std::holds_alternative<object_ptr>(var_);
+    } else if constexpr (std::is_same_v<array, MemberType>) {
+      return std::holds_alternative<array_ptr>(var_);
+    } else {
+      return std::get_if<MemberType>(&var_);
+    }
+  }
 
   /// If the element holds a value of type \p MemberType, returns a pointer to the stored value. Otherwise, returns a
   /// null pointer.
   /// \tparam MemberType one of the possible member types. See element::member_types.
   /// \return A pointer to the value stored in the element or null pointer on error.
   template <typename MemberType>
-    requires(type_list::has_type_v<member_types, std::decay_t<MemberType>>)
-  constexpr auto const *get_if() const noexcept;
+    requires(type_list::has_type_v<member_types, MemberType>)
+  constexpr auto const *get_if() const noexcept {
+    if constexpr (std::is_same_v<object, MemberType>) {
+      auto const *const obj = std::get_if<object_ptr>(&var_);
+      return obj != nullptr ? obj->get() : nullptr;
+    } else if constexpr (std::is_same_v<array, MemberType>) {
+      auto const *const arr = std::get_if<array_ptr>(&var_);
+      return arr != nullptr ? arr->get() : nullptr;
+    } else {
+      return std::get_if<MemberType>(&var_);
+    }
+  }
 
   template <typename MemberType>
-    requires(type_list::has_type_v<member_types, std::decay_t<MemberType>>)
-  constexpr auto *get_if() noexcept;
+    requires(type_list::has_type_v<member_types, MemberType>)
+  constexpr auto *get_if() noexcept {
+    if constexpr (std::is_same_v<object, MemberType>) {
+      auto *const obj = std::get_if<object_ptr>(&var_);
+      return obj != nullptr ? obj->get() : nullptr;
+    } else if constexpr (std::is_same_v<array, MemberType>) {
+      auto *const arr = std::get_if<array_ptr>(&var_);
+      return arr != nullptr ? arr->get() : nullptr;
+    } else {
+      return std::get_if<MemberType>(&var_);
+    }
+  }
 
 private:
   using object_ptr = std::unique_ptr<object>;  // TODO: here be allocations
@@ -118,6 +146,8 @@ private:
   using internal_composite_types = type_list::type_list<array_ptr, object_ptr>;
   static_assert(composite_types::size == internal_composite_types::size,
                 "There must be a one-to-one correspondence between internal and public composite types");
+
+  template <typename... Args> constexpr element(Args &&...args) : var_{std::forward<Args>(args)...} {}
 
   type_list::to_variant<type_list::concat<simple_types, internal_composite_types>> var_;
 };
@@ -209,55 +239,6 @@ template <policy Policies> constexpr bool element<Policies>::operator==(element 
       var_);
 }
 
-// holds
-// ~~~~~
-template <policy Policies>
-template <typename MemberType>
-  requires(type_list::has_type_v<typename element<Policies>::member_types, std::decay_t<MemberType>>)
-constexpr bool element<Policies>::holds() const noexcept {
-  using T2 = std::decay_t<MemberType>;
-  if constexpr (std::is_same_v<object, T2>) {
-    return std::holds_alternative<object_ptr>(var_);
-  } else if constexpr (std::is_same_v<array, T2>) {
-    return std::holds_alternative<array_ptr>(var_);
-  } else {
-    return std::get_if<T2>(&var_);
-  }
-}
-
-// get if
-// ~~~~~~
-template <policy Policies>
-template <typename MemberType>
-  requires(type_list::has_type_v<typename element<Policies>::member_types, std::decay_t<MemberType>>)
-constexpr auto const *element<Policies>::get_if() const noexcept {
-  using T2 = std::decay_t<MemberType>;
-  if constexpr (std::is_same_v<object, T2>) {
-    auto const *const obj = std::get_if<object_ptr>(&var_);
-    return obj != nullptr ? obj->get() : nullptr;
-  } else if constexpr (std::is_same_v<array, T2>) {
-    auto const *const arr = std::get_if<array_ptr>(&var_);
-    return arr != nullptr ? arr->get() : nullptr;
-  } else {
-    return std::get_if<T2>(&var_);
-  }
-}
-template <policy Policies>
-template <typename MemberType>
-  requires(type_list::has_type_v<typename element<Policies>::member_types, std::decay_t<MemberType>>)
-constexpr auto *element<Policies>::get_if() noexcept {
-  using T2 = std::decay_t<MemberType>;
-  if constexpr (std::is_same_v<object, T2>) {
-    auto *const obj = std::get_if<object_ptr>(&var_);
-    return obj != nullptr ? obj->get() : nullptr;
-  } else if constexpr (std::is_same_v<array, T2>) {
-    auto *const arr = std::get_if<array_ptr>(&var_);
-    return arr != nullptr ? arr->get() : nullptr;
-  } else {
-    return std::get_if<T2>(&var_);
-  }
-}
-
 //===----------------------------------------------------------------------===//
 //*     _            *
 //*  __| |___ _ __   *
@@ -294,7 +275,7 @@ template <policy Policies> std::error_code dom<Policies>::float_value(float_type
 // begin array
 // ~~~~~~~~~~~
 template <policy Policies> std::error_code dom<Policies>::begin_array() {
-  stack_.emplace(std::in_place_type_t<array>{});
+  stack_.emplace(element::template make<array>());
   return {};
 }
 // end array
@@ -308,7 +289,7 @@ template <policy Policies> std::error_code dom<Policies>::end_array() {
 // begin object
 // ~~~~~~~~~~~~
 template <policy Policies> std::error_code dom<Policies>::begin_object() {
-  stack_.emplace(std::in_place_type_t<object>{});
+  stack_.emplace(element::template make<object>());
   return {};
 }
 // key
@@ -330,7 +311,8 @@ template <policy Policies> std::error_code dom<Policies>::end_object() {
 template <policy Policies>
 template <typename MemberType, typename... Args>
 std::error_code dom<Policies>::record(Args &&...args) {
-  return this->record(element{std::in_place_type_t<MemberType>{}, std::forward<Args>(args)...});
+  using el = dom<Policies>::element;
+  return this->record(el::template make<MemberType>(std::forward<Args>(args)...));
 }
 
 template <policy Policies> std::error_code dom<Policies>::record(element &&el) {

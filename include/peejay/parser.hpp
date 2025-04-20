@@ -149,8 +149,7 @@ public:
   /// external source). Once all of the data has been received, call the
   /// parser::eof() method.
   template <std::ranges::input_range Range>
-    requires(std::is_same_v<std::decay_t<typename std::ranges::range_value_t<Range>>,
-                            std::decay_t<typename parser<Backend>::policies::char_type>>)
+    requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename parser<Backend>::policies::char_type>)
   parser<Backend> &input(Range const &range);
 
   /// Informs the parser that the complete input stream has been passed by calls
