@@ -264,5 +264,4 @@ TEST_F(JsonArray, TooDeeplyNested) {
   parser p{json_out_callbacks{}};
   input(p, std::u8string(std::string::size_type{200}, '[')).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::nesting_too_deep)) << "Real error was: " << p.last_error().message();
-  ;
 }
