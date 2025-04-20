@@ -62,9 +62,8 @@ public:
       parser.set_error(error::unrecognized_token);
       return true;
     }
-    assert(!text_.empty());
-    auto const c = text_.front();
-    if (*ch != static_cast<char32_t>(c)) {
+    assert(!text_.empty() && "Input text must not be empty");
+    if (auto const c = text_.front(); *ch != static_cast<char32_t>(c)) {
       parser.set_error(error::unrecognized_token);
       return true;
     }
