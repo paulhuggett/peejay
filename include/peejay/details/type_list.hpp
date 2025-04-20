@@ -54,8 +54,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef PEEJAY_DETAILS_TYPE_LIST_HPP
-#define PEEJAY_DETAILS_TYPE_LIST_HPP
+#ifndef PEEJAY_DETAILS__TYPE_LIST_HPP
+#define PEEJAY_DETAILS__TYPE_LIST_HPP
 
 #include <type_traits>
 #include <variant>
@@ -176,4 +176,4 @@ static_assert(!has_type<type_list<double, int, char, double>, float>::value, "ty
 
 }  // end namespace peejay::type_list
 
-#endif  // PEEJAY_DETAILS_TYPE_LIST_HPP
+#endif  // PEEJAY_DETAILS__TYPE_LIST_HPP

@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS_PARSER_IMPL_HPP
-#define PEEJAY_DETAILS_PARSER_IMPL_HPP
+#ifndef PEEJAY_DETAILS__PARSER_IMPL_HPP
+#define PEEJAY_DETAILS__PARSER_IMPL_HPP
 
 #include "peejay/error.hpp"
 
@@ -132,4 +132,4 @@ template <backend Backend> void parser<Backend>::consume_code_point(std::optiona
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS_PARSER_IMPL_HPP
+#endif  // PEEJAY_DETAILS__PARSER_IMPL_HPP

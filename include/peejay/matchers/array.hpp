@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS_ARRAY_HPP
-#define PEEJAY_DETAILS_ARRAY_HPP
+#ifndef PEEJAY_MATCHERS__ARRAY_HPP
+#define PEEJAY_MATCHERS__ARRAY_HPP
 
 #include <cassert>
 #include <optional>
@@ -111,4 +111,4 @@ private:
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_DETAILS_ARRAY_HPP
+#endif  // PEEJAY_MATCHERS__ARRAY_HPP

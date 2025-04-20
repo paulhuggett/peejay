@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS_UINTEGER_HPP
-#define PEEJAY_DETAILS_UINTEGER_HPP
+#ifndef PEEJAY_DETAILS__UINTEGER_HPP
+#define PEEJAY_DETAILS__UINTEGER_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -77,4 +77,4 @@ template <> struct uinteger<64> {
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS_UINTEGER_HPP
+#endif  // PEEJAY_DETAILS__UINTEGER_HPP

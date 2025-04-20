@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS_STRING_HPP
-#define PEEJAY_DETAILS_STRING_HPP
+#ifndef PEEJAY_MATCHERS__STRING_HPP
+#define PEEJAY_MATCHERS__STRING_HPP
 
 #include <cassert>
 #include <cstdint>
@@ -233,4 +233,4 @@ template <backend Backend> bool string_matcher<Backend>::consume(parser_type &pa
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_DETAILS_STRING_HPP
+#endif  // PEEJAY_MATCHERS__STRING_HPP

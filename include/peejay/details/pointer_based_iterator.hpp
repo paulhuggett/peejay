@@ -61,8 +61,8 @@
 /// The pointer_based_iterator<> class is intended to resolve both of these
 /// "problems" by providing a random access iterator wrapper around a pointer.
 
-#ifndef PEEJAY_DETAILS_POINTER_BASED_ITERATOR_HPP
-#define PEEJAY_DETAILS_POINTER_BASED_ITERATOR_HPP
+#ifndef PEEJAY_DETAILS__POINTER_BASED_ITERATOR_HPP
+#define PEEJAY_DETAILS__POINTER_BASED_ITERATOR_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -203,4 +203,4 @@ template <typename T> pointer_based_iterator(T *) -> pointer_based_iterator<T>;
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS_POINTER_BASED_ITERATOR_HPP
+#endif  // PEEJAY_DETAILS__POINTER_BASED_ITERATOR_HPP

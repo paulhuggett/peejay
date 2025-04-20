@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS_CBII_HPP
-#define PEEJAY_DETAILS_CBII_HPP
+#ifndef PEEJAY_DETAILS__CBII_HPP
+#define PEEJAY_DETAILS__CBII_HPP
 
 #include <cstddef>
 #include <iterator>
@@ -92,4 +92,4 @@ checked_back_insert_iterator(Container *, bool *) -> checked_back_insert_iterato
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS_CBII_HPP
+#endif  // PEEJAY_DETAILS__CBII_HPP
