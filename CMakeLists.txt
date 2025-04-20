@@ -34,6 +34,7 @@ project (peejay VERSION 2.0 LANGUAGES CXX)
 
 include (CheckCXXCompilerFlag)
 include (CheckLinkerFlag)
+include (GNUInstallDirs)
 
 cmake_policy (SET CMP0077 NEW)
 option (WERROR "Compiler warnings are errors")
@@ -140,7 +141,7 @@ endfunction (setup_target)
 
 
 
-set (include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(peejay_matchers
   "${include_dir}/peejay/matchers/array.hpp"
   "${include_dir}/peejay/matchers/eof.hpp"
@@ -180,11 +181,27 @@ add_library(peejay STATIC
 source_group(public FILES ${peejay_public})
 source_group(matchers FILES ${peejay_matchers})
 source_group(details FILES ${peejay_details})
-
-target_include_directories(peejay PUBLIC "${include_dir}")
+target_include_directories(peejay PUBLIC
+  $<BUILD_INTERFACE:${include_dir}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
+)
 setup_target(peejay)
 add_executable(dump main.cpp)
 target_link_libraries(dump PUBLIC peejay)
+
+
+install(
+  TARGETS peejay
+  EXPORT peejay
+  PUBLIC_HEADER
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
+    COMPONENT peejay
+  LIBRARY COMPONENT peejay
+  ARCHIVE COMPONENT peejay
+  INCLUDES
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+add_dependencies (install-peejay peejay)
 
 
 # setup gtest
@@ -237,5 +254,40 @@ function(setup_gtest)
   endif()
 endfunction(setup_gtest)
 
-add_subdirectory(unit_tests)
-setup_gtest()
+
+
+if (PEEJAY_FUZZTEST)
+  set (FUZZTEST_FUZZING_MODE On)
+  include (FetchContent)
+  set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
+  message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
+  FetchContent_Declare (
+    fuzztest
+    GIT_REPOSITORY https://github.com/google/fuzztest.git
+    GIT_TAG ${FUZZTEST_REPO_BRANCH}
+  )
+  FetchContent_MakeAvailable (fuzztest)
+  enable_testing ()
+  include (GoogleTest)
+  fuzztest_setup_fuzzing_flags ()
+
+  foreach (target gtest gmock gmock_main gtest_main)
+    target_compile_features (${target} PUBLIC $<IF:$<BOOL:${PEEJAY_CXX17}>,cxx_std_17,cxx_std_20>)
+  endforeach()
+else ()
+  setup_gtest ()
+endif (PEEJAY_FUZZTEST)
+
+
+if (TARGET gtest)
+  add_subdirectory (unit_tests)
+endif ()
+#add_subdirectory (tools)
+#add_subdirectory (klee)
+
+include (GNUInstallDirs)
+install (
+  EXPORT peejay
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
+  NAMESPACE peejay::
+)
