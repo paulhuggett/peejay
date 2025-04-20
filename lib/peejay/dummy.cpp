@@ -29,5 +29,5 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-extern int dummy;
-int dummy;
+extern int const dummy;
+int const dummy = 0;
