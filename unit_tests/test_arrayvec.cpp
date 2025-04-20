@@ -107,13 +107,11 @@ public:
 
   [[nodiscard]] int get() const noexcept { return v_; }
 
+  friend std::ostream &operator<<(std::ostream &os, no_copy const &x) { return os << x.get(); }
+
 private:
   int v_ = 0;
 };
-
-std::ostream &operator<<(std::ostream &os, no_copy const &x) {
-  return os << x.get();
-}
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 class no_move {
@@ -129,13 +127,11 @@ public:
 
   [[nodiscard]] int get() const noexcept { return v_; }
 
+  friend std::ostream &operator<<(std::ostream &os, no_move const &x) { return os << x.get(); }
+
 private:
   int v_ = 0;
 };
-
-std::ostream &operator<<(std::ostream &os, no_move const &x) {
-  return os << x.get();
-}
 
 }  // end anonymous namespace
 
