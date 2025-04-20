@@ -85,7 +85,7 @@ public:
   }
 
   element(element const &rhs) = delete;
-  constexpr element(element &&rhs) noexcept : var_{std::move(rhs.var_)} {}
+  constexpr element(element &&rhs) noexcept = default;
   ~element() noexcept = default;
 
   element &operator=(element const &rhs) = delete;
