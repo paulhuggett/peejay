@@ -1,4 +1,4 @@
-//===- include/peejay/details/token.hpp -------------------*- mode: C++ -*-===//
+//===- include/peejay/matchers/token.hpp ------------------*- mode: C++ -*-===//
 //*  _        _               *
 //* | |_ ___ | | _____ _ __   *
 //* | __/ _ \| |/ / _ \ '_ \  *

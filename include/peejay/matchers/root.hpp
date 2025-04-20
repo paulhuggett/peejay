@@ -1,4 +1,4 @@
-//===- include/peejay/details/root.hpp --------------------*- mode: C++ -*-===//
+//===- include/peejay/matchers/root.hpp -------------------*- mode: C++ -*-===//
 //*                  _    *
 //*  _ __ ___   ___ | |_  *
 //* | '__/ _ \ / _ \| __| *

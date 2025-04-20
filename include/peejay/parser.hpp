@@ -317,14 +317,14 @@ template <backend Backend> decltype(auto) make_parser(Backend &&backend) {
 
 }  // end namespace peejay
 
-#include "peejay/details/array.hpp"
-#include "peejay/details/eof.hpp"
-#include "peejay/details/number.hpp"
-#include "peejay/details/object.hpp"
 #include "peejay/details/parser_impl.hpp"
-#include "peejay/details/root.hpp"
-#include "peejay/details/string.hpp"
-#include "peejay/details/token.hpp"
-#include "peejay/details/whitespace.hpp"
+#include "peejay/matchers/array.hpp"
+#include "peejay/matchers/eof.hpp"
+#include "peejay/matchers/number.hpp"
+#include "peejay/matchers/object.hpp"
+#include "peejay/matchers/root.hpp"
+#include "peejay/matchers/string.hpp"
+#include "peejay/matchers/token.hpp"
+#include "peejay/matchers/whitespace.hpp"
 
 #endif  // PEEJAY_DETAILS_PARSER_HPP

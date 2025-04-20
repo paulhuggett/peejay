@@ -141,23 +141,25 @@ endfunction (setup_target)
 
 
 set (include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(peejay_matchers
+  "${include_dir}/peejay/matchers/array.hpp"
+  "${include_dir}/peejay/matchers/eof.hpp"
+  "${include_dir}/peejay/matchers/number.hpp"
+  "${include_dir}/peejay/matchers/object.hpp"
+  "${include_dir}/peejay/matchers/root.hpp"
+  "${include_dir}/peejay/matchers/string.hpp"
+  "${include_dir}/peejay/matchers/token.hpp"
+  "${include_dir}/peejay/matchers/whitespace.hpp"
+)
 set(peejay_details
-  "${include_dir}/peejay/details/array.hpp"
   "${include_dir}/peejay/details/arrayvec.hpp"
   "${include_dir}/peejay/details/cbii.hpp"
-  "${include_dir}/peejay/details/eof.hpp"
-  "${include_dir}/peejay/details/number.hpp"
-  "${include_dir}/peejay/details/object.hpp"
   "${include_dir}/peejay/details/parser_impl.hpp"
   "${include_dir}/peejay/details/pointer_based_iterator.hpp"
   "${include_dir}/peejay/details/portab.hpp"
-  "${include_dir}/peejay/details/root.hpp"
   "${include_dir}/peejay/details/states.hpp"
-  "${include_dir}/peejay/details/string.hpp"
-  "${include_dir}/peejay/details/token.hpp"
   "${include_dir}/peejay/details/uinteger.hpp"
   "${include_dir}/peejay/details/type_list.hpp"
-  "${include_dir}/peejay/details/whitespace.hpp"
 )
 set(peejay_public
   "${include_dir}/peejay/concepts.hpp"
@@ -171,10 +173,12 @@ set(peejay_public
 
 add_library(peejay STATIC
   ${peejay_public}
+  ${peejay_matchers}
   ${peejay_details}
   lib/peejay/dummy.cpp
 )
 source_group(public FILES ${peejay_public})
+source_group(matchers FILES ${peejay_matchers})
 source_group(details FILES ${peejay_details})
 
 target_include_directories(peejay PUBLIC "${include_dir}")

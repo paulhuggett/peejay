@@ -32,6 +32,8 @@
 #ifndef PEEJAY_DETAILS_PARSER_IMPL_HPP
 #define PEEJAY_DETAILS_PARSER_IMPL_HPP
 
+#include "peejay/error.hpp"
+
 namespace peejay {
 
 // push

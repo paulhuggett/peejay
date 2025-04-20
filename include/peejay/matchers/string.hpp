@@ -1,4 +1,4 @@
-//===- include/peejay/details/string.hpp ------------------*- mode: C++ -*-===//
+//===- include/peejay/matchers/string.hpp -----------------*- mode: C++ -*-===//
 //*      _        _              *
 //*  ___| |_ _ __(_)_ __   __ _  *
 //* / __| __| '__| | '_ \ / _` | *

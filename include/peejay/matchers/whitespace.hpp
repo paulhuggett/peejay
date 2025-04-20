@@ -1,4 +1,4 @@
-//===- include/peejay/details/whitespace.hpp --------------*- mode: C++ -*-===//
+//===- include/peejay/matchers/whitespace.hpp -------------*- mode: C++ -*-===//
 //*           _     _ _                                  *
 //* __      _| |__ (_) |_ ___  ___ _ __   __ _  ___ ___  *
 //* \ \ /\ / / '_ \| | __/ _ \/ __| '_ \ / _` |/ __/ _ \ *

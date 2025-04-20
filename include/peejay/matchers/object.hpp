@@ -1,4 +1,4 @@
-//===- include/peejay/details/object.hpp ------------------*- mode: C++ -*-===//
+//===- include/peejay/matchers/object.hpp -----------------*- mode: C++ -*-===//
 //*        _     _           _    *
 //*   ___ | |__ (_) ___  ___| |_  *
 //*  / _ \| '_ \| |/ _ \/ __| __| *
@@ -33,8 +33,8 @@
 #define PEEJAY_DETAILS_OBJECT_HPP
 
 #include "peejay/concepts.hpp"
-#include "peejay/details/whitespace.hpp"
 #include "peejay/error.hpp"
+#include "peejay/matchers/whitespace.hpp"
 
 #ifndef PEEJAY_DETAILS_PARSER_HPP
 #include "peejay/parser.hpp"
