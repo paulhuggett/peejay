@@ -81,34 +81,6 @@ template <backend Backend> void parser<Backend>::pop() {
   }
 }
 
-// input
-// ~~~~~
-template <backend Backend>
-template <std::ranges::input_range Range>
-  requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename parser<Backend>::policies::char_type>)
-parser<Backend> &parser<Backend>::input(Range const &range) {
-  if (error_) {
-    return *this;
-  }
-  std::array<char32_t, 2> code_points{{0}};
-  auto first = std::begin(range);                         // NOLINT(llvm-qualified-auto, readability-qualified-auto)
-  auto const last = std::end(range);                      // NOLINT(llvm-qualified-auto, readability-qualified-auto)
-  auto const first_code_point = std::begin(code_points);  // NOLINT(llvm-qualified-auto, readability-qualified-auto)
-  while (first != last && !error_) {
-    auto const last_code_point = utf_(*first, first_code_point);
-    ++first;
-    std::for_each(first_code_point, last_code_point, [this](char32_t const code_point) {
-      if (!error_) {
-        this->consume_code_point(code_point);
-      }
-      if (!error_) {
-        this->advance_column();
-      }
-    });
-  }
-  return *this;
-}
-
 // eof
 // ~~~
 template <backend Backend> decltype(auto) parser<Backend>::eof() {
