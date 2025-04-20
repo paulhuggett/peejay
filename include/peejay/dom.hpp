@@ -50,7 +50,7 @@ namespace peejay::dom {
 
 struct null {
   // All instances of null compare equal.
-  constexpr bool operator==(null /*unused*/) const noexcept { return true; }
+  friend constexpr bool operator==(null /*unused*/, null /*unused*/) noexcept { return true; }
 };
 
 //*      _                   _    *
@@ -91,7 +91,30 @@ public:
   element &operator=(element const &rhs) = delete;
   constexpr element &operator=(element &&rhs) noexcept = default;
 
-  constexpr bool operator==(element const &other) const;
+  friend constexpr bool operator==(element const &lhs, element const &rhs) {
+    if (lhs.var_.index() != rhs.var_.index()) {
+      return false;
+    }
+    if (lhs.var_.valueless_by_exception() || rhs.var_.valueless_by_exception()) {
+      return false;
+    }
+    return std::visit(
+        [&rhs](auto const &lvar) {
+          using T = std::decay_t<decltype(lvar)>;
+          bool resl = false;
+          if constexpr (std::is_same_v<T, object_ptr>) {
+            return *lvar == *std::get<object_ptr>(rhs.var_);
+          } else if constexpr (std::is_same_v<T, array_ptr>) {
+            return *lvar == *std::get<array_ptr>(rhs.var_);
+          } else if constexpr (std::is_floating_point_v<T>) {
+            // resl = almost_equal(lhs, std::get<T>(rhs.var_));
+            return lvar == std::get<T>(rhs.var_);  // TODO: comparing floats: are you mad?
+          } else {
+            return lvar == std::get<T>(rhs.var_);
+          }
+        },
+        lhs.var_);
+  }
 
   /// Checks if the element holds a value of type \p MemberType.
   /// \tparam MemberType one of the possible member types. See element::member_types.
@@ -205,40 +228,6 @@ private:
   string key_;
   std::stack<element, arrayvec<element, Policies::max_stack_depth>> stack_;
 };
-
-//===----------------------------------------------------------------------===//
-//*      _                   _    *
-//*  ___| |___ _ __  ___ _ _| |_  *
-//* / -_) / -_) '  \/ -_) ' \  _| *
-//* \___|_\___|_|_|_\___|_||_\__| *
-//*                               *
-// operator==
-// ~~~~~~~~~~
-template <policy Policies> constexpr bool element<Policies>::operator==(element const &rhs) const {
-  if (var_.index() != rhs.var_.index()) {
-    return false;
-  }
-  if (var_.valueless_by_exception()) {
-    return true;
-  }
-  return std::visit(
-      [&rhs](auto const &lhs) {
-        using T = std::decay_t<decltype(lhs)>;
-        bool resl = false;
-        if constexpr (std::is_same_v<T, object_ptr>) {
-          resl = *lhs == *std::get<object_ptr>(rhs.var_);
-        } else if constexpr (std::is_same_v<T, array_ptr>) {
-          resl = *lhs == *std::get<array_ptr>(rhs.var_);
-        } else if constexpr (std::is_floating_point_v<T>) {
-          // resl = almost_equal(lhs, std::get<T>(rhs.var_));
-          resl = lhs == std::get<T>(rhs.var_);  // TODO: comparing floats: are you mad?
-        } else {
-          resl = lhs == std::get<T>(rhs.var_);
-        }
-        return resl;
-      },
-      var_);
-}
 
 //===----------------------------------------------------------------------===//
 //*     _            *
