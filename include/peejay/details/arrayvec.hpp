@@ -153,7 +153,7 @@ template <std::integral SizeType, typename... Args>
 void avbase<T>::init(pbi begin, SizeType *const size, SizeType count,
                      Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
   *size = 0;
-  auto const construct = [size, &args...](auto const &t) {
+  auto const construct = [size, &args...](auto &t) {
     std::construct_at(std::to_address(&t), args...);
     ++(*size);
   };
