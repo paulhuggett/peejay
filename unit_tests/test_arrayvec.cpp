@@ -632,6 +632,14 @@ public:
     return t_;
   }
 
+  friend constexpr bool operator==(trackee const &lhs, trackee const &rhs) {
+    return lhs.owner() == rhs.owner() && lhs.get() == rhs.get();
+  }
+  friend constexpr bool operator==(trackee const &lhs, int rhs) { return lhs.get() == rhs; }
+  friend constexpr bool operator==(int lhs, trackee const &rhs) { return lhs == rhs.get(); }
+
+  friend std::ostream &operator<<(std::ostream &os, trackee const &t) { return os << t.get(); }
+
 private:
   void record(int l, int r, action op) { t_->actions.emplace_back(l, r, op); }
 
@@ -639,20 +647,6 @@ private:
   tracker *t_;
   int v_;
 };
-
-constexpr bool operator==(trackee const &lhs, trackee const &rhs) {
-  return lhs.owner() == rhs.owner() && lhs.get() == rhs.get();
-}
-constexpr bool operator==(trackee const &lhs, int rhs) {
-  return lhs.get() == rhs;
-}
-constexpr bool operator==(int lhs, trackee const &rhs) {
-  return lhs == rhs.get();
-}
-
-static std::ostream &operator<<(std::ostream &os, trackee const &t) {
-  return os << t.get();
-}
 
 // NOLINTNEXTLINE
 TEST(ArrayVec, TrackedAssignCountSmaller) {
