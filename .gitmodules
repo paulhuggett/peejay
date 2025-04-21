@@ -1,12 +1,3 @@
 [submodule "googletest"]
 	path = googletest
 	url = https://github.com/google/googletest.git
-[submodule "systemtests/json5-tests"]
-	path = systemtests/json5-tests
-	url = https://github.com/json5/json5-tests.git
-[submodule "systemtests/JSONTestSuite"]
-	path = systemtests/JSONTestSuite
-	url = https://github.com/nst/JSONTestSuite.git
-[submodule "JSONTestSuite"]
-	path = JSONTestSuite
-	url = https://github.com/nst/JSONTestSuite.git
