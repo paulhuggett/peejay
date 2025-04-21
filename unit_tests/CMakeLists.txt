@@ -30,8 +30,17 @@
 # SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
 
-add_executable(
-  pj2-unittests
+include(CheckCXXSourceCompiles)
+
+check_cxx_source_compiles("int main() { __int128 v; }" PEEJAY_HAVE_INT128)
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/config.hpp"
+)
+
+add_executable(pj2-unittests
+  "${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/config.hpp"
   backtrace.cpp
   callbacks.hpp
   test_array.cpp
@@ -45,19 +54,18 @@ add_executable(
   test_pointer_based_iterator.cpp
   test_string.cpp
 )
-#setup_target(pj2-unittests)
 
 set(clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
 set(gcc_options)
 set(msvc_options -wd4702) # unreachable code.
 
-target_compile_options(
-  pj2-unittests
+target_compile_options(pj2-unittests
   PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
 )
+target_include_directories(pj2-unittests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(pj2-unittests PUBLIC peejay)
 
 if(PEEJAY_FUZZTEST)

@@ -35,6 +35,7 @@
 #include <string_view>
 
 #include "callbacks.hpp"
+#include "config.hpp"
 #include "peejay/json.hpp"
 #include "peejay/null.hpp"
 
@@ -459,3 +460,29 @@ TEST(NumberFloat, LongDouble) {
   input(p, u8"1.2"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
+
+#if PEEJAY_HAVE_INT128
+struct int128_policy : public peejay::default_policies {
+  using integer_type = __int128;
+};
+
+TEST(NumberInt128, LongDouble) {
+  using mocks = mock_json_callbacks<int128_policy::integer_type, int128_policy::float_type, int128_policy::char_type>;
+  StrictMock<mocks> callbacks;
+  callbacks_proxy<mocks, int128_policy> proxy{callbacks};
+
+  constexpr auto expected = []() -> __int128 {
+    __int128 v = 1234567890;
+    v *= 10000000000;
+    v += 1234567890;
+    v *= 10000000000;
+    v += 1234567890;
+    return v;
+  }();
+  EXPECT_CALL(callbacks, integer_value(expected)).Times(1);
+
+  auto p = make_parser(proxy);
+  p.input(u8"123456789012345678901234567890"sv).eof();
+  EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
+}
+#endif  // PEEJAY_HAVE_INT128

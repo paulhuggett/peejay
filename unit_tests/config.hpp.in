@@ -1,0 +1,1 @@
+#cmakedefine PEEJAY_HAVE_INT128 1
