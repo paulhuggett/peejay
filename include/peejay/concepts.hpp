@@ -73,52 +73,52 @@ concept policy = requires(Policy &&p) {
   requires character<typename Policy::char_type>;
 };
 
-template <typename T>
-concept backend = requires(T &&v) {
+template <typename Backend>
+concept backend = requires(Backend &&be) {
   /// There must be a member type "policies" which conforms to the "policy" concept.
-  requires policy<typename std::remove_reference_t<T>::policies>;
+  requires policy<typename std::remove_reference_t<Backend>::policies>;
 
   /// Returns the result of the parse. If the parse was successful, this
   /// function is called by parser<>::eof() which will return its result. The result type is defined by the backend
   /// object and not constrained here.
-  v.result();
+  be.result();
 
   /// Called when a JSON string has been parsed.
   {
-    v.string_value(std::basic_string_view<typename std::remove_reference_t<T>::policies::char_type>{})
+    be.string_value(std::basic_string_view<typename std::remove_reference_t<Backend>::policies::char_type>{})
   } -> std::convertible_to<std::error_code>;
   /// Called when an integer value has been parsed.
   {
-    v.integer_value(std::make_signed_t<typename std::remove_reference_t<T>::policies::integer_type>{})
+    be.integer_value(std::make_signed_t<typename std::remove_reference_t<Backend>::policies::integer_type>{})
   } -> std::convertible_to<std::error_code>;
-  /// Called when a floating-point value has been parsed.
   requires requires {
-    requires no_float<typename std::remove_reference_t<T>::policies::float_type> || requires {
+    requires no_float<typename std::remove_reference_t<Backend>::policies::float_type> || requires {
       {
-        v.float_value(typename std::remove_reference_t<T>::policies::float_type{})
+        /// Called when a floating-point value has been parsed.
+        be.float_value(typename std::remove_reference_t<Backend>::policies::float_type{})
       } -> std::convertible_to<std::error_code>;
     };
   };
   /// Called when a boolean value has been parsed
-  { v.boolean_value(bool{}) } -> std::convertible_to<std::error_code>;
+  { be.boolean_value(bool{}) } -> std::convertible_to<std::error_code>;
   /// Called when a null value has been parsed.
-  { v.null_value() } -> std::convertible_to<std::error_code>;
+  { be.null_value() } -> std::convertible_to<std::error_code>;
   /// Called to notify the start of an array. Subsequent event notifications are
   /// for members of this array until a matching call to end_array().
-  { v.begin_array() } -> std::convertible_to<std::error_code>;
+  { be.begin_array() } -> std::convertible_to<std::error_code>;
   /// Called indicate that an array has been completely parsed. This will always
   /// follow an earlier call to begin_array().
-  { v.end_array() } -> std::convertible_to<std::error_code>;
+  { be.end_array() } -> std::convertible_to<std::error_code>;
   /// Called to notify the start of an object. Subsequent event notifications
   /// are for members of this object until a matching call to end_object().
-  { v.begin_object() } -> std::convertible_to<std::error_code>;
+  { be.begin_object() } -> std::convertible_to<std::error_code>;
   /// Called when an object key string has been parsed.
   {
-    v.key(std::basic_string_view<typename std::remove_reference_t<T>::policies::char_type>{})
+    be.key(std::basic_string_view<typename std::remove_reference_t<Backend>::policies::char_type>{})
   } -> std::convertible_to<std::error_code>;
   /// Called to indicate that an object has been completely parsed. This will
   /// always follow an earlier call to begin_object().
-  { v.end_object() } -> std::convertible_to<std::error_code>;
+  { be.end_object() } -> std::convertible_to<std::error_code>;
 };
 
 }  // end namespace peejay
