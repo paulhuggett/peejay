@@ -12,4 +12,4 @@ JSON Parser for C++
 
 ## Introduction
 
-Peejay (PJ) is a state-machine based JSON parser for C++17 or later. (The silly name comes from the English pronunciation of P.J. which is short for **P**arse **J**SON.)
+Peejay (PJ) is a state-machine based JSON parser for C++20 or later. (The silly name comes from the English pronunciation of P.J. which is short for **P**arse **J**SON.)
