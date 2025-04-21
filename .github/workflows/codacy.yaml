@@ -3,24 +3,23 @@ on:
   push:
     branches:
       - main
-      - v2
   pull_request:
     types: [opened, synchronize, reopened]
 permissions:
   contents: read
 
 jobs:
-  tidy:
-    name: Tidy
-    runs-on: ubuntu-22.04
+  codacy:
+    name: clang-tidy to Codacy
+    runs-on: ubuntu-latest
     env:
-      BUILD: ./build
-      CLANG_VERSION: 16
+      BUILD_DIR: build_clangtidy
       CCT_VERSION: 1.3.8
-      CCT: codacy-clang-tidy-linux-1.3.8
+      CCT: codacy-clang-tidy-linux
       CODACY_URL: https://api.codacy.com
       # The path for clang-tidy output.
       CLANG_TIDY_OUT: /tmp/clang-tidy-out
+      CLANG_VERSION: 18
       # The path for codacy-clang-tidy output.
       CCT_OUT: /tmp/cct-out
 
@@ -32,37 +31,33 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          submodules: 'True'
-
-      - name: Install clang
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          # Force --yes to the end of the add-apt-repository command to
-          # prevent the llvm.sh script hanging.
-          sed -ie "/^add-apt-repository/ s/$/ --yes/" llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh "$CLANG_VERSION" all
-
-      - name: Download the codacy-clang-tidy tool
-        run: |
-          mkdir -p "$HOME/cct"
-          CCT_DOWNLOAD_URL="https://github.com/codacy/codacy-clang-tidy/releases/download/$CCT_VERSION/$CCT"
-          curl \
-            -L \
-            "$CCT_DOWNLOAD_URL" \
-            -o "$HOME/cct/$CCT"
-          chmod +x "$HOME/cct/$CCT"
+          submodules: True
 
       - name: Install Dependencies
         run: |
+          sudo apt-get update
           sudo apt-get install -y cmake
+
+      - name: Install Dependencies (LLVM)
+        uses: paulhuggett/install-llvm@ad897b4b1cf03f54c1218ec6d97a23ff4b10b870 # v1.0
+        with:
+          version: ${{ env.CLANG_VERSION }}
+          all: true
+
+      - name: Download the codacy-clang-tidy tool
+        env:
+          CCT_DOWNLOAD_URL: https://github.com/codacy/codacy-clang-tidy/releases/download/${{ env.CCT_VERSION }}/${{ env.CCT }}-${{ env.CCT_VERSION }}
+        run: |
+          mkdir -p "$HOME/cct"
+          curl -L "${CCT_DOWNLOAD_URL}" -o "$HOME/cct/${CCT}-${CCT_VERSION}"
+          chmod +x "$HOME/cct/${CCT}-${CCT_VERSION}"
 
       - name: Configure
         run: |
           rm -f -r "$BUILD"
           cmake                                            \
             -S .                                           \
-            -B "$BUILD"                                    \
+            -B "$BUILD_DIR"                                \
             -D CMAKE_BUILD_TYPE=Release                    \
             -D "CMAKE_CXX_COMPILER=clang++-$CLANG_VERSION" \
             -D "CMAKE_C_COMPILER=clang-$CLANG_VERSION"     \
@@ -70,22 +65,14 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          SRC="$(find . -name \*.\?pp -not -path "$BUILD*/*" -not -path ./klee/\* -not -path ./systemtests/\*)"
-          "clang-tidy-$CLANG_VERSION"          \
-            -p="$BUILD/compile_commands.json"  \
-            $SRC                               \
-            --                                 \
-            -std=c++20                         \
-            -I ./include                       \
-            -I ./googletest/googletest/include \
-            -I ./googletest/googlemock/include \
-            -D NDEBUG                          \
-          | tee "$CLANG_TIDY_OUT"
+          find . -name \*.\?pp -not -path "$BUILD_DIR*/*" -not -path ./klee/\* -not -path ./systemtests/\* -print0 | \
+          xargs -0 "clang-tidy-$CLANG_VERSION" "-p=$BUILD_DIR/compile_commands.json" | \
+          tee -a "${{ env.CLANG_TIDY_OUT }}"
 
       # Convert the clang-tidy output to a format that the Codacy API accepts
       - name: Run codacy-clang-tidy
         run: |
-          "$HOME/cct/$CCT" < "$CLANG_TIDY_OUT" > "$CCT_OUT"
+          "$HOME/cct/${CCT}-${CCT_VERSION}" < "$CLANG_TIDY_OUT" > "$CCT_OUT"
 
       - name: Upload to the Codacy server
         run: |
