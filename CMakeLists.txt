@@ -186,8 +186,6 @@ target_include_directories(peejay PUBLIC
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
 )
 setup_target(peejay)
-add_executable(dump main.cpp)
-target_link_libraries(dump PUBLIC peejay)
 
 
 install(
@@ -291,3 +289,22 @@ install (
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
   NAMESPACE peejay::
 )
+
+add_executable(dump main.cpp)
+target_link_libraries(dump PUBLIC peejay)
+if (TARGET gtest)
+  set (prelink_target dump)
+  set (test_target pj2-unittests)
+  set (out_xml "${CMAKE_BINARY_DIR}/${test_target}.xml")
+  add_custom_command (
+    TARGET ${prelink_target}
+    PRE_LINK
+    COMMAND "$<TARGET_FILE:${test_target}>" "--gtest_output=xml:${out_xml}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    COMMENT "Running PJ unit tests"
+    BYPRODUCTS ${out_xml}
+    VERBATIM
+  )
+  add_dependencies(dump ${test_target})
+endif ()
+
