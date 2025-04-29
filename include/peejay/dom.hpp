@@ -196,13 +196,13 @@ public:
   using array = element::array;
   using object = element::object;
 
-  dom() = default;
+  constexpr dom() = default;
   dom(dom const &) = delete;
-  dom(dom &&) noexcept = default;
+  constexpr dom(dom &&) noexcept = default;
   ~dom() noexcept = default;
 
   dom &operator=(dom const &) = delete;
-  dom &operator=(dom &&) noexcept = default;
+  constexpr dom &operator=(dom &&) noexcept = default;
 
   std::optional<element> result() noexcept;
 
@@ -244,7 +244,7 @@ template <policy Policies> std::optional<element<Policies>> dom<Policies>::resul
   // The stack will contain only the root element unless
   // there was an error which interrupted parsing.
   auto result = std::move(stack_.top());
-  // The stack in case any of the dom methods are subsequently called.
+  // Empty the stack in case any of the dom methods are subsequently called.
   while (!stack_.empty()) {
     stack_.pop();
   }
@@ -301,8 +301,7 @@ template <policy Policies> std::error_code dom<Policies>::end_object() {
 template <policy Policies>
 template <typename MemberType, typename... Args>
 std::error_code dom<Policies>::record(Args &&...args) {
-  using el = dom<Policies>::element;
-  return this->record(el::template make<MemberType>(std::forward<Args>(args)...));
+  return this->record(dom<Policies>::element::template make<MemberType>(std::forward<Args>(args)...));
 }
 
 template <policy Policies> std::error_code dom<Policies>::record(element &&el) {
