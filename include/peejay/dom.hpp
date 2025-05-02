@@ -53,16 +53,20 @@ struct null {
   friend constexpr bool operator==(null /*unused*/, null /*unused*/) noexcept { return true; }
 };
 
+template <typename T> struct is_unique_pointer : std::false_type {};
+
+template <typename T> struct is_unique_pointer<std::unique_ptr<T>> : std::true_type {};
+
 //*      _                   _    *
 //*  ___| |___ _ __  ___ _ _| |_  *
 //* / -_) / -_) '  \/ -_) ' \  _| *
 //* \___|_\___|_|_|_\___|_||_\__| *
 //*                               *
-template <policy Policies> class element {
+template <policy PJPolicies> class element {
 public:
-  using integer_type = typename Policies::integer_type;
-  using float_type = typename Policies::float_type;
-  using string = std::basic_string<typename Policies::char_type>;  // TODO: here be allocations
+  using integer_type = typename PJPolicies::integer_type;
+  using float_type = typename PJPolicies::float_type;
+  using string = std::basic_string<typename PJPolicies::char_type>;  // TODO: here be allocations
   using object = std::unordered_map<string, element>;              // TODO: here be allocations
   using array = std::vector<element>;                              // TODO: here be allocations
 
@@ -73,7 +77,7 @@ public:
   using member_types = type_list::concat<simple_types, composite_types>;
 
   template <typename MemberType, typename... Args>
-    requires(type_list::has_type_v<member_types, MemberType>)
+    requires type_list::has_type_v<member_types, MemberType>
   static constexpr element make(Args &&...args) {
     if constexpr (std::is_same_v<MemberType, array>) {
       return element{tag{}, std::in_place_type_t<array_ptr>{}, std::make_unique<array>(std::forward<Args>(args)...)};
@@ -92,35 +96,17 @@ public:
   constexpr element &operator=(element &&rhs) noexcept = default;
 
   friend constexpr bool operator==(element const &lhs, element const &rhs) {
-    if (lhs.var_.index() != rhs.var_.index()) {
+    if (auto const lindex = lhs.var_.index(); lindex == std::variant_npos || lindex != rhs.var_.index()) {
       return false;
     }
-    if (lhs.var_.valueless_by_exception() || rhs.var_.valueless_by_exception()) {
-      return false;
-    }
-    return std::visit(
-        [&rhs](auto const &lvar) {
-          using T = std::decay_t<decltype(lvar)>;
-          bool resl = false;
-          if constexpr (std::is_same_v<T, object_ptr>) {
-            return *lvar == *std::get<object_ptr>(rhs.var_);
-          } else if constexpr (std::is_same_v<T, array_ptr>) {
-            return *lvar == *std::get<array_ptr>(rhs.var_);
-          } else if constexpr (std::is_floating_point_v<T>) {
-            // resl = almost_equal(lhs, std::get<T>(rhs.var_));
-            return lvar == std::get<T>(rhs.var_);  // TODO: comparing floats: are you mad?
-          } else {
-            return lvar == std::get<T>(rhs.var_);
-          }
-        },
-        lhs.var_);
+    return variant_equal(lhs, rhs);
   }
 
   /// Checks if the element holds a value of type \p MemberType.
   /// \tparam MemberType one of the possible member types. See element::member_types.
   /// \returns true if the element currently holds the alternative MemberType, false otherwise.
   template <typename MemberType>
-    requires(type_list::has_type_v<member_types, MemberType>)
+    requires type_list::has_type_v<member_types, MemberType>
   constexpr bool holds() const noexcept {
     if constexpr (std::is_same_v<object, MemberType>) {
       return std::holds_alternative<object_ptr>(var_);
@@ -136,7 +122,7 @@ public:
   /// \tparam MemberType one of the possible member types. See element::member_types.
   /// \return A pointer to the value stored in the element or null pointer on error.
   template <typename MemberType>
-    requires(type_list::has_type_v<member_types, MemberType>)
+    requires type_list::has_type_v<member_types, MemberType>
   constexpr auto const *get_if() const noexcept {
     if constexpr (std::is_same_v<object, MemberType>) {
       auto const *const obj = std::get_if<object_ptr>(&var_);
@@ -150,7 +136,7 @@ public:
   }
 
   template <typename MemberType>
-    requires(type_list::has_type_v<member_types, MemberType>)
+    requires type_list::has_type_v<member_types, MemberType>
   constexpr auto *get_if() noexcept {
     if constexpr (std::is_same_v<object, MemberType>) {
       auto *const obj = std::get_if<object_ptr>(&var_);
@@ -170,10 +156,43 @@ private:
   static_assert(composite_types::size == internal_composite_types::size,
                 "There must be a one-to-one correspondence between internal and public composite types");
 
+  /// The 'tag' type is here simply to be the first argument for the forwarding constructor below. This
+  /// prevents that ctor from being too "greedy" and matching arbitrary argument lists.
   struct tag {};
   template <typename... Args> constexpr explicit element(tag, Args &&...args) : var_{std::forward<Args>(args)...} {}
 
   type_list::to_variant<type_list::concat<simple_types, internal_composite_types>> var_;
+
+  template <typename T> static constexpr bool equal(T const &lhs, T const &rhs) {
+    if constexpr (is_unique_pointer<T>::value) {
+      // This index refers to one of the pointer members so dereference before comparison.
+      assert(lhs != nullptr && rhs != nullptr);
+      return *lhs == *rhs;
+    } else {
+      return lhs == rhs;
+    }
+  }
+  template <std::size_t Index = 0> static constexpr bool variant_equal(element const &lhs, element const &rhs) {
+    assert(!lhs.var_.valueless_by_exception() && lhs.var_.index() == rhs.var_.index() && lhs.var_.index() >= Index);
+    if constexpr (Index >= std::variant_size_v<decltype(lhs.var_)>) {
+      return false;
+    } else {
+      if (lhs.var_.index() == Index) {
+        return equal(std::get<Index>(lhs.var_), std::get<Index>(rhs.var_));
+      }
+      return variant_equal<Index + 1>(lhs, rhs);
+    }
+  }
+};
+
+template <typename Policies>
+concept dom_policies = requires(Policies &&p) {
+  requires std::unsigned_integral<decltype(p.max_array_size)>;
+  requires std::unsigned_integral<decltype(p.max_object_size)>;
+};
+struct default_dom_policies {
+  static std::size_t const max_array_size = 50;
+  static std::size_t const max_object_size = 50;
 };
 
 //*     _            *
@@ -183,14 +202,14 @@ private:
 //*                  *
 /// \brief A PJ JSON parser backend which constructs a DOM using instances of
 ///   peejay::dom::element.
-template <policy Policies> class dom {
+template <policy PJPolicies = default_policies, dom_policies DOMPolicies = default_dom_policies> class dom {
 public:
-  using policies = std::remove_reference_t<Policies>;
-  using element = ::peejay::dom::element<Policies>;
+  using policies = std::remove_reference_t<PJPolicies>;
+  using element = ::peejay::dom::element<PJPolicies>;
 
-  using char_type = typename Policies::char_type;
-  using integer_type = typename Policies::integer_type;
-  using float_type = typename Policies::float_type;
+  using char_type = typename PJPolicies::char_type;
+  using integer_type = typename PJPolicies::integer_type;
+  using float_type = typename PJPolicies::float_type;
   using string_view = std::basic_string_view<char_type>;
   using string = element::string;
   using array = element::array;
@@ -226,8 +245,50 @@ private:
   std::error_code end_composite();
 
   string key_;
-  std::stack<element, arrayvec<element, Policies::max_stack_depth>> stack_;
+  std::stack<element, arrayvec<element, PJPolicies::max_stack_depth>> stack_;
 };
+
+enum class dom_error : int {
+  none,
+  nesting_too_deep,
+  too_many_array_members,
+  too_many_object_members,
+};
+
+// ******************
+// * error category *
+// ******************
+/// The error category object for PJ errors
+class dom_error_category final : public std::error_category {
+public:
+  /// Returns a pointer to a C string naming the error category.
+  ///
+  /// \returns The string "PJ JSON Parser".
+  constexpr char const *name() const noexcept override { return "PJ JSON Parser"; }
+
+  /// Returns a string describing the given error in the PJ category.
+  ///
+  /// \param err  An error number which should be one of the values in the
+  ///   peejay::error enumeration.
+  /// \returns  The message that corresponds to the error \p err.
+  constexpr std::string message(int const err) const override {
+    switch (static_cast<dom_error>(err)) {
+    case dom_error::none: return "none";
+    case dom_error::nesting_too_deep: return "DOM nesting too deep";
+    case dom_error::too_many_array_members: return "Too many array members for DOM";
+    case dom_error::too_many_object_members: return "Too many object members for DOM";
+    default: break;
+    }
+    return "unknown PJ DOM error code";
+  }
+};
+
+/// \param e  The error value to be converted.
+/// \returns  A std::error_code which encapsulates the error \p e.
+inline std::error_code make_error_code(dom_error const e) noexcept {
+  static dom_error_category const cat;
+  return {static_cast<int>(e), cat};
+}
 
 //===----------------------------------------------------------------------===//
 //*     _            *
@@ -237,7 +298,8 @@ private:
 //*                  *
 // result
 // ~~~~~~
-template <policy Policies> std::optional<element<Policies>> dom<Policies>::result() noexcept {
+template <policy PJPolicies, dom_policies DOMPolicies>
+std::optional<element<PJPolicies>> dom<PJPolicies, DOMPolicies>::result() noexcept {
   if (stack_.empty()) {
     return {std::nullopt};
   }
@@ -253,7 +315,8 @@ template <policy Policies> std::optional<element<Policies>> dom<Policies>::resul
 
 // float value
 // ~~~~~~~~~~~
-template <policy Policies> std::error_code dom<Policies>::float_value(float_type v) {
+template <policy PJPolicies, dom_policies DOMPolicies>
+std::error_code dom<PJPolicies, DOMPolicies>::float_value(float_type v) {
   if constexpr (std::same_as<float_type, no_float_type>) {
     // Floating point support is disabled so do nothing (the function will never be called anyway).
     return {};
@@ -264,13 +327,13 @@ template <policy Policies> std::error_code dom<Policies>::float_value(float_type
 
 // begin array
 // ~~~~~~~~~~~
-template <policy Policies> std::error_code dom<Policies>::begin_array() {
+template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_array() {
   stack_.emplace(element::template make<array>());
   return {};
 }
 // end array
 // ~~~~~~~~~
-template <policy Policies> std::error_code dom<Policies>::end_array() {
+template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_array() {
   assert(!stack_.empty() && stack_.top().template holds<array>() &&
          "The element on top of the stack must be of type array.");
   return this->end_composite();
@@ -278,19 +341,20 @@ template <policy Policies> std::error_code dom<Policies>::end_array() {
 
 // begin object
 // ~~~~~~~~~~~~
-template <policy Policies> std::error_code dom<Policies>::begin_object() {
+template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_object() {
   stack_.emplace(element::template make<object>());
   return {};
 }
 // key
 // ~~~
-template <policy Policies> std::error_code dom<Policies>::key(string_view const &s) {
+template <policy PJPolicies, dom_policies DOMPolicies>
+std::error_code dom<PJPolicies, DOMPolicies>::key(string_view const &s) {
   key_ = s;
   return {};
 }
 // end object
 // ~~~~~~~~~~
-template <policy Policies> std::error_code dom<Policies>::end_object() {
+template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_object() {
   assert(!stack_.empty() && stack_.top().template holds<object>() &&
          "The element on top of the stack must be of type object.");
   return this->end_composite();
@@ -298,15 +362,16 @@ template <policy Policies> std::error_code dom<Policies>::end_object() {
 
 // record
 // ~~~~~~
-template <policy Policies>
+template <policy PJPolicies, dom_policies DOMPolicies>
 template <typename MemberType, typename... Args>
-std::error_code dom<Policies>::record(Args &&...args) {
-  return this->record(dom<Policies>::element::template make<MemberType>(std::forward<Args>(args)...));
+std::error_code dom<PJPolicies, DOMPolicies>::record(Args &&...args) {
+  return this->record(element::template make<MemberType>(std::forward<Args>(args)...));
 }
 
-template <policy Policies> std::error_code dom<Policies>::record(element &&el) {
-  if (stack_.size() >= Policies::max_stack_depth) {
-    return error::nesting_too_deep;  // dom_nesting_too_deep;
+template <policy PJPolicies, dom_policies DOMPolicies>
+std::error_code dom<PJPolicies, DOMPolicies>::record(element &&el) {
+  if (stack_.size() >= PJPolicies::max_stack_depth) {
+    return make_error_code(dom_error::nesting_too_deep);
   }
   if (stack_.empty()) {
     stack_.emplace(std::move(el));
@@ -316,8 +381,14 @@ template <policy Policies> std::error_code dom<Policies>::record(element &&el) {
   auto &top = stack_.top();
   assert((top.template holds<array>() || top.template holds<object>()) && "Type of top-of-stack was unexpected");
   if (auto *const arr = top.template get_if<array>()) {
+    if (arr->size() >= DOMPolicies::max_array_size) {
+      return make_error_code(dom_error::too_many_array_members);
+    }
     arr->emplace_back(std::move(el));
   } else if (auto *const obj = top.template get_if<object>()) {
+    if (obj->size() >= DOMPolicies::max_object_size) {
+      return make_error_code(dom_error::too_many_object_members);
+    }
     obj->insert_or_assign(std::move(key_), std::move(el));
   } else {
     assert(false && "Type of top-of-stack was unexpected");
@@ -327,7 +398,7 @@ template <policy Policies> std::error_code dom<Policies>::record(element &&el) {
 
 // end composite
 // ~~~~~~~~~~~~~
-template <policy Policies> std::error_code dom<Policies>::end_composite() {
+template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_composite() {
   if (stack_.size() < 2) {
     return {};
   }
@@ -337,5 +408,7 @@ template <policy Policies> std::error_code dom<Policies>::end_composite() {
 }
 
 }  // end namespace peejay::dom
+
+template <> struct std::is_error_code_enum<peejay::dom::dom_error> : std::true_type {};
 
 #endif  // PEEJAY_DOM_HPP

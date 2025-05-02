@@ -247,6 +247,37 @@ TEST_F(Dom, DuplicateKeys) {
   ASSERT_NE(obj, nullptr);
   EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<string>(u8"c"s))));
 }
+struct char_policies : peejay::default_policies {
+  using char_type = char;
+};
+// DOM policies to limit the number of array members to 10.
+struct dom_array_10 : peejay::dom::default_dom_policies {
+  static std::size_t const max_array_size = 10;
+};
+// NOLINTNEXTLINE
+TEST(Dom2, LargeArray) {
+  auto p = make_parser(dom<char_policies, dom_array_10>{});
+  p.input("[1,1,1,1,1,1,1,1,1,1,"sv);
+  EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
+  p.input("1,"sv);
+  EXPECT_EQ(p.last_error(), make_error_code(peejay::dom::dom_error::too_many_array_members))
+      << "Real error was: " << p.last_error().message();
+}
+
+// DOM policies to limit the number of object members to 5.
+struct dom_object_10 : peejay::dom::default_dom_policies {
+  static std::size_t const max_object_size = 5;
+};
+// NOLINTNEXTLINE
+TEST(Dom2, HugeArray) {
+  auto p = make_parser(dom<char_policies, dom_object_10>{});
+  p.input(R"({"a":1, "b":2, "c":3, "d":4, "e":5,)"sv);
+  EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
+  p.input(R"("f":6,)"sv);
+  EXPECT_EQ(p.last_error(), make_error_code(peejay::dom::dom_error::too_many_object_members))
+      << "Real error was: " << p.last_error().message();
+}
+
 #if 0
 // NOLINTNEXTLINE
 TEST_F(Dom, ArrayStack) {
