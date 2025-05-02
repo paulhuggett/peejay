@@ -49,53 +49,46 @@ add_custom_target (
   USES_TERMINAL
 )
 
+# flag if available
+# ~~~~~~~~~~~~~~~~~
+# If the compiler accepts the command-line flag given by the
+# 'flag' parameter, 'result' is set to flag otherwise to an
+# empty string.
+function(flag_if_available flag result)
+  string(MAKE_C_IDENTIFIER "PEEJAY_HAS_${flag}" flag_var)
+  check_cxx_compiler_flag(${flag} ${flag_var})
+  if (${flag_var})
+    set(${result} ${flag})
+  else()
+    unset(${result})
+  endif()
+  return(PROPAGATE ${result})
+endfunction()
+
 
 # setup target
 # ~~~~~~~~~~~~
 function (setup_target target)
-  set (
-    clang_options
-    -Weverything
-    -Wno-c++14-extensions
-    -Wno-c++98-compat
-    -Wno-c++98-compat-pedantic
-    -Wno-c99-extensions
-    -Wno-documentation-unknown-command
-    -Wno-exit-time-destructors
-    -Wno-padded
-    -Wno-undef
-    -Wno-weak-vtables
-    -Wno-covered-switch-default
-  )
-  set (gcc_options -Wall -Wextra -pedantic -Wno-maybe-uninitialized)
-  set (
-    msvc_options
-    -W4 # enable lots of warnings
+  set(clang_options -Weverything -Wno-c++14-extensions -Wno-c++98-compat -Wno-c++98-compat-pedantic)
+  set(gcc_options -Wall -Wextra -pedantic -Wno-maybe-uninitialized)
+  set(msvc_options
+    -W4     # enable lots of warnings
     -wd4068 # unknown pragma
     -wd4324 # structure was padded due to alignment specifier
   )
   target_compile_features(${target} PUBLIC cxx_std_20)
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
-    check_cxx_compiler_flag (
-      -Wno-return-std-move-in-c++11 CLANG_RETURN_STD_MOVE_IN_CXX11
+    # Set flags that are not available in all versions of clang.
+    set(extra_flags
+      -Wno-c++20-compat
+      -Wno-c++2a-compat
+      -Wno-poison-system-directories
+      -Wno-unsafe-buffer-usage
     )
-    if (${CLANG_RETURN_STD_MOVE_IN_CXX11})
-      list (APPEND clang_options -Wno-return-std-move-in-c++11)
-    endif ()
-    check_cxx_compiler_flag (-Wno-c++20-compat CLANG_W_NO_CXX20_COMPAT)
-    if (${CLANG_W_NO_CXX20_COMPAT})
-      list (APPEND clang_options -Wno-c++20-compat)
-    endif ()
-    check_cxx_compiler_flag (-Wno-c++2a-compat CLANG_W_NO_CXX2A_COMPAT)
-    if (${CLANG_W_NO_CXX2A_COMPAT})
-      list (APPEND clang_options -Wno-c++2a-compat)
-    endif ()
-    check_cxx_compiler_flag (
-      -Wno-unsafe-buffer-usage CLANG_W_UNSAFE_BUFFER_USAGE
-    )
-    if (${CLANG_W_UNSAFE_BUFFER_USAGE})
-      list (APPEND clang_options -Wno-unsafe-buffer-usage)
-    endif ()
+    foreach(flag IN LISTS extra_flags)
+      flag_if_available(${flag} new_flag)
+      list(APPEND clang_options ${new_flag})
+    endforeach()
   endif ()
 
   if (WERROR)
@@ -113,7 +106,7 @@ function (setup_target target)
     target_compile_definitions (${target} PUBLIC PEEJAY_FUZZTEST=1)
   endif ()
 
-  target_compile_features (${target} PUBLIC $<IF:$<BOOL:${PEEJAY_CXX17}>,cxx_std_17,cxx_std_20>)
+  target_compile_features (${target} PUBLIC cxx_std_20)
   # Produce PIC so that PJ static libraries can be used in a shared library.
   set_target_properties (${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
 
@@ -270,7 +263,7 @@ if (PEEJAY_FUZZTEST)
   fuzztest_setup_fuzzing_flags ()
 
   foreach (target gtest gmock gmock_main gtest_main)
-    target_compile_features (${target} PUBLIC $<IF:$<BOOL:${PEEJAY_CXX17}>,cxx_std_17,cxx_std_20>)
+    target_compile_features (${target} PUBLIC cxx_std_20)
   endforeach()
 else ()
   setup_gtest ()
