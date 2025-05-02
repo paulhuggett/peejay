@@ -29,7 +29,7 @@
 #
 # SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.22)
 project (peejay VERSION 2.0 LANGUAGES CXX)
 
 include (CheckCXXCompilerFlag)
