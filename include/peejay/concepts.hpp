@@ -33,26 +33,31 @@
 #define PEEJAY_CONCEPTS_HPP
 
 #include <concepts>
-#include <optional>  // for nullopt_t
 #include <string_view>
 #include <system_error>
 #include <type_traits>
 
+#include "peejay/details/type_list.hpp"
+
 namespace peejay {
 
 /// A type used to indicate that floating point support is not enabled.
-using no_float_type = std::nullopt_t;
+struct no_float_type {};
 
+/// The concept no_float<T> is satisfied if T is no_float_type.
 template <typename T>
 concept no_float = std::same_as<T, no_float_type>;
 
+/// The concept character<T> is satisfied if T is one of the built-in character types that could be used to store UTF-8
+/// encoded text. char8_t is the preferred type, but plain char and its variants are allowed to support code that
+/// requires them.
 template <typename T>
-concept character =
-    std::same_as<T, char8_t> || std::same_as<T, char> || std::same_as<T, signed char> || std::same_as<T, unsigned char>;
+concept character = type_list::has_type_v<type_list::type_list<char8_t, char, signed char, unsigned char>, T>;
 
 template <typename Policy>
 concept policy = requires(Policy &&p) {
-  // The maximum length of a string.
+  /// The maximum length of a string allowed in the JSON input. A buffer of this size is allocated within the parser
+  /// instance.
   requires std::unsigned_integral<decltype(p.max_length)>;
 
   /// The maximum depth to which we allow the parse stack to grow. This should be given a value
@@ -69,6 +74,7 @@ concept policy = requires(Policy &&p) {
   /// numbers should not be allowed in the input or passed to the backend.
   requires std::floating_point<typename Policy::float_type> || no_float<typename Policy::float_type>;
 
+  /// The type used for integer values. The unsigned type will also be derived when necessary.
   requires std::signed_integral<typename Policy::integer_type>;
   requires character<typename Policy::char_type>;
 };
