@@ -38,7 +38,7 @@ namespace peejay::details {
 
 constexpr auto group_shift = 5U;
 
-enum class group {
+enum class group : std::uint8_t {
   whitespace = 0U << group_shift,
   eof = 1U << group_shift,
   root = 2U << group_shift,
@@ -49,10 +49,9 @@ enum class group {
   object = 7U << group_shift,
 };
 
-enum class state {
+enum class state : std::uint8_t {
+  /// Normal whitespace scanning.
   whitespace_start = to_underlying(group::whitespace),
-  /// Normal whitespace scanning. The "body" is the whitespace being consumed
-  whitespace_body,
   /// Handles the LF part of a Windows-style CR/LF pair
   whitespace_crlf,
 
@@ -62,7 +61,6 @@ enum class state {
   root_new_token,
 
   token_start = to_underlying(group::token),
-  token_last,
 
   number_start = to_underlying(group::number),
   number_integer_initial_digit,

@@ -68,8 +68,7 @@ public:
         return true;
       }
       [[fallthrough]];
-    case state::whitespace_start:
-    case state::whitespace_body: return whitespace_matcher::body(parser, c);
+    case state::whitespace_start: return whitespace_matcher::body(parser, c);
     default: unreachable(); break;
     }
     return true;
@@ -98,7 +97,7 @@ private:
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
   /// if the character shoud be treated as whitespace.
   static bool crlf(parser_type &parser, char32_t c) {
-    parser.stack_.top() = state::whitespace_body;
+    parser.stack_.top() = state::whitespace_start;
     if (c != '\n') {
       return false;
     }
