@@ -56,36 +56,30 @@ public:
       parser.set_error(error::expected_token);
       return true;
     }
+    auto const c = *ch;
     switch (parser.stack_.top()) {
     case state::root_start:
       parser.stack_.top() = state::root_new_token;
-      if (whitespace_matcher<Backend>::whitespace(parser, *ch)) {
+      if (whitespace_matcher<Backend>::whitespace(parser, c)) {
         return false;
       }
       [[fallthrough]];
     case state::root_new_token:
       parser.pop();
-      switch (*ch) {
-      case '-':
-      case '0':
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9': parser.push_number_matcher(); return false;
-      case '"': parser.push_string_matcher(false); return false;
-      case 't': parser.push_token_matcher(token::true_token); return false;
-      case 'f': parser.push_token_matcher(token::false_token); return false;
-      case 'n': parser.push_token_matcher(token::null_token); return false;
-      case '[': parser.push_array_matcher(); return false;
-      case '{': parser.push_object_matcher(); return false;
-      default: parser.set_error(error::expected_token); return true;
+      if (c == '-' || (c >= '0' && c <= '9')) {
+        parser.push_number_matcher();
+      } else {
+        switch (c) {
+        case '"': parser.push_string_matcher(false); break;
+        case 't': parser.push_token_matcher(token::true_token); break;
+        case 'f': parser.push_token_matcher(token::false_token); break;
+        case 'n': parser.push_token_matcher(token::null_token); break;
+        case '[': parser.push_array_matcher(); break;
+        case '{': parser.push_object_matcher(); break;
+        default: parser.set_error(error::expected_token); break;
+        }
       }
-      break;
+      return false;
     default: unreachable(); break;
     }
     unreachable();
