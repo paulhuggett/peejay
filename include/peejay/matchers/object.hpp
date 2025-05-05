@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_MATCHERS__OBJECT_HPP
-#define PEEJAY_MATCHERS__OBJECT_HPP
+#ifndef PEEJAY_MATCHERS_OBJECT_HPP
+#define PEEJAY_MATCHERS_OBJECT_HPP
 
 #include "peejay/concepts.hpp"
 #include "peejay/error.hpp"
@@ -147,4 +147,4 @@ template <backend Backend> void object_matcher<Backend>::end_object(parser_type 
 
 }  // namespace peejay::details
 
-#endif  // PEEJAY_MATCHERS__OBJECT_HPP
+#endif  // PEEJAY_MATCHERS_OBJECT_HPP

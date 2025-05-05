@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_MATCHERS__ROOT_HPP
-#define PEEJAY_MATCHERS__ROOT_HPP
+#ifndef PEEJAY_MATCHERS_ROOT_HPP
+#define PEEJAY_MATCHERS_ROOT_HPP
 
 #include <optional>
 
@@ -88,4 +88,4 @@ public:
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_MATCHERS__ROOT_HPP
+#endif  // PEEJAY_MATCHERS_ROOT_HPP

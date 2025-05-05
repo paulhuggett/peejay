@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS__STATES_HPP
-#define PEEJAY_DETAILS__STATES_HPP
+#ifndef PEEJAY_DETAILS_STATES_HPP
+#define PEEJAY_DETAILS_STATES_HPP
 
 #include "peejay/details/portab.hpp"
 
@@ -99,4 +99,4 @@ constexpr group get_group(state const s) noexcept {
 
 }  // namespace peejay::details
 
-#endif  // PEEJAY_DETAILS__STATES_HPP
+#endif  // PEEJAY_DETAILS_STATES_HPP

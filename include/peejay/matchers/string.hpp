@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_MATCHERS__STRING_HPP
-#define PEEJAY_MATCHERS__STRING_HPP
+#ifndef PEEJAY_MATCHERS_STRING_HPP
+#define PEEJAY_MATCHERS_STRING_HPP
 
 #include <cassert>
 #include <cstdint>
@@ -90,7 +90,6 @@ private:
   /// converted to UTF-8 and added to the output.
   uint_least16_t hex_ = 0U;
 
-  icubaby::t32_8 utf_32_to_8_;
   arrayvec<typename policies::char_type, policies::max_length> str_;
 };
 
@@ -108,20 +107,23 @@ template <backend Backend> bool string_matcher<Backend>::normal(parser_type &par
     parser.set_error(error::bad_unicode_code_point);
     return true;
   }
+  // The end of the string?
   if (code_point == '"') {
     auto &backend = parser.backend();
     auto const result = std::basic_string_view<typename policies::char_type>{str_.data(), str_.size()};
     parser.set_error(is_key_ ? backend.key(result) : backend.string_value(result));
-    // Consume the closing quote character.
+    // Remove this matcher and consume the character.
     parser.pop();
     return true;
   }
 
   // Remember this character.
+
+  icubaby::t32_8 utf_32_to_8;
   bool overflow = false;
-  auto it = utf_32_to_8_(code_point, checked_back_insert_iterator{&str_, &overflow});
-  utf_32_to_8_.end_cp(it);
-  if (!utf_32_to_8_.well_formed()) {
+  auto it = utf_32_to_8(code_point, checked_back_insert_iterator<decltype(str_), char8_t>{&str_, &overflow});
+  utf_32_to_8.end_cp(it);
+  if (!utf_32_to_8.well_formed()) {
     parser.set_error(error::bad_unicode_code_point);
     return true;
   }
@@ -151,8 +153,9 @@ template <backend Backend> void string_matcher<Backend>::escape(parser_type &par
   }
   // We're adding this code point to the output string and returning to the "normal" state.
   bool overflow = false;
-  utf_32_to_8_(code_point, checked_back_insert_iterator(&str_, &overflow));
-  assert(utf_32_to_8_.well_formed());
+  icubaby::t32_8 utf_32_to_8;
+  utf_32_to_8(code_point, checked_back_insert_iterator<decltype(str_), char8_t>(&str_, &overflow));
+  assert(utf_32_to_8.well_formed());
   if (overflow) {
     parser.set_error(error::string_too_long);
   } else {
@@ -186,7 +189,7 @@ template <backend Backend> void string_matcher<Backend>::hex(parser_type &parser
   }
   // Convert the UTF-16 code unit to UTF-8.
   bool overflow = false;
-  utf_16_to_8_(hex_, checked_back_insert_iterator(&str_, &overflow));
+  utf_16_to_8_(hex_, checked_back_insert_iterator<decltype(str_), char8_t>(&str_, &overflow));
   if (!utf_16_to_8_.well_formed()) {
     parser.set_error(error::bad_unicode_code_point);
     return;
@@ -233,4 +236,4 @@ template <backend Backend> bool string_matcher<Backend>::consume(parser_type &pa
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_MATCHERS__STRING_HPP
+#endif  // PEEJAY_MATCHERS_STRING_HPP

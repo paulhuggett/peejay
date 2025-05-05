@@ -32,6 +32,8 @@
 cmake_minimum_required(VERSION 3.22)
 project (peejay VERSION 2.0 LANGUAGES CXX)
 
+cmake_policy(VERSION 3.22)
+
 include (CheckCXXCompilerFlag)
 include (CheckLinkerFlag)
 include (GNUInstallDirs)
@@ -274,7 +276,7 @@ if (TARGET gtest)
   add_subdirectory (unit_tests)
 endif ()
 #add_subdirectory (tools)
-#add_subdirectory (klee)
+add_subdirectory(klee)
 
 include (GNUInstallDirs)
 install (

@@ -74,7 +74,7 @@ public:
   /// \param err  An error number which should be one of the values in the
   ///   peejay::error enumeration.
   /// \returns  The message that corresponds to the error \p err.
-  constexpr std::string message(int const err) const override {
+  std::string message(int const err) const override {
     switch (static_cast<error>(err)) {
     case error::none: return "none";
     case error::bad_unicode_code_point: return "bad UNICODE code point";

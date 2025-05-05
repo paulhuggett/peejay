@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS__PORTAB_HPP
-#define PEEJAY_DETAILS__PORTAB_HPP
+#ifndef PEEJAY_DETAILS_PORTAB_HPP
+#define PEEJAY_DETAILS_PORTAB_HPP
 
 #include <cassert>
 #include <type_traits>
@@ -84,4 +84,4 @@ template <typename Enum>
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS__PORTAB_HPP
+#endif  // PEEJAY_DETAILS_PORTAB_HPP

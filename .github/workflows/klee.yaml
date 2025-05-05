@@ -26,35 +26,6 @@ jobs:
       options: -u 0 --ulimit="stack=-1:-1"
 
     steps:
-      - name: Install NodeJS 20
-        run: |
-          set -o xtrace
-
-          # Get an updated Kitware public key.
-          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg > /dev/null
-          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | sudo tee /etc/apt/sources.list.d/kitware.list
-
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates curl gnupg wget
-
-          sudo mkdir -p /etc/apt/keyrings
-
-          # Download and import the Nodesource GPG key
-          curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-
-          # Create deb repository
-          NODE_MAJOR=20
-          echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-
-          # Run Update and Install
-          sudo apt-get update
-          sudo apt-get install -y nodejs
-
-      - name: Harden Runner
-        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
-        with:
-          egress-policy: audit
-
       - name: Get the Kitware APT repository signing key
         run: |
           wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
@@ -63,7 +34,14 @@ jobs:
         run: |
           CODENAME=$(lsb_release -c | sed -n -e 's/Codename:[[:space:]]*//gp')
           echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $CODENAME main" | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
-          sudo apt-get update
+
+      - name: Apt Update
+        run: sudo apt-get update
+
+      - name: Install NodeJS 20
+        run: |
+          set -o xtrace
+          sudo apt-get install -y nodejs
 
       - name: Install the kitware-archive-keyring package
         run: |
@@ -90,15 +68,13 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -G Ninja                           \
-                -B "${{ github.workspace }}/build" \
-                -S "$GITHUB_WORKSPACE"             \
-                -D CMAKE_BUILD_TYPE=Release        \
-                -D CMAKE_CXX_COMPILER=clang++      \
-                -D CMAKE_C_COMPILER=clang          \
-                -D PEEJAY_CXX17=Yes                \
-                -D LIBCXX=Yes                      \
-                -D WERROR=Yes
+          cmake -G Ninja                       \
+            -B "${{ github.workspace }}/build" \
+            -S "$GITHUB_WORKSPACE"             \
+            -D CMAKE_BUILD_TYPE=Release        \
+            -D CMAKE_CXX_COMPILER=clang++      \
+            -D CMAKE_C_COMPILER=clang          \
+            -D WERROR=Yes
 
       - name: KLEE Build
         run: cmake --build "${{ github.workspace }}/build" --target klee-build-all

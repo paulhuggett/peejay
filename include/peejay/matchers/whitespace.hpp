@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_MATCHERS__WHITESPACE_HPP
-#define PEEJAY_MATCHERS__WHITESPACE_HPP
+#ifndef PEEJAY_MATCHERS_WHITESPACE_HPP
+#define PEEJAY_MATCHERS_WHITESPACE_HPP
 
 #include "peejay/concepts.hpp"
 
@@ -112,4 +112,4 @@ template <backend Backend> bool whitespace(parser<Backend> &p, char32_t c) {
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_MATCHERS__WHITESPACE_HPP
+#endif  // PEEJAY_MATCHERS_WHITESPACE_HPP

@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_DETAILS__CBII_HPP
-#define PEEJAY_DETAILS__CBII_HPP
+#ifndef PEEJAY_DETAILS_CBII_HPP
+#define PEEJAY_DETAILS_CBII_HPP
 
 #include <cstddef>
 #include <iterator>
@@ -46,7 +46,7 @@ namespace peejay {
 /// The container's push_back() member function is called when the iterator
 /// (whether dereferenced or not) is assigned to unless an overflow is
 /// detected. Incrementing the checked_back_insert_iterator is a no-op.
-template <typename Container> class checked_back_insert_iterator {
+template <typename Container, typename OutputType = typename Container::value_type> class checked_back_insert_iterator {
 public:
   using iterator_category = std::output_iterator_tag;
   using value_type = void;
@@ -62,14 +62,15 @@ public:
     }
   }
 
-  constexpr checked_back_insert_iterator &operator=(typename Container::value_type const &value) {
+  constexpr checked_back_insert_iterator &operator=(OutputType const &value) {
     if (container_->size() >= container_->max_size()) {
       *overflow_ = true;
     } else {
-      container_->push_back(value);
+      container_->push_back(static_cast<typename Container::value_type>(value));
     }
     return *this;
   }
+#if 0
   constexpr checked_back_insert_iterator &operator=(typename Container::value_type &&value) {
     if (container_->size() >= container_->max_size()) {
       *overflow_ = true;
@@ -78,18 +79,19 @@ public:
     }
     return *this;
   }
-  constexpr checked_back_insert_iterator &operator*() { return *this; }
-  constexpr checked_back_insert_iterator &operator++() { return *this; }
-  constexpr checked_back_insert_iterator operator++(int) { return *this; }
+#endif
+  constexpr checked_back_insert_iterator &operator*() noexcept { return *this; }
+  constexpr checked_back_insert_iterator &operator++() noexcept { return *this; }
+  constexpr checked_back_insert_iterator operator++(int) noexcept { return *this; }
 
 private:
   Container *container_;
   bool *overflow_;
 };
 
-template <typename Container>
-checked_back_insert_iterator(Container *, bool *) -> checked_back_insert_iterator<Container>;
+template <typename Container, typename OutputType = typename Container::value_type>
+checked_back_insert_iterator(Container *, bool *) -> checked_back_insert_iterator<Container, OutputType>;
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS__CBII_HPP
+#endif  // PEEJAY_DETAILS_CBII_HPP

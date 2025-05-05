@@ -31,8 +31,8 @@
 //===----------------------------------------------------------------------===//
 /// \brief Provides a sequence container, arrayvec<>. that encapsulates
 ///   dynamically sized arrays within a fixed size container.
-#ifndef PEEJAY_DETAILS__ARRAYVEC_HPP
-#define PEEJAY_DETAILS__ARRAYVEC_HPP
+#ifndef PEEJAY_DETAILS_ARRAYVEC_HPP
+#define PEEJAY_DETAILS_ARRAYVEC_HPP
 
 #include <algorithm>
 #include <array>
@@ -1143,4 +1143,4 @@ auto arrayvec<T, Size>::emplace(const_iterator pos, Args &&...args) -> iterator 
 
 }  // end namespace peejay
 
-#endif  // PEEJAY_DETAILS__ARRAYVEC_HPP
+#endif  // PEEJAY_DETAILS_ARRAYVEC_HPP

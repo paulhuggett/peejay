@@ -37,7 +37,6 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
-#include <format>
 #include <optional>
 #include <ostream>
 #include <ranges>
@@ -46,6 +45,11 @@
 #include <system_error>
 #include <type_traits>
 #include <variant>
+#include <version>
+
+#if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
+#include <format>
+#endif
 
 #include "peejay/concepts.hpp"
 #include "peejay/details/arrayvec.hpp"
@@ -92,15 +96,22 @@ template <backend Backend> struct group_to_matcher<details::group::token, Backen
 template <backend Backend> struct group_to_matcher<details::group::whitespace, Backend> {
   using type = whitespace_matcher<Backend>;
 };
-template <details::group Group, backend Backend> using group_to_matcher_t = group_to_matcher<Group, Backend>::type;
+template <details::group Group, backend Backend>
+using group_to_matcher_t = typename group_to_matcher<Group, Backend>::type;
 
 }  // end namespace details
 
 template <bool> struct coord {};
 template <> struct coord<true> {
   friend constexpr std::strong_ordering operator<=>(coord const &, coord const &) noexcept = default;
+#if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
   friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) { return os << lhs.to_string(); }
   [[nodiscard]] std::string to_string() const { return std::format("({}:{})", line, column); }
+#else
+  friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) {
+    return os << '(' << lhs.line << ':' << lhs.column << ')';
+  }
+#endif
   unsigned line = 1U;
   unsigned column = 1U;
 };
@@ -128,8 +139,6 @@ struct default_policies {
 /// \tparam Backend   A type meeting the backend<> requirements. The backend
 ///                   instance's member functions are invoked as the parser
 ///                   encounters the contents of the input file.
-/// \tparam Policies  A type which contains a collection of policies which
-///                   control the behaviour of the parser.
 template <backend Backend> class parser {
 public:
   using policies = typename std::remove_reference_t<Backend>::policies;
@@ -159,7 +168,7 @@ public:
     auto const last = std::end(range);                      // NOLINT(llvm-qualified-auto, readability-qualified-auto)
     auto const first_code_point = std::begin(code_points);  // NOLINT(llvm-qualified-auto, readability-qualified-auto)
     while (first != last && !error_) {
-      auto const last_code_point = utf_(*first, first_code_point);
+      auto const last_code_point = utf_(static_cast<char8_t>(*first), first_code_point);
       ++first;
       std::for_each(first_code_point, last_code_point, [this](char32_t const code_point) {
         if (!error_) {

@@ -57,11 +57,11 @@ public:
     (void)sv;
     return {};
   }
-  static std::error_code integer_value(policies::integer_type v) noexcept {
+  static std::error_code integer_value(typename policies::integer_type v) noexcept {
     (void)v;
     return {};
   }
-  static std::error_code float_value(policies::float_type v) noexcept {
+  static std::error_code float_value(typename policies::float_type v) noexcept {
     (void)v;
     return {};
   }

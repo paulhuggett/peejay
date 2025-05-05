@@ -29,8 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#ifndef PEEJAY_MATCHERS__NUMBER_HPP
-#define PEEJAY_MATCHERS__NUMBER_HPP
+#ifndef PEEJAY_MATCHERS_NUMBER_HPP
+#define PEEJAY_MATCHERS_NUMBER_HPP
 
 #include <cassert>
 #include <limits>
@@ -399,4 +399,4 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
 
 }  // end namespace peejay::details
 
-#endif  // PEEJAY_MATCHERS__NUMBER_HPP
+#endif  // PEEJAY_MATCHERS_NUMBER_HPP
