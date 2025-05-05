@@ -302,4 +302,3 @@ if (TARGET gtest)
   )
   add_dependencies(dump ${test_target})
 endif ()
-

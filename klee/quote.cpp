@@ -1,10 +1,10 @@
-//===- unit_tests/config.hpp ------------------------------*- mode: C++ -*-===//
-//*                   __ _        *
-//*   ___ ___  _ __  / _(_) __ _  *
-//*  / __/ _ \| '_ \| |_| |/ _` | *
-//* | (_| (_) | | | |  _| | (_| | *
-//*  \___\___/|_| |_|_| |_|\__, | *
-//*                        |___/  *
+//===- klee/quote.cpp -----------------------------------------------------===//
+//*                    _        *
+//*   __ _ _   _  ___ | |_ ___  *
+//*  / _` | | | |/ _ \| __/ _ \ *
+//* | (_| | |_| | (_) | ||  __/ *
+//*  \__, |\__,_|\___/ \__\___| *
+//*     |_|                     *
 //===----------------------------------------------------------------------===//
 // Copyright © 2025 Paul Bowen-Huggett
 //
@@ -29,4 +29,23 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#cmakedefine PEEJAY_HAVE_INT128 1
+#include <array>
+#include <cstddef>
+
+#include "klee/klee.h"
+#include "peejay/null.hpp"
+
+struct policies : peejay::default_policies {
+  using char_type = char;
+};
+
+int main() {
+  static constexpr std::size_t const size = 5;
+  std::array<char, size> input;
+
+  klee_make_symbolic(input.data(), size, "input");
+  klee_assume(input[0] == '"');
+  klee_assume(input[size - 1] == '\0');
+
+  make_parser(peejay::null<policies>{}).input(input).eof();
+}
