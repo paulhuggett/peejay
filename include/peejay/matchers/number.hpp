@@ -61,12 +61,12 @@ template <typename FloatType, std::unsigned_integral UIntegerType> struct float_
   void add_digit(unsigned const digit) {
     assert(digit < 10);
     ++frac_digits;
-    frac_part = frac_part * 10.0 + digit;
+    frac_part = frac_part * static_cast<FloatType>(10.0) + digit;
   }
 
   unsigned frac_digits = 0;
-  FloatType frac_part = 0.0;
-  FloatType value = 0.0;
+  FloatType frac_part = static_cast<FloatType>(0.0);
+  FloatType value = FloatType{0.0};
   bool exp_is_negative = false;
   unsigned exponent = 0U;
 };
@@ -370,14 +370,16 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
     parser.set_error(error::number_out_of_range);
   } else {
     auto &fp_acc = std::get<float_accumulator<float_type, uinteger_type>>(acc_);
-    float_type xf = fp_acc.value + fp_acc.frac_part / (std::pow(10, fp_acc.frac_digits));
-    auto exp = std::pow(10, fp_acc.exponent);
+    auto xf = static_cast<float_type>(
+        fp_acc.value +
+        static_cast<float_type>(fp_acc.frac_part / static_cast<float_type>(std::pow(10, fp_acc.frac_digits))));
+    auto exp = static_cast<float_type>(std::pow(10, fp_acc.exponent));
     if (std::isinf(exp)) {
       parser.set_error(error::number_out_of_range);
       return;
     }
     if (fp_acc.exp_is_negative) {
-      exp = 1.0 / exp;
+      exp = static_cast<float_type>(1.0) / exp;
     }
 
     xf *= exp;
