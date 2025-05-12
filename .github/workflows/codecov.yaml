@@ -44,7 +44,7 @@ jobs:
 
       - name: Build
         run: |
-            cmake --build "$BUILD_DIR"
+            cmake --build "$BUILD_DIR" --verbose
 
       - name: Collect the Coverage
         run: |
