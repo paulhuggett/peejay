@@ -33,6 +33,7 @@
 #define PEEJAY_MATCHERS_NUMBER_HPP
 
 #include <cassert>
+#include <cmath>
 #include <limits>
 #include <optional>
 #include <type_traits>
@@ -387,8 +388,13 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
     // Is the fractional part of the float 0 (i.e. could we potentially cast it to
     // one of the integer types)? This enables us to treat input such as "1.0" in
     // the same way as "1".
-    if (std::rint(xf) == xf && xf >= static_cast<decltype(xf)>(std::numeric_limits<sinteger_type>::min()) &&
-        xf <= static_cast<decltype(xf)>(std::numeric_limits<sinteger_type>::max())) {
+    auto ipart = float_type{0};
+    std::modf(xf, &ipart);
+    auto const frac_part = std::abs(xf - ipart);
+
+    if (frac_part < std::numeric_limits<float_type>::epsilon() * 128 &&
+        xf >= static_cast<float_type>(std::numeric_limits<sinteger_type>::min()) &&
+        xf <= static_cast<float_type>(std::numeric_limits<sinteger_type>::max())) {
       parser.set_error(parser.backend().integer_value(static_cast<sinteger_type>(xf)));
       return;
     }

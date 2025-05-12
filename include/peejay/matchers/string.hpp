@@ -77,7 +77,7 @@ private:
   /// \p code_point  The Unicode code point to be added to the escape sequence.
   void escape(parser_type &parser, char32_t code_point);
 
-  /// Processes a code point as part of a hex escape sequence (\uXXXX) for a string.
+  /// Processes a code point as part of a hex escape sequence (uXXXX) for a string.
   /// \p parser  The owning parser instance.
   /// \p code_point  The Unicode code point to be added to the escape sequence.
   void hex(parser_type &parser, char32_t code_point);

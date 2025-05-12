@@ -66,7 +66,7 @@ protected:
 TEST_F(Number, Zero) {
   EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
   parser p{proxy_};
-  input(p, u8"0"sv).eof();
+  p.input(u8"0"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -74,7 +74,7 @@ TEST_F(Number, Zero) {
 TEST_F(Number, NegativeZero) {
   EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
   parser p{proxy_};
-  input(p, u8"-0"sv).eof();
+  p.input(u8"-0"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -82,7 +82,7 @@ TEST_F(Number, NegativeZero) {
 TEST_F(Number, One) {
   EXPECT_CALL(callbacks_, integer_value(1)).Times(1);
   parser p{proxy_};
-  input(p, u8" 1 "sv).eof();
+  p.input(u8" 1 "sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -90,7 +90,7 @@ TEST_F(Number, One) {
 TEST_F(Number, LeadingZero) {
   EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
   parser p{proxy_};
-  input(p, u8"01"sv).eof();
+  p.input(u8"01"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unexpected_extra_input))
       << "Real error was: " << p.last_error().message();
 }
@@ -99,14 +99,14 @@ TEST_F(Number, LeadingZero) {
 TEST_F(Number, MinusOne) {
   EXPECT_CALL(callbacks_, integer_value(-1)).Times(1);
   parser p{proxy_};
-  input(p, u8"-1"sv).eof();
+  p.input(u8"-1"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, LeadingPlusExtensionDisabled) {
   parser p{proxy_};
-  input(p, u8"+1"sv).eof();
+  p.input(u8"+1"sv).eof();
   EXPECT_TRUE(p.has_error());
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token)) << "Real error was: " << p.last_error().message();
 }
@@ -115,7 +115,7 @@ TEST_F(Number, LeadingPlusExtensionDisabled) {
 TEST_F(Number, MinusOneLeadingZero) {
   EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
   parser p{proxy_};
-  input(p, u8"-01"sv).eof();
+  p.input(u8"-01"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unexpected_extra_input))
       << "Real error was: " << p.last_error().message();
 }
@@ -123,13 +123,13 @@ TEST_F(Number, MinusOneLeadingZero) {
 // NOLINTNEXTLINE
 TEST_F(Number, MinusOnly) {
   parser p{proxy_};
-  input(p, u8"-"sv).eof();
+  p.input(u8"-"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_digits)) << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TEST_F(Number, MinusMinus) {
   parser p{proxy_};
-  input(p, u8"--"sv).eof();
+  p.input(u8"--"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
 }
@@ -138,7 +138,7 @@ TEST_F(Number, MinusMinus) {
 TEST_F(Number, AllDigits) {
   EXPECT_CALL(callbacks_, integer_value(INT64_C(1234567890))).Times(1);
   parser p{proxy_};
-  input(p, u8"1234567890"sv).eof();
+  p.input(u8"1234567890"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -146,7 +146,7 @@ TEST_F(Number, AllDigits) {
 TEST_F(Number, PositivePi) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(3.1415))).Times(1);
   parser p{proxy_};
-  input(p, u8"3.1415"sv).eof();
+  p.input(u8"3.1415"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -154,7 +154,7 @@ TEST_F(Number, PositivePi) {
 TEST_F(Number, NegativePi) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(-3.1415))).Times(1);
   parser p{proxy_};
-  input(p, u8"-3.1415"sv).eof();
+  p.input(u8"-3.1415"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -162,7 +162,7 @@ TEST_F(Number, NegativePi) {
 TEST_F(Number, PositiveZeroPoint45) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(0.45))).Times(1);
   parser p{proxy_};
-  input(p, u8"0.45"sv).eof();
+  p.input(u8"0.45"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -170,7 +170,7 @@ TEST_F(Number, PositiveZeroPoint45) {
 TEST_F(Number, NegativeZeroPoint45) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(-0.45))).Times(1);
   parser p{proxy_};
-  input(p, u8"-0.45"sv).eof();
+  p.input(u8"-0.45"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -178,7 +178,7 @@ TEST_F(Number, NegativeZeroPoint45) {
 TEST_F(Number, ZeroExp2) {
   EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
   parser p{proxy_};
-  input(p, u8"0e2"sv).eof();
+  p.input(u8"0e2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -186,7 +186,7 @@ TEST_F(Number, ZeroExp2) {
 TEST_F(Number, OneExp2) {
   EXPECT_CALL(callbacks_, integer_value(100)).Times(1);
   parser p{proxy_};
-  input(p, u8"1e2"sv).eof();
+  p.input(u8"1e2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -194,7 +194,7 @@ TEST_F(Number, OneExp2) {
 TEST_F(Number, OneExpPlus2) {
   EXPECT_CALL(callbacks_, integer_value(100)).Times(1);
   parser p{proxy_};
-  input(p, u8"1e+2"sv).eof();
+  p.input(u8"1e+2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -202,7 +202,7 @@ TEST_F(Number, OneExpPlus2) {
 TEST_F(Number, ZeroPointZeroOne) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
   parser p{proxy_};
-  input(p, u8"0.01"sv).eof();
+  p.input(u8"0.01"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -210,7 +210,7 @@ TEST_F(Number, ZeroPointZeroOne) {
 TEST_F(Number, OneExpMinus2) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
   parser p{proxy_};
-  input(p, u8"1e-2"sv).eof();
+  p.input(u8"1e-2"sv).eof();
   EXPECT_FALSE(p.has_error());
 }
 
@@ -218,7 +218,7 @@ TEST_F(Number, OneExpMinus2) {
 TEST_F(Number, OneCapitalExpMinus2) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
   parser p{proxy_};
-  input(p, u8"1E-2"sv).eof();
+  p.input(u8"1E-2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -226,7 +226,7 @@ TEST_F(Number, OneCapitalExpMinus2) {
 TEST_F(Number, OneExpMinusZero2) {
   EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
   parser p{proxy_};
-  input(p, u8"1E-02"sv).eof();
+  p.input(u8"1E-02"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -244,7 +244,7 @@ TEST_F(Number, IntegerMax) {
 // NOLINTNEXTLINE
 TEST_F(Number, RealPositiveOverflow) {
   parser p{proxy_};
-  input(p, u8"123123e100000"sv).eof();
+  p.input(u8"123123e100000"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }
@@ -252,7 +252,7 @@ TEST_F(Number, RealPositiveOverflow) {
 // NOLINTNEXTLINE
 TEST_F(Number, RealPositiveOverflow2) {
   parser p{proxy_};
-  input(p, u8"9999E999"sv).eof();
+  p.input(u8"9999E999"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }
@@ -260,7 +260,7 @@ TEST_F(Number, RealPositiveOverflow2) {
 // NOLINTNEXTLINE
 TEST_F(Number, RealUnderflow) {
   parser p = make_parser(proxy_);
-  input(p, u8"123e-10000000"sv).eof();
+  p.input(u8"123e-10000000"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }
@@ -268,7 +268,7 @@ TEST_F(Number, RealUnderflow) {
 // NOLINTNEXTLINE
 TEST_F(Number, BadExponentDigit) {
   parser p{proxy_};
-  input(p, u8"1Ex"sv).eof();
+  p.input(u8"1Ex"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
 }
@@ -276,21 +276,21 @@ TEST_F(Number, BadExponentDigit) {
 // NOLINTNEXTLINE
 TEST_F(Number, BadFractionDigit) {
   parser p{proxy_};
-  input(p, u8"1.."sv).eof();
+  p.input(u8"1.."sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TEST_F(Number, BadExponentAfterPoint) {
   parser p{proxy_};
-  input(p, u8"1.E"sv).eof();
+  p.input(u8"1.E"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TEST_F(Number, LeadingDotExtensionDisabled) {
   auto p = make_parser(proxy_);
-  input(p, u8".1234"sv).eof();
+  p.input(u8".1234"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token)) << "Real error was: " << p.last_error().message();
 }
 
@@ -418,7 +418,7 @@ TYPED_TEST(NumberLimits, IntegerPositiveOverflow) {
 // NOLINTNEXTLINE
 TYPED_TEST(NumberLimits, IntegerNegativeOverflow1) {
   auto p = make_parser(TestFixture::proxy_);
-  input(p, u8"-123123123123123123123123123123"sv).eof();
+  p.input(u8"-123123123123123123123123123123"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }
@@ -441,7 +441,7 @@ TEST(NumberFloat, NoFloat) {
   callbacks_proxy<mocks, no_float_policy> proxy{callbacks};
 
   auto p = make_parser(proxy);
-  input(p, u8"1.2"sv).eof();
+  p.input(u8"1.2"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }
@@ -457,7 +457,7 @@ TEST(NumberFloat, LongDouble) {
   EXPECT_CALL(callbacks, float_value(1.2L)).Times(1);
 
   auto p = make_parser(proxy);
-  input(p, u8"1.2"sv).eof();
+  p.input(u8"1.2"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
 

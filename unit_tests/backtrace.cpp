@@ -29,7 +29,7 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#if (__linux__ || __APPLE__)
+#if (defined(__linux__) && __linux__) || (defined(__APPLE__) && __APPLE__)
 
 #include <execinfo.h>
 #include <unistd.h>

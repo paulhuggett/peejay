@@ -31,14 +31,13 @@
 #===----------------------------------------------------------------------===//
 cmake_minimum_required(VERSION 3.22)
 project (peejay VERSION 2.0 LANGUAGES CXX)
-
-cmake_policy(VERSION 3.22)
+cmake_policy(SET CMP0077 NEW)
+cmake_policy(SET CMP0140 NEW)
 
 include (CheckCXXCompilerFlag)
 include (CheckLinkerFlag)
 include (GNUInstallDirs)
 
-cmake_policy (SET CMP0077 NEW)
 option (WERROR "Compiler warnings are errors")
 option (PEEJAY_COVERAGE "Generate Source-based Coverage")
 option (PEEJAY_FUZZTEST "Enable fuzztest")
@@ -67,11 +66,18 @@ function(flag_if_available flag result)
   return(PROPAGATE ${result})
 endfunction()
 
-
 # setup target
 # ~~~~~~~~~~~~
 function (setup_target target)
-  set(clang_options -Weverything -Wno-c++14-extensions -Wno-c++98-compat -Wno-c++98-compat-pedantic)
+  set(clang_options
+    -Weverything
+    -Wno-c++14-extensions
+    -Wno-c++98-compat
+    -Wno-c++98-compat-pedantic
+    -Wno-exit-time-destructors
+    -Wno-padded
+    -Wno-weak-vtables
+  )
   set(gcc_options -Wall -Wextra -pedantic -Wno-maybe-uninitialized)
   set(msvc_options
     -W4     # enable lots of warnings
@@ -84,8 +90,11 @@ function (setup_target target)
     set(extra_flags
       -Wno-c++20-compat
       -Wno-c++2a-compat
+      -Wno-covered-switch-default
+      -Wno-ctad-maybe-unsupported
       -Wno-poison-system-directories
       -Wno-unsafe-buffer-usage
+      -Wno-switch-enum
     )
     foreach(flag IN LISTS extra_flags)
       flag_if_available(${flag} new_flag)
@@ -216,19 +225,10 @@ function(setup_gtest)
     foreach(target gtest gmock gmock_main gtest_main)
       target_compile_features(${target} PUBLIC cxx_std_20)
 
-      if(CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
-        check_cxx_compiler_flag (
-          -Wno-implicit-int-float-conversion
-          CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION
-        )
-        if(${CLANG_W_NO_IMPLICIT_INT_FLOAT_CONVERSION})
-          list(APPEND gclang_options -Wno-implicit-int-float-conversion)
-        endif()
-      endif()
-
-      if(LIBCXX)
-        list (APPEND gclang_options -stdlib=libc++)
-      endif()
+      foreach(flag IN LISTS -Wno-implicit-int-float-conversion)
+        flag_if_available(${flag} new_flag)
+        list(APPEND gclang_options ${new_flag})
+      endforeach()
 
       target_compile_definitions(
         ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
@@ -246,7 +246,6 @@ function(setup_gtest)
     endforeach()
   endif()
 endfunction(setup_gtest)
-
 
 
 if (PEEJAY_FUZZTEST)
@@ -286,6 +285,7 @@ install (
 )
 
 add_executable(dump main.cpp)
+setup_target(dump)
 target_link_libraries(dump PUBLIC peejay)
 if (TARGET gtest)
   set (prelink_target dump)

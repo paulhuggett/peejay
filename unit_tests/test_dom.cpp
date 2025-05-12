@@ -265,12 +265,12 @@ TEST(Dom2, LargeArray) {
 }
 
 // DOM policies to limit the number of object members to 5.
-struct dom_object_10 : peejay::dom::default_dom_policies {
+struct dom_object_5 : peejay::dom::default_dom_policies {
   static std::size_t const max_object_size = 5;
 };
 // NOLINTNEXTLINE
 TEST(Dom2, HugeArray) {
-  auto p = make_parser(dom<char_policies, dom_object_10>{});
+  auto p = make_parser(dom<char_policies, dom_object_5>{});
   p.input(R"({"a":1, "b":2, "c":3, "d":4, "e":5,)"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
   p.input(R"("f":6,)"sv);
@@ -278,25 +278,22 @@ TEST(Dom2, HugeArray) {
       << "Real error was: " << p.last_error().message();
 }
 
-#if 0
+struct depth5 : peejay::default_policies {
+  using char_type = char;
+  static constexpr std::size_t max_stack_depth = 5;
+};
+
 // NOLINTNEXTLINE
-TEST_F(Dom, ArrayStack) {
-  dom<size_t{2}, peejay::default_policies> d;
-  EXPECT_FALSE(static_cast<bool>(d.begin_array()));
-  EXPECT_FALSE(static_cast<bool>(d.begin_array()));
+TEST(Dom2, NestingTooDeep) {
+  auto p = make_parser(dom<depth5>{});
+  p.input(R"({"a":{"b":{"c":1}}})"sv);
+  EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 
-  auto const err = make_error_code(error::nesting_too_deep); // dom_nesting_too_deep
-  EXPECT_EQ(d.string_value(u8"string"sv), err);
-  EXPECT_EQ(d.integer_value(std::int64_t{37}), err);
-  EXPECT_EQ(d.float_value(37.9), err);
-  EXPECT_EQ(d.boolean_value(true), err);
-  EXPECT_EQ(d.null_value(), err);
-
-  EXPECT_EQ(d.begin_array(), err);
-  EXPECT_EQ(d.begin_object(), err);
-  EXPECT_EQ(d.key(u8"key"sv), err);
+  auto p2 = make_parser(dom<depth5>{});
+  p2.input(R"({"a":{"b":{"c":{"d":1}}}})"sv);
+  EXPECT_EQ(p2.last_error(), make_error_code(peejay::error::nesting_too_deep))
+      << "Real error was: " << p.last_error().message();
 }
-#endif
 
 // NOLINTNEXTLINE
 TEST(Element, EqObject) {

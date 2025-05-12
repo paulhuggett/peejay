@@ -54,9 +54,10 @@ add_executable(pj2-unittests
   test_pointer_based_iterator.cpp
   test_string.cpp
 )
+setup_target(pj2-unittests)
 
 set(clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
-set(gcc_options)
+set(gcc_options -Wno-pedantic)
 set(msvc_options -wd4702) # unreachable code.
 
 target_compile_options(pj2-unittests

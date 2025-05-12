@@ -54,8 +54,8 @@ struct null {
 };
 
 template <typename T> struct is_unique_pointer : std::false_type {};
-
 template <typename T> struct is_unique_pointer<std::unique_ptr<T>> : std::true_type {};
+template <typename T> static constexpr inline bool is_unique_pointer_v = is_unique_pointer<T>::value;
 
 //*      _                   _    *
 //*  ___| |___ _ __  ___ _ _| |_  *
@@ -156,22 +156,40 @@ private:
   static_assert(composite_types::size == internal_composite_types::size,
                 "There must be a one-to-one correspondence between internal and public composite types");
 
+  type_list::to_variant<type_list::concat<simple_types, internal_composite_types>> var_;
+
   /// The 'tag' type is here simply to be the first argument for the forwarding constructor below. This
   /// prevents that ctor from being too "greedy" and matching arbitrary argument lists.
   struct tag {};
   template <typename... Args> constexpr explicit element(tag, Args &&...args) : var_{std::forward<Args>(args)...} {}
 
-  type_list::to_variant<type_list::concat<simple_types, internal_composite_types>> var_;
-
   template <typename T> static constexpr bool equal(T const &lhs, T const &rhs) {
-    if constexpr (is_unique_pointer<T>::value) {
+    if constexpr (is_unique_pointer_v<T>) {
       // This index refers to one of the pointer members so dereference before comparison.
       assert(lhs != nullptr && rhs != nullptr);
+      // TODO(paul): This is a recursive comparison.
       return *lhs == *rhs;
     } else {
       return lhs == rhs;
     }
   }
+
+  static constexpr bool equal(float_type a, float_type b) noexcept {
+    // This function is based on the code in this StackOverflow posting <https://stackoverflow.com/a/32334103>.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wfloat-equal"
+    // These defaults are arbitrary.
+    constexpr float_type epsilon = 16 * std::numeric_limits<float_type>::epsilon();
+    static_assert(epsilon < float_type{1.0});
+    constexpr float_type abs_th = std::numeric_limits<float_type>::min();
+    if (a == b) {
+      return true;
+    }
+    auto const norm = std::min((std::abs(a) + std::abs(b)), std::numeric_limits<float_type>::max());
+    return std::abs(a - b) < std::max(abs_th, epsilon * norm);
+#pragma clang diagnostic pop
+  }
+
   template <std::size_t Index = 0> static constexpr bool variant_equal(element const &lhs, element const &rhs) {
     assert(!lhs.var_.valueless_by_exception() && lhs.var_.index() == rhs.var_.index() && lhs.var_.index() >= Index);
     if constexpr (Index >= std::variant_size_v<decltype(lhs.var_)>) {
@@ -250,7 +268,6 @@ private:
 
 enum class dom_error : int {
   none,
-  nesting_too_deep,
   too_many_array_members,
   too_many_object_members,
 };
@@ -274,7 +291,6 @@ public:
   constexpr std::string message(int const err) const override {
     switch (static_cast<dom_error>(err)) {
     case dom_error::none: return "none";
-    case dom_error::nesting_too_deep: return "DOM nesting too deep";
     case dom_error::too_many_array_members: return "Too many array members for DOM";
     case dom_error::too_many_object_members: return "Too many object members for DOM";
     default: break;
@@ -370,9 +386,7 @@ std::error_code dom<PJPolicies, DOMPolicies>::record(Args &&...args) {
 
 template <policy PJPolicies, dom_policies DOMPolicies>
 std::error_code dom<PJPolicies, DOMPolicies>::record(element &&el) {
-  if (stack_.size() >= PJPolicies::max_stack_depth) {
-    return make_error_code(dom_error::nesting_too_deep);
-  }
+  assert(stack_.size() < PJPolicies::max_stack_depth);
   if (stack_.empty()) {
     stack_.emplace(std::move(el));
     return {};
