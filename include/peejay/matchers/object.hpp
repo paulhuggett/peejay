@@ -66,14 +66,16 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
   auto const c = *ch;
   switch (parser.stack_.top()) {
   case state::object_start:
-    assert(c == '{');
-    parser.stack_.top() = state::object_first_key;
     if (parser.set_error(parser.backend().begin_object())) {
       break;
     }
-    parser.push_whitespace_matcher();
-    return true;
+    parser.set_state(state::object_first_key);
+    [[fallthrough]];
   case state::object_first_key:
+    // Consume any whitespace before a brace/property name.
+    if (whitespace(parser, c)) {
+      return false;
+    }
     // We allow either a closing brace (to end the object) or a property name.
     if (c == '}') {
       object_matcher::end_object(parser);
@@ -87,13 +89,13 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
       return false;
     }
     if (c == ':') {
-      parser.stack_.top() = state::object_value;
+      parser.set_state(state::object_value);
     } else {
       parser.set_error(error::expected_colon);
     }
     break;
   case state::object_value:
-    parser.stack_.top() = state::object_comma;
+    parser.set_state(state::object_comma);
     parser.push_root_matcher();
     return false;
   case state::object_comma: return object_matcher::comma(parser, c);
@@ -107,12 +109,12 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
 // ~~~
 /// Match a property name then expect a colon.
 template <backend Backend> bool object_matcher<Backend>::key(parser_type &parser, char32_t code_point) {
-  parser.stack_.top() = state::object_colon;
-  if (code_point == '"') {
-    parser.push_string_matcher(true);
-    return false;
+  parser.set_state(state::object_colon);
+  if (code_point != '"') {
+    parser.set_error(error::expected_object_key);
+  } else {
+    parser.push_string_matcher(/*object_key=*/true);
   }
-  parser.set_error(error::expected_object_key);
   return true;
 }
 
@@ -125,7 +127,7 @@ template <backend Backend> bool object_matcher<Backend>::comma(parser_type &pars
   }
   if (code_point == ',') {
     // Strictly conforming JSON requires a property name following a comma.
-    parser.stack_.top() = state::object_key;
+    parser.set_state(state::object_key);
     // Consume the comma and any whitespace before the close brace or property
     // name.
     parser.push_whitespace_matcher();

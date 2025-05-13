@@ -70,7 +70,7 @@ TEST_F(String, SimpleDoubleQuote) {
   EXPECT_CALL(callbacks_, string_value(u8"hello"sv)).Times(1);
 
   auto p = make_parser(proxy_);
-  input(p, u8R"("hello")"sv).eof();
+  p.input(u8R"("hello")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
   EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 8U}));

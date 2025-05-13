@@ -56,14 +56,25 @@ protected:
 }  // end anonymous namespace
 
 // NOLINTNEXTLINE
+TEST_F(JsonArray, EmptyNoWhitespace) {
+  InSequence const _;
+  EXPECT_CALL(callbacks_, begin_array()).Times(1);
+  EXPECT_CALL(callbacks_, end_array()).Times(1);
+
+  auto p = make_parser(proxy_);
+  p.input(u8"[]"sv).eof();
+  EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
 TEST_F(JsonArray, Empty) {
   InSequence const _;
   EXPECT_CALL(callbacks_, begin_array()).Times(1);
   EXPECT_CALL(callbacks_, end_array()).Times(1);
 
   auto p = make_parser(proxy_);
-  input(p, u8"[\n]\n"sv).eof();
-  EXPECT_FALSE(p.last_error()) << "Expected the parse to succeed";
+  p.input(u8"[\n]\n"sv).eof();
+  EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
   EXPECT_EQ(p.pos(), (coord{.line = 3U, .column = 1U}));
   EXPECT_EQ(p.input_pos(), (coord{.line = 3U, .column = 1U}));
 }
@@ -110,7 +121,7 @@ TEST_F(JsonArray, SingleStringElement) {
   EXPECT_CALL(callbacks_, end_array()).Times(1);
 
   auto p = make_parser(proxy_);
-  input(p, u8"[\"a\"]"sv);
+  p.input(u8"[\"a\"]"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
 
@@ -262,6 +273,28 @@ TEST_F(JsonArray, Nested2) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, TooDeeplyNested) {
   parser p{json_out_callbacks{}};
-  input(p, std::u8string(std::string::size_type{200}, '[')).eof();
+  p.input(std::u8string(std::string::size_type{200}, '[')).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::nesting_too_deep)) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
+TEST_F(JsonArray, BeginFails) {
+  using testing::Return;
+  auto const erc = make_error_code(std::errc::file_exists);
+  EXPECT_CALL(callbacks_, begin_array()).WillOnce(Return(erc));
+
+  auto p = make_parser(proxy_);
+  p.input(u8"[]"sv).eof();
+  EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
+TEST_F(JsonArray, BeginFails2) {
+  using testing::Return;
+  auto const erc = make_error_code(std::errc::file_exists);
+  EXPECT_CALL(callbacks_, begin_array()).WillOnce(Return(erc));
+
+  auto p = make_parser(proxy_);
+  p.input(u8"[ 1 ]"sv).eof();
+  EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }

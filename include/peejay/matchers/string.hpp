@@ -81,7 +81,7 @@ private:
   /// \p parser  The owning parser instance.
   /// \p code_point  The Unicode code point to be added to the escape sequence.
   void hex(parser_type &parser, char32_t code_point);
-
+  //// True if this string is an object's property name, false otherwise.
   bool is_key_;
   /// UTF-16 to UTF-8 converter.
   icubaby::t16_8 utf_16_to_8_;
@@ -102,7 +102,8 @@ template <backend Backend> bool string_matcher<Backend>::normal(parser_type &par
   }
   // Check whether:
   // a) We processed part of a Unicode UTF-16 code point (in which case the rest needs to be expressed using the '\u'
-  // escape. b) Control characters U+0000 through U+001F MUST be escaped.
+  //   escape).
+  // b) Control characters U+0000 through U+001F MUST be escaped.
   if (utf_16_to_8_.partial() || code_point <= 0x1F) {
     parser.set_error(error::bad_unicode_code_point);
     return true;
@@ -123,13 +124,11 @@ template <backend Backend> bool string_matcher<Backend>::normal(parser_type &par
   bool overflow = false;
   auto it = utf_32_to_8(code_point, checked_back_insert_iterator<decltype(str_), char8_t>{&str_, &overflow});
   utf_32_to_8.end_cp(it);
+
   if (!utf_32_to_8.well_formed()) {
     parser.set_error(error::bad_unicode_code_point);
-    return true;
-  }
-  if (overflow) {
+  } else if (overflow) {
     parser.set_error(error::string_too_long);
-    return true;
   }
   return true;
 }
@@ -212,15 +211,10 @@ template <backend Backend> bool string_matcher<Backend>::consume(parser_type &pa
   auto const c = *ch;
   bool match = true;
   switch (parser.stack_.top()) {
-  // Matches the opening quote.
   case state::string_start:
     str_.clear();
-    if (c == '"') {
-      parser.set_state(state::string_normal_char);
-    } else {
-      parser.set_error(error::expected_token);
-    }
-    break;
+    parser.set_state(state::string_normal_char);
+    [[fallthrough]];
   case state::string_normal_char: match = this->normal(parser, c); break;
   case state::string_escape: this->escape(parser, c); break;
 

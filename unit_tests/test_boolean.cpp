@@ -57,7 +57,7 @@ TEST_F(JsonBoolean, True) {
 
   auto p = peejay::make_parser(proxy_);
   p.input(u8"true"sv).eof();
-  EXPECT_FALSE(p.has_error());
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE

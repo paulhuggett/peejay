@@ -58,19 +58,22 @@ public:
     }
     auto const c = *ch;
     switch (parser.stack_.top()) {
-    case state::array_start: assert(c == '['); return start(parser);
-    case state::array_first_object:
-      // Match this character and consume whitespace before the object (or close
-      // bracket).
+    case state::array_start:
+      if (parser.set_error(parser.backend().begin_array())) {
+        break;
+      }
+      parser.set_state(state::array_first_object);
       if (whitespace(parser, c)) {
         return false;
       }
+      [[fallthrough]];
+    case state::array_first_object:
       if (c == ']') {
         return end_array(parser);
       }
       [[fallthrough]];
     case state::array_object:
-      parser.stack_.top() = state::array_comma;
+      parser.set_state(state::array_comma);
       parser.push_root_matcher();
       return false;
     case state::array_comma: return comma(parser, c);
@@ -80,31 +83,21 @@ public:
   }
 
 private:
-  static bool start(parser<Backend> &parser) {
-    if (parser.set_error(parser.backend().begin_array())) {
-      return true;
-    }
-    parser.stack_.top() = state::array_first_object;
-    // Consume the open bracket.
-    return true;
-  }
   static bool end_array(parser<Backend> &parser) {
     parser.set_error(parser.backend().end_array());
     parser.pop();
     return true;
   }
   static bool comma(parser<Backend> &parser, char32_t c) {
+    // There can be whitespace between the end of an object and a subsequent comma or right square bracket.
     if (whitespace(parser, c)) {
       return false;
     }
-    if (c == ',') {
-      parser.stack_.top() = state::array_object;
-      return true;
+    switch (c) {
+    case ',': parser.set_state(state::array_object); break;
+    case ']': end_array(parser); break;
+    default: parser.set_error(error::expected_array_member); break;
     }
-    if (c == ']') {
-      return end_array(parser);
-    }
-    parser.set_error(error::expected_array_member);
     return true;
   }
 };

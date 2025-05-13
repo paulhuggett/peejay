@@ -49,9 +49,9 @@ public:
   /// \param t  Which of the tokens is to be consumed.
   constexpr explicit token_matcher(token const t) noexcept : token_{t} {
     switch (t) {
-    case token::true_token: text_ = u8"true"; break;
-    case token::false_token: text_ = u8"false"; break;
-    case token::null_token: text_ = u8"null"; break;
+    case token::true_token: text_ = u8"rue"; break;
+    case token::false_token: text_ = u8"alse"; break;
+    case token::null_token: text_ = u8"ull"; break;
     default: unreachable(); break;
     }
   }

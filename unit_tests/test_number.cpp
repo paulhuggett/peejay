@@ -87,6 +87,14 @@ TEST_F(Number, One) {
 }
 
 // NOLINTNEXTLINE
+TEST_F(Number, Ten) {
+  EXPECT_CALL(callbacks_, integer_value(10)).Times(1);
+  parser p{proxy_};
+  p.input(u8"10"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
 TEST_F(Number, LeadingZero) {
   EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
   parser p{proxy_};

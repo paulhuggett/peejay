@@ -57,10 +57,11 @@ public:
       return true;
     }
     auto const c = *ch;
+    bool match = false;
     switch (parser.stack_.top()) {
     case state::root_start:
-      parser.stack_.top() = state::root_new_token;
-      if (whitespace_matcher<Backend>::whitespace(parser, c)) {
+      parser.set_state(state::root_new_token);
+      if (whitespace(parser, c)) {
         return false;
       }
       [[fallthrough]];
@@ -68,9 +69,10 @@ public:
       parser.pop();
       if (c == '-' || (c >= '0' && c <= '9')) {
         parser.push_number_matcher();
+        match = false;
       } else {
         switch (c) {
-        case '"': parser.push_string_matcher(false); break;
+        case '"': parser.push_string_matcher(/*object_key=*/false); break;
         case 't': parser.push_token_matcher(token::true_token); break;
         case 'f': parser.push_token_matcher(token::false_token); break;
         case 'n': parser.push_token_matcher(token::null_token); break;
@@ -78,11 +80,12 @@ public:
         case '{': parser.push_object_matcher(); break;
         default: parser.set_error(error::expected_token); break;
         }
+        match = true;
       }
-      return false;
+      break;
     default: unreachable(); break;
     }
-    unreachable();
+    return match;
   }
 };
 

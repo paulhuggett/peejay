@@ -96,31 +96,33 @@ template <backend Backend> decltype(auto) parser<Backend>::eof() {
   }
   // Re-prime the stack in case the user calls input() again.
   this->init_stack();
+  // Finally, extract the result from the backend object.
   return this->backend().result();
 }
 
 // consume code point
 // ~~~~~~~~~~~~~~~~~~
 template <backend Backend> void parser<Backend>::consume_code_point(std::optional<char32_t> code_point) {
-  bool consume = false;
-  while (!consume && !this->has_error()) {
+  bool match = false;
+
+  while (!match && !this->has_error()) {
     using enum details::group;
     switch (get_group(stack_.top())) {
     // Matchers with no additional state.
-    case array: consume = details::group_to_matcher_t<array, Backend>::consume(*this, code_point); break;
-    case object: consume = details::group_to_matcher_t<object, Backend>::consume(*this, code_point); break;
-    case eof: consume = details::group_to_matcher_t<eof, Backend>::consume(*this, code_point); break;
-    case root: consume = details::group_to_matcher_t<root, Backend>::consume(*this, code_point); break;
-    case whitespace: consume = details::group_to_matcher_t<whitespace, Backend>::consume(*this, code_point); break;
+    case array: match = details::group_to_matcher_t<array, Backend>::consume(*this, code_point); break;
+    case object: match = details::group_to_matcher_t<object, Backend>::consume(*this, code_point); break;
+    case eof: match = details::group_to_matcher_t<eof, Backend>::consume(*this, code_point); break;
+    case root: match = details::group_to_matcher_t<root, Backend>::consume(*this, code_point); break;
+    case whitespace: match = details::group_to_matcher_t<whitespace, Backend>::consume(*this, code_point); break;
     // The matchers that maintain state.
     case number:
-      consume = std::get<details::group_to_matcher_t<number, Backend>>(storage_).consume(*this, code_point);
+      match = std::get<details::group_to_matcher_t<number, Backend>>(storage_).consume(*this, code_point);
       break;
     case string:
-      consume = std::get<details::group_to_matcher_t<string, Backend>>(storage_).consume(*this, code_point);
+      match = std::get<details::group_to_matcher_t<string, Backend>>(storage_).consume(*this, code_point);
       break;
     case token:
-      consume = std::get<details::group_to_matcher_t<token, Backend>>(storage_).consume(*this, code_point);
+      match = std::get<details::group_to_matcher_t<token, Backend>>(storage_).consume(*this, code_point);
       break;
     default:
       assert(false && "Unknown state group");

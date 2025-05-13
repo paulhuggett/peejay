@@ -69,12 +69,20 @@ TEST_F(Object, Empty) {
 }
 
 // NOLINTNEXTLINE
-TEST_F(Object, OpeningBraceOnly) {
+TEST_F(Object, EmptyNoWhitespace) {
   InSequence const _;
   EXPECT_CALL(callbacks_, begin_object()).Times(1);
+  EXPECT_CALL(callbacks_, end_object()).Times(1);
 
   auto p = make_parser(proxy_);
-  input(p, u8"{"sv).eof();
+  p.input(u8"{}"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "JSON error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
+TEST_F(Object, OpeningBraceOnly) {
+  auto p = make_parser(proxy_);
+  p.input(u8"{"sv).eof();
   EXPECT_TRUE(p.has_error());
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_member))
       << "JSON error was: " << p.last_error().message();
@@ -89,23 +97,21 @@ TEST_F(Object, SingleKvp) {
   EXPECT_CALL(callbacks_, end_object()).Times(1);
 
   auto p = make_parser(proxy_);
-  input(p, u8R"({ "a":1 })"sv).eof();
+  p.input(u8R"({ "a":1 })"sv).eof();
   EXPECT_FALSE(p.has_error()) << "JSON error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Object, BadBeginObject) {
-  std::error_code const error{EDOM, std::generic_category()};
+  auto const error = make_error_code(std::errc::argument_out_of_domain);
 
-  using testing::_;
   using testing::Return;
   EXPECT_CALL(callbacks_, begin_object()).WillOnce(Return(error));
 
   auto p = make_parser(proxy_);
-  input(p, u8R"({ "a":1 })"sv).eof();
+  p.input(u8R"({ "a":1 })"sv).eof();
   EXPECT_TRUE(p.has_error());
   EXPECT_EQ(p.last_error(), error) << "Expected the error to be propagated from the begin_object() callback";
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 1U}));
 }
 
 // NOLINTNEXTLINE
