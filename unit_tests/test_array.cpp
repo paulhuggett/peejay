@@ -86,9 +86,9 @@ TEST_F(JsonArray, BeginArrayReturnsError) {
   EXPECT_CALL(callbacks_, begin_array()).WillOnce(Return(error));
 
   auto p = make_parser(proxy_);
-  input(p, u8"[\n]\n"sv);
-  EXPECT_EQ(p.last_error(), error);
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 1U}));
+  p.input(u8"[\n]\n"sv);
+  EXPECT_EQ(p.last_error(), error) << "Real error was: " << p.last_error().message();
+  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 2U}));
 }
 
 // NOLINTNEXTLINE
@@ -296,5 +296,17 @@ TEST_F(JsonArray, BeginFails2) {
 
   auto p = make_parser(proxy_);
   p.input(u8"[ 1 ]"sv).eof();
+  EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
+TEST_F(JsonArray, EndFails) {
+  using testing::Return;
+  auto const erc = make_error_code(std::errc::file_exists);
+  EXPECT_CALL(callbacks_, begin_array());
+  EXPECT_CALL(callbacks_, end_array()).WillOnce(Return(erc));
+
+  auto p = make_parser(proxy_);
+  p.input(u8"[]"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }

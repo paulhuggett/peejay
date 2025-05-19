@@ -174,6 +174,127 @@ template <sequence Seq, typename T> inline constexpr bool has_type_v = has_type<
 static_assert(has_type<type_list<double, int, char, double>, char>::value, "typelist has_type<> is broken");
 static_assert(!has_type<type_list<double, int, char, double>, float>::value, "typelist has_type<> is broken");
 
+//  _         _                __  *
+// (_)_ _  __| |_____ __  ___ / _| *
+// | | ' \/ _` / -_) \ / / _ \  _| *
+// |_|_||_\__,_\___/_\_\ \___/_|   *
+//                                 *
+constexpr auto npos = std::numeric_limits<std::size_t>::max();
+
+namespace details {
+
+template <typename Seq, typename T> struct index_of;
+
+template <typename T, template <typename...> typename Seq>
+struct index_of<Seq<>, T> : std::integral_constant<std::size_t, npos> {};
+
+template <typename T, template <typename...> typename Seq, typename... Ts>
+struct index_of<Seq<T, Ts...>, T> : std::integral_constant<std::size_t, 0> {};
+
+template <typename T, typename TOther, template <typename...> typename Seq, typename... Ts>
+struct index_of<Seq<TOther, Ts...>, T>
+    : std::integral_constant<std::size_t,
+                             (index_of<Seq<Ts...>, T>::value != npos) ? 1 + (index_of<Seq<Ts...>, T>::value) : npos> {};
+
+}  // end namespace details
+
+/// Gets the index of first occurrence of a type within a type list or npos if not found
+template <sequence Seq, typename T>
+struct index_of : std::integral_constant<std::size_t, details::index_of<Seq, T>::value> {};
+template <sequence Seq, typename T> inline constexpr bool index_of_v = index_of<Seq, T>::value;
+
+static_assert(index_of<type_list<double, char, bool, double>, double>::value == 0, "type_list index_of<> is broken");
+static_assert(index_of<type_list<double, char, bool, double>, char>::value == 1, "type_list index_of<> is broken");
+static_assert(index_of<type_list<double, char, bool>, long>::value == npos, "type_list index_of<> is broken");
+
+//                 *
+// _ __  __ ___ __ *
+//| '  \/ _` \ \ / *
+//|_|_|_\__,_/_\_\ *
+//                 *
+namespace details {
+
+template <typename Seq, typename M> struct max;
+
+template <template <typename...> typename Seq, typename M> struct max<Seq<>, M> {
+  using type = M;
+};
+
+template <template <typename...> typename Seq, typename... Ts, typename T, typename M> struct max<Seq<T, Ts...>, M> {
+  using type = typename std::conditional<(T::value > M::value), typename max<Seq<Ts...>, T>::type,
+                                         typename max<Seq<Ts...>, M>::type>::type;
+};
+
+}  // end namespace details
+
+/// Gets the maximum value from a list of std::integral_constant-like types.
+template <sequence Seq> using max = typename details::max<Seq, std::integral_constant<std::size_t, 0>>::type;
+template <sequence Seq> inline constexpr auto max_v = max<Seq>::type::value;
+
+static_assert(
+    std::is_same_v<max<type_list<std::integral_constant<std::size_t, 5>, std::integral_constant<std::size_t, 4>,
+                                 std::integral_constant<std::size_t, 3>>>,
+                   std::integral_constant<std::size_t, 5>>,
+    "type_list max<> is broken");
+static_assert(
+    std::is_same_v<
+        max<type_list<std::integral_constant<int, -2>, std::integral_constant<int, 4>, std::integral_constant<int, 1>>>,
+        std::integral_constant<int, 4>>,
+    "type_list max<> is broken");
+
+//  _                     __                *
+// | |_ _ _ __ _ _ _  ___/ _|___ _ _ _ __   *
+// |  _| '_/ _` | ' \(_-<  _/ _ \ '_| '  \  *
+//  \__|_| \__,_|_||_/__/_| \___/_| |_|_|_| *
+//                                          *
+namespace details {
+
+template <typename List, template <typename...> typename Fun> struct transform;
+
+template <template <typename...> typename Seq, typename... Ts, template <typename...> typename Fun>
+struct transform<Seq<Ts...>, Fun> {
+  using type = Seq<Fun<Ts>...>;
+};
+
+}  // end namespace details
+
+template <sequence Seq, template <typename...> typename Fun>
+using transform = typename details::transform<Seq, Fun>::type;
+
+/// A unary function type which returns the size of a type.
+template <typename T> struct type_sizeof : std::integral_constant<std::size_t, sizeof(T)> {};
+/// A unary function type which returns the alignment of a type.
+template <typename T> struct type_alignof : std::integral_constant<std::size_t, alignof(T)> {};
+
+static_assert(
+    std::is_same_v<transform<type_list<double, int>, type_sizeof>, type_list<type_sizeof<double>, type_sizeof<int>>>,
+    "type_list transform<> is broken");
+
+//       _ _  *
+//  __ _| | | *
+// / _` | | | *
+// \__,_|_|_| *
+//            *
+namespace details {
+
+template <typename Seq> struct all;
+/// An empty list always yields false.
+template <template <typename...> typename Seq> struct all<Seq<>> : std::bool_constant<false> {};
+/// Recursively check whether the head of the list is true.
+template <template <typename...> typename Seq, typename... Ts>
+struct all<Seq<Ts...>> : std::bool_constant<(Ts::value && ...)> {};
+
+}  // end namespace details
+
+/// Checks if a list of std::bool_constant-like types are all true.
+template <sequence Seq> using all = typename details::all<Seq>;
+template <sequence Seq> inline constexpr bool all_v = all<Seq>::value;
+
+static_assert(all_v<type_list<std::bool_constant<true>, std::bool_constant<true>>>);
+static_assert(!all_v<type_list<std::bool_constant<true>, std::bool_constant<false>>>);
+static_assert(!all_v<type_list<std::bool_constant<false>, std::bool_constant<false>>>);
+static_assert(!all_v<type_list<>>);
+
 }  // end namespace peejay::type_list
 
 #endif  // PEEJAY_DETAILS_TYPE_LIST_HPP

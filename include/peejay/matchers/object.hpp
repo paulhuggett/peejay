@@ -60,13 +60,13 @@ private:
 // ~~~~~~~
 template <backend Backend> bool object_matcher<Backend>::consume(parser_type &parser, std::optional<char32_t> ch) {
   if (!ch) {
-    parser.set_error(error::expected_object_member);
+    parser.set_error_and_pop(error::expected_object_member);
     return true;
   }
   auto const c = *ch;
   switch (parser.stack_.top()) {
   case state::object_start:
-    if (parser.set_error(parser.backend().begin_object())) {
+    if (parser.set_error_and_pop(parser.backend().begin_object())) {
       break;
     }
     parser.set_state(state::object_first_key);
@@ -91,7 +91,7 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
     if (c == ':') {
       parser.set_state(state::object_value);
     } else {
-      parser.set_error(error::expected_colon);
+      parser.set_error_and_pop(error::expected_colon);
     }
     break;
   case state::object_value:
@@ -111,7 +111,7 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
 template <backend Backend> bool object_matcher<Backend>::key(parser_type &parser, char32_t code_point) {
   parser.set_state(state::object_colon);
   if (code_point != '"') {
-    parser.set_error(error::expected_object_key);
+    parser.set_error_and_pop(error::expected_object_key);
   } else {
     parser.push_string_matcher(/*object_key=*/true);
   }
@@ -134,7 +134,7 @@ template <backend Backend> bool object_matcher<Backend>::comma(parser_type &pars
   } else if (code_point == '}') {
     object_matcher::end_object(parser);
   } else {
-    parser.set_error(error::expected_object_member);
+    parser.set_error_and_pop(error::expected_object_member);
   }
   // Consume the input character.
   return true;
@@ -144,7 +144,7 @@ template <backend Backend> bool object_matcher<Backend>::comma(parser_type &pars
 // ~~~~~~~~~~~
 template <backend Backend> void object_matcher<Backend>::end_object(parser_type &parser) {
   parser.set_error(parser.backend().end_object());
-  parser.pop();
+  parser.pop();  // unconditionally pop.
 }
 
 }  // namespace peejay::details

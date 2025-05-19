@@ -532,19 +532,90 @@ public:
   ///   container.
   arrayvec(size_type count, const_reference value);
 
-  arrayvec(arrayvec const &other) : arrayvec(std::begin(other), std::end(other)) {}
-  arrayvec(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T>);
+  constexpr arrayvec(arrayvec const &other) noexcept
+    requires(std::is_trivially_copyable_v<T>)
+  = default;
+  arrayvec(arrayvec const &other) noexcept(std::is_nothrow_copy_constructible_v<T>)
+    requires(!std::is_trivially_copyable_v<T>)
+      : arrayvec(std::begin(other), std::end(other)) {}
+  constexpr arrayvec(arrayvec &&other) noexcept
+    requires(std::is_trivially_move_constructible_v<T>)
+  = default;
+  arrayvec(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
+    requires(!std::is_trivially_move_constructible_v<T>)
+  {
+    this->flood();
+    auto *dest = this->data();
+    std::ranges::for_each(other, [this, &dest](T &src) {
+      std::construct_at(std::to_address(dest), std::move(src));
+      ++dest;
+      ++size_;
+    });
+  }
 
-  ~arrayvec() noexcept { this->clear(); }
+  constexpr ~arrayvec() noexcept
+    requires(std::is_trivially_destructible_v<T>)
+  = default;
+  ~arrayvec() noexcept
+    requires(!std::is_trivially_destructible_v<T>)
+  {
+    this->clear();
+  }
 
-  template <std::size_t OtherSize> arrayvec &operator=(arrayvec<T, OtherSize> const &other);
   template <std::size_t OtherSize>
-  arrayvec &operator=(arrayvec<T, OtherSize> &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
-                                                               std::is_nothrow_move_assignable_v<T>);
+    requires(OtherSize <= Size)
+  arrayvec &operator=(arrayvec<T, OtherSize> const &other) noexcept(std::is_nothrow_copy_constructible_v<T> &&
+                                                                    std::is_nothrow_copy_assignable_v<T>) {
+    if constexpr (OtherSize == Size) {
+      if (this == &other) {
+        return *this;
+      }
+    }
+    details::avbase<T>::template operator_assign<false>(
+        this->data(), &size_, std::make_pair(other.data(), static_cast<std::size_t>(other.size())));
+    assert(size_ <= this->max_size());
+    return *this;
+  }
 
-  arrayvec &operator=(arrayvec const &other);
+  template <std::size_t OtherSize>
+    requires(OtherSize <= Size)
+  arrayvec &operator=(arrayvec<T, OtherSize> &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
+                                                               std::is_nothrow_move_assignable_v<T>) {
+    if constexpr (OtherSize == Size) {
+      if (this == &other) {
+        return *this;
+      }
+    }
+    details::avbase<T>::template operator_assign<true>(
+        this->data(), &size_, std::make_pair(other.data(), static_cast<std::size_t>(other.size())));
+    assert(size_ <= this->max_size());
+    return *this;
+  }
+
+  constexpr arrayvec &operator=(arrayvec const &other) noexcept
+    requires(std::is_trivially_copyable_v<T>)
+  = default;
+  arrayvec &operator=(arrayvec const &other) noexcept(std::is_nothrow_copy_constructible_v<T> &&
+                                                      std::is_nothrow_copy_assignable_v<T>)
+    requires(!std::is_trivially_copyable_v<T>)
+  {
+    if (&other != this) {
+      this->operator= <Size>(other);
+    }
+    return *this;
+  }
+  constexpr arrayvec &operator=(arrayvec &&other) noexcept
+    requires(std::is_trivially_move_assignable_v<T>)
+  = default;
   arrayvec &operator=(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
-                                                 std::is_nothrow_move_assignable_v<T>);
+                                                 std::is_nothrow_move_assignable_v<T>)
+    requires(!std::is_trivially_move_assignable_v<T>)
+  {
+    if (&other != this) {
+      this->operator= <Size>(std::move(other));
+    }
+    return *this;
+  }
 
   template <std::size_t RhsSize>
   friend constexpr bool operator==(arrayvec const &lhs, arrayvec<T, RhsSize> const &rhs) {
@@ -887,21 +958,12 @@ private:
   std::array<aligned_storage, Size> data_;
 };
 
+static_assert(std::is_trivially_copyable_v<arrayvec<char, 2>>);
+
 // (ctor)
 // ~~~~~~
 template <typename T, std::size_t Size> arrayvec<T, Size>::arrayvec() noexcept {
   this->flood();
-}
-
-template <typename T, std::size_t Size>
-arrayvec<T, Size>::arrayvec(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T>) {
-  this->flood();
-  auto *dest = this->data();
-  std::ranges::for_each(other, [this, &dest](T &src) {
-    std::construct_at(std::to_address(dest), std::move(src));
-    ++dest;
-    ++size_;
-  });
 }
 
 template <typename T, std::size_t Size>
@@ -925,15 +987,7 @@ template <typename T, std::size_t Size> arrayvec<T, Size>::arrayvec(size_type co
 
 // operator=
 // ~~~~~~~~~
-template <typename T, std::size_t Size>
-template <std::size_t OtherSize>
-auto arrayvec<T, Size>::operator=(arrayvec<T, OtherSize> const &other) -> arrayvec & {
-  details::avbase<T>::template operator_assign<false>(
-      this->data(), &size_, std::make_pair(other.data(), static_cast<std::size_t>(other.size())));
-  assert(size_ <= this->max_size());
-  return *this;
-}
-
+#if 0
 template <typename T, std::size_t Size> auto arrayvec<T, Size>::operator=(arrayvec const &other) -> arrayvec & {
   if (&other != this) {
     this->operator= <Size>(other);
@@ -941,27 +995,7 @@ template <typename T, std::size_t Size> auto arrayvec<T, Size>::operator=(arrayv
   return *this;
 }
 
-template <typename T, std::size_t Size>
-template <std::size_t OtherSize>
-auto arrayvec<T, Size>::operator=(arrayvec<T, OtherSize> &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
-                                                                           std::is_nothrow_move_assignable_v<T>)
-    -> arrayvec & {
-  details::avbase<T>::template operator_assign<true>(
-      this->data(), &size_, std::make_pair(other.data(), static_cast<std::size_t>(other.size())));
-  assert(size_ <= this->max_size());
-  return *this;
-}
-
-template <typename T, std::size_t Size>
-auto arrayvec<T, Size>::operator=(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
-                                                             std::is_nothrow_move_assignable_v<T>) -> arrayvec & {
-  if (&other != this) {
-    details::avbase<T>::template operator_assign<true>(
-        this->data(), &size_, std::make_pair(other.data(), static_cast<std::size_t>(other.size())));
-    assert(size_ <= this->max_size());
-  }
-  return *this;
-}
+#endif
 
 // at
 // ~~

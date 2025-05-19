@@ -302,6 +302,26 @@ TEST_F(Number, LeadingDotExtensionDisabled) {
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token)) << "Real error was: " << p.last_error().message();
 }
 
+// NOLINTNEXTLINE
+TEST_F(Number, IntegerValueReturnsAnError) {
+  using testing::Return;
+  auto const erc = make_error_code(std::errc::io_error);
+  EXPECT_CALL(callbacks_, integer_value(10)).Times(1).WillOnce(Return(erc));
+  parser p{proxy_};
+  p.input(u8"10"sv).eof();
+  EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
+TEST_F(Number, FloatValueReturnsAnError) {
+  using testing::Return;
+  auto const erc = make_error_code(std::errc::io_error);
+  EXPECT_CALL(callbacks_, float_value(0.1)).Times(1).WillOnce(Return(erc));
+  parser p{proxy_};
+  p.input(u8"0.1"sv).eof();
+  EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
+}
+
 namespace {
 
 struct policy_common : public peejay::default_policies {
@@ -443,13 +463,24 @@ struct no_float_policy : public peejay::default_policies {
   using float_type = peejay::no_float_type;
 };
 
-TEST(NumberFloat, NoFloat) {
+TEST(NumberFloat, NoFloatDecimalPoint) {
   using mocks = mock_json_callbacks<std::uint64_t, double, char8_t>;
   StrictMock<mocks> callbacks;
   callbacks_proxy<mocks, no_float_policy> proxy{callbacks};
 
   auto p = make_parser(proxy);
   p.input(u8"1.2"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+
+TEST(NumberFloat, NoFloatExponent) {
+  using mocks = mock_json_callbacks<std::uint64_t, double, char8_t>;
+  StrictMock<mocks> callbacks;
+  callbacks_proxy<mocks, no_float_policy> proxy{callbacks};
+
+  auto p = make_parser(proxy);
+  p.input(u8"1e30"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }

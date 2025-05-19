@@ -136,14 +136,13 @@ private:
 template <backend Backend> bool number_matcher<Backend>::do_leading_minus_state(parser_type &parser, char32_t c) {
   bool match = true;
   if (c == '-') {
-    parser.stack_.top() = state::number_integer_initial_digit;
+    parser.set_state(state::number_integer_initial_digit);
     is_neg_ = true;
   } else if (is_digit(c)) {
-    parser.stack_.top() = state::number_integer_initial_digit;
+    parser.set_state(state::number_integer_initial_digit);
     match = do_integer_initial_digit_state(parser, c);
   } else {
-    // minus MUST be followed by the 'int' production.
-    parser.set_error(error::number_out_of_range);
+    assert(false && "We shouldn't be here if the character is not '-' or a digit!");
   }
   return match;
 }
@@ -153,9 +152,9 @@ template <backend Backend> bool number_matcher<Backend>::do_leading_minus_state(
 template <backend Backend> bool number_matcher<Backend>::do_frac_state(parser_type &parser, char32_t const c) {
   bool match = true;
   switch (c) {
-  case '.': parser.stack_.top() = state::number_frac_initial_digit; break;
+  case '.': parser.set_state(state::number_frac_initial_digit); break;
   case 'e':
-  case 'E': parser.stack_.top() = state::number_exponent_sign; break;
+  case 'E': parser.set_state(state::number_exponent_sign); break;
   default:
     // the 'frac' production is optional.
     match = false;
@@ -174,16 +173,15 @@ template <backend Backend> bool number_matcher<Backend>::do_frac_digit_state(par
   } else {
     if (is_digit(c)) {
       this->number_is_float().add_digit(c - '0');
-      parser.stack_.top() = state::number_frac_digit;
+      parser.set_state(state::number_frac_digit);
     } else {
-      if (parser.stack_.top() == state::number_frac_initial_digit) {
-        parser.set_error(error::unrecognized_token);
-        return true;
+      if (parser.get_state() == state::number_frac_initial_digit) {
+        return parser.set_error_and_pop(error::unrecognized_token);
       }
 
       if (c == 'e' || c == 'E') {
         this->number_is_float();
-        parser.stack_.top() = state::number_exponent_sign;
+        parser.set_state(state::number_exponent_sign);
       } else {
         match = false;
         this->complete(parser);
@@ -201,7 +199,7 @@ template <backend Backend> bool number_matcher<Backend>::do_exponent_sign_state(
     parser.set_error(error::number_out_of_range);
   } else {
     auto &fp_acc = this->number_is_float();
-    parser.stack_.top() = state::number_exponent_initial_digit;
+    parser.set_state(state::number_exponent_initial_digit);
     switch (c) {
     case '+': fp_acc.exp_is_negative = false; break;
     case '-': fp_acc.exp_is_negative = true; break;
@@ -231,14 +229,13 @@ bool number_matcher<Backend>::do_exponent_digit_state(parser_type &parser, char3
     if (is_digit(c)) {
       auto &fp_acc = std::get<float_accumulator<float_type, uinteger_type>>(acc_);
       fp_acc.exponent = fp_acc.exponent * 10U + static_cast<unsigned>(c - '0');
-      parser.stack_.top() = state::number_exponent_digit;
+      parser.set_state(state::number_exponent_digit);
     } else {
-      if (parser.stack_.top() == state::number_exponent_initial_digit) {
-        parser.set_error(error::unrecognized_token);
-      } else {
-        match = false;
-        this->complete(parser);
+      if (parser.get_state() == state::number_exponent_initial_digit) {
+        return parser.set_error_and_pop(error::unrecognized_token);
       }
+      match = false;
+      this->complete(parser);
     }
   }
   return match;
@@ -250,16 +247,16 @@ template <backend Backend>
 bool number_matcher<Backend>::do_integer_initial_digit_state(parser_type &parser, char32_t const c) {
   using namespace std::string_view_literals;
 
-  assert(parser.stack_.top() == state::number_integer_initial_digit);
+  assert(parser.get_state() == state::number_integer_initial_digit);
   assert(std::holds_alternative<uinteger_type>(acc_));
   if (c == '0') {
-    parser.stack_.top() = state::number_frac;
+    parser.set_state(state::number_frac);
   } else if (c >= '1' && c <= '9') {
     assert(std::get<uinteger_type>(acc_) == 0);
     std::get<uinteger_type>(acc_) = static_cast<uinteger_type>(c) - '0';
-    parser.stack_.top() = state::number_integer_digit;
+    parser.set_state(state::number_integer_digit);
   } else {
-    parser.set_error(error::unrecognized_token);
+    parser.set_error_and_pop(error::unrecognized_token);
   }
   return true;
 }
@@ -267,25 +264,29 @@ bool number_matcher<Backend>::do_integer_initial_digit_state(parser_type &parser
 // do integer digit state
 // ~~~~~~~~~~~~~~~~~~~~~~
 template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(parser_type &parser, char32_t const c) {
-  assert(parser.stack_.top() == state::number_integer_digit);
+  assert(parser.get_state() == state::number_integer_digit);
   assert(std::holds_alternative<uinteger_type>(acc_));
 
   bool match = true;
   if (c == '.') {
     if constexpr (std::is_same_v<float_type, no_float_type>) {
-      parser.set_error(error::number_out_of_range);
+      return parser.set_error_and_pop(error::number_out_of_range);
     } else {
-      parser.stack_.top() = state::number_frac_initial_digit;
+      parser.set_state(state::number_frac_initial_digit);
       number_is_float();
     }
   } else if (c == 'e' || c == 'E') {
-    parser.stack_.top() = state::number_exponent_sign;
-    number_is_float();
+    if constexpr (std::is_same_v<float_type, no_float_type>) {
+      return parser.set_error_and_pop(error::number_out_of_range);
+    } else {
+      parser.set_state(state::number_exponent_sign);
+      number_is_float();
+    }
   } else if (is_digit(c)) {
     auto &int_acc = std::get<uinteger_type>(acc_);
     auto const new_acc = static_cast<uinteger_type>(int_acc * 10U + static_cast<uinteger_type>(c) - '0');
     if (new_acc < int_acc) {  // Did this overflow?
-      parser.set_error(error::number_out_of_range);
+      return parser.set_error_and_pop(error::number_out_of_range);
     }
     int_acc = new_acc;
   } else {
@@ -299,12 +300,12 @@ template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(
 // ~~~
 template <backend Backend> bool number_matcher<Backend>::end(parser_type &parser) {
   assert(!parser.has_error());
-  switch (parser.stack_.top()) {
+  switch (parser.get_state()) {
   case state::number_exponent_digit:
   case state::number_frac_digit:
   case state::number_frac:
   case state::number_integer_digit: this->complete(parser); break;
-  default: parser.set_error(error::expected_digits); break;
+  default: parser.set_error_and_pop(error::expected_digits); break;
   }
   return true;
 }
@@ -318,7 +319,7 @@ template <backend Backend> bool number_matcher<Backend>::consume(parser_type &pa
 
   bool match = true;
   auto const c = *ch;
-  switch (parser.stack_.top()) {
+  switch (parser.get_state()) {
   case state::number_start: match = this->do_leading_minus_state(parser, c); break;
   case state::number_integer_initial_digit: match = this->do_integer_initial_digit_state(parser, c); break;
   case state::number_integer_digit: match = this->do_integer_digit_state(parser, c); break;
@@ -358,10 +359,9 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
       }
     } else {
       if (int_acc > umax) {
-        parser.set_error(error::number_out_of_range);
-      } else {
-        parser.set_error(parser.backend().integer_value(static_cast<sinteger_type>(int_acc)));
+        return parser.set_error_and_pop(error::number_out_of_range);
       }
+      parser.set_error(parser.backend().integer_value(static_cast<sinteger_type>(int_acc)));
     }
     return;
   }

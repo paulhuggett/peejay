@@ -165,6 +165,7 @@ set(peejay_details
   "${include_dir}/peejay/details/states.hpp"
   "${include_dir}/peejay/details/uinteger.hpp"
   "${include_dir}/peejay/details/type_list.hpp"
+  "${include_dir}/peejay/details/variant.hpp"
 )
 set(peejay_public
   "${include_dir}/peejay/concepts.hpp"

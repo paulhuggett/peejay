@@ -220,7 +220,7 @@ TEST(ArrayVec, AssignInitializerList) {
 
 // NOLINTNEXTLINE
 TEST(ArrayVec, AssignCopyLargeToSmall) {
-  arrayvec<no_move, 3> const b{no_move{5}, no_move{7}};
+  arrayvec<no_move, 2> const b{no_move{5}, no_move{7}};
   arrayvec<no_move, 2> c{no_move{11}};
   c = b;
   EXPECT_THAT(c, ElementsAre(no_move{5}, no_move{7}));

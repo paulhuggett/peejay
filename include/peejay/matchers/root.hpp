@@ -53,7 +53,7 @@ public:
 
   static bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
     if (!ch) {
-      parser.set_error(error::expected_token);
+      parser.set_error_and_pop(error::expected_token);
       return true;
     }
     auto const c = *ch;
@@ -78,7 +78,7 @@ public:
         case 'n': parser.push_token_matcher(token::null_token); break;
         case '[': parser.push_array_matcher(); break;
         case '{': parser.push_object_matcher(); break;
-        default: parser.set_error(error::expected_token); break;
+        default: parser.set_error_and_pop(error::expected_token); break;
         }
         match = true;
       }

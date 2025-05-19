@@ -54,6 +54,7 @@
 #include "peejay/concepts.hpp"
 #include "peejay/details/arrayvec.hpp"
 #include "peejay/details/states.hpp"
+#include "peejay/details/variant.hpp"
 #include "peejay/icubaby.hpp"
 
 namespace peejay {
@@ -71,33 +72,32 @@ template <backend Backend> class string_matcher;
 template <backend Backend> class token_matcher;
 template <backend Backend> class whitespace_matcher;
 
-template <details::group Group, backend Backend> struct group_to_matcher {};
-template <backend Backend> struct group_to_matcher<details::group::array, Backend> {
+template <group Group, backend Backend> struct group_to_matcher {};
+template <backend Backend> struct group_to_matcher<group::array, Backend> {
   using type = array_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::eof, Backend> {
+template <backend Backend> struct group_to_matcher<group::eof, Backend> {
   using type = eof_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::number, Backend> {
+template <backend Backend> struct group_to_matcher<group::number, Backend> {
   using type = number_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::object, Backend> {
+template <backend Backend> struct group_to_matcher<group::object, Backend> {
   using type = object_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::root, Backend> {
+template <backend Backend> struct group_to_matcher<group::root, Backend> {
   using type = root_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::string, Backend> {
+template <backend Backend> struct group_to_matcher<group::string, Backend> {
   using type = string_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::token, Backend> {
+template <backend Backend> struct group_to_matcher<group::token, Backend> {
   using type = token_matcher<Backend>;
 };
-template <backend Backend> struct group_to_matcher<details::group::whitespace, Backend> {
+template <backend Backend> struct group_to_matcher<group::whitespace, Backend> {
   using type = whitespace_matcher<Backend>;
 };
-template <details::group Group, backend Backend>
-using group_to_matcher_t = typename group_to_matcher<Group, Backend>::type;
+template <group Group, backend Backend> using group_to_matcher_t = typename group_to_matcher<Group, Backend>::type;
 
 }  // end namespace details
 
@@ -241,6 +241,13 @@ private:
     error_ = err;
     return this->has_error();
   }
+  bool set_error_and_pop(std::error_code const &err) noexcept {
+    bool const res = this->set_error(err);
+    if (res) {
+      this->pop();
+    }
+    return res;
+  }
   ///@{
   /// \brief Managing the column and row number.
 
@@ -272,8 +279,13 @@ private:
 
   ///@{
   /// \brief Managing the parse stack.
-  void push(details::state next_state);
+  bool push(details::state next_state);
   template <details::state NextState, typename... Args> void push_terminal(Args &&...args);
+
+  constexpr details::state get_state() const noexcept {
+    assert(!stack_.empty());
+    return stack_.top();
+  }
 
   void set_state(details::state state) {
     assert(!stack_.empty());
@@ -307,7 +319,7 @@ private:
 
   /// The parse stack.
   std::stack<details::state, arrayvec<details::state, policies::max_stack_depth>> stack_;
-  std::variant<std::monostate, string_matcher, number_matcher, token_matcher> storage_;
+  details::variant<type_list::type_list<string_matcher, number_matcher, token_matcher>> storage_;
   std::error_code error_;
 
   /// The column and row number of the parse within the input stream.

@@ -68,3 +68,14 @@ TEST_F(JsonBoolean, False) {
   p.input(u8" false "sv).eof();
   EXPECT_FALSE(p.has_error());
 }
+
+// NOLINTNEXTLINE
+TEST_F(JsonBoolean, CallbackReturnsError) {
+  using testing::Return;
+  auto const err = make_error_code(std::errc::io_error);
+  EXPECT_CALL(callbacks_, boolean_value(false)).Times(1).WillOnce(Return(err));
+
+  peejay::parser p = peejay::make_parser(proxy_);
+  p.input(u8" false "sv).eof();
+  EXPECT_EQ(p.last_error(), err) << "Real error was: " << p.last_error().message();
+}

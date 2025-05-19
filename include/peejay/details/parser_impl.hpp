@@ -38,12 +38,11 @@ namespace peejay {
 
 // push
 // ~~~~
-template <backend Backend> void parser<Backend>::push(details::state next_state) {
-  assert(holds_alternative<std::monostate>(storage_) &&
-         "A terminal instance should be destroyed before pushing a new state");
+template <backend Backend> bool parser<Backend>::push(details::state next_state) {
+  assert(storage_.holds() == type_list::npos && "A terminal instance should be destroyed before pushing a new state");
   if (stack_.size() >= policies::max_stack_depth) {
-    set_error(error::nesting_too_deep);
-    return;
+    set_error_and_pop(error::nesting_too_deep);
+    return false;
   }
   stack_.emplace(next_state);
   if constexpr (policies::pos_tracking) {
@@ -51,6 +50,7 @@ template <backend Backend> void parser<Backend>::push(details::state next_state)
       matcher_pos_ = pos_;
     }
   }
+  return true;
 }
 
 // push terminal
@@ -58,23 +58,22 @@ template <backend Backend> void parser<Backend>::push(details::state next_state)
 template <backend Backend>
 template <details::state NextState, typename... Args>
 void parser<Backend>::push_terminal(Args &&...args) {
-  this->push(NextState);
-  storage_.template emplace<details::group_to_matcher_t<get_group(NextState), Backend>>(std::forward<Args>(args)...);
+  if (this->push(NextState)) {
+    storage_.template emplace<details::group_to_matcher_t<get_group(NextState), Backend>>(std::forward<Args>(args)...);
+  }
 }
 
 // pop
 // ~~~
 template <backend Backend> void parser<Backend>::pop() {
   using enum details::group;
-#ifndef NDEBUG
+
   switch (get_group(stack_.top())) {
-  case number: assert(holds_alternative<number_matcher>(storage_)); break;
-  case string: assert(holds_alternative<string_matcher>(storage_)); break;
-  case token: assert(holds_alternative<token_matcher>(storage_)); break;
-  default: assert(holds_alternative<std::monostate>(storage_)); break;
+  case number: storage_.template destroy<number_matcher>(); break;
+  case string: storage_.template destroy<string_matcher>(); break;
+  case token: storage_.template destroy<token_matcher>(); break;
+  default: break;
   }
-#endif
-  storage_.template emplace<std::monostate>();
   stack_.pop();
   if constexpr (policies::pos_tracking) {
     if (!stack_.empty() && get_group(stack_.top()) != whitespace) {
@@ -89,7 +88,6 @@ template <backend Backend> decltype(auto) parser<Backend>::eof() {
   while (!stack_.empty() && !this->last_error()) {
     this->consume_code_point(std::nullopt);
   }
-  storage_.template emplace<std::monostate>();
   // Pop any states that remained on the stack following an error.
   while (!stack_.empty()) {
     stack_.pop();
@@ -104,9 +102,9 @@ template <backend Backend> decltype(auto) parser<Backend>::eof() {
 // ~~~~~~~~~~~~~~~~~~
 template <backend Backend> void parser<Backend>::consume_code_point(std::optional<char32_t> code_point) {
   bool match = false;
+  using enum details::group;
 
   while (!match && !this->has_error()) {
-    using enum details::group;
     switch (get_group(stack_.top())) {
     // Matchers with no additional state.
     case array: match = details::group_to_matcher_t<array, Backend>::consume(*this, code_point); break;
@@ -116,13 +114,13 @@ template <backend Backend> void parser<Backend>::consume_code_point(std::optiona
     case whitespace: match = details::group_to_matcher_t<whitespace, Backend>::consume(*this, code_point); break;
     // The matchers that maintain state.
     case number:
-      match = std::get<details::group_to_matcher_t<number, Backend>>(storage_).consume(*this, code_point);
+      match = storage_.template get<details::group_to_matcher_t<number, Backend>>().consume(*this, code_point);
       break;
     case string:
-      match = std::get<details::group_to_matcher_t<string, Backend>>(storage_).consume(*this, code_point);
+      match = storage_.template get<details::group_to_matcher_t<string, Backend>>().consume(*this, code_point);
       break;
     case token:
-      match = std::get<details::group_to_matcher_t<token, Backend>>(storage_).consume(*this, code_point);
+      match = storage_.template get<details::group_to_matcher_t<token, Backend>>().consume(*this, code_point);
       break;
     default:
       assert(false && "Unknown state group");

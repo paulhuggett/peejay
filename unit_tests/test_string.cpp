@@ -346,6 +346,17 @@ TEST_F(String, EscapeVDisabled) {
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
+// NOLINTNEXTLINE
+TEST_F(String, StringValueReturnsAnError) {
+  using testing::Return;
+  auto const erc = make_error_code(std::errc::io_error);
+  EXPECT_CALL(callbacks_, string_value(u8"hello"sv)).Times(1).WillOnce(Return(erc));
+
+  auto p = make_parser(proxy_);
+  p.input(u8R"("hello")"sv).eof();
+  EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
+}
+
 struct ml10_policy : public peejay::default_policies {
   static constexpr auto max_length = std::size_t{10};
 };
@@ -385,6 +396,27 @@ TEST_F(StringLength10, OneUtf16HexPastMaxLength) {
   input(p, u8R"("0123456789\uD834\uDD1E")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::string_too_long)) << "Real error was: " << p.last_error().message();
 }
+// NOLINTNEXTLINE
+TEST_F(StringLength10, OneEscapePastMaxLength) {
+  auto p = make_parser(proxy_);
+  input(p, u8R"("0123456789\n")"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::string_too_long)) << "Real error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
+TEST_F(StringLength10, UTF8TooLong) {
+  auto p = make_parser(proxy_);
+  // smiling face witth sunglasses (U+1F60E)
+  std::array const str{std::byte{0xF0}, std::byte{0x9F}, std::byte{0x98}, std::byte{0x8E}};
+
+  auto b = std::bit_cast<char8_t const *>(str.data());
+  std::ranges::subrange str2{b, b + str.size()};
+  p.input(u8"\""sv);
+  p.input(str2);
+  p.input(str2);
+  p.input(str2);
+  EXPECT_EQ(p.last_error(), make_error_code(error::string_too_long)) << "Real error was: " << p.last_error().message();
+}
 
 // TODO: enumerate the various character types.
 class StringCharType : public testing::Test {
@@ -394,11 +426,19 @@ protected:
     using char_type = char;
   };
 
-  StrictMock<mock_json_callbacks<std::uint64_t, double, char_type>> callbacks_;
-  callbacks_proxy<mock_json_callbacks<std::uint64_t, double, char_type>, string_view_policy> proxy_{callbacks_};
+  using mocks = mock_json_callbacks<std::uint64_t, double, char_type>;
+  StrictMock<mocks> callbacks_;
+  callbacks_proxy<mocks, string_view_policy> proxy_{callbacks_};
 };
 
 TEST_F(StringCharType, StringView) {
+  EXPECT_CALL(callbacks_, string_value("hello"sv)).Times(1);
+  auto p = make_parser(proxy_);
+  p.input(R"("hello")"sv).eof();
+  EXPECT_FALSE(p.last_error()) << "Error was: " << p.last_error().message();
+}
+TEST_F(StringCharType, BadEscape) {
   auto p = make_parser(proxy_);
   p.input(R"("\v")"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char)) << "Error was: " << p.last_error().message();
 }

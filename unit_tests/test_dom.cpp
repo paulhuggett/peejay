@@ -284,14 +284,17 @@ struct depth5 : peejay::default_policies {
 };
 
 // NOLINTNEXTLINE
-TEST(Dom2, NestingTooDeep) {
+TEST(Dom2, Nesting) {
   auto p = make_parser(dom<depth5>{});
   p.input(R"({"a":{"b":{"c":1}}})"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
+}
 
-  auto p2 = make_parser(dom<depth5>{});
-  p2.input(R"({"a":{"b":{"c":{"d":1}}}})"sv);
-  EXPECT_EQ(p2.last_error(), make_error_code(peejay::error::nesting_too_deep))
+// NOLINTNEXTLINE
+TEST(Dom2, NestingTooDeep) {
+  auto p = make_parser(dom<depth5>{});
+  p.input(R"({"a":{"b":{"c":{"d":1}}}})"sv);
+  EXPECT_EQ(p.last_error(), make_error_code(peejay::error::nesting_too_deep))
       << "Real error was: " << p.last_error().message();
 }
 

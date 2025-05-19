@@ -59,13 +59,11 @@ public:
   bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
     assert(!ch || icubaby::is_code_point_start(*ch));
     if (!ch) {
-      parser.set_error(error::unrecognized_token);
-      return true;
+      return parser.set_error_and_pop(error::unrecognized_token);
     }
     assert(!text_.empty() && "Input text must not be empty");
     if (auto const c = text_.front(); *ch != static_cast<char32_t>(c)) {
-      parser.set_error(error::unrecognized_token);
-      return true;
+      return parser.set_error_and_pop(error::unrecognized_token);
     }
     text_.remove_prefix(1);
     if (text_.empty()) {
@@ -78,7 +76,7 @@ public:
       default: unreachable(); break;
       }
       parser.set_error(err);
-      parser.pop();
+      parser.pop();  // unconditionally pop this matcher.
     }
     return true;
   }

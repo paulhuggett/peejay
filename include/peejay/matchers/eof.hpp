@@ -56,7 +56,7 @@ public:
       if (whitespace(parser, *ch)) {
         return false;
       }
-      parser.set_error(error::unexpected_extra_input);
+      return parser.set_error_and_pop(error::unexpected_extra_input);
     }
     parser.pop();
     return true;

@@ -115,6 +115,19 @@ TEST_F(Object, BadBeginObject) {
 }
 
 // NOLINTNEXTLINE
+TEST_F(Object, KeyReturnsError) {
+  auto const error = make_error_code(std::errc::argument_out_of_domain);
+
+  using testing::Return;
+  EXPECT_CALL(callbacks_, begin_object());
+  EXPECT_CALL(callbacks_, key(u8"a"sv)).Times(1).WillOnce(Return(error));
+
+  auto p = make_parser(proxy_);
+  p.input(u8R"({ "a":1 })"sv).eof();
+  EXPECT_EQ(p.last_error(), error) << "Error was: " << p.last_error().message();
+}
+
+// NOLINTNEXTLINE
 TEST_F(Object, SingleKvpBadEndObject) {
   std::error_code const end_object_error{EDOM, std::generic_category()};
 
@@ -206,6 +219,14 @@ TEST_F(Object, TwoCommasBeforeProperty) {
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_key))
       << "JSON error was: " << p.last_error().message();
   EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 8U}));
+}
+
+// NOLINTNEXTLINE
+TEST_F(Object, MissingColon) {
+  parser p{null{}};
+  p.input(u8R"({"a" 1)"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::expected_colon)) << "JSON error was: " << p.last_error().message();
+  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 6U}));
 }
 
 // NOLINTNEXTLINE

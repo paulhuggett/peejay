@@ -53,14 +53,14 @@ template <backend Backend> class array_matcher {
 public:
   static bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
     if (!ch) {
-      parser.set_error(error::expected_array_member);
+      parser.set_error_and_pop(error::expected_array_member);
       return true;
     }
     auto const c = *ch;
     switch (parser.stack_.top()) {
     case state::array_start:
-      if (parser.set_error(parser.backend().begin_array())) {
-        break;
+      if (parser.set_error_and_pop(parser.backend().begin_array())) {
+        return true;  // must return immediately. 'this' has been destroyed.
       }
       parser.set_state(state::array_first_object);
       if (whitespace(parser, c)) {
@@ -85,7 +85,7 @@ public:
 private:
   static bool end_array(parser<Backend> &parser) {
     parser.set_error(parser.backend().end_array());
-    parser.pop();
+    parser.pop();  // unconditionally pop this matcher.
     return true;
   }
   static bool comma(parser<Backend> &parser, char32_t c) {
@@ -95,8 +95,8 @@ private:
     }
     switch (c) {
     case ',': parser.set_state(state::array_object); break;
-    case ']': end_array(parser); break;
-    default: parser.set_error(error::expected_array_member); break;
+    case ']': return end_array(parser);
+    default: return parser.set_error_and_pop(error::expected_array_member);
     }
     return true;
   }
