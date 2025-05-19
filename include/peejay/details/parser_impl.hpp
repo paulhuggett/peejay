@@ -86,7 +86,7 @@ template <backend Backend> void parser<Backend>::pop() {
 // ~~~
 template <backend Backend> decltype(auto) parser<Backend>::eof() {
   while (!stack_.empty() && !this->last_error()) {
-    this->consume_code_point(std::nullopt);
+    this->consume_eof();
   }
   // Pop any states that remained on the stack following an error.
   while (!stack_.empty()) {
@@ -100,7 +100,7 @@ template <backend Backend> decltype(auto) parser<Backend>::eof() {
 
 // consume code point
 // ~~~~~~~~~~~~~~~~~~
-template <backend Backend> void parser<Backend>::consume_code_point(std::optional<char32_t> code_point) {
+template <backend Backend> void parser<Backend>::consume_code_point(char32_t code_point) {
   bool match = false;
   using enum details::group;
 
@@ -122,6 +122,31 @@ template <backend Backend> void parser<Backend>::consume_code_point(std::optiona
     case token:
       match = storage_.template get<details::group_to_matcher_t<token, Backend>>().consume(*this, code_point);
       break;
+    default:
+      assert(false && "Unknown state group");
+      unreachable();
+      break;
+    }
+  }
+}
+
+// consume eof
+// ~~~~~~~~~~~
+template <backend Backend> void parser<Backend>::consume_eof() {
+  using enum details::group;
+
+  while (!stack_.empty() && !this->last_error()) {
+    switch (get_group(stack_.top())) {
+    // Matchers with no additional state.
+    case array: details::group_to_matcher_t<array, Backend>::eof(*this); break;
+    case object: details::group_to_matcher_t<object, Backend>::eof(*this); break;
+    case eof: details::group_to_matcher_t<eof, Backend>::eof(*this); break;
+    case root: details::group_to_matcher_t<root, Backend>::eof(*this); break;
+    case whitespace: details::group_to_matcher_t<whitespace, Backend>::eof(*this); break;
+    // The matchers that maintain state.
+    case number: storage_.template get<details::group_to_matcher_t<number, Backend>>().eof(*this); break;
+    case string: storage_.template get<details::group_to_matcher_t<string, Backend>>().eof(*this); break;
+    case token: storage_.template get<details::group_to_matcher_t<token, Backend>>().eof(*this); break;
     default:
       assert(false && "Unknown state group");
       unreachable();

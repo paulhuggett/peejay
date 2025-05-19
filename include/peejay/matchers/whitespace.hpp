@@ -55,12 +55,7 @@ public:
     return false;
   }
 
-  static bool consume(parser_type &parser, std::optional<char32_t> ch) {
-    if (!ch) {
-      parser.pop();
-      return true;
-    }
-    auto const c = *ch;
+  static bool consume(parser_type &parser, char32_t c) {
     switch (parser.stack_.top()) {
       // Handles the LF part of a Windows-style CR/LF pair.
     case state::whitespace_crlf:
@@ -73,6 +68,8 @@ public:
     }
     return true;
   }
+
+  static void eof(parser_type &parser) { parser.pop(); }
 
 private:
   static bool body(parser_type &parser, char32_t c) {

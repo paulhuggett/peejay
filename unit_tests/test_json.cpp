@@ -63,6 +63,15 @@ TEST_F(Json, Empty) {
 }
 
 // NOLINTNEXTLINE
+TEST_F(Json, JustEof) {
+  parser p{json_out_callbacks{}};
+  p.eof();
+  EXPECT_EQ(p.last_error(), make_error_code(peejay::error::expected_token))
+      << "Real error was: " << p.last_error().message();
+  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 1U}));
+}
+
+// NOLINTNEXTLINE
 TEST_F(Json, StringInput) {
   parser p{json_out_callbacks{}};
   std::u8string const res = input(p, keyword).eof();

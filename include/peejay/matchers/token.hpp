@@ -56,13 +56,9 @@ public:
     }
   }
 
-  bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
-    assert(!ch || icubaby::is_code_point_start(*ch));
-    if (!ch) {
-      return parser.set_error_and_pop(error::unrecognized_token);
-    }
+  bool consume(parser<Backend> &parser, char32_t ch) {
     assert(!text_.empty() && "Input text must not be empty");
-    if (auto const c = text_.front(); *ch != static_cast<char32_t>(c)) {
+    if (auto const c = text_.front(); ch != static_cast<char32_t>(c)) {
       return parser.set_error_and_pop(error::unrecognized_token);
     }
     text_.remove_prefix(1);
@@ -80,6 +76,8 @@ public:
     }
     return true;
   }
+
+  void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::unrecognized_token); }
 
 private:
   /// The keyword to be matched. The input sequence must exactly match this

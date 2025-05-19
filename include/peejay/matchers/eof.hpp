@@ -32,8 +32,6 @@
 #ifndef PEEJAY_MATCHERS_EOF_HPP
 #define PEEJAY_MATCHERS_EOF_HPP
 
-#include <optional>
-
 #include "peejay/concepts.hpp"
 #include "peejay/error.hpp"
 #include "peejay/matchers/whitespace.hpp"
@@ -50,17 +48,15 @@ namespace peejay::details {
 /// Matches the end of the input.
 template <backend Backend> class eof_matcher {
 public:
-  constexpr static bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
-    if (ch) {
-      // Allow whitespace and only whitespace between the top-level object and the end of input.
-      if (whitespace(parser, *ch)) {
-        return false;
-      }
-      return parser.set_error_and_pop(error::unexpected_extra_input);
+  constexpr static bool consume(parser<Backend> &parser, char32_t ch) {
+    // Allow whitespace and only whitespace between the top-level object and the end of input.
+    if (whitespace(parser, ch)) {
+      return false;
     }
-    parser.pop();
-    return true;
+    return parser.set_error_and_pop(error::unexpected_extra_input);
   }
+
+  constexpr static void eof(parser<Backend> &parser) { parser.pop(); }
 };
 
 }  // end namespace peejay::details

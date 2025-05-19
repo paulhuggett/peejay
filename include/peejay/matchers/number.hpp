@@ -35,7 +35,6 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
-#include <optional>
 #include <type_traits>
 #include <variant>
 
@@ -99,7 +98,8 @@ public:
   using sinteger_type = std::make_signed_t<typename policies::integer_type>;
   using float_type = std::remove_cv_t<typename policies::float_type>;
 
-  bool consume(parser_type &parser, std::optional<char32_t> ch);
+  bool consume(parser_type &parser, char32_t ch);
+  void eof(parser_type &parser);
 
 private:
   bool do_leading_minus_state(parser_type &parser, char32_t c);
@@ -114,7 +114,6 @@ private:
   void complete(parser_type &parser);
 
   void make_result(parser_type &parser);
-  bool end(parser_type &parser);
 
   static constexpr bool is_digit(char32_t const c) noexcept { return c >= '0' && c <= '9'; }
 
@@ -296,29 +295,10 @@ template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(
   return match;
 }
 
-// end
-// ~~~
-template <backend Backend> bool number_matcher<Backend>::end(parser_type &parser) {
-  assert(!parser.has_error());
-  switch (parser.get_state()) {
-  case state::number_exponent_digit:
-  case state::number_frac_digit:
-  case state::number_frac:
-  case state::number_integer_digit: this->complete(parser); break;
-  default: parser.set_error_and_pop(error::expected_digits); break;
-  }
-  return true;
-}
-
 // consume
 // ~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::consume(parser_type &parser, std::optional<char32_t> ch) {
-  if (!ch) {
-    return this->end(parser);
-  }
-
+template <backend Backend> bool number_matcher<Backend>::consume(parser_type &parser, char32_t c) {
   bool match = true;
-  auto const c = *ch;
   switch (parser.get_state()) {
   case state::number_start: match = this->do_leading_minus_state(parser, c); break;
   case state::number_integer_initial_digit: match = this->do_integer_initial_digit_state(parser, c); break;
@@ -333,6 +313,19 @@ template <backend Backend> bool number_matcher<Backend>::consume(parser_type &pa
   }
 
   return match;
+}
+
+// eof
+// ~~~
+template <backend Backend> void number_matcher<Backend>::eof(parser_type &parser) {
+  assert(!parser.has_error());
+  switch (parser.get_state()) {
+  case state::number_exponent_digit:
+  case state::number_frac_digit:
+  case state::number_frac:
+  case state::number_integer_digit: this->complete(parser); break;
+  default: parser.set_error_and_pop(error::expected_digits); break;
+  }
 }
 
 // make result

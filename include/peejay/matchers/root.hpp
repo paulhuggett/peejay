@@ -32,8 +32,6 @@
 #ifndef PEEJAY_MATCHERS_ROOT_HPP
 #define PEEJAY_MATCHERS_ROOT_HPP
 
-#include <optional>
-
 #include "peejay/concepts.hpp"
 #include "peejay/details/portab.hpp"
 #include "peejay/error.hpp"
@@ -51,12 +49,7 @@ template <backend Backend> class root_matcher {
 public:
   using policies = typename std::remove_reference_t<Backend>::policies;
 
-  static bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
-    if (!ch) {
-      parser.set_error_and_pop(error::expected_token);
-      return true;
-    }
-    auto const c = *ch;
+  static bool consume(parser<Backend> &parser, char32_t c) {
     bool match = false;
     switch (parser.stack_.top()) {
     case state::root_start:
@@ -87,6 +80,8 @@ public:
     }
     return match;
   }
+
+  static void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::expected_token); }
 };
 
 }  // end namespace peejay::details

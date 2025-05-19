@@ -37,7 +37,6 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <ostream>
 #include <ranges>
 #include <stack>
@@ -305,7 +304,8 @@ private:
   void push_eof_matcher() { push(details::state::eof_start); }
   ///@}
 
-  void consume_code_point(std::optional<char32_t> code_point);
+  void consume_code_point(char32_t code_point);
+  void consume_eof();
 
   void init_stack() {
     // The EOF matcher is placed at the bottom of the stack to ensure that the

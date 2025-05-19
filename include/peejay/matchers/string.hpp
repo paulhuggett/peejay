@@ -34,7 +34,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <optional>
 #include <string_view>
 
 #include "peejay/concepts.hpp"
@@ -60,7 +59,8 @@ public:
 
   constexpr explicit string_matcher(bool is_key) noexcept : is_key_{is_key} {}
 
-  bool consume(parser_type &parser, std::optional<char32_t> ch);
+  bool consume(parser_type &parser, char32_t ch);
+  void eof(parser_type &parser);
 
 private:
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
@@ -200,13 +200,7 @@ template <backend Backend> void string_matcher<Backend>::hex(parser_type &parser
 
 // consume
 // ~~~~~~~
-template <backend Backend> bool string_matcher<Backend>::consume(parser_type &parser, std::optional<char32_t> ch) {
-  if (!ch) {
-    parser.set_error_and_pop(error::expected_close_quote);
-    return true;
-  }
-
-  auto const c = *ch;
+template <backend Backend> bool string_matcher<Backend>::consume(parser_type &parser, char32_t c) {
   bool match = true;
   switch (parser.stack_.top()) {
   case state::string_start:
@@ -224,6 +218,12 @@ template <backend Backend> bool string_matcher<Backend>::consume(parser_type &pa
   default: unreachable(); break;
   }
   return match;
+}
+
+// eof
+// ~~~
+template <backend Backend> void string_matcher<Backend>::eof(parser_type &parser) {
+  parser.set_error_and_pop(error::expected_close_quote);
 }
 
 }  // end namespace peejay::details

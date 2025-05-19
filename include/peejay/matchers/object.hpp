@@ -48,7 +48,8 @@ namespace peejay::details {
 template <backend Backend> class object_matcher {
 public:
   using parser_type = parser<Backend>;
-  static bool consume(parser_type &parser, std::optional<char32_t> ch);
+  static bool consume(parser_type &parser, char32_t ch);
+  static void eof(parser_type &parser);
 
 private:
   static void end_object(parser_type &parser);
@@ -58,12 +59,7 @@ private:
 
 // consume
 // ~~~~~~~
-template <backend Backend> bool object_matcher<Backend>::consume(parser_type &parser, std::optional<char32_t> ch) {
-  if (!ch) {
-    parser.set_error_and_pop(error::expected_object_member);
-    return true;
-  }
-  auto const c = *ch;
+template <backend Backend> bool object_matcher<Backend>::consume(parser_type &parser, char32_t c) {
   switch (parser.stack_.top()) {
   case state::object_start:
     if (parser.set_error_and_pop(parser.backend().begin_object())) {
@@ -103,6 +99,10 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
   }
   // No change of matcher. Consume the input character.
   return true;
+}
+
+template <backend Backend> void object_matcher<Backend>::eof(parser_type &parser) {
+  parser.set_error_and_pop(error::expected_object_member);
 }
 
 // key

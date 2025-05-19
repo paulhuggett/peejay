@@ -33,7 +33,6 @@
 #define PEEJAY_MATCHERS_ARRAY_HPP
 
 #include <cassert>
-#include <optional>
 
 #include "peejay/concepts.hpp"
 #include "peejay/details/portab.hpp"
@@ -51,12 +50,7 @@ namespace peejay::details {
 /// Matches an array.
 template <backend Backend> class array_matcher {
 public:
-  static bool consume(parser<Backend> &parser, std::optional<char32_t> ch) {
-    if (!ch) {
-      parser.set_error_and_pop(error::expected_array_member);
-      return true;
-    }
-    auto const c = *ch;
+  static bool consume(parser<Backend> &parser, char32_t c) {
     switch (parser.stack_.top()) {
     case state::array_start:
       if (parser.set_error_and_pop(parser.backend().begin_array())) {
@@ -81,6 +75,8 @@ public:
     }
     return true;
   }
+
+  static void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::expected_array_member); }
 
 private:
   static bool end_array(parser<Backend> &parser) {
