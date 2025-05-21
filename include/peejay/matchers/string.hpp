@@ -64,9 +64,7 @@ public:
 
 private:
   /// Process a single "normal" (i.e. not part of an escape or hex sequence)
-  /// character. This function wraps consume_normal(). That function does the
-  /// real work but this wrapper performs any necessary mutations of the state
-  /// machine.
+  /// character.
   ///
   /// \param parser  The parent parser instance.
   /// \param code_point  The Unicode character being processed.
@@ -120,12 +118,9 @@ template <backend Backend> bool string_matcher<Backend>::normal(parser_type &par
 
   icubaby::t32_8 utf_32_to_8;
   bool overflow = false;
-  auto it = utf_32_to_8(code_point, checked_back_insert_iterator<decltype(str_), char8_t>{&str_, &overflow});
-  utf_32_to_8.end_cp(it);
-
-  if (!utf_32_to_8.well_formed()) {
-    parser.set_error_and_pop(error::bad_unicode_code_point);
-  } else if (overflow) {
+  utf_32_to_8.end_cp(utf_32_to_8(code_point, checked_back_insert_iterator<decltype(str_), char8_t>{&str_, &overflow}));
+  assert(utf_32_to_8.well_formed());
+  if (overflow) {
     parser.set_error_and_pop(error::string_too_long);
   }
   return true;
@@ -145,7 +140,10 @@ template <backend Backend> void string_matcher<Backend>::escape(parser_type &par
   case 'n': code_point = '\n'; break;
   case 'r': code_point = '\r'; break;
   case 't': code_point = '\t'; break;
-  case 'u': parser.set_state(state::string_hex1); return;
+  case 'u':
+    hex_ = 0;
+    parser.set_state(state::string_hex1);
+    return;
   default: parser.set_error_and_pop(error::invalid_escape_char); return;
   }
   // We're adding this code point to the output string and returning to the "normal" state.
@@ -164,9 +162,7 @@ template <backend Backend> void string_matcher<Backend>::hex(parser_type &parser
   auto &state = parser.stack_.top();
   assert(to_underlying(state) >= to_underlying(state::string_hex1) &&
          to_underlying(state) <= to_underlying(state::string_hex4) && "We must be in one of the hex states");
-  if (state == state::string_hex1) {
-    hex_ = 0;
-  }
+  assert((state != state::string_hex1 || hex_ == 0) && "hex_ must be zero in the hex1 state");
   auto offset = std::uint_least16_t{0};
   if (code_point >= '0' && code_point <= '9') {
     offset = static_cast<std::uint_least16_t>('0');

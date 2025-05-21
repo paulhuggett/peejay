@@ -64,7 +64,7 @@ template <typename FloatType, std::unsigned_integral UIntegerType> struct float_
   }
 
   unsigned frac_digits = 0;
-  FloatType frac_part = static_cast<FloatType>(0.0);
+  FloatType frac_part = FloatType{0.0};
   FloatType value = FloatType{0.0};
   bool exp_is_negative = false;
   unsigned exponent = 0U;
@@ -331,37 +331,31 @@ template <backend Backend> void number_matcher<Backend>::eof(parser_type &parser
 // make result
 // ~~~~~~~~~~~
 template <backend Backend> void number_matcher<Backend>::make_result(parser_type &parser) {
-  if (parser.has_error()) {
-    return;
-  }
-
-  if (std::holds_alternative<uinteger_type>(acc_)) {
-    constexpr auto min = std::numeric_limits<sinteger_type>::min();
-    constexpr auto umin = static_cast<uinteger_type>(min);
+  assert(!parser.has_error());
+  if (auto const *const int_acc = std::get_if<uinteger_type>(&acc_)) {
+    constexpr auto smin = std::numeric_limits<sinteger_type>::min();
+    constexpr auto umin = static_cast<uinteger_type>(smin);
     constexpr auto umax = static_cast<uinteger_type>(std::numeric_limits<sinteger_type>::max());
 
     // TODO: this doesn't automatically promote v. large integers to float.
     // Perhaps it should?
-    auto &int_acc = std::get<uinteger_type>(acc_);
-    if (is_neg_) {
-      if (int_acc > umin) {
-        parser.set_error(error::number_out_of_range);
-      } else {
-        parser.set_error(
-            parser.backend().integer_value((int_acc == umin) ? min : -static_cast<sinteger_type>(int_acc)));
-      }
-    } else {
-      if (int_acc > umax) {
-        return parser.set_error_and_pop(error::number_out_of_range);
-      }
-      parser.set_error(parser.backend().integer_value(static_cast<sinteger_type>(int_acc)));
+    if (*int_acc > (is_neg_ ? umin : umax)) {
+      parser.set_error(error::number_out_of_range);
+      return;
     }
+
+    auto value = sinteger_type{0};
+    if (is_neg_) {
+      value = (*int_acc == umin) ? smin : -static_cast<sinteger_type>(*int_acc);
+    } else {
+      value = static_cast<sinteger_type>(*int_acc);
+    }
+    parser.set_error(parser.backend().integer_value(value));
     return;
   }
 
-  if constexpr (std::is_same_v<float_type, no_float_type>) {
-    parser.set_error(error::number_out_of_range);
-  } else {
+  assert((!std::is_same_v<float_type, no_float_type>));
+  if constexpr (!std::is_same_v<float_type, no_float_type>) {
     auto &fp_acc = std::get<float_accumulator<float_type, uinteger_type>>(acc_);
     auto xf = static_cast<float_type>(
         fp_acc.value +

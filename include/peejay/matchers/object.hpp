@@ -101,6 +101,8 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
   return true;
 }
 
+// eof
+// ~~~
 template <backend Backend> void object_matcher<Backend>::eof(parser_type &parser) {
   parser.set_error_and_pop(error::expected_object_member);
 }
