@@ -119,7 +119,7 @@ protected:
   template <std::integral SizeType, typename... Args>
   static pbi emplace(pbi end, SizeType *size, pbi pos, Args &&...args);
 
-  static void raise_out_of_range() { throw std::out_of_range{"peejay::arrayvec"}; }
+  static void raise_out_of_range() { throw std::out_of_range{"peejay arrayvec"}; }
 };
 
 // init
@@ -512,13 +512,11 @@ public:
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
-  template <std::input_iterator InputIterator> arrayvec(InputIterator first, InputIterator last);
+  template <std::input_iterator InputIterator>
+  arrayvec(InputIterator first, InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>);
 
   /// \brief Constructs the container with \p count default-inserted instances
   ///   of T.
-  ///
-  /// No copies are made.
-  ///
   /// \param count  The number of elements to be initialized. This must be less
   ///   than or equal to max_size().
   explicit arrayvec(size_type count);
@@ -532,18 +530,15 @@ public:
   ///   container.
   arrayvec(size_type count, const_reference value);
 
-  constexpr arrayvec(arrayvec const &other) noexcept
-    requires(std::is_trivially_copyable_v<T>)
-  = default;
-  arrayvec(arrayvec const &other) noexcept(std::is_nothrow_copy_constructible_v<T>)
-    requires(!std::is_trivially_copyable_v<T>)
-      : arrayvec(std::begin(other), std::end(other)) {}
-  constexpr arrayvec(arrayvec &&other) noexcept
-    requires(std::is_trivially_move_constructible_v<T>)
-  = default;
-  arrayvec(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
-    requires(!std::is_trivially_move_constructible_v<T>)
-  {
+  constexpr arrayvec(arrayvec const &other) noexcept requires(std::is_trivially_copyable_v<T>) = default;
+  arrayvec(arrayvec const &other)
+      noexcept(std::is_nothrow_copy_constructible_v<T>)
+      requires(!std::is_trivially_copyable_v<T>)
+    : arrayvec(std::begin(other), std::end(other)) {}
+  constexpr arrayvec(arrayvec &&other) noexcept requires(std::is_trivially_move_constructible_v<T>) = default;
+  arrayvec(arrayvec &&other)
+      noexcept(std::is_nothrow_move_constructible_v<T>)
+      requires(!std::is_trivially_move_constructible_v<T>) {
     this->flood();
     auto *dest = this->data();
     std::ranges::for_each(other, [this, &dest](T &src) {
@@ -553,12 +548,8 @@ public:
     });
   }
 
-  constexpr ~arrayvec() noexcept
-    requires(std::is_trivially_destructible_v<T>)
-  = default;
-  ~arrayvec() noexcept
-    requires(!std::is_trivially_destructible_v<T>)
-  {
+  constexpr ~arrayvec() noexcept requires(std::is_trivially_destructible_v<T>) = default;
+  ~arrayvec() noexcept requires(!std::is_trivially_destructible_v<T>) {
     this->clear();
   }
 
@@ -958,8 +949,6 @@ private:
   std::array<aligned_storage, Size> data_;
 };
 
-static_assert(std::is_trivially_copyable_v<arrayvec<char, 2>>);
-
 // (ctor)
 // ~~~~~~
 template <typename T, std::size_t Size> arrayvec<T, Size>::arrayvec() noexcept {
@@ -968,7 +957,8 @@ template <typename T, std::size_t Size> arrayvec<T, Size>::arrayvec() noexcept {
 
 template <typename T, std::size_t Size>
 template <std::input_iterator InputIterator>
-arrayvec<T, Size>::arrayvec(InputIterator first, InputIterator last) {
+arrayvec<T, Size>::arrayvec(InputIterator first,
+                            InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>) {
   this->flood();
   details::avbase<T>::init(this->begin(), &size_, first, last);
 }
@@ -984,18 +974,6 @@ template <typename T, std::size_t Size> arrayvec<T, Size>::arrayvec(size_type co
   assert(count <= Size);
   details::avbase<T>::init(this->begin(), &size_, count, value);
 }
-
-// operator=
-// ~~~~~~~~~
-#if 0
-template <typename T, std::size_t Size> auto arrayvec<T, Size>::operator=(arrayvec const &other) -> arrayvec & {
-  if (&other != this) {
-    this->operator= <Size>(other);
-  }
-  return *this;
-}
-
-#endif
 
 // at
 // ~~

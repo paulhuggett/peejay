@@ -38,9 +38,10 @@ include (CheckCXXCompilerFlag)
 include (CheckLinkerFlag)
 include (GNUInstallDirs)
 
-option (WERROR "Compiler warnings are errors")
-option (PEEJAY_COVERAGE "Generate Source-based Coverage")
-option (PEEJAY_FUZZTEST "Enable fuzztest")
+option(WERROR "Compiler warnings are errors")
+option(PEEJAY_COVERAGE "Generate Source-based Coverage")
+option(PEEJAY_FUZZTEST "Enable fuzztest")
+option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
 
 # A custom target from which the installs will hang.
 add_custom_target (
@@ -113,27 +114,27 @@ function (setup_target target)
     list (APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
   endif ()
 
-  if (PEEJAY_FUZZTEST)
-    target_compile_definitions (${target} PUBLIC PEEJAY_FUZZTEST=1)
-  endif ()
-
-  target_compile_features (${target} PUBLIC cxx_std_20)
-  # Produce PIC so that PJ static libraries can be used in a shared library.
-  set_target_properties (${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
-
-  target_compile_options (
-    ${target}
-    PRIVATE
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
-      $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
-      $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
+  target_compile_definitions(${target}
+    PUBLIC
+    $<$<BOOL:${PEEJAY_FUZZTEST}>:PEEJAY_FUZZTEST=1>
+    $<$<BOOL:${PEEJAY_MPROTECT_VARIANT}>:PEEJAY_MPROTECT_VARIANT=1>
   )
-  target_link_options (
-    ${target}
+
+  target_compile_features(${target} PUBLIC cxx_std_20)
+  # Produce PIC so that PJ static libraries can be used in a shared library.
+  set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
+
+  target_compile_options(${target}
     PRIVATE
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
-      $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
-      $<$<CXX_COMPILER_ID:MSVC>:>
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
+    $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
+    $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
+  )
+  target_link_options(${target}
+    PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
+    $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
+    $<$<CXX_COMPILER_ID:MSVC>:>
   )
 
   # If the link step supports -Wl,-Map generate a map file from the link.

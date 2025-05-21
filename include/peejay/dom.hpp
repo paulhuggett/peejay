@@ -174,20 +174,10 @@ private:
     }
   }
 
-#ifdef __clang__
-#define PEEJAY_CLANG_DIAG_PUSH _Pragma("clang diagnostic push")
-#define PEEJAY_CLANG_NO_FLOAT_EQUAL _Pragma("clang diagnostic ignored \"-Wfloat-equal\"")
-#define PEEJAY_CLANG_DIAG_POP _Pragma("clang diagnostic pop")
-#else
-#define PEEJAY_CLANG_DIAG_PUSH
-#define PEEJAY_CLANG_NO_FLOAT_EQUAL
-#define PEEJAY_CLANG_DIAG_POP
-#endif
-
   static constexpr bool equal(float_type a, float_type b) noexcept {
     // This function is based on the code in this StackOverflow posting <https://stackoverflow.com/a/32334103>.
     PEEJAY_CLANG_DIAG_PUSH
-    PEEJAY_CLANG_NO_FLOAT_EQUAL
+    PEEJAY_CLANG_DIAG_NO_FLOAT_EQUAL
     // These defaults are arbitrary.
     constexpr float_type epsilon = 16 * std::numeric_limits<float_type>::epsilon();
     static_assert(epsilon < float_type{1.0});

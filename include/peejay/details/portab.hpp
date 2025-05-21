@@ -37,6 +37,18 @@
 #include <utility>
 #include <version>
 
+#ifdef __clang__
+#define PEEJAY_CLANG_PRAGMA(x) _Pragma(x)
+#else
+#define PEEJAY_CLANG_PRAGMA(x)
+#endif
+
+#define PEEJAY_CLANG_DIAG_PUSH PEEJAY_CLANG_PRAGMA("clang diagnostic push")
+#define PEEJAY_CLANG_DIAG_POP PEEJAY_CLANG_PRAGMA("clang diagnostic pop")
+#define PEEJAY_CLANG_DIAG_NO_FLOAT_EQUAL PEEJAY_CLANG_PRAGMA("clang diagnostic ignored \"-Wfloat-equal\"")
+#define PEEJAY_CLANG_DIAG_NO_GLOBAL_CONSTRUCTORS \
+  PEEJAY_CLANG_PRAGMA("clang diagnostic ignored \"-Wglobal-constructors\"")
+
 namespace peejay {
 
 // unreachable
@@ -58,7 +70,7 @@ namespace peejay {
 #elif defined(_MSC_VER)
 [[noreturn, maybe_unused]] __forceinline void unreachable() {
   assert(false && "unreachable");
-  __assume(false);
+  __assume(0);
 }
 #else
 // Unknown compiler so no extension is used, Undefined behavior is still raised
