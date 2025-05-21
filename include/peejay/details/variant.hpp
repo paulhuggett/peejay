@@ -55,7 +55,6 @@
 #include <Windows.h>
 #else
 #include <sys/mman.h>
-#include <sys/sysctl.h>
 #include <sys/types.h>
 #include <unistd.h>
 #endif  // !_WIN32
