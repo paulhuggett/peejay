@@ -64,8 +64,8 @@ template <typename FloatType, std::unsigned_integral UIntegerType> struct float_
   }
 
   unsigned frac_digits = 0;
-  FloatType frac_part = FloatType{0.0};
-  FloatType value = FloatType{0.0};
+  FloatType frac_part = static_cast<FloatType>(0.0);
+  FloatType value = static_cast<FloatType>(0.0);
   bool exp_is_negative = false;
   unsigned exponent = 0U;
 };
