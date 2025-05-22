@@ -39,6 +39,7 @@
 #include <iostream>
 #include <type_traits>
 
+#include "peejay/details/portab.hpp"
 #include "peejay/details/type_list.hpp"
 
 // mprotect-mode is supported on Linux, macOS, and Windows if NDEBUG is not defined.
