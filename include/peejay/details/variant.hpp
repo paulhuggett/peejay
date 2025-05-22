@@ -98,7 +98,11 @@ constexpr std::size_t aligned(std::size_t const alignment, std::size_t const v) 
   return (v + alignment - 1U) & ~(alignment - 1U);
 }
 
+#ifdef _MSC_VER
+template <typename T> using unique_ptr_aligned = std::unique_ptr<T, decltype(&_aligned_free)>;
+#else
 template <typename T> using unique_ptr_aligned = std::unique_ptr<T, decltype(&std::free)>;
+#endif
 
 #endif  // PEEJAY_MPROTECT_VARIANT
 
@@ -228,9 +232,15 @@ template <typename T>
 auto variant<Members>::aligned_unique_ptr() -> unique_ptr_aligned<T> {
   auto const alignment = std::max(page_size_, max_align_);
   auto const size = variant::adjusted_size();
+#ifdef _MSC_VER
+  auto *const ptr = _aligned_malloc(size, alignment);
+  auto const free = &_aligned_free;
+#else
   auto *const ptr = std::aligned_alloc(alignment, size);
-  assert(ptr != nullptr && "aligned_alloc() failed");
-  return unique_ptr_aligned<T>(std::bit_cast<std::byte *>(ptr), &std::free);
+  auto const free = &std::free;
+#endif
+  assert(ptr != nullptr && "aligned_malloc() failed");
+  return unique_ptr_aligned<T>(std::bit_cast<std::byte *>(ptr), free);
 }
 
 template <type_list::sequence Members>
