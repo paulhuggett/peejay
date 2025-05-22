@@ -53,6 +53,7 @@ add_executable(pj2-unittests
   test_number.cpp
   test_pointer_based_iterator.cpp
   test_string.cpp
+  test_variant.cpp
 )
 setup_target(pj2-unittests)
 

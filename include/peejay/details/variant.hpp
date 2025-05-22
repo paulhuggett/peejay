@@ -145,16 +145,22 @@ public:
 #endif  // NDEBUG
     this->protect(/*usable=*/false);
   }
+
+  /// Creates a new value in-place, in an existing variant object.
+  /// The object must not be holding any currently contained value when this function is called.
+  /// \p args Constructor arguments to use when constructing the new value
+  /// \returns A reference to the new contained value.
   template <typename T, typename... Args>
     requires type_list::has_type_v<Members, T>
-  void emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+  T &emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
     this->protect(/*usable=*/true);
     assert(holds_ == type_list::npos && "The variant is already holding a value");
     // TODO: validate the pattern...
-    std::construct_at(std::bit_cast<T *>(&contents_[0]), std::forward<Args>(args)...);
+    auto *const result = std::construct_at(std::bit_cast<T *>(&contents_[0]), std::forward<Args>(args)...);
 #ifndef NDEBUG
     holds_ = type_list::index_of_v<Members, T>;
 #endif  // NDEBUG
+    return *result;
   }
 
   template <typename T>
@@ -201,7 +207,7 @@ PEEJAY_CLANG_DIAG_PUSH
 PEEJAY_CLANG_DIAG_NO_GLOBAL_CONSTRUCTORS
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-inline auto const variant<Members>::page_size_ = system_page_size();
+inline std::size_t const variant<Members>::page_size_ = system_page_size();
 PEEJAY_CLANG_DIAG_POP
 
 template <type_list::sequence Members>
@@ -233,7 +239,11 @@ auto variant<Members>::aligned_unique_ptr() -> unique_ptr_aligned<T> {
   auto const alignment = std::max(page_size_, max_align_);
   auto const size = variant::adjusted_size();
 #ifdef _MSC_VER
+#ifndef NDEBUG
+  auto *const ptr = _aligned_malloc_dbg(size, alignment);
+#else
   auto *const ptr = _aligned_malloc(size, alignment);
+#endif
   auto const free = &_aligned_free;
 #else
   auto *const ptr = std::aligned_alloc(alignment, size);
