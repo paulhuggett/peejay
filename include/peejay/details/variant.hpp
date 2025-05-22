@@ -132,13 +132,13 @@ public:
 
   ~variant() noexcept {
     this->protect(/*usable=*/true);
-    assert(holds_ == type_list::npos && "Must not destruct a variant that is holding a value");
+    assert((holds_ == type_list::npos) && "Must not destruct a variant that is holding a value");
     // TODO: validate the pattern...
   }
   template <typename T>
     requires type_list::has_type_v<Members, T>
   void destroy() noexcept(std::is_nothrow_destructible_v<T>) {
-    assert(holds_ == (type_list::index_of_v<Members, T>) && "The variant does not hold the expected type");
+    assert((holds_ == type_list::index_of_v<Members, T>) && "The variant does not hold the expected type");
     std::destroy_at(std::bit_cast<T *>(&contents_[0]));
 #ifndef NDEBUG
     std::memset(&contents_[0], 0, sizeof(contents_));
@@ -155,7 +155,7 @@ public:
     requires type_list::has_type_v<Members, T>
   T &emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
     this->protect(/*usable=*/true);
-    assert(holds_ == type_list::npos && "The variant is already holding a value");
+    assert((holds_ == type_list::npos) && "The variant is already holding a value");
     // TODO: validate the pattern...
     auto *const result = std::construct_at(std::bit_cast<T *>(&contents_[0]), std::forward<Args>(args)...);
 #ifndef NDEBUG
@@ -167,13 +167,13 @@ public:
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T &get() noexcept {
-    assert(holds_ == (type_list::index_of_v<Members, T>));
+    assert((holds_ == type_list::index_of_v<Members, T>));
     return *std::bit_cast<T *>(&contents_[0]);
   }
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T const &get() const noexcept {
-    assert(holds_ == (type_list::index_of_v<Members, T>));
+    assert((holds_ == type_list::index_of_v<Members, T>));
     return *std::bit_cast<T const *>(&contents_[0]);
   }
 #ifndef NDEBUG
@@ -250,7 +250,7 @@ auto variant<Members>::aligned_unique_ptr() -> unique_ptr_aligned<T> {
   auto *const ptr = std::aligned_alloc(alignment, size);
   auto const free = &std::free;
 #endif
-  assert(ptr != nullptr && "aligned_malloc() failed");
+  assert((ptr != nullptr) && "aligned_malloc() failed");
   return unique_ptr_aligned<T>(std::bit_cast<std::byte *>(ptr), free);
 }
 
