@@ -241,7 +241,7 @@ auto variant<Members>::aligned_unique_ptr() -> unique_ptr_aligned<T> {
   auto const size = variant::adjusted_size();
 #ifdef _MSC_VER
 #ifndef NDEBUG
-  auto *const ptr = _aligned_malloc_dbg(size, alignment);
+  auto *const ptr = _aligned_malloc_dbg(size, alignment, __FILE__, __LINE__);
 #else
   auto *const ptr = _aligned_malloc(size, alignment);
 #endif
