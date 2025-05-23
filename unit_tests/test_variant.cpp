@@ -51,11 +51,23 @@ TEST(Variant, Empty) {
 TEST(Variant, EmplaceAndDestroy) {
   variant<type_list<char, int>> v;
   v.emplace<char>('a');
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), 0);
+#endif
   EXPECT_EQ(v.get<char>(), 'a');
   v.destroy<char>();
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), peejay::type_list::npos);
+#endif
   v.emplace<int>(42);
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), 1);
+#endif
   EXPECT_EQ(v.get<int>(), 42);
   v.destroy<int>();
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), peejay::type_list::npos);
+#endif
 }
 
 }  // end anonymous namespace
