@@ -82,7 +82,7 @@ jobs:
             options:
             os: windows-latest
 
-          - name: Windows-latest/VS2022/Debug
+          - name: Windows-latest/VS2022/Debug/mprotect-variant
             build_type: Debug
             generator: Visual Studio 17 2022
             options: -D PEEJAY_MPROTECT_VARIANT=Yes
