@@ -110,7 +110,10 @@ TEST_F(String, BadEscape1) {
 // NOLINTNEXTLINE
 TEST_F(String, BadEscape2) {
   auto p = make_parser(proxy_);
-  input(p, u8"\"\\\xC3\xBF\""sv).eof();
+  std::array const input{std::uint8_t{'"'}, std::uint8_t{'\\'}, std::uint8_t{0xC3}, std::uint8_t{0xBF},
+                         std::uint8_t{'"'}};
+  auto const *const b = std::bit_cast<char8_t const *>(input.data());
+  p.input(std::ranges::subrange{b, b + input.size()}).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char));
   EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 3U}));
   EXPECT_EQ(p.pos(), p.input_pos());

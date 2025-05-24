@@ -138,7 +138,8 @@ public:
   template <typename T>
     requires type_list::has_type_v<Members, T>
   void destroy() noexcept(std::is_nothrow_destructible_v<T>) {
-    assert((holds_ == type_list::index_of_v<Members, T>) && "The variant does not hold the expected type");
+    assert((holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>)) &&
+           "The variant does not hold the expected type");
     std::destroy_at(std::bit_cast<T *>(&contents_[0]));
 #ifndef NDEBUG
     std::memset(&contents_[0], 0, sizeof(contents_));
@@ -167,7 +168,8 @@ public:
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T &get() noexcept {
-    assert((holds_ == type_list::index_of_v<Members, T>));
+    size_t x = type_list::index_of_v<Members, T>;
+    assert(holds_ == x);
     return *std::bit_cast<T *>(&contents_[0]);
   }
   template <typename T>
