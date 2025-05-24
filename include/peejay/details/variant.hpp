@@ -168,14 +168,13 @@ public:
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T &get() noexcept {
-    size_t x = type_list::index_of_v<Members, T>;
-    assert(holds_ == x);
+    assert(holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>));
     return *std::bit_cast<T *>(&contents_[0]);
   }
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T const &get() const noexcept {
-    assert((holds_ == type_list::index_of_v<Members, T>));
+    assert(holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>));
     return *std::bit_cast<T const *>(&contents_[0]);
   }
 #ifndef NDEBUG
