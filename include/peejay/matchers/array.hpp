@@ -73,7 +73,6 @@ public:
     case state::array_comma: return comma(parser, c);
     default: unreachable(); break;
     }
-    return true;
   }
 
   static void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::expected_array_member); }

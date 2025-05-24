@@ -66,7 +66,6 @@ public:
     case state::whitespace_start: return whitespace_matcher::body(parser, c);
     default: unreachable(); break;
     }
-    return true;
   }
 
   static void eof(parser_type &parser) { parser.pop(); }
