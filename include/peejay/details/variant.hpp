@@ -222,9 +222,13 @@ variant<Members>::variant(variant &&other) noexcept : contents_{std::move(other.
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 auto variant<Members>::operator=(variant &&other) noexcept -> variant & {
+  this->protect(/*usable=*/true);
+  other.protect(/*usable=*/true);
   contents_ = std::move(other.contents_);
   holds_ = other.holds_;
   other.holds_ = type_list::npos;
+  other.protect(/*usable=*/other.holds_ != type_list::npos);
+  this->protect(/*usable=*/holds_ != type_list::npos);
   return *this;
 }
 
