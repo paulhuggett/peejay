@@ -93,6 +93,7 @@ function (setup_target target)
       -Wno-c++2a-compat
       -Wno-covered-switch-default
       -Wno-ctad-maybe-unsupported
+      -Wno-missing-include-dirs
       -Wno-poison-system-directories
       -Wno-unsafe-buffer-usage
       -Wno-switch-enum
