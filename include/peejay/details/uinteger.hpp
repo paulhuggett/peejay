@@ -38,7 +38,7 @@
 
 namespace peejay {
 
-template <std::unsigned_integral T> constexpr unsigned bits_required(T value) {
+template <std::unsigned_integral T> consteval unsigned bits_required(T value) {
   if (value == 0U) {
     return 0U;
   }
