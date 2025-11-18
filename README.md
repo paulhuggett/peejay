@@ -12,4 +12,78 @@ JSON Parser for C++
 
 ## Introduction
 
-Peejay (PJ) is a state-machine based JSON parser for C++20 or later. (The silly name comes from the English pronunciation of P.J. which is short for **P**arse **J**SON.)
+Peejay (PJ, from the English pronunciation of **P**arse **J**SON) is a header-only C++ library that provides a state-machine-driven JSON parser with the following characteristics:
+
+- C++20 or later language standard requirement
+- Single-character parsing: feed content to the parser a byte or entire document at a time
+- The parser front-end has fixed and predictable overhead: it does not allocate memory and does not throw or catch exceptions
+- Template-based backend system allowing DOM construction, validation-only parsing, or custom output formats
+- Policy-driven configuration for customisation
+
+## Example
+
+A configuration policy for the parser:
+
+~~~cpp
+#include "peejay/json.hpp"
+
+struct policy : public peejay::default_policies {
+  static constexpr std::size_t max_length = 64;
+  static constexpr std::size_t max_stack_depth = 8;
+  static constexpr bool pos_tracking = true;
+
+  using float_type = double;
+  using integer_type = std::int64_t;
+};
+~~~
+
+A class which implements a simple backend which prints the tokens as they arrive from the front-end parser:
+
+~~~cpp
+/// A backend which prints tokens as they arrive.
+class print_tokens {
+public:
+  using policies = policy;
+  static constexpr void result() noexcept {
+    // The "print_tokens" backend produces no result at all.
+  }
+
+  static std::error_code boolean_value(bool const b) noexcept { std::cout << (b ? "true" : "false") << ' '; return {}; }
+  static std::error_code float_value(policy::float_type const v) { std::cout << v << ' '; return {}; }
+  static std::error_code integer_value(policy::integer_type const v) { std::cout << v << ' '; return {}; }
+  static std::error_code null_value() { std::cout << "null"; return {}; }
+  static std::error_code string_value(std::u8string_view const &sv) { show_string(sv); std::cout << ' '; return {}; }
+
+  static std::error_code begin_array() { std::cout << "[ "; return {}; }
+  static std::error_code end_array() { std::cout << "] "; return {}; }
+
+  static std::error_code begin_object() { std::cout << "{ "; return {}; }
+  static std::error_code key(std::u8string_view const &sv) { show_string(sv); std::cout << ": "; return {}; }
+  static std::error_code end_object() { std::cout << "} "; return {}; }
+
+private:
+  static void show_string(std::u8string_view const &sv) {
+    std::cout << '"';
+    std::ranges::copy(std::ranges::subrange{sv} | std::ranges::views::transform([] (char8_t c) { return static_cast<char>(c); }), std::ostream_iterator<char>{std::cout});
+    std::cout << '"';
+  }
+};
+~~~
+
+A top-level driver function. Here the entire JSON document is presented to `parser<>::input()` at once. We could also supply it in smaller pieces down to a single byte at a time.
+
+~~~cpp
+int main() {
+  using namespace std::string_view_literals;
+
+  int exit_code = EXIT_SUCCESS;
+  peejay::parser<print_tokens> p;
+  p.input(u8R"(  { "a":123, "b" : [false,"c"], "c":true }  )"sv).eof();
+  if (auto const err = p.last_error()) {
+    std::cerr << "Error: " << err.message() << '\n';
+    exit_code = EXIT_FAILURE;
+  }
+  return exit_code;
+}
+
+~~~
