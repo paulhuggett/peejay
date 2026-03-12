@@ -39,7 +39,9 @@
 #define PEEJAY_DOM_HPP
 
 #include <memory>
+#include <stack>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -47,6 +49,24 @@
 #include "peejay/parser.hpp"
 
 namespace peejay::dom {
+
+namespace details {
+
+// A custom hasher string_hash with is_transparent to enable heterogenous lookup in objects.
+template <typename CharType> struct string_hash {
+  using is_transparent = void;
+  [[nodiscard]] size_t operator()(CharType const* str) const {
+    return std::hash<std::basic_string_view<CharType>>{}(str);
+  }
+  [[nodiscard]] size_t operator()(std::basic_string_view<CharType> const& str) const {
+    return std::hash<std::basic_string_view<CharType>>{}(str);
+  }
+  [[nodiscard]] size_t operator()(std::basic_string<CharType> const& str) const {
+    return std::hash<std::basic_string<CharType>>{}(str);
+  }
+};
+
+}  // end namespace details
 
 struct null {
   // All instances of null compare equal.
@@ -66,9 +86,11 @@ template <policy PJPolicies> class element {
 public:
   using integer_type = typename PJPolicies::integer_type;
   using float_type = typename PJPolicies::float_type;
-  using string = std::basic_string<typename PJPolicies::char_type>;  // TODO: here be allocations
-  using object = std::unordered_map<string, element>;              // TODO: here be allocations
-  using array = std::vector<element>;                              // TODO: here be allocations
+  // TODO: here be allocations in  the following three containers.
+  using string = std::basic_string<typename PJPolicies::char_type>;
+  using object =
+      std::unordered_map<string, element, details::string_hash<typename PJPolicies::char_type>, std::equal_to<>>;
+  using array = std::vector<element>;
 
   using simple_types = type_list::concat<type_list::type_list<null, bool, integer_type, string>,
                                          std::conditional_t<std::is_same_v<float_type, no_float_type>,
@@ -262,7 +284,7 @@ private:
 
   std::error_code end_composite();
 
-  string key_;
+  std::stack<string> key_;  // TODO: allocations
   std::stack<element, arrayvec<element, PJPolicies::max_stack_depth>> stack_;
 };
 
@@ -365,7 +387,7 @@ template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPol
 // ~~~
 template <policy PJPolicies, dom_policies DOMPolicies>
 std::error_code dom<PJPolicies, DOMPolicies>::key(string_view const &s) {
-  key_ = s;
+  key_.emplace(s);
   return {};
 }
 // end object
@@ -403,7 +425,8 @@ std::error_code dom<PJPolicies, DOMPolicies>::record(element &&el) {
     if (obj->size() >= DOMPolicies::max_object_size) {
       return make_error_code(dom_error::too_many_object_members);
     }
-    obj->insert_or_assign(std::move(key_), std::move(el));
+    obj->insert_or_assign(std::move(key_.top()), std::move(el));
+    key_.pop();
   } else {
     assert(false && "Type of top-of-stack was unexpected");
   }
