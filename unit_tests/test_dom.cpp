@@ -47,6 +47,7 @@ using testing::ElementsAre;
 using testing::Eq;
 using testing::Field;
 using testing::Optional;
+using testing::Pair;
 using testing::Test;
 using testing::UnorderedElementsAre;
 
@@ -201,6 +202,22 @@ TEST_F(Dom, Object) {
   ASSERT_NE(root_element, nullptr);
   EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith<std::int64_t>(1)),
                                                   Pair(u8"b"s, ElementWith<std::int64_t>(2))));
+}
+// NOLINTNEXTLINE
+TEST_F(Dom, NestedObject) {
+  auto const root = parse(u8R"({"a":1,"b":{"c":3,"d":4}})"sv);
+  ASSERT_THAT(root, Optional(ElementWith<object>(_)));
+  auto const* const root_element = root->get_if<object>();
+  ASSERT_NE(root_element, nullptr);
+
+  auto const nested_pos = root_element->find(u8"b"sv);
+  ASSERT_NE(nested_pos, root_element->end());
+  auto const* const b = nested_pos->second.get_if<object>();
+  ASSERT_NE(b, nullptr);
+  EXPECT_THAT(*b, UnorderedElementsAre(Pair(u8"c"sv, ElementWith<std::int64_t>(3)),
+                                       Pair(u8"d"sv, ElementWith<std::int64_t>(4))));
+
+  EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith<std::int64_t>(1)), Pair(u8"b"s, _)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ObjectInsideArray1) {
