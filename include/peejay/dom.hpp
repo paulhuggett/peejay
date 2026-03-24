@@ -141,6 +141,7 @@ public:
 
   /// If the element holds a value of type \p MemberType, returns a pointer to the stored value. Otherwise, returns a
   /// null pointer.
+  ///
   /// \tparam MemberType one of the possible member types. See element::member_types.
   /// \return A pointer to the value stored in the element or null pointer on error.
   template <typename MemberType>
@@ -169,6 +170,43 @@ public:
     } else {
       return std::get_if<MemberType>(&var_);
     }
+  }
+
+  /// A convenience method that allows access to members of an object element.
+  ///
+  /// If the element represents an object and it has a member with the name given by \p key and that property
+  /// if of the type \p Desired, then a reference to the associated value is returned. If any of these
+  /// conditions does not hold, an empty optional is returned.
+  ///
+  /// \tparam Desired  The required type of the value associated with the given key.
+  /// \param key The object key whose associated value is to be returned.
+  /// \returns An optional reference to the associated value.
+  template <typename Desired>
+    requires type_list::has_type_v<typename element::member_types, Desired>
+  [[nodiscard]] constexpr std::optional<std::reference_wrapper<Desired const>> get_object_element(
+      std::basic_string_view<typename PJPolicies::char_type> const& key) const {
+    if (auto const* const obj = this->get_if<object>()) {
+      if (auto const pos = obj->find(key); pos != obj->end()) {
+        if (auto const* const ptr = pos->second.template get_if<Desired>()) {
+          return *ptr;
+        }
+      }
+    }
+    return std::nullopt;
+  }
+
+  template <typename Desired>
+    requires type_list::has_type_v<typename element::member_types, Desired>
+  [[nodiscard]] constexpr std::optional<std::reference_wrapper<Desired>> get_object_element(
+      std::basic_string_view<typename PJPolicies::char_type> const& key) {
+    if (auto* const obj = this->get_if<object>()) {
+      if (auto const pos = obj->find(key); pos != obj->end()) {
+        if (auto* const ptr = pos->second.template get_if<Desired>()) {
+          return *ptr;
+        }
+      }
+    }
+    return std::nullopt;
   }
 
 private:
