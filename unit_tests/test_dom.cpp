@@ -348,3 +348,33 @@ TEST(Element, EqArray) {
   ASSERT_THAT(b, Optional(_));
   EXPECT_TRUE(*a == *b);
 }
+// NOLINTNEXTLINE
+TEST(Element, GetObjectElementFromObject) {
+  auto const root = parse(u8R"({"a":1,"b":2)"sv);
+  ASSERT_THAT(root, Optional(_));
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Optional(std::int64_t{1}));
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"b"), Optional(std::int64_t{2}));
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"c"), Eq(std::nullopt));
+}
+// NOLINTNEXTLINE
+TEST(Element, GetObjectElementFromIntegerFails) {
+  auto const root = parse(u8"1"sv);
+  ASSERT_THAT(root, Optional(_));
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
+}
+// NOLINTNEXTLINE
+TEST(Element, GetObjectElementFromIntegerValueIsWrongType) {
+  auto const root = parse(u8R"({"a":"b"})"sv);
+  ASSERT_THAT(root, Optional(_));
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
+}
+// NOLINTNEXTLINE
+TEST(Element, SetObjectElementFromObject) {
+  auto root = parse(u8R"({"a":1,"b":2)"sv);
+  ASSERT_THAT(root, Optional(_));
+  auto v = root->get_object_element<std::int64_t>(u8"a");
+  ASSERT_THAT(v, Optional(_));
+  std::int64_t& integer = *v;
+  integer = 3;
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Optional(std::int64_t{3}));
+}
