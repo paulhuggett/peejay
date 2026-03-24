@@ -369,6 +369,12 @@ TEST(Element, GetObjectElementFromIntegerValueIsWrongType) {
   EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
 }
 // NOLINTNEXTLINE
+TEST(Element, GetNonConstObjectElementFromIntegerValueIsWrongType) {
+  auto root = parse(u8R"({"a":"b"})"sv);
+  ASSERT_THAT(root, Optional(_));
+  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
+}
+// NOLINTNEXTLINE
 TEST(Element, SetObjectElementFromObject) {
   auto root = parse(u8R"({"a":1,"b":2)"sv);
   ASSERT_THAT(root, Optional(_));
