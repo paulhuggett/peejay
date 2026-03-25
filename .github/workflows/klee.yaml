@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: klee/klee:3.2
+      image: klee/klee:v3.2
       options: -u 0 --ulimit="stack=-1:-1"
 
     steps:
