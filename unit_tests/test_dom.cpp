@@ -51,6 +51,8 @@ using testing::Pair;
 using testing::Test;
 using testing::UnorderedElementsAre;
 
+namespace {
+
 template <typename T> class ElementMatcher {
 public:
   explicit ElementMatcher(::testing::Matcher<T const&> matcher) : matcher_{std::move(matcher)} {}
@@ -384,3 +386,11 @@ TEST(Element, SetObjectElementFromObject) {
   integer = 3;
   EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Optional(std::int64_t{3}));
 }
+
+TEST(DomError, What) {
+  EXPECT_GT(make_error_code(peejay::dom::dom_error::none).message().length(), 0);
+  EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_array_members).message().length(), 0);
+  EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_object_members).message().length(), 0);
+}
+
+}  // end anonymous namespace
