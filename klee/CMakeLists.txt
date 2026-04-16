@@ -43,17 +43,19 @@ endfunction (klee_is_available)
 function(setup_klee_target target)
   setup_target(${target})
   target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-  set(flags -g -fno-threadsafe-statics -target x86_64-pc-linux-gnu
-    -Wno-weak-vtables
-    -Wno-padded
-    -Wno-documentation-unknown-command
-    -Wno-switch-enum
-    -Wno-covered-switch-default
-    -Wno-exit-time-destructors
-    -Wno-ctad-maybe-unsupported
-    -Wno-documentation
+  target_compile_options(
+    ${target}
+    PRIVATE
+      -fno-threadsafe-statics
+      -Wno-weak-vtables
+      -Wno-padded
+      -Wno-documentation-unknown-command
+      -Wno-switch-enum
+      -Wno-covered-switch-default
+      -Wno-exit-time-destructors
+      -Wno-ctad-maybe-unsupported
+      -Wno-documentation
   )
-  target_compile_options(${target} PRIVATE ${flags})
 endfunction(setup_klee_target)
 
 # The KLEE targets are a bit complicated. There are three of them:
@@ -64,7 +66,7 @@ endfunction(setup_klee_target)
 # 2. The executable target This is an executable program that is used to exercise
 #    the test cases on the target. We compile it with santizers enabled to try
 #    and shake out any latent bugs.
-# 3. The run target Coordinates the running of the above processes.
+# 3. The run target coordinates the running of the above processes.
 
 function (add_klee_target)
   cmake_parse_arguments (
@@ -100,18 +102,16 @@ function (add_klee_target)
 
   # Executable Target
 
-  add_executable (${exe_target} ${sources})
-  setup_klee_target (${exe_target})
-  target_compile_definitions (${exe_target} PRIVATE KLEE_RUN=1)
-  target_compile_options (${exe_target} PRIVATE -fsanitize=undefined)
-  target_link_options (
-    ${exe_target} PRIVATE -fsanitize=undefined --rtlib=compiler-rt -lgcc_s
+  add_executable(${exe_target} ${sources})
+  setup_klee_target(${exe_target})
+  target_compile_definitions(${exe_target} PRIVATE KLEE_RUN=1)
+  target_link_libraries(
+    ${exe_target}
+    PRIVATE
+      ${depends}
+      peejay
+      /home/klee/klee_build/lib/libkleeRuntest.so
   )
-  target_link_libraries (
-    ${exe_target} PRIVATE /home/klee/klee_build/lib/libkleeRuntest.so
-  )
-  target_link_libraries (${exe_target} PRIVATE ${depends})
-  target_link_libraries (${exe_target} PRIVATE peejay)
 
   # Run Target
 
@@ -120,23 +120,39 @@ function (add_klee_target)
     list (APPEND link_llvm_lib "--link-llvm-lib=$<TARGET_FILE:${dependent}-bc>")
   endforeach (dependent)
 
-  add_custom_target (
+  add_custom_target(
     ${run_target}
-    COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/kout
-    COMMAND rm -r -f ${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}
     COMMAND
-      klee --only-output-states-covering-new
-      --libc=uclibc --libcxx --posix-runtime --exit-on-error-type=Abort
-      --exit-on-error-type=Assert --exit-on-error-type=BadVectorAccess
-      --exit-on-error-type=Execution --exit-on-error-type=External
-      --exit-on-error-type=Free --exit-on-error-type=Model
-      --exit-on-error-type=Overflow --exit-on-error-type=Ptr
-      --exit-on-error-type=ReadOnly --exit-on-error-type=ReportError
+      mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/kout
+    COMMAND
+      rm -r -f ${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}
+    COMMAND
+      klee
+      --kdalloc=false
+      --only-output-states-covering-new
+      --libc=uclibc
+      --libcxx
+      --posix-runtime
+      --exit-on-error-type=Abort
+      --exit-on-error-type=Assert
+      --exit-on-error-type=BadVectorAccess
+      --exit-on-error-type=Execution
+      --exit-on-error-type=External
+      --exit-on-error-type=Free
+      --exit-on-error-type=Model
+      --exit-on-error-type=Overflow
+      --exit-on-error-type=Ptr
+      --exit-on-error-type=ReadOnly
+      --exit-on-error-type=ReportError
       --exit-on-error-type=User
-      --output-dir=${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base} --watchdog
-      --max-time=1000 ${link_llvm_lib} $<TARGET_OBJECTS:${bitcode_target}>
+      --output-dir=${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}
+      --watchdog
+      --max-time=1000
+      ${link_llvm_lib}
+      $<TARGET_OBJECTS:${bitcode_target}>
     COMMAND
-      ${CMAKE_CURRENT_SOURCE_DIR}/run_klee_test $<TARGET_FILE:${exe_target}>
+      ${CMAKE_CURRENT_SOURCE_DIR}/run_klee_test
+      $<TARGET_FILE:${exe_target}>
       ${CMAKE_CURRENT_BINARY_DIR}/kout/${target_base}/*.ktest
     DEPENDS ${bitcode_target} ${exe_target} ${link_llvm_lib}
     COMMENT "Running KLEE for '${bitcode_target}'"
