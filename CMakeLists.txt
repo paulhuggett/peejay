@@ -34,14 +34,26 @@ project (peejay VERSION 2.0 LANGUAGES CXX)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0140 NEW)
 
-include (CheckCXXCompilerFlag)
-include (CheckLinkerFlag)
-include (GNUInstallDirs)
+include(CheckCXXCompilerFlag)
+include(CheckLinkerFlag)
+include(FetchContent)
+include(GNUInstallDirs)
 
 option(WERROR "Compiler warnings are errors")
 option(PEEJAY_COVERAGE "Generate Source-based Coverage")
 option(PEEJAY_FUZZTEST "Enable fuzztest")
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
+
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG HEAD
+)
+FetchContent_Declare(
+  icubaby
+  GIT_REPOSITORY https://github.com/paulhuggett/icubaby.git
+  GIT_TAG HEAD
+)
 
 # A custom target from which the installs will hang.
 add_custom_target (
@@ -97,6 +109,7 @@ function (setup_target target)
       -Wno-poison-system-directories
       -Wno-unsafe-buffer-usage
       -Wno-switch-enum
+      -Wno-weak-vtables
     )
     foreach(flag IN LISTS extra_flags)
       flag_if_available(${flag} new_flag)
@@ -172,7 +185,6 @@ set(peejay_details
 set(peejay_public
   "${include_dir}/peejay/concepts.hpp"
   "${include_dir}/peejay/error.hpp"
-  "${include_dir}/peejay/icubaby.hpp"
   "${include_dir}/peejay/json.hpp"
   "${include_dir}/peejay/null.hpp"
   "${include_dir}/peejay/dom.hpp"
@@ -192,6 +204,8 @@ target_include_directories(peejay PUBLIC
   $<BUILD_INTERFACE:${include_dir}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
 )
+FetchContent_MakeAvailable(icubaby)
+target_link_libraries(peejay PUBLIC icubaby)
 setup_target(peejay)
 
 
@@ -207,48 +221,6 @@ install(
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 add_dependencies (install-peejay peejay)
-
-
-# setup gtest
-# ~~~~~~~~~~~
-function(setup_gtest)
-  # Check that we've got the googletest submodule checked out and that a parent project
-  # didn't already create the gtest/gmock targets
-  if(TARGET gtest)
-  elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest/CMakeLists.txt")
-    # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
-    # Windows.
-    set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
-    # We don't want to install either gtest or gmock.
-    set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-    set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-
-    add_subdirectory(googletest)
-
-    foreach(target gtest gmock gmock_main gtest_main)
-      target_compile_features(${target} PUBLIC cxx_std_20)
-
-      foreach(flag IN LISTS -Wno-implicit-int-float-conversion)
-        flag_if_available(${flag} new_flag)
-        list(APPEND gclang_options ${new_flag})
-      endforeach()
-
-      target_compile_definitions(
-        ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
-      )
-      target_compile_options(
-        ${target}
-        PRIVATE
-          $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-      )
-      target_link_options(
-        ${target}
-        PRIVATE
-          $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-      )
-    endforeach()
-  endif()
-endfunction(setup_gtest)
 
 
 if (PEEJAY_FUZZTEST)
@@ -270,17 +242,46 @@ if (PEEJAY_FUZZTEST)
     target_compile_features (${target} PUBLIC cxx_std_20)
   endforeach()
 else ()
-  setup_gtest ()
+  enable_testing()
+
+  # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
+  # Windows.
+  set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+  # We don't want to install either gtest or gmock.
+  set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+  set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+
+  FetchContent_MakeAvailable(googletest)
+
+  # Adjust some compilation options for the googletest targets
+  foreach(target gtest gmock gmock_main gtest_main)
+    target_compile_features(${target} PUBLIC cxx_std_20)
+
+    foreach(flag IN LISTS -Wno-implicit-int-float-conversion)
+      flag_if_available(${flag} new_flag)
+      list(APPEND gclang_options ${new_flag})
+    endforeach()
+
+    target_compile_definitions(
+      ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
+    )
+    target_compile_options(
+      ${target}
+      PRIVATE
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+    )
+    target_link_options(
+      ${target}
+      PRIVATE
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
+    )
+  endforeach()
 endif (PEEJAY_FUZZTEST)
 
 
-if (TARGET gtest)
-  add_subdirectory (unit_tests)
-endif ()
-#add_subdirectory (tools)
+add_subdirectory(unit_tests)
 add_subdirectory(klee)
 
-include (GNUInstallDirs)
 install (
   EXPORT peejay
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
