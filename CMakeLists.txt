@@ -209,20 +209,6 @@ target_link_libraries(peejay PUBLIC icubaby)
 setup_target(peejay)
 
 
-install(
-  TARGETS peejay
-  EXPORT peejay
-  PUBLIC_HEADER
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
-    COMPONENT peejay
-  LIBRARY COMPONENT peejay
-  ARCHIVE COMPONENT peejay
-  INCLUDES
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-)
-add_dependencies (install-peejay peejay)
-
-
 if (PEEJAY_FUZZTEST)
   set (FUZZTEST_FUZZING_MODE On)
   include (FetchContent)
@@ -282,11 +268,18 @@ endif (PEEJAY_FUZZTEST)
 add_subdirectory(unit_tests)
 add_subdirectory(klee)
 
-install (
+install(
+  TARGETS peejay
   EXPORT peejay
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/peejay"
-  NAMESPACE peejay::
+  PUBLIC_HEADER
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
+    COMPONENT peejay
+  LIBRARY COMPONENT peejay
+  ARCHIVE COMPONENT peejay
+  INCLUDES
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
+add_dependencies (install-peejay peejay)
 
 add_executable(dump main.cpp)
 setup_target(dump)
