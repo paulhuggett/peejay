@@ -209,9 +209,30 @@ target_link_libraries(peejay PUBLIC icubaby)
 setup_target(peejay)
 
 
+enable_testing()
+# Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
+# Windows.
+set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+# We don't want to install either gtest or gmock.
+set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+
+FetchContent_MakeAvailable(googletest)
+
+# Adjust some compilation options for the googletest targets
+foreach(target gtest gmock gmock_main gtest_main)
+  target_compile_features(${target} PUBLIC cxx_std_20)
+  foreach(flag IN LISTS -Wno-implicit-int-float-conversion)
+    flag_if_available(${flag} new_flag)
+    list(APPEND gclang_options ${new_flag})
+  endforeach()
+  target_compile_definitions(${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
+  target_compile_options(${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
+  target_link_options   (${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
+endforeach()
+
 if (PEEJAY_FUZZTEST)
   set (FUZZTEST_FUZZING_MODE On)
-  include (FetchContent)
   set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
   message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
   FetchContent_Declare (
@@ -226,41 +247,6 @@ if (PEEJAY_FUZZTEST)
 
   foreach (target gtest gmock gmock_main gtest_main)
     target_compile_features (${target} PUBLIC cxx_std_20)
-  endforeach()
-else ()
-  enable_testing()
-
-  # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
-  # Windows.
-  set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
-  # We don't want to install either gtest or gmock.
-  set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-  set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-
-  FetchContent_MakeAvailable(googletest)
-
-  # Adjust some compilation options for the googletest targets
-  foreach(target gtest gmock gmock_main gtest_main)
-    target_compile_features(${target} PUBLIC cxx_std_20)
-
-    foreach(flag IN LISTS -Wno-implicit-int-float-conversion)
-      flag_if_available(${flag} new_flag)
-      list(APPEND gclang_options ${new_flag})
-    endforeach()
-
-    target_compile_definitions(
-      ${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1
-    )
-    target_compile_options(
-      ${target}
-      PRIVATE
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-    )
-    target_link_options(
-      ${target}
-      PRIVATE
-        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>
-    )
   endforeach()
 endif (PEEJAY_FUZZTEST)
 
