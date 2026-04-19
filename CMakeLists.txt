@@ -79,9 +79,9 @@ function(flag_if_available flag result)
   return(PROPAGATE ${result})
 endfunction()
 
-# setup target
-# ~~~~~~~~~~~~
-function (setup_target target)
+# setup peejay target
+# ~~~~~~~~~~~~~~~~~~~
+function (setup_peejay_target target)
   set(clang_options
     -Weverything
     -Wno-c++14-extensions
@@ -139,13 +139,13 @@ function (setup_target target)
   set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
 
   target_compile_options(${target}
-    PRIVATE
+    PUBLIC
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
   )
   target_link_options(${target}
-    PRIVATE
+    PUBLIC
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:>
@@ -156,7 +156,7 @@ function (setup_target target)
   if (map_supported)
     target_link_options (${target} PRIVATE "-Wl,-Map=$<TARGET_FILE_DIR:${target}>/map.txt")
   endif ()
-endfunction (setup_target)
+endfunction (setup_peejay_target)
 
 
 set(include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -210,7 +210,7 @@ if(PEEJAY_FUZZTEST)
 endif()
 FetchContent_MakeAvailable(icubaby)
 target_link_libraries(peejay PUBLIC icubaby)
-setup_target(peejay)
+setup_peejay_target(peejay)
 
 enable_testing()
 set(google_test_targets gtest gmock gmock_main gtest_main)
@@ -275,7 +275,7 @@ add_dependencies (install-peejay peejay)
 # dump
 #
 add_executable(dump main.cpp)
-setup_target(dump)
+setup_peejay_target(dump)
 target_link_libraries(dump PUBLIC peejay)
 
 if (TARGET gtest)
