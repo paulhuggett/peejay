@@ -111,7 +111,7 @@ function (setup_target target)
       -Wno-switch-enum
       -Wno-weak-vtables
     )
-    foreach(flag IN LISTS extra_flags)
+    foreach(flag ${extra_flags})
       flag_if_available(${flag} new_flag)
       list(APPEND clang_options ${new_flag})
     endforeach()
@@ -159,7 +159,6 @@ function (setup_target target)
 endfunction (setup_target)
 
 
-
 set(include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(peejay_matchers
   "${include_dir}/peejay/matchers/array.hpp"
@@ -204,49 +203,53 @@ target_include_directories(peejay PUBLIC
   $<BUILD_INTERFACE:${include_dir}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
 )
+if(PEEJAY_FUZZTEST)
+  # If we're fuzz testing, stop icubaby from dragging in Google Test.
+  # This interferes with fuzztests's attempt to set up the library.
+  set(ICUBABY_UNIT_TESTS No CACHE BOOL "Disable icubaby unit tests")
+endif()
 FetchContent_MakeAvailable(icubaby)
 target_link_libraries(peejay PUBLIC icubaby)
 setup_target(peejay)
 
-
 enable_testing()
-# Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
-# Windows.
-set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
-# We don't want to install either gtest or gmock.
-set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-
-FetchContent_MakeAvailable(googletest)
-
-# Adjust some compilation options for the googletest targets
-foreach(target gtest gmock gmock_main gtest_main)
-  target_compile_features(${target} PUBLIC cxx_std_20)
-  foreach(flag IN LISTS -Wno-implicit-int-float-conversion)
-    flag_if_available(${flag} new_flag)
-    list(APPEND gclang_options ${new_flag})
-  endforeach()
-  target_compile_definitions(${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
-  target_compile_options(${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
-  target_link_options   (${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
-endforeach()
-
+set(google_test_targets gtest gmock gmock_main gtest_main)
 if (PEEJAY_FUZZTEST)
   set (FUZZTEST_FUZZING_MODE On)
-  set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
+  set (FUZZTEST_REPO_BRANCH "HEAD" CACHE STRING "FuzzTest repository branch.")
   message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
   FetchContent_Declare (
     fuzztest
     GIT_REPOSITORY https://github.com/google/fuzztest.git
     GIT_TAG ${FUZZTEST_REPO_BRANCH}
   )
+
   FetchContent_MakeAvailable (fuzztest)
-  enable_testing ()
-  include (GoogleTest)
   fuzztest_setup_fuzzing_flags ()
 
-  foreach (target gtest gmock gmock_main gtest_main)
+  foreach (target ${google_test_targets})
     target_compile_features (${target} PUBLIC cxx_std_20)
+  endforeach()
+else()
+  # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
+  # Windows.
+  set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+  # We don't want to install either gtest or gmock.
+  set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+  set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+  FetchContent_MakeAvailable(googletest)
+  include(GoogleTest)
+
+  # Adjust some compilation options for the googletest targets
+  foreach(target ${google_test_targets})
+    target_compile_features(${target} PUBLIC cxx_std_20)
+    foreach(flag "-Wno-implicit-int-float-conversion")
+      flag_if_available(${flag} new_flag)
+      list(APPEND gclang_options ${new_flag})
+    endforeach()
+    target_compile_definitions(${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
+    target_compile_options(${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
+    target_link_options   (${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
   endforeach()
 endif (PEEJAY_FUZZTEST)
 
@@ -267,9 +270,14 @@ install(
 )
 add_dependencies (install-peejay peejay)
 
+
+#
+# dump
+#
 add_executable(dump main.cpp)
 setup_target(dump)
 target_link_libraries(dump PUBLIC peejay)
+
 if (TARGET gtest)
   set (prelink_target dump)
   set (test_target pj2-unittests)
