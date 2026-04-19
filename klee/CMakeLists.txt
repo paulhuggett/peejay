@@ -41,7 +41,7 @@ function (klee_is_available result)
 endfunction (klee_is_available)
 
 function(setup_klee_target target)
-  setup_target(${target})
+  setup_peejay_target(${target})
   target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
   target_compile_options(
     ${target}

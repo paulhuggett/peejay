@@ -50,11 +50,14 @@
 #include <format>
 #endif
 
+// icubaby
+#include "icubaby/icubaby.hpp"
+
+// peejay local includes
 #include "peejay/concepts.hpp"
 #include "peejay/details/arrayvec.hpp"
 #include "peejay/details/states.hpp"
 #include "peejay/details/variant.hpp"
-#include "peejay/icubaby.hpp"
 
 namespace peejay {
 

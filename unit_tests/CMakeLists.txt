@@ -55,7 +55,7 @@ add_executable(pj2-unittests
   test_string.cpp
   test_variant.cpp
 )
-setup_target(pj2-unittests)
+setup_peejay_target(pj2-unittests)
 
 set(clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
 set(gcc_options -Wno-pedantic)
