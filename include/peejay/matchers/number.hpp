@@ -378,8 +378,7 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
     // one of the integer types)? This enables us to treat input such as "1.0" in
     // the same way as "1".
     auto ipart = float_type{0};
-    std::modf(xf, &ipart);
-    auto const frac_part = std::abs(xf - ipart);
+    auto const frac_part = std::modf(xf, &ipart);
 
     if (frac_part < std::numeric_limits<float_type>::epsilon() * 128 &&
         xf >= static_cast<float_type>(std::numeric_limits<sinteger_type>::min()) &&
