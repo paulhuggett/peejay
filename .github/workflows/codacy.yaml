@@ -75,20 +75,22 @@ jobs:
           "$HOME/cct/${CCT}-${CCT_VERSION}" < "$CLANG_TIDY_OUT" > "$CCT_OUT"
 
       - name: Upload to the Codacy server
+        env:
+          TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
         run: |
           COMMIT="$(git rev-parse HEAD)"
           # Send the results to Codacy
-          curl                                                      \
-            -XPOST                                                  \
-            -L                                                      \
-            -H "project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}" \
-            -H "Content-type: application/json"                     \
-            -d "@$CCT_OUT"                                          \
+          curl                                                   \
+            -XPOST                                               \
+            -L                                                   \
+            -H "project-token: $TOKEN"                           \
+            -H "Content-type: application/json"                  \
+            -d "@$CCT_OUT"                                       \
             "$CODACY_URL/2.0/commit/$COMMIT/issuesRemoteResults"
           # Signal that Codacy can use the sent results and start a new analysis
-          curl                                                      \
-            -XPOST                                                  \
-            -L                                                      \
-            -H "project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}" \
-            -H "Content-type: application/json"                     \
+          curl                                           \
+            -XPOST                                       \
+            -L                                           \
+            -H "project-token: $TOKEN"                   \
+            -H "Content-type: application/json"          \
             "$CODACY_URL/2.0/commit/$COMMIT/resultsFinal"
