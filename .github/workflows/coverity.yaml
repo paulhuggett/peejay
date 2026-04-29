@@ -25,15 +25,17 @@ jobs:
 
       - name: Get the Coverity Build Tool MD5
         id: get-cov-md5
+        env:
+          SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
         run: |
           mkdir -p "${{ env.BUILD_TOOL_DIR }}"
           PROJECT="${{ env.OWNER }}/${{ env.REPOSITORY }}"
-          curl                                                          \
-            --data-urlencode "md5=1"                                    \
-            --data-urlencode "project=$PROJECT"                         \
-            --data-urlencode "token=${{ secrets.COVERITY_SCAN_TOKEN }}" \
-            --location                                                  \
-            --output "${{ env.BUILD_TOOL_DIR }}/coverity_tool.md5"      \
+          curl                                                     \
+            --data-urlencode "md5=1"                               \
+            --data-urlencode "project=$PROJECT"                    \
+            --data-urlencode "token=$SCAN_TOKEN"                   \
+            --location                                             \
+            --output "${{ env.BUILD_TOOL_DIR }}/coverity_tool.md5" \
             "https://${{ env.COVURL }}/download/linux64"
           MD5=$(cat "${{ env.BUILD_TOOL_DIR }}/coverity_tool.md5")
           echo "Coverity Tool MD5: $MD5"
@@ -48,15 +50,17 @@ jobs:
 
       - name: Download the Coverity Build Tool
         if: ${{ steps.cache-build-tool.outputs.cache-hit != 'true' }}
+        env:
+          SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
         run: |
           echo ${{ steps.cache-build-tool.outputs.cache-hit }}
           mkdir -p "${{ env.BUILD_TOOL_DIR }}"
           PROJECT="${{ env.OWNER }}/${{ env.REPOSITORY }}"
-          curl                                                          \
-            --data-urlencode "project=$PROJECT"                         \
-            --data-urlencode "token=${{ secrets.COVERITY_SCAN_TOKEN }}" \
-            --location                                                  \
-            --output "${{ env.BUILD_TOOL_DIR }}/coverity_tool.tgz"      \
+          curl                                                     \
+            --data-urlencode "project=$PROJECT"                    \
+            --data-urlencode "token=$SCAN_TOKEN"                   \
+            --location                                             \
+            --output "${{ env.BUILD_TOOL_DIR }}/coverity_tool.tgz" \
             "https://${{ env.COVURL }}/download/linux64"
 
       - name: Unpack the Coverity Build Tool
@@ -90,13 +94,16 @@ jobs:
           tar czvf ./peejay.tgz cov-int
 
       - name: Submit Results
+        env:
+          SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          EMAIL_TOKEN: ${{ secrets.COVERITY_SCAN_EMAIL }}
         run: |
           VERSION=$(git rev-parse --short HEAD)
           PROJECT="${{ env.OWNER }}%2f${{ env.REPOSITORY }}"
-          curl                                                \
-            --form "token=${{ secrets.COVERITY_SCAN_TOKEN }}" \
-            --form "email=${{ secrets.COVERITY_SCAN_EMAIL }}" \
-            --form file=@./peejay.tgz                         \
-            --form "version=$VERSION"                         \
-            --form description=""                             \
+          curl                          \
+            --form "token=$SCAN_TOKEN"  \
+            --form "email=$EMAIL_TOKEN" \
+            --form file=@./peejay.tgz   \
+            --form "version=$VERSION"   \
+            --form description=""       \
             "https://${{ env.COVURL }}/builds?project=$PROJECT"
