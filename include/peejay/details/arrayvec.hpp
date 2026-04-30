@@ -119,7 +119,7 @@ protected:
   template <std::integral SizeType, typename... Args>
   static pbi emplace(pbi end, SizeType *size, pbi pos, Args &&...args);
 
-  static void raise_out_of_range() { throw std::out_of_range{"peejay arrayvec"}; }
+  [[noreturn]] static void raise_out_of_range() { throw std::out_of_range{"peejay arrayvec"}; }
 };
 
 // init
@@ -583,9 +583,11 @@ public:
     return *this;
   }
 
-  constexpr arrayvec &operator=(arrayvec const &other) noexcept
-    requires(std::is_trivially_copyable_v<T>)
-  = default;
+  // clang-format off
+  constexpr arrayvec &operator=(arrayvec const &other) noexcept requires(std::is_trivially_copyable_v<T>) = default;
+  constexpr arrayvec &operator=(arrayvec &&other) noexcept requires(std::is_trivially_move_assignable_v<T>) = default;
+  // clang-format on
+
   arrayvec &operator=(arrayvec const &other) noexcept(std::is_nothrow_copy_constructible_v<T> &&
                                                       std::is_nothrow_copy_assignable_v<T>)
     requires(!std::is_trivially_copyable_v<T>)
@@ -595,9 +597,7 @@ public:
     }
     return *this;
   }
-  constexpr arrayvec &operator=(arrayvec &&other) noexcept
-    requires(std::is_trivially_move_assignable_v<T>)
-  = default;
+
   arrayvec &operator=(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                  std::is_nothrow_move_assignable_v<T>)
     requires(!std::is_trivially_move_assignable_v<T>)
@@ -614,7 +614,7 @@ public:
   }
 
   template <std::size_t RhsSize>
-  friend constexpr auto operator<=>(arrayvec const &lhs, arrayvec<T, RhsSize> const &rhs) {
+  friend constexpr std::strong_ordering operator<=>(arrayvec const& lhs, arrayvec<T, RhsSize> const& rhs) {
     if (auto const cmp = lhs.size() <=> rhs.size(); cmp != std::strong_ordering::equal) {
       return cmp;
     }
