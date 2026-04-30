@@ -152,9 +152,9 @@ function (setup_peejay_target target)
   )
 
   # If the link step supports -Wl,-Map generate a map file from the link.
-  check_linker_flag (CXX "-Wl,-Map=map.txt" map_supported)
+  check_linker_flag (CXX "LINKER:-Map=map.txt" map_supported)
   if (map_supported)
-    target_link_options (${target} PRIVATE "-Wl,-Map=$<TARGET_FILE_DIR:${target}>/map.txt")
+    target_link_options (${target} PRIVATE "LINKER:-Map=$<TARGET_FILE_DIR:${target}>/map.txt")
   endif ()
 endfunction (setup_peejay_target)
 
@@ -205,7 +205,7 @@ target_include_directories(peejay PUBLIC
 )
 if(PEEJAY_FUZZTEST)
   # If we're fuzz testing, stop icubaby from dragging in Google Test.
-  # This interferes with fuzztests's attempt to set up the library.
+  # This interferes with fuzztest's attempt to set up the library.
   set(ICUBABY_UNIT_TESTS No CACHE BOOL "Disable icubaby unit tests")
 endif()
 FetchContent_MakeAvailable(icubaby)
