@@ -128,8 +128,13 @@ struct default_policies {
   /// be unnecessary in some applications.
   static constexpr bool pos_tracking = true;
 
+  /// Representation of floating-point numbers. Set to peejay::no_float_type
+  /// to disable support altogether
   using float_type = double;
-  using integer_type = std::int64_t;
+  /// Representation of integers. Select a suitable signed type for the
+  /// expected input and target hardware.
+  using integer_type = int;
+  /// Representation of characters.
   using char_type = char8_t;
 };
 
@@ -160,8 +165,8 @@ public:
   /// external source). Once all of the data has been received, call the
   /// parser::eof() method.
   template <std::ranges::input_range Range>
-    requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename parser<Backend>::policies::char_type>)
-  parser &input(Range const &range) {
+    requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename policies::char_type>)
+  parser& input(Range const& range) {
     if (error_) {
       return *this;
     }
