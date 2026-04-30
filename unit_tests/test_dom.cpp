@@ -130,6 +130,7 @@ protected:
   using string = std::basic_string<typename policies::char_type>;
   using null = peejay::dom::null;
 
+  using integer = policies::integer_type;
   //  el *el::*object_parent_field = &object::element_type::value_type::second_type::parent;
   //  el *el::*parent_field = &el::parent;
 };
@@ -147,12 +148,12 @@ TEST_F(Dom, Null) {
 // NOLINTNEXTLINE
 TEST_F(Dom, One) {
   auto const root = parse(u8"1"sv);
-  ASSERT_THAT(root, Optional(ElementWith<std::int64_t>(1)));
+  ASSERT_THAT(root, Optional(ElementWith<integer>(1)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, NegativeOne) {
   auto const root = parse(u8"-1"sv);
-  ASSERT_THAT(root, Optional(ElementWith<std::int64_t>(-1)));
+  ASSERT_THAT(root, Optional(ElementWith<integer>(-1)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, String) {
@@ -181,7 +182,7 @@ TEST_F(Dom, Array) {
   ASSERT_THAT(root, Optional(ElementWith<array>(_)));
   auto const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<std::int64_t>(1), ElementWith<std::int64_t>(2)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith<integer>(1), ElementWith<integer>(2)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, Array2) {
@@ -202,8 +203,8 @@ TEST_F(Dom, Object) {
   ASSERT_THAT(root, Optional(ElementWith<object>(_)));
   auto const* const root_element = root->get_if<object>();
   ASSERT_NE(root_element, nullptr);
-  EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith<std::int64_t>(1)),
-                                                  Pair(u8"b"s, ElementWith<std::int64_t>(2))));
+  EXPECT_THAT(*root_element,
+              UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(1)), Pair(u8"b"s, ElementWith<integer>(2))));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, NestedObject) {
@@ -216,10 +217,9 @@ TEST_F(Dom, NestedObject) {
   ASSERT_NE(nested_pos, root_element->end());
   auto const* const b = nested_pos->second.get_if<object>();
   ASSERT_NE(b, nullptr);
-  EXPECT_THAT(*b, UnorderedElementsAre(Pair(u8"c"sv, ElementWith<std::int64_t>(3)),
-                                       Pair(u8"d"sv, ElementWith<std::int64_t>(4))));
+  EXPECT_THAT(*b, UnorderedElementsAre(Pair(u8"c"sv, ElementWith<integer>(3)), Pair(u8"d"sv, ElementWith<integer>(4))));
 
-  EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith<std::int64_t>(1)), Pair(u8"b"s, _)));
+  EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(1)), Pair(u8"b"s, _)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ObjectInsideArray1) {
@@ -227,11 +227,10 @@ TEST_F(Dom, ObjectInsideArray1) {
   ASSERT_THAT(root, Optional(ElementWith<array>(_)));
   element<policies>::array const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<object>(_), ElementWith<std::int64_t>(3)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith<object>(_), ElementWith<integer>(3)));
   element<policies>::object const* const obj = arr->at(0).get_if<object>();
   ASSERT_NE(obj, nullptr);
-  EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<std::int64_t>(1)),
-                                         Pair(u8"b"s, ElementWith<std::int64_t>(2))));
+  EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(1)), Pair(u8"b"s, ElementWith<integer>(2))));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ObjectInsideArray2) {
@@ -239,10 +238,10 @@ TEST_F(Dom, ObjectInsideArray2) {
   ASSERT_THAT(root, Optional(ElementWith<array>(_)));
   element<policies>::array const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<std::int64_t>(1), ElementWith<object>(_)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith<integer>(1), ElementWith<object>(_)));
   element<policies>::object const* const ind1 = arr->at(1).get_if<object>();
-  EXPECT_THAT(*ind1, UnorderedElementsAre(Pair(u8"a"s, ElementWith<std::int64_t>(2)),
-                                          Pair(u8"b"s, ElementWith<std::int64_t>(3))));
+  EXPECT_THAT(*ind1,
+              UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(2)), Pair(u8"b"s, ElementWith<integer>(3))));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ArrayInsideObject) {
@@ -250,13 +249,12 @@ TEST_F(Dom, ArrayInsideObject) {
   ASSERT_THAT(root, Optional(ElementWith<object>(_)));
   auto const* const obj = root->get_if<object>();
   ASSERT_NE(obj, nullptr);
-  ASSERT_THAT(*obj,
-              UnorderedElementsAre(Pair(u8"a"s, ElementWith<array>(_)), Pair(u8"b"s, ElementWith<std::int64_t>(3))));
+  ASSERT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<array>(_)), Pair(u8"b"s, ElementWith<integer>(3))));
   auto const pos = obj->find(u8"a");
   ASSERT_NE(pos, obj->end());
   auto const* const arr = pos->second.get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<std::int64_t>(1), ElementWith<std::int64_t>(2)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith<integer>(1), ElementWith<integer>(2)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, DuplicateKeys) {
@@ -353,38 +351,43 @@ TEST(Element, EqArray) {
 // NOLINTNEXTLINE
 TEST(Element, GetObjectElementFromObject) {
   auto const root = parse(u8R"({"a":1,"b":2)"sv);
+  using integer = decltype(root)::value_type::integer_type;
   ASSERT_THAT(root, Optional(_));
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Optional(std::int64_t{1}));
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"b"), Optional(std::int64_t{2}));
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"c"), Eq(std::nullopt));
+  EXPECT_THAT(root->get_object_element<integer>(u8"a"), Optional(1));
+  EXPECT_THAT(root->get_object_element<integer>(u8"b"), Optional(2));
+  EXPECT_THAT(root->get_object_element<integer>(u8"c"), Eq(std::nullopt));
 }
 // NOLINTNEXTLINE
 TEST(Element, GetObjectElementFromIntegerFails) {
   auto const root = parse(u8"1"sv);
+  using integer = decltype(root)::value_type::integer_type;
   ASSERT_THAT(root, Optional(_));
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
+  EXPECT_THAT(root->get_object_element<integer>(u8"a"), Eq(std::nullopt));
 }
 // NOLINTNEXTLINE
 TEST(Element, GetObjectElementFromIntegerValueIsWrongType) {
   auto const root = parse(u8R"({"a":"b"})"sv);
+  using integer = decltype(root)::value_type::integer_type;
   ASSERT_THAT(root, Optional(_));
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
+  EXPECT_THAT(root->get_object_element<integer>(u8"a"), Eq(std::nullopt));
 }
 // NOLINTNEXTLINE
 TEST(Element, GetNonConstObjectElementFromIntegerValueIsWrongType) {
   auto root = parse(u8R"({"a":"b"})"sv);
+  using integer = decltype(root)::value_type::integer_type;
   ASSERT_THAT(root, Optional(_));
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Eq(std::nullopt));
+  EXPECT_THAT(root->get_object_element<integer>(u8"a"), Eq(std::nullopt));
 }
 // NOLINTNEXTLINE
 TEST(Element, SetObjectElementFromObject) {
   auto root = parse(u8R"({"a":1,"b":2)"sv);
+  using integer_type = decltype(root)::value_type::integer_type;
   ASSERT_THAT(root, Optional(_));
-  auto v = root->get_object_element<std::int64_t>(u8"a");
+  auto v = root->get_object_element<integer_type>(u8"a");
   ASSERT_THAT(v, Optional(_));
-  std::int64_t& integer = *v;
+  int& integer = *v;
   integer = 3;
-  EXPECT_THAT(root->get_object_element<std::int64_t>(u8"a"), Optional(std::int64_t{3}));
+  EXPECT_THAT(root->get_object_element<integer_type>(u8"a"), Optional(3));
 }
 
 TEST(DomError, What) {
