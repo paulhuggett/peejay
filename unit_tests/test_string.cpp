@@ -47,8 +47,9 @@ namespace {
 
 class String : public testing::Test {
 protected:
-  StrictMock<mock_json_callbacks<std::uint64_t, double, char8_t>> callbacks_;
-  callbacks_proxy<mock_json_callbacks<std::uint64_t, double, char8_t>> proxy_{callbacks_};
+  using policies = peejay::default_policies;
+  StrictMock<mock_json_callbacks<policies>> callbacks_;
+  callbacks_proxy<mock_json_callbacks<policies>> proxy_{callbacks_};
 };
 
 }  // end anonymous namespace
@@ -366,8 +367,9 @@ struct ml10_policy : public peejay::default_policies {
 
 class StringLength10 : public testing::Test {
 protected:
-  StrictMock<mock_json_callbacks<std::uint64_t, double, char8_t>> callbacks_;
-  callbacks_proxy<mock_json_callbacks<std::uint64_t, double, char8_t>, ml10_policy> proxy_{callbacks_};
+  using mocks = mock_json_callbacks<ml10_policy>;
+  StrictMock<mocks> callbacks_;
+  callbacks_proxy<mocks> proxy_{callbacks_};
 };
 
 // NOLINTNEXTLINE
@@ -429,9 +431,9 @@ protected:
     using char_type = char;
   };
 
-  using mocks = mock_json_callbacks<std::uint64_t, double, char_type>;
+  using mocks = mock_json_callbacks<string_view_policy>;
   StrictMock<mocks> callbacks_;
-  callbacks_proxy<mocks, string_view_policy> proxy_{callbacks_};
+  callbacks_proxy<mocks> proxy_{callbacks_};
 };
 
 TEST_F(StringCharType, StringView) {

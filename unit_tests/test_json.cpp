@@ -138,7 +138,7 @@ TEST_F(Json, MixedLeadingLineEndings) {
 
 // NOLINTNEXTLINE
 TEST_F(Json, Null) {
-  StrictMock<mock_json_callbacks<std::int64_t, double, char8_t>> callbacks;
+  StrictMock<mock_json_callbacks<peejay::default_policies>> callbacks;
   callbacks_proxy proxy{callbacks};
   EXPECT_CALL(callbacks, null_value()).Times(1);
 

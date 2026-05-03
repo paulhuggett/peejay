@@ -55,7 +55,8 @@ namespace {
 
 class Number : public ::testing::Test {
 protected:
-  using mocks = mock_json_callbacks<std::uint64_t, double, char8_t>;
+  using policies = peejay::default_policies;
+  using mocks = mock_json_callbacks<policies>;
   StrictMock<mocks> callbacks_;
   callbacks_proxy<mocks> proxy_{callbacks_};
 };
@@ -240,7 +241,7 @@ TEST_F(Number, OneExpMinusZero2) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, IntegerMax) {
-  constexpr auto long_max = std::numeric_limits<std::int64_t>::max();
+  constexpr auto long_max = std::numeric_limits<decltype(proxy_)::integer_type>::max();
   auto const str_max = to_u8string(long_max);
 
   EXPECT_CALL(callbacks_, integer_value(long_max)).Times(1);
@@ -406,9 +407,9 @@ public:
   static constexpr int bits_param = TypeParam();
   using policy = typename limits<bits_param>::policy;
 
-  using mocks = mock_json_callbacks<typename policy::integer_type, double, char8_t>;
+  using mocks = mock_json_callbacks<policy>;
   StrictMock<mocks> callbacks_;
-  callbacks_proxy<mocks, policy> proxy_{callbacks_};
+  callbacks_proxy<mocks> proxy_{callbacks_};
 };
 
 using Sizes =
@@ -464,9 +465,9 @@ struct no_float_policy : public peejay::default_policies {
 };
 
 TEST(NumberFloat, NoFloatDecimalPoint) {
-  using mocks = mock_json_callbacks<std::uint64_t, double, char8_t>;
+  using mocks = mock_json_callbacks<no_float_policy>;
   StrictMock<mocks> callbacks;
-  callbacks_proxy<mocks, no_float_policy> proxy{callbacks};
+  callbacks_proxy<mocks> proxy{callbacks};
 
   auto p = make_parser(proxy);
   p.input(u8"1.2"sv).eof();
@@ -475,9 +476,9 @@ TEST(NumberFloat, NoFloatDecimalPoint) {
 }
 
 TEST(NumberFloat, NoFloatExponent) {
-  using mocks = mock_json_callbacks<std::uint64_t, double, char8_t>;
+  using mocks = mock_json_callbacks<no_float_policy>;
   StrictMock<mocks> callbacks;
-  callbacks_proxy<mocks, no_float_policy> proxy{callbacks};
+  callbacks_proxy<mocks> proxy{callbacks};
 
   auto p = make_parser(proxy);
   p.input(u8"1e30"sv).eof();
@@ -490,9 +491,9 @@ struct long_double_policy : public peejay::default_policies {
 };
 
 TEST(NumberFloat, LongDouble) {
-  using mocks = mock_json_callbacks<std::uint64_t, long double, char8_t>;
+  using mocks = mock_json_callbacks<long_double_policy>;
   StrictMock<mocks> callbacks;
-  callbacks_proxy<mocks, long_double_policy> proxy{callbacks};
+  callbacks_proxy<mocks> proxy{callbacks};
   EXPECT_CALL(callbacks, float_value(1.2L)).Times(1);
 
   auto p = make_parser(proxy);
@@ -506,9 +507,9 @@ struct int128_policy : public peejay::default_policies {
 };
 
 TEST(NumberInt128, LongDouble) {
-  using mocks = mock_json_callbacks<int128_policy::integer_type, int128_policy::float_type, int128_policy::char_type>;
+  using mocks = mock_json_callbacks<int128_policy>;
   StrictMock<mocks> callbacks;
-  callbacks_proxy<mocks, int128_policy> proxy{callbacks};
+  callbacks_proxy<mocks> proxy{callbacks};
 
   constexpr auto expected = []() -> __int128 {
     __int128 v = 1234567890;

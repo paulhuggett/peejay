@@ -48,7 +48,8 @@ namespace {
 
 class JsonArray : public testing::Test {
 protected:
-  using mocks = mock_json_callbacks<std::uint64_t, double, char8_t>;
+  using policies = peejay::default_policies;
+  using mocks = mock_json_callbacks<policies>;
   StrictMock<mocks> callbacks_;
   callbacks_proxy<mocks> proxy_{callbacks_};
 };

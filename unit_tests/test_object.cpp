@@ -51,8 +51,9 @@ namespace {
 
 class Object : public testing::Test {
 protected:
-  StrictMock<mock_json_callbacks<std::uint64_t, double, char8_t>> callbacks_;
-  callbacks_proxy<mock_json_callbacks<std::uint64_t, double, char8_t>> proxy_{callbacks_};
+  using policies = peejay::default_policies;
+  StrictMock<mock_json_callbacks<policies>> callbacks_;
+  callbacks_proxy<mock_json_callbacks<policies>> proxy_{callbacks_};
 };
 
 }  // end anonymous namespace

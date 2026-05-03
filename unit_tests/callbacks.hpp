@@ -45,13 +45,15 @@ template <typename Parser> Parser &input(Parser &parser, std::u8string_view cons
   return parser.input(str);
 }
 
-template <std::integral IntegerType, std::floating_point FloatType, peejay::character CharType>
-class json_callbacks_base {
+template <peejay::policy Policies> class json_callbacks_base {
 public:
-  using integer_type = IntegerType;
-  using float_type = FloatType;
-  using char_type = CharType;
+  using integer_type = Policies::integer_type;
+  using float_type = Policies::float_type;
+  using char_type = Policies::char_type;
   using string_view = std::basic_string_view<char_type>;
+  static constexpr auto max_length = Policies::max_length;
+  static constexpr auto max_stack_depth = Policies::max_stack_depth;
+  static constexpr bool pos_tracking = Policies::pos_tracking;
 
   json_callbacks_base() = default;
   json_callbacks_base(json_callbacks_base const &) = delete;
@@ -63,7 +65,7 @@ public:
   json_callbacks_base &operator=(json_callbacks_base &&) noexcept = delete;
 
   virtual std::error_code string_value(string_view const &) = 0;
-  virtual std::error_code integer_value(std::make_signed_t<IntegerType>) = 0;
+  virtual std::error_code integer_value(integer_type) = 0;
   virtual std::error_code float_value(float_type) = 0;
   virtual std::error_code boolean_value(bool) = 0;
   virtual std::error_code null_value() = 0;
@@ -76,10 +78,15 @@ public:
   virtual std::error_code end_object() = 0;
 };
 
-template <std::integral IntegerType, std::floating_point FloatType, peejay::character CharType>
-class mock_json_callbacks : public json_callbacks_base<IntegerType, FloatType, CharType> {
+template <peejay::policy Policies> class mock_json_callbacks : public json_callbacks_base<Policies> {
 public:
-  using string_view = json_callbacks_base<IntegerType, FloatType, CharType>::string_view;
+  using integer_type = json_callbacks_base<Policies>::integer_type;
+  using float_type = json_callbacks_base<Policies>::float_type;
+  using char_type = json_callbacks_base<Policies>::char_type;
+  using string_view = json_callbacks_base<Policies>::string_view;
+  static constexpr auto max_length = json_callbacks_base<Policies>::max_length;
+  static constexpr auto max_stack_depth = json_callbacks_base<Policies>::max_stack_depth;
+  static constexpr bool pos_tracking = json_callbacks_base<Policies>::pos_tracking;
 
   mock_json_callbacks() = default;
   mock_json_callbacks(mock_json_callbacks const &) = delete;
@@ -93,9 +100,9 @@ public:
   // NOLINTNEXTLINE
   MOCK_METHOD(std::error_code, string_value, (string_view const &));
   // NOLINTNEXTLINE
-  MOCK_METHOD(std::error_code, integer_value, (std::make_signed_t<IntegerType>));
+  MOCK_METHOD(std::error_code, integer_value, (integer_type));
   // NOLINTNEXTLINE
-  MOCK_METHOD(std::error_code, float_value, (FloatType));
+  MOCK_METHOD(std::error_code, float_value, (float_type));
   // NOLINTNEXTLINE
   MOCK_METHOD(std::error_code, boolean_value, (bool));
   // NOLINTNEXTLINE
@@ -114,11 +121,12 @@ public:
   MOCK_METHOD(std::error_code, end_object, ());
 };
 
-template <typename T, peejay::policy Policies = peejay::default_policies> class callbacks_proxy {
+template <typename T> class callbacks_proxy {
 public:
+  using policies = T;
   using char_type = T::char_type;
+  using integer_type = T::integer_type;
   using string_view = std::basic_string_view<char_type>;
-  using policies = Policies;
 
   static constexpr void result() noexcept { /* this backend produces no result */ }
 
@@ -132,9 +140,7 @@ public:
   callbacks_proxy &operator=(callbacks_proxy &&) noexcept = delete;
 
   std::error_code string_value(string_view const &s) { return original_.string_value(s); }
-  std::error_code integer_value(std::make_signed_t<typename T::integer_type> const v) {
-    return original_.integer_value(v);
-  }
+  std::error_code integer_value(typename T::integer_type const v) { return original_.integer_value(v); }
   std::error_code float_value(typename T::float_type v) { return original_.float_value(v); }
   std::error_code boolean_value(bool v) { return original_.boolean_value(v); }
   std::error_code null_value() { return original_.null_value(); }
