@@ -79,19 +79,20 @@ jobs:
           - name: Windows-latest/Ninja+MSVC/Debug
             build_type: Debug
             generator: Ninja
-            options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
+            cxx_compiler: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
             os: windows-latest
 
           - name: Windows-latest/Ninja+MSVC/Debug/mprotect-variant
             build_type: Debug
             generator: Ninja
-            options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl -D PEEJAY_MPROTECT_VARIANT=Yes
+            cxx_compiler: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
+            options: -D PEEJAY_MPROTECT_VARIANT=Yes
             os: windows-latest
 
           - name: Windows-latest/Ninja+MSVC/Release
             build_type: Release
             generator: Ninja
-            options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
+            cxx_compiler: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
             os: windows-latest
 
     name: ${{ matrix.name }}
