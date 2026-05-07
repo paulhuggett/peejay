@@ -76,10 +76,10 @@ jobs:
 
           # Windows builds
           # ~~~~~~~~~~~~~~
-          - name: Windows-latest/VS2022/Debug
+          - name: Windows-latest/Ninja+MSVC/Debug
             build_type: Debug
-            generator: Visual Studio 17 2022
-            options:
+            generator: Ninja
+            options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
             os: windows-latest
 
           - name: Windows-latest/VS2022/Debug/mprotect-variant
