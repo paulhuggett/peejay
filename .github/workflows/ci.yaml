@@ -54,7 +54,7 @@ jobs:
             llvm_install: 18
             build_type: Release
             cxx_compiler: -D CMAKE_CXX_COMPILER=clang++-18 -D CMAKE_C_COMPILER=clang-18
-            generator: Ninja
+            generator: Ninja Multi-Config
             options:
             os: ubuntu-24.04
 
@@ -62,7 +62,7 @@ jobs:
             apt_install: cmake ninja-build
             gcc_install: 14
             build_type: Debug
-            generator: Ninja
+            generator: Ninja Multi-Config
             options:
             os: ubuntu-24.04
 
@@ -70,7 +70,7 @@ jobs:
             apt_install: cmake ninja-build
             gcc_install: 14
             build_type: Release
-            generator: Ninja
+            generator: Ninja Multi-Config
             options:
             os: ubuntu-24.04
 
