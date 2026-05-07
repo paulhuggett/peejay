@@ -82,16 +82,16 @@ jobs:
             options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
             os: windows-latest
 
-          - name: Windows-latest/VS2022/Debug/mprotect-variant
+          - name: Windows-latest/Ninja+MSVC/Debug/mprotect-variant
             build_type: Debug
-            generator: Visual Studio 17 2022
-            options: -D PEEJAY_MPROTECT_VARIANT=Yes
+            generator: Ninja
+            options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl -D PEEJAY_MPROTECT_VARIANT=Yes
             os: windows-latest
 
-          - name: Windows-latest/VS2022/Release
+          - name: Windows-latest/Ninja+MSVC/Release
             build_type: Release
-            generator: Visual Studio 17 2022
-            options:
+            generator: Ninja
+            options: -D CMAKE_C_COMPILER=cl -D CMAKE_CXX_COMPILER=cl
             os: windows-latest
 
     name: ${{ matrix.name }}
