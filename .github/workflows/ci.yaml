@@ -78,18 +78,18 @@ jobs:
           # ~~~~~~~~~~~~~~
           - name: Windows-latest/Ninja+MSVC/Debug
             build_type: Debug
-            generator: Ninja
+            generator: Visual Studio 17 2022
             os: windows-latest
 
           - name: Windows-latest/Ninja+MSVC/Debug/mprotect-variant
             build_type: Debug
-            generator: Ninja
+            generator: Visual Studio 17 2022
             options: -D PEEJAY_MPROTECT_VARIANT=Yes
             os: windows-latest
 
           - name: Windows-latest/Ninja+MSVC/Release
             build_type: Release
-            generator: Ninja
+            generator: Visual Studio 17 2022
             os: windows-latest
 
     name: ${{ matrix.name }}
@@ -122,6 +122,12 @@ jobs:
         uses: paulhuggett/install-llvm@ad897b4b1cf03f54c1218ec6d97a23ff4b10b870 # v1.0
         with:
           version: ${{matrix.llvm_install}}
+
+      - name:
+        if: startsWith(matrix.os, 'windows-')
+        run: |
+              # Activate Visual Studio developer environment
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ github.workspace }}/build
