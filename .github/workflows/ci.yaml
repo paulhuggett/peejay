@@ -128,10 +128,12 @@ jobs:
 
       - name: Activate Visual Studio (Windows)
         if: startsWith(matrix.os, 'windows-')
+        shell: bash
         run: |
           "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
 
       - name: Configure CMake
+        shell: bash
         run: |
           cmake -S "$GITHUB_WORKSPACE"                       \
                 -B "${{ github.workspace }}/build"           \
