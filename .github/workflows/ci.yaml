@@ -123,17 +123,15 @@ jobs:
         with:
           version: ${{matrix.llvm_install}}
 
-      - name: Activate Visual Studio (Windows)
-        if: startsWith(matrix.os, 'windows-')
-        shell: bash
-        run: |
-          cmd /c "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-
       - name: Create Build Environment
         run: cmake -E make_directory ${{ github.workspace }}/build
 
+      - name: Activate Visual Studio (Windows)
+        if: startsWith(matrix.os, 'windows-')
+        run: |
+          "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+
       - name: Configure CMake
-        shell: bash
         run: |
           cmake -S "$GITHUB_WORKSPACE"                       \
                 -B "${{ github.workspace }}/build"           \
