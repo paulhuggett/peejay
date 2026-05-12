@@ -79,18 +79,18 @@ jobs:
           - name: Windows-latest/Ninja+MSVC/Debug
             build_type: Debug
             generator: Visual Studio 17 2022
-            os: windows-latest
+            os: windows-2022
 
           - name: Windows-latest/Ninja+MSVC/Debug/mprotect-variant
             build_type: Debug
             generator: Visual Studio 17 2022
             options: -D PEEJAY_MPROTECT_VARIANT=Yes
-            os: windows-latest
+            os: windows-2022
 
           - name: Windows-latest/Ninja+MSVC/Release
             build_type: Release
             generator: Visual Studio 17 2022
-            os: windows-latest
+            os: windows-2022
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -125,12 +125,6 @@ jobs:
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ github.workspace }}/build
-
-      - name: Activate Visual Studio (Windows)
-        if: startsWith(matrix.os, 'windows-')
-        shell: bash
-        run: |
-          "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
 
       - name: Configure CMake
         shell: bash
