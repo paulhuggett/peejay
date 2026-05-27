@@ -265,9 +265,13 @@ install(
     COMPONENT peejay
   LIBRARY COMPONENT peejay
   ARCHIVE COMPONENT peejay
-  INCLUDES
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
+install(
+  EXPORT peejay
+  DESTINATION <dir>
+)
+
 add_dependencies (install-peejay peejay)
 
 
