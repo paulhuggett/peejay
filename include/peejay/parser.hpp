@@ -99,7 +99,7 @@ template <backend Backend> struct group_to_matcher<group::token, Backend> {
 template <backend Backend> struct group_to_matcher<group::whitespace, Backend> {
   using type = whitespace_matcher<Backend>;
 };
-template <group Group, backend Backend> using group_to_matcher_t = typename group_to_matcher<Group, Backend>::type;
+template <group Group, backend Backend> using group_to_matcher_t = group_to_matcher<Group, Backend>::type;
 
 }  // end namespace details
 
@@ -148,7 +148,7 @@ struct default_policies {
 ///                   encounters the contents of the input file.
 template <backend Backend> class parser {
 public:
-  using policies = typename std::remove_reference_t<Backend>::policies;
+  using policies = std::remove_reference_t<Backend>::policies;
 
   constexpr parser() : parser(Backend{}) {}
   constexpr parser(parser const &other) = default;
@@ -162,29 +162,26 @@ public:
 
   /// Parses a chunk of JSON input. This function may be called repeatedly with
   /// portions of the source data (for example, as the data is received from an
-  /// external source). Once all of the data has been received, call the
+  /// external source). Once all the data has been received, call the
   /// parser::eof() method.
+  ///
+  /// \tparam Range An input range that yields policies::char_type
+  /// \param range  The ranges of code units to be processed
+  /// \returns *this
   template <std::ranges::input_range Range>
     requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename policies::char_type>)
   parser& input(Range const& range) {
     if (error_) {
       return *this;
     }
-    std::array<char32_t, 2> code_points{{0}};
-    auto first = std::begin(range);                         // NOLINT(llvm-qualified-auto, readability-qualified-auto)
-    auto const last = std::end(range);                      // NOLINT(llvm-qualified-auto, readability-qualified-auto)
-    auto const first_code_point = std::begin(code_points);  // NOLINT(llvm-qualified-auto, readability-qualified-auto)
-    while (first != last && !error_) {
-      auto const last_code_point = utf_(static_cast<char8_t>(*first), first_code_point);
-      ++first;
-      std::for_each(first_code_point, last_code_point, [this](char32_t const code_point) {
-        if (!error_) {
-          this->consume_code_point(code_point);
-        }
-        if (!error_) {
-          this->advance_column();
-        }
-      });
+    for (char8_t const cu : range) {
+      this->consume_code_unit(cu);
+      if (error_) {
+        break;
+      }
+      if (icubaby::is_code_point_start(cu)) {
+        this->advance_column();
+      }
     }
     return *this;
   }
@@ -289,12 +286,12 @@ private:
   bool push(details::state next_state);
   template <details::state NextState, typename... Args> void push_terminal(Args &&...args);
 
-  constexpr details::state get_state() const noexcept {
+  [[nodiscard]] constexpr details::state get_state() const noexcept {
     assert(!stack_.empty());
     return stack_.top();
   }
 
-  void set_state(details::state state) {
+  void set_state(details::state const state) noexcept {
     assert(!stack_.empty());
     assert(get_group(stack_.top()) == get_group(state));
     stack_.top() = state;
@@ -312,7 +309,7 @@ private:
   void push_eof_matcher() { push(details::state::eof_start); }
   ///@}
 
-  void consume_code_point(char32_t code_point);
+  void consume_code_unit(char8_t code_unit);
   void consume_eof();
 
   void init_stack() {
@@ -322,8 +319,6 @@ private:
     // Match a top-level object.
     this->push_root_matcher();
   }
-
-  icubaby::t8_32 utf_;
 
   /// The parse stack.
   std::stack<details::state, arrayvec<details::state, policies::max_stack_depth>> stack_;

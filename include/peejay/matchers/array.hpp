@@ -50,19 +50,19 @@ namespace peejay::details {
 /// Matches an array.
 template <backend Backend> class array_matcher {
 public:
-  static bool consume(parser<Backend> &parser, char32_t c) {
+  static bool consume(parser<Backend>& parser, char8_t code_unit) {
     switch (parser.stack_.top()) {
     case state::array_start:
       if (parser.set_error_and_pop(parser.backend().begin_array())) {
         return true;  // must return immediately. 'this' has been destroyed.
       }
       parser.set_state(state::array_first_object);
-      if (whitespace(parser, c)) {
+      if (whitespace(parser, code_unit)) {
         return false;
       }
       [[fallthrough]];
     case state::array_first_object:
-      if (c == ']') {
+      if (code_unit == ']') {
         return end_array(parser);
       }
       [[fallthrough]];
@@ -70,7 +70,7 @@ public:
       parser.set_state(state::array_comma);
       parser.push_root_matcher();
       return false;
-    case state::array_comma: return comma(parser, c);
+    case state::array_comma: return comma(parser, code_unit);
     default: unreachable(); break;
     }
   }
@@ -83,7 +83,7 @@ private:
     parser.pop();  // unconditionally pop this matcher.
     return true;
   }
-  static bool comma(parser<Backend> &parser, char32_t c) {
+  static bool comma(parser<Backend>& parser, char8_t const c) {
     // There can be whitespace between the end of an object and a subsequent comma or right square bracket.
     if (whitespace(parser, c)) {
       return false;

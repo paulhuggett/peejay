@@ -98,29 +98,29 @@ template <backend Backend> decltype(auto) parser<Backend>::eof() {
   return this->backend().result();
 }
 
-// consume code point
+// consume code unit
 // ~~~~~~~~~~~~~~~~~~
-template <backend Backend> void parser<Backend>::consume_code_point(char32_t code_point) {
+template <backend Backend> void parser<Backend>::consume_code_unit(char8_t code_unit) {
   bool match = false;
   using enum details::group;
 
   while (!match && !this->has_error()) {
     switch (get_group(stack_.top())) {
     // Matchers with no additional state.
-    case array: match = details::group_to_matcher_t<array, Backend>::consume(*this, code_point); break;
-    case object: match = details::group_to_matcher_t<object, Backend>::consume(*this, code_point); break;
-    case eof: match = details::group_to_matcher_t<eof, Backend>::consume(*this, code_point); break;
-    case root: match = details::group_to_matcher_t<root, Backend>::consume(*this, code_point); break;
-    case whitespace: match = details::group_to_matcher_t<whitespace, Backend>::consume(*this, code_point); break;
+    case array: match = details::group_to_matcher_t<array, Backend>::consume(*this, code_unit); break;
+    case object: match = details::group_to_matcher_t<object, Backend>::consume(*this, code_unit); break;
+    case eof: match = details::group_to_matcher_t<eof, Backend>::consume(*this, code_unit); break;
+    case root: match = details::group_to_matcher_t<root, Backend>::consume(*this, code_unit); break;
+    case whitespace: match = details::group_to_matcher_t<whitespace, Backend>::consume(*this, code_unit); break;
     // The matchers that maintain state.
     case number:
-      match = storage_.template get<details::group_to_matcher_t<number, Backend>>().consume(*this, code_point);
+      match = storage_.template get<details::group_to_matcher_t<number, Backend>>().consume(*this, code_unit);
       break;
     case string:
-      match = storage_.template get<details::group_to_matcher_t<string, Backend>>().consume(*this, code_point);
+      match = storage_.template get<details::group_to_matcher_t<string, Backend>>().consume(*this, code_unit);
       break;
     case token:
-      match = storage_.template get<details::group_to_matcher_t<token, Backend>>().consume(*this, code_point);
+      match = storage_.template get<details::group_to_matcher_t<token, Backend>>().consume(*this, code_unit);
       break;
     default:
       assert(false && "Unknown state group");

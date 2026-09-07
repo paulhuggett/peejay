@@ -47,23 +47,23 @@ template <backend Backend> class whitespace_matcher {
 public:
   using parser_type = parser<Backend>;
 
-  static bool whitespace(parser_type &p, char32_t c) {
-    if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+  static bool whitespace(parser_type& p, char8_t const code_unit) {
+    if (code_unit == ' ' || code_unit == '\t' || code_unit == '\n' || code_unit == '\r') {
       p.push_whitespace_matcher();
       return true;
     }
     return false;
   }
 
-  static bool consume(parser_type &parser, char32_t c) {
+  static bool consume(parser_type& parser, char8_t code_unit) {
     switch (parser.stack_.top()) {
       // Handles the LF part of a Windows-style CR/LF pair.
     case state::whitespace_crlf:
-      if (whitespace_matcher::crlf(parser, c)) {
+      if (whitespace_matcher::crlf(parser, code_unit)) {
         return true;
       }
       [[fallthrough]];
-    case state::whitespace_start: return whitespace_matcher::body(parser, c);
+    case state::whitespace_start: return whitespace_matcher::body(parser, code_unit);
     default: unreachable(); break;
     }
   }
@@ -71,8 +71,8 @@ public:
   static void eof(parser_type &parser) { parser.pop(); }
 
 private:
-  static bool body(parser_type &parser, char32_t c) {
-    switch (c) {
+  static bool body(parser_type& parser, char8_t const code_unit) {
+    switch (code_unit) {
     case ' ':
     case '\t':
       // TODO(paul) tab expansion.
@@ -91,10 +91,10 @@ private:
   }
 
   /// Processes the second character of a Windows-style CR/LF pair. Returns true
-  /// if the character shoud be treated as whitespace.
-  static bool crlf(parser_type &parser, char32_t c) {
+  /// if the character should be treated as whitespace.
+  static bool crlf(parser_type& parser, char8_t const code_unit) {
     parser.stack_.top() = state::whitespace_start;
-    if (c != '\n') {
+    if (code_unit != '\n') {
       return false;
     }
     parser.reset_column();
@@ -102,8 +102,8 @@ private:
   }
 };
 
-template <backend Backend> bool whitespace(parser<Backend> &p, char32_t c) {
-  return whitespace_matcher<Backend>::whitespace(p, c);
+template <backend Backend> bool whitespace(parser<Backend>& p, char8_t const code_unit) {
+  return whitespace_matcher<Backend>::whitespace(p, code_unit);
 }
 
 }  // end namespace peejay::details

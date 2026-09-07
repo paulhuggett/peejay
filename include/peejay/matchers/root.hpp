@@ -49,22 +49,22 @@ template <backend Backend> class root_matcher {
 public:
   using policies = typename std::remove_reference_t<Backend>::policies;
 
-  static bool consume(parser<Backend> &parser, char32_t c) {
+  static bool consume(parser<Backend>& parser, char8_t code_unit) {
     bool match = false;
     switch (parser.stack_.top()) {
     case state::root_start:
       parser.set_state(state::root_new_token);
-      if (whitespace(parser, c)) {
+      if (whitespace(parser, code_unit)) {
         return false;
       }
       [[fallthrough]];
     case state::root_new_token:
       parser.pop();
-      if (c == '-' || (c >= '0' && c <= '9')) {
+      if (code_unit == '-' || (code_unit >= '0' && code_unit <= '9')) {
         parser.push_number_matcher();
         match = false;
       } else {
-        switch (c) {
+        switch (code_unit) {
         case '"': parser.push_string_matcher(/*object_key=*/false); break;
         case 't': parser.push_token_matcher(token::true_token); break;
         case 'f': parser.push_token_matcher(token::false_token); break;

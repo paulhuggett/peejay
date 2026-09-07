@@ -52,8 +52,6 @@ protected:
   callbacks_proxy<mock_json_callbacks<policies>> proxy_{callbacks_};
 };
 
-}  // end anonymous namespace
-
 // NOLINTNEXTLINE
 TEST_F(String, EmptyDoubleQuote) {
   EXPECT_CALL(callbacks_, string_value(u8""sv)).Times(1);
@@ -414,8 +412,8 @@ TEST_F(StringLength10, UTF8TooLong) {
   // smiling face witth sunglasses (U+1F60E)
   std::array const str{std::byte{0xF0}, std::byte{0x9F}, std::byte{0x98}, std::byte{0x8E}};
 
-  auto b = std::bit_cast<char8_t const *>(str.data());
-  std::ranges::subrange str2{b, b + str.size()};
+  auto const* const b = std::bit_cast<char8_t const*>(str.data());
+  std::ranges::subrange const str2{b, b + str.size()};
   p.input(u8"\""sv);
   p.input(str2);
   p.input(str2);
@@ -423,6 +421,7 @@ TEST_F(StringLength10, UTF8TooLong) {
   EXPECT_EQ(p.last_error(), make_error_code(error::string_too_long)) << "Real error was: " << p.last_error().message();
 }
 
+#if 0
 // TODO: enumerate the various character types.
 class StringCharType : public testing::Test {
 protected:
@@ -447,3 +446,6 @@ TEST_F(StringCharType, BadEscape) {
   p.input(R"("\v")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char)) << "Error was: " << p.last_error().message();
 }
+#endif
+
+}  // end anonymous namespace

@@ -60,7 +60,7 @@ template <typename FloatType, std::unsigned_integral UIntegerType> struct float_
   void add_digit(unsigned const digit) {
     assert(digit < 10);
     ++frac_digits;
-    frac_part = frac_part * static_cast<FloatType>(10.0) + digit;
+    frac_part = (frac_part * static_cast<FloatType>(10.0)) + digit;
   }
 
   unsigned frac_digits = 0;
@@ -91,33 +91,32 @@ template <std::unsigned_integral UIntegerType> struct float_accumulator<no_float
 /// Matches a number.
 template <backend Backend> class number_matcher {
 public:
-  using policies = typename std::remove_reference_t<Backend>::policies;
+  using policies = std::remove_reference_t<Backend>::policies;
 
   using parser_type = parser<Backend>;
   using uinteger_type = std::make_unsigned_t<typename policies::integer_type>;
   using sinteger_type = std::make_signed_t<typename policies::integer_type>;
   using float_type = std::remove_cv_t<typename policies::float_type>;
 
-  bool consume(parser_type &parser, char32_t ch);
+  bool consume(parser_type& parser, char8_t code_unit);
   void eof(parser_type &parser);
 
 private:
-  bool do_leading_minus_state(parser_type &parser, char32_t c);
+  bool do_leading_minus_state(parser_type& parser, char8_t c);
   /// Implements the first character of the 'int' production.
-  bool do_integer_initial_digit_state(parser_type &parser, char32_t c);
-  bool do_integer_digit_state(parser_type &parser, char32_t c);
-  bool do_frac_state(parser_type &parser, char32_t c);
-  bool do_frac_digit_state(parser_type &parser, char32_t c);
-  bool do_exponent_sign_state(parser_type &parser, char32_t c);
-  bool do_exponent_digit_state(parser_type &parser, char32_t c);
+  bool do_integer_initial_digit_state(parser_type& parser, char8_t c);
+  bool do_integer_digit_state(parser_type& parser, char8_t c);
+  bool do_frac_state(parser_type& parser, char8_t c);
+  bool do_frac_digit_state(parser_type& parser, char8_t c);
+  bool do_exponent_sign_state(parser_type& parser, char8_t c);
+  bool do_exponent_digit_state(parser_type& parser, char8_t c);
 
   void complete(parser_type &parser);
 
   void make_result(parser_type &parser);
 
-  static constexpr bool is_digit(char32_t const c) noexcept { return c >= '0' && c <= '9'; }
+  [[nodiscard]] static constexpr bool is_digit(char8_t const c) noexcept { return c >= '0' && c <= '9'; }
 
-  bool is_neg_ = false;
   float_accumulator<float_type, uinteger_type> &number_is_float() {
     if constexpr (!std::is_same_v<float_type, no_float_type>) {
       if (auto *const uit = std::get_if<uinteger_type>(&acc_)) {
@@ -127,12 +126,13 @@ private:
     return std::get<float_accumulator<float_type, uinteger_type>>(acc_);
   }
 
+  bool is_neg_ = false;
   std::variant<uinteger_type, float_accumulator<float_type, uinteger_type>> acc_;
 };
 
 // leading minus state
 // ~~~~~~~~~~~~~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::do_leading_minus_state(parser_type &parser, char32_t c) {
+template <backend Backend> bool number_matcher<Backend>::do_leading_minus_state(parser_type& parser, char8_t const c) {
   bool match = true;
   if (c == '-') {
     parser.set_state(state::number_integer_initial_digit);
@@ -148,7 +148,7 @@ template <backend Backend> bool number_matcher<Backend>::do_leading_minus_state(
 
 // frac state
 // ~~~~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::do_frac_state(parser_type &parser, char32_t const c) {
+template <backend Backend> bool number_matcher<Backend>::do_frac_state(parser_type& parser, char8_t const c) {
   bool match = true;
   switch (c) {
   case '.': parser.set_state(state::number_frac_initial_digit); break;
@@ -165,7 +165,7 @@ template <backend Backend> bool number_matcher<Backend>::do_frac_state(parser_ty
 
 // frac digit
 // ~~~~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::do_frac_digit_state(parser_type &parser, char32_t const c) {
+template <backend Backend> bool number_matcher<Backend>::do_frac_digit_state(parser_type& parser, char8_t const c) {
   bool match = true;
   if constexpr (std::is_same_v<float_type, no_float_type>) {
     parser.set_error(error::number_out_of_range);
@@ -192,7 +192,7 @@ template <backend Backend> bool number_matcher<Backend>::do_frac_digit_state(par
 
 // exponent sign state
 // ~~~~~~~~~~~~~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::do_exponent_sign_state(parser_type &parser, char32_t c) {
+template <backend Backend> bool number_matcher<Backend>::do_exponent_sign_state(parser_type& parser, char8_t c) {
   bool match = true;
   if constexpr (std::is_same_v<float_type, no_float_type>) {
     parser.set_error(error::number_out_of_range);
@@ -217,8 +217,7 @@ template <backend Backend> void number_matcher<Backend>::complete(parser_type &p
 
 // exponent digit
 // ~~~~~~~~~~~~~~
-template <backend Backend>
-bool number_matcher<Backend>::do_exponent_digit_state(parser_type &parser, char32_t const c) {
+template <backend Backend> bool number_matcher<Backend>::do_exponent_digit_state(parser_type& parser, char8_t const c) {
   assert((std::holds_alternative<float_accumulator<float_type, uinteger_type>>(acc_)));
 
   bool match = true;
@@ -227,7 +226,7 @@ bool number_matcher<Backend>::do_exponent_digit_state(parser_type &parser, char3
   } else {
     if (is_digit(c)) {
       auto &fp_acc = std::get<float_accumulator<float_type, uinteger_type>>(acc_);
-      fp_acc.exponent = fp_acc.exponent * 10U + static_cast<unsigned>(c - '0');
+      fp_acc.exponent = (fp_acc.exponent * 10U) + static_cast<unsigned>(c - '0');
       parser.set_state(state::number_exponent_digit);
     } else {
       if (parser.get_state() == state::number_exponent_initial_digit) {
@@ -243,7 +242,7 @@ bool number_matcher<Backend>::do_exponent_digit_state(parser_type &parser, char3
 // do integer initial digit state
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 template <backend Backend>
-bool number_matcher<Backend>::do_integer_initial_digit_state(parser_type &parser, char32_t const c) {
+bool number_matcher<Backend>::do_integer_initial_digit_state(parser_type& parser, char8_t const c) {
   using namespace std::string_view_literals;
 
   assert(parser.get_state() == state::number_integer_initial_digit);
@@ -262,7 +261,7 @@ bool number_matcher<Backend>::do_integer_initial_digit_state(parser_type &parser
 
 // do integer digit state
 // ~~~~~~~~~~~~~~~~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(parser_type &parser, char32_t const c) {
+template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(parser_type& parser, char8_t const c) {
   assert(parser.get_state() == state::number_integer_digit);
   assert(std::holds_alternative<uinteger_type>(acc_));
 
@@ -283,7 +282,7 @@ template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(
     }
   } else if (is_digit(c)) {
     auto &int_acc = std::get<uinteger_type>(acc_);
-    auto const new_acc = static_cast<uinteger_type>(int_acc * 10U + static_cast<uinteger_type>(c) - '0');
+    auto const new_acc = static_cast<uinteger_type>((int_acc * 10U) + static_cast<uinteger_type>(c) - '0');
     if (new_acc < int_acc) {  // Did this overflow?
       return parser.set_error_and_pop(error::number_out_of_range);
     }
@@ -297,18 +296,18 @@ template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(
 
 // consume
 // ~~~~~~~
-template <backend Backend> bool number_matcher<Backend>::consume(parser_type &parser, char32_t c) {
+template <backend Backend> bool number_matcher<Backend>::consume(parser_type& parser, char8_t const code_unit) {
   bool match = true;
   switch (parser.get_state()) {
-  case state::number_start: match = this->do_leading_minus_state(parser, c); break;
-  case state::number_integer_initial_digit: match = this->do_integer_initial_digit_state(parser, c); break;
-  case state::number_integer_digit: match = this->do_integer_digit_state(parser, c); break;
-  case state::number_frac: match = this->do_frac_state(parser, c); break;
+  case state::number_start: match = this->do_leading_minus_state(parser, code_unit); break;
+  case state::number_integer_initial_digit: match = this->do_integer_initial_digit_state(parser, code_unit); break;
+  case state::number_integer_digit: match = this->do_integer_digit_state(parser, code_unit); break;
+  case state::number_frac: match = this->do_frac_state(parser, code_unit); break;
   case state::number_frac_initial_digit:
-  case state::number_frac_digit: match = this->do_frac_digit_state(parser, c); break;
-  case state::number_exponent_sign: match = this->do_exponent_sign_state(parser, c); break;
+  case state::number_frac_digit: match = this->do_frac_digit_state(parser, code_unit); break;
+  case state::number_exponent_sign: match = this->do_exponent_sign_state(parser, code_unit); break;
   case state::number_exponent_initial_digit:
-  case state::number_exponent_digit: match = this->do_exponent_digit_state(parser, c); break;
+  case state::number_exponent_digit: match = this->do_exponent_digit_state(parser, code_unit); break;
   default: unreachable(); break;
   }
 
@@ -346,7 +345,7 @@ template <backend Backend> void number_matcher<Backend>::make_result(parser_type
 
     auto value = sinteger_type{0};
     if (is_neg_) {
-      value = (*int_acc == umin) ? smin : -static_cast<sinteger_type>(*int_acc);
+      value = (*int_acc == umin) ? smin : static_cast<sinteger_type>(-static_cast<sinteger_type>(*int_acc));
     } else {
       value = static_cast<sinteger_type>(*int_acc);
     }

@@ -264,19 +264,16 @@ TEST_F(Dom, DuplicateKeys) {
   ASSERT_NE(obj, nullptr);
   EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<string>(u8"c"s))));
 }
-struct char_policies : peejay::default_policies {
-  using char_type = char;
-};
 // DOM policies to limit the number of array members to 10.
 struct dom_array_10 : peejay::dom::default_dom_policies {
   static std::size_t const max_array_size = 10;
 };
 // NOLINTNEXTLINE
 TEST(Dom2, LargeArray) {
-  auto p = make_parser(dom<char_policies, dom_array_10>{});
-  p.input("[1,1,1,1,1,1,1,1,1,1,"sv);
+  auto p = make_parser(dom<peejay::default_policies, dom_array_10>{});
+  p.input(u8"[1,1,1,1,1,1,1,1,1,1,"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
-  p.input("1,"sv);
+  p.input(u8"1,"sv);
   EXPECT_EQ(p.last_error(), make_error_code(peejay::dom::dom_error::too_many_array_members))
       << "Real error was: " << p.last_error().message();
 }
@@ -287,30 +284,29 @@ struct dom_object_5 : peejay::dom::default_dom_policies {
 };
 // NOLINTNEXTLINE
 TEST(Dom2, HugeArray) {
-  auto p = make_parser(dom<char_policies, dom_object_5>{});
-  p.input(R"({"a":1, "b":2, "c":3, "d":4, "e":5,)"sv);
+  auto p = make_parser(dom<peejay::default_policies, dom_object_5>{});
+  p.input(u8R"({"a":1, "b":2, "c":3, "d":4, "e":5,)"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
-  p.input(R"("f":6,)"sv);
+  p.input(u8R"("f":6,)"sv);
   EXPECT_EQ(p.last_error(), make_error_code(peejay::dom::dom_error::too_many_object_members))
       << "Real error was: " << p.last_error().message();
 }
 
 struct depth5 : peejay::default_policies {
-  using char_type = char;
   static constexpr std::size_t max_stack_depth = 5;
 };
 
 // NOLINTNEXTLINE
 TEST(Dom2, Nesting) {
   auto p = make_parser(dom<depth5>{});
-  p.input(R"({"a":{"b":{"c":1}}})"sv);
+  p.input(u8R"({"a":{"b":{"c":1}}})"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST(Dom2, NestingTooDeep) {
   auto p = make_parser(dom<depth5>{});
-  p.input(R"({"a":{"b":{"c":{"d":1}}}})"sv);
+  p.input(u8R"({"a":{"b":{"c":{"d":1}}}})"sv);
   EXPECT_EQ(p.last_error(), make_error_code(peejay::error::nesting_too_deep))
       << "Real error was: " << p.last_error().message();
 }

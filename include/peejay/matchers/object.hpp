@@ -48,18 +48,18 @@ namespace peejay::details {
 template <backend Backend> class object_matcher {
 public:
   using parser_type = parser<Backend>;
-  static bool consume(parser_type &parser, char32_t ch);
+  static bool consume(parser_type& parser, char8_t code_unit);
   static void eof(parser_type &parser);
 
 private:
   static void end_object(parser_type &parser);
-  static bool comma(parser_type &parser, char32_t code_point);
-  static bool key(parser_type &parser, char32_t code_point);
+  static bool comma(parser_type& parser, char8_t code_unit);
+  static bool key(parser_type& parser, char8_t code_unit);
 };
 
 // consume
 // ~~~~~~~
-template <backend Backend> bool object_matcher<Backend>::consume(parser_type &parser, char32_t c) {
+template <backend Backend> bool object_matcher<Backend>::consume(parser_type& parser, char8_t code_unit) {
   switch (parser.stack_.top()) {
   case state::object_start:
     if (parser.set_error_and_pop(parser.backend().begin_object())) {
@@ -69,22 +69,22 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
     [[fallthrough]];
   case state::object_first_key:
     // Consume any whitespace before a brace/property name.
-    if (whitespace(parser, c)) {
+    if (whitespace(parser, code_unit)) {
       return false;
     }
     // We allow either a closing brace (to end the object) or a property name.
-    if (c == '}') {
+    if (code_unit == '}') {
       object_matcher::end_object(parser);
       break;
     }
     [[fallthrough]];
-  case state::object_key: return object_matcher::key(parser, c);
+  case state::object_key: return object_matcher::key(parser, code_unit);
   case state::object_colon:
     // just consume any whitespace before the colon.
-    if (whitespace(parser, c)) {
+    if (whitespace(parser, code_unit)) {
       return false;
     }
-    if (c == ':') {
+    if (code_unit == ':') {
       parser.set_state(state::object_value);
     } else {
       parser.set_error_and_pop(error::expected_colon);
@@ -94,7 +94,7 @@ template <backend Backend> bool object_matcher<Backend>::consume(parser_type &pa
     parser.set_state(state::object_comma);
     parser.push_root_matcher();
     return false;
-  case state::object_comma: return object_matcher::comma(parser, c);
+  case state::object_comma: return object_matcher::comma(parser, code_unit);
   default: unreachable(); break;
   }
   // No change of matcher. Consume the input character.
@@ -110,9 +110,9 @@ template <backend Backend> void object_matcher<Backend>::eof(parser_type &parser
 // key
 // ~~~
 /// Match a property name then expect a colon.
-template <backend Backend> bool object_matcher<Backend>::key(parser_type &parser, char32_t code_point) {
+template <backend Backend> bool object_matcher<Backend>::key(parser_type& parser, char8_t const code_unit) {
   parser.set_state(state::object_colon);
-  if (code_point != '"') {
+  if (code_unit != '"') {
     parser.set_error_and_pop(error::expected_object_key);
   } else {
     parser.push_string_matcher(/*object_key=*/true);
@@ -122,18 +122,18 @@ template <backend Backend> bool object_matcher<Backend>::key(parser_type &parser
 
 // comma
 // ~~~~~
-template <backend Backend> bool object_matcher<Backend>::comma(parser_type &parser, char32_t code_point) {
+template <backend Backend> bool object_matcher<Backend>::comma(parser_type& parser, char8_t const code_unit) {
   // Consume whitespace before the comma.
-  if (whitespace(parser, code_point)) {
+  if (whitespace(parser, code_unit)) {
     return false;
   }
-  if (code_point == ',') {
+  if (code_unit == ',') {
     // Strictly conforming JSON requires a property name following a comma.
     parser.set_state(state::object_key);
     // Consume the comma and any whitespace before the close brace or property
     // name.
     parser.push_whitespace_matcher();
-  } else if (code_point == '}') {
+  } else if (code_unit == '}') {
     object_matcher::end_object(parser);
   } else {
     parser.set_error_and_pop(error::expected_object_member);

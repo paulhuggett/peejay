@@ -44,6 +44,14 @@ using testing::DoubleEq;
 using testing::InSequence;
 using testing::StrictMock;
 
+namespace peejay {
+
+inline void PrintTo(coord<true> const& c, std::ostream* os) {
+  *os << "{.line=" << c.line << ", .column=" << c.column << '}';
+}
+
+}  // end namespace peejay
+
 namespace {
 
 class JsonArray : public testing::Test {
@@ -53,8 +61,6 @@ protected:
   StrictMock<mocks> callbacks_;
   callbacks_proxy<mocks> proxy_{callbacks_};
 };
-
-}  // end anonymous namespace
 
 // NOLINTNEXTLINE
 TEST_F(JsonArray, EmptyNoWhitespace) {
@@ -311,3 +317,5 @@ TEST_F(JsonArray, EndFails) {
   p.input(u8"[]"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
+
+}  // end anonymous namespace

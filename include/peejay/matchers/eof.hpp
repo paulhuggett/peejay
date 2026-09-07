@@ -48,9 +48,9 @@ namespace peejay::details {
 /// Matches the end of the input.
 template <backend Backend> class eof_matcher {
 public:
-  constexpr static bool consume(parser<Backend> &parser, char32_t ch) {
+  constexpr static bool consume(parser<Backend>& parser, char8_t const code_unit) {
     // Allow whitespace and only whitespace between the top-level object and the end of input.
-    if (whitespace(parser, ch)) {
+    if (whitespace(parser, code_unit)) {
       return false;
     }
     return parser.set_error_and_pop(error::unexpected_extra_input);

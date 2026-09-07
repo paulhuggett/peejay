@@ -56,9 +56,9 @@ public:
     }
   }
 
-  bool consume(parser<Backend> &parser, char32_t ch) {
+  bool consume(parser<Backend>& parser, char8_t const code_unit) {
     assert(!text_.empty() && "Input text must not be empty");
-    if (auto const c = text_.front(); ch != static_cast<char32_t>(c)) {
+    if (auto const c = text_.front(); code_unit != c) {
       return parser.set_error_and_pop(error::unrecognized_token);
     }
     text_.remove_prefix(1);
