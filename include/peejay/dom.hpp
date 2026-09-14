@@ -245,7 +245,7 @@ private:
     if (a == b) {
       return true;
     }
-    auto const norm = std::min((std::abs(a) + std::abs(b)), std::numeric_limits<float_type>::max());
+    auto const norm = std::min(std::abs(a) + std::abs(b), std::numeric_limits<float_type>::max());
     return std::abs(a - b) < std::max(abs_th, epsilon * norm);
     PEEJAY_CLANG_DIAG_POP
   }
