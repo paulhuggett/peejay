@@ -61,7 +61,7 @@ public:
   using parser_type = parser<Backend>;
   using policies = std::remove_reference_t<Backend>::policies;
 
-  constexpr explicit string_matcher(bool is_key) noexcept : is_key_{is_key} {}
+  constexpr explicit string_matcher(bool const is_key) noexcept : is_key_{is_key} {}
 
   bool consume(parser_type& parser, char8_t code_unit);
   void eof(parser_type &parser);
@@ -75,12 +75,12 @@ private:
   bool normal(parser_type& parser, char8_t code_unit);
 
   /// Processes a code point as part of a escape sequence for a string.
-  /// \p parser  The owning parser instance.
+  /// \param parser  The owning parser instance.
   /// \param code_unit  A UTF-8 code unit for the character being processed.
   void escape(parser_type& parser, char8_t code_unit);
 
   /// Processes a code point as part of a hex escape sequence (uXXXX) for a string.
-  /// \p parser  The owning parser instance.
+  /// \param parser  The owning parser instance.
   /// \param code_unit  A UTF-8 code unit for the character being processed.
   void hex(parser_type& parser, char8_t code_unit);
   //// True if this string is an object's property name, false otherwise.
