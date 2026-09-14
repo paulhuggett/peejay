@@ -57,7 +57,11 @@ add_executable(pj2-unittests
 )
 setup_peejay_target(pj2-unittests)
 
-set(clang_options -Wno-global-constructors -Wno-used-but-marked-unused)
+set(clang_options
+  -Wno-global-constructors
+  -Wno-used-but-marked-unused
+  -Wno-unused-function
+)
 set(gcc_options -Wno-pedantic)
 set(msvc_options -wd4702) # unreachable code.
 
