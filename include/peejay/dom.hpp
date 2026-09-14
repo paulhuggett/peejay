@@ -129,7 +129,7 @@ public:
   /// \returns true if the element currently holds the alternative MemberType, false otherwise.
   template <typename MemberType>
     requires type_list::has_type_v<member_types, MemberType>
-  constexpr bool holds() const noexcept {
+  [[nodiscard]] constexpr bool holds() const noexcept {
     if constexpr (std::is_same_v<object, MemberType>) {
       return std::holds_alternative<object_ptr>(var_);
     } else if constexpr (std::is_same_v<array, MemberType>) {
@@ -146,7 +146,7 @@ public:
   /// \return A pointer to the value stored in the element or null pointer on error.
   template <typename MemberType>
     requires type_list::has_type_v<member_types, MemberType>
-  constexpr auto const *get_if() const noexcept {
+  [[nodiscard]] constexpr auto const* get_if() const noexcept {
     if constexpr (std::is_same_v<object, MemberType>) {
       auto const *const obj = std::get_if<object_ptr>(&var_);
       return obj != nullptr ? obj->get() : nullptr;
@@ -160,7 +160,7 @@ public:
 
   template <typename MemberType>
     requires type_list::has_type_v<member_types, MemberType>
-  constexpr auto *get_if() noexcept {
+  [[nodiscard]] constexpr auto* get_if() noexcept {
     if constexpr (std::is_same_v<object, MemberType>) {
       auto *const obj = std::get_if<object_ptr>(&var_);
       return obj != nullptr ? obj->get() : nullptr;
@@ -341,14 +341,14 @@ public:
   /// Returns a pointer to a C string naming the error category.
   ///
   /// \returns The string "PJ JSON Parser".
-  constexpr char const *name() const noexcept override { return "PJ JSON Parser"; }
+  [[nodiscard]] constexpr char const* name() const noexcept override { return "PJ JSON Parser"; }
 
   /// Returns a string describing the given error in the PJ category.
   ///
   /// \param err  An error number which should be one of the values in the
   ///   peejay::error enumeration.
   /// \returns  The message that corresponds to the error \p err.
-  std::string message(int const err) const override {
+  [[nodiscard]] std::string message(int const err) const override {
     switch (static_cast<dom_error>(err)) {
     case dom_error::none: return "none";
     case dom_error::too_many_array_members: return "Too many array members for DOM";
@@ -361,7 +361,7 @@ public:
 
 /// \param e  The error value to be converted.
 /// \returns  A std::error_code which encapsulates the error \p e.
-inline std::error_code make_error_code(dom_error const e) noexcept {
+[[nodiscard]] inline std::error_code make_error_code(dom_error const e) noexcept {
   static dom_error_category const cat;
   return {static_cast<int>(e), cat};
 }
