@@ -162,34 +162,46 @@ function (add_klee_target)
   add_dependencies (klee-build-all ${bitcode_target} ${exe_target})
 endfunction (add_klee_target)
 
+# Calls to add_klee_target of the form:
+set(PEEJAY_KLEE_TESTS
+  av_assign_count
+  av_assign_range
+  av_ctor_count
+  av_ctor_count_value
+  av_ctor_first_last
+  av_emplace_pos_args
+  av_erase_first_last
+  av_erase_pos
+  av_insert_pos_count_lvalue
+  av_insert_pos_first_last
+  av_insert_pos_lvalue
+  av_insert_pos_rvalue
+  av_insert_range
+  av_resize_count
+  av_resize_count_value
+  keyword
+  quote
+)
 klee_is_available (klee_available)
 message (STATUS "KLEE available? ${klee_available}")
 if (klee_available)
   add_custom_target(klee-all)
   add_custom_target(klee-build-all)
 
-  # Calls to add_klee_target of the form:
-  set(TESTS
-    av_assign_count
-    av_assign_range
-    av_ctor_count
-    av_ctor_count_value
-    av_ctor_first_last
-    av_emplace_pos_args
-    av_erase_first_last
-    av_erase_pos
-    av_insert_pos_count_lvalue
-    av_insert_pos_first_last
-    av_insert_pos_lvalue
-    av_insert_pos_rvalue
-    av_insert_range
-    av_resize_count
-    av_resize_count_value
-    keyword
-    quote
-  )
-  foreach (T ${TESTS})
+  foreach (T ${PEEJAY_KLEE_TESTS})
     add_klee_target (TARGET klee-${T} SOURCES ${T}.cpp)
   endforeach ()
 
+elseif (PEEJAY_KLEE_DUMMY)
+  foreach(T ${PEEJAY_KLEE_TESTS})
+    set(target_name klee-dummy-${T})
+    add_library(${target_name} STATIC
+      ${T}.cpp
+      "${CMAKE_CURRENT_SOURCE_DIR}/dummy/klee/klee.h"
+    )
+    target_include_directories(${target_name} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/dummy")
+    target_link_libraries(${target_name} PRIVATE peejay)
+  endforeach()
+else()
+  # nothing to do.
 endif ()

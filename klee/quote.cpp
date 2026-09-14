@@ -35,17 +35,13 @@
 #include "klee/klee.h"
 #include "peejay/null.hpp"
 
-struct policies : peejay::default_policies {
-  using char_type = char;
-};
-
 int main() {
   static constexpr std::size_t const size = 5;
-  std::array<char, size> input;
+  std::array<char8_t, size> input{};
 
   klee_make_symbolic(input.data(), size, "input");
-  klee_assume(input[0] == '"');
-  klee_assume(input[size - 1] == '\0');
+  klee_assume(input[0] == u8'"');
+  klee_assume(input[size - 1] == u8'\0');
 
-  make_parser(peejay::null<policies>{}).input(input).eof();
+  make_parser(peejay::null{}).input(input).eof();
 }

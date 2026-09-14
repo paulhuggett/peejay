@@ -43,6 +43,7 @@ option(WERROR "Compiler warnings are errors")
 option(PEEJAY_COVERAGE "Generate Source-based Coverage")
 option(PEEJAY_FUZZTEST "Enable fuzztest")
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
+option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
 
 FetchContent_Declare(
   googletest
