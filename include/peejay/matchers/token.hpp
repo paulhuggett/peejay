@@ -82,7 +82,7 @@ public:
 private:
   /// The keyword to be matched. The input sequence must exactly match this
   /// string or an unrecognized token error is raised. Once all of the
-  /// characters are matched, the function derived from which_ is called.
+  /// characters are matched, the function derived from token_ is called.
   std::u8string_view text_;
   /// This function is called once the complete token text has been matched.
   token token_;
