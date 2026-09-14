@@ -70,16 +70,6 @@ public:
     }
     return *this;
   }
-#if 0
-  constexpr checked_back_insert_iterator &operator=(typename Container::value_type &&value) {
-    if (container_->size() >= container_->max_size()) {
-      *overflow_ = true;
-    } else {
-      container_->push_back(std::move(value));
-    }
-    return *this;
-  }
-#endif
   constexpr checked_back_insert_iterator &operator*() noexcept { return *this; }
   constexpr checked_back_insert_iterator &operator++() noexcept { return *this; }
   constexpr checked_back_insert_iterator operator++(int) noexcept { return *this; }
