@@ -78,6 +78,7 @@ int main() {
     }
 #endif  // KLEE_RUN
   } catch (memberex const&) {
+    // catch and ignore.
   }
 #ifdef KLEE_RUN
   if (auto const inst = member::instances(); inst != 0) {
