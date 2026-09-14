@@ -169,7 +169,7 @@ public:
   /// \param range  The ranges of code units to be processed
   /// \returns *this
   template <std::ranges::input_range Range>
-    requires(std::is_same_v<typename std::ranges::range_value_t<Range>, typename policies::char_type>)
+    requires(std::is_same_v<std::ranges::range_value_t<Range>, typename policies::char_type>)
   parser& input(Range const& range) {
     if (error_) {
       return *this;

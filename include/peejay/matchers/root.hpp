@@ -47,7 +47,7 @@ namespace peejay::details {
 
 template <backend Backend> class root_matcher {
 public:
-  using policies = typename std::remove_reference_t<Backend>::policies;
+  using policies = std::remove_reference_t<Backend>::policies;
 
   static bool consume(parser<Backend>& parser, char8_t code_unit) {
     bool match = false;

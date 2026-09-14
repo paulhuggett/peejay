@@ -182,7 +182,7 @@ public:
   /// \param key The object key whose associated value is to be returned.
   /// \returns An optional reference to the associated value.
   template <typename Desired>
-    requires type_list::has_type_v<typename element::member_types, Desired>
+    requires type_list::has_type_v<element::member_types, Desired>
   [[nodiscard]] constexpr std::optional<std::reference_wrapper<Desired const>> get_object_element(
       std::basic_string_view<typename PJPolicies::char_type> const& key) const {
     if (auto const* const obj = this->get_if<object>()) {
@@ -196,7 +196,7 @@ public:
   }
 
   template <typename Desired>
-    requires type_list::has_type_v<typename element::member_types, Desired>
+    requires type_list::has_type_v<element::member_types, Desired>
   [[nodiscard]] constexpr std::optional<std::reference_wrapper<Desired>> get_object_element(
       std::basic_string_view<typename PJPolicies::char_type> const& key) {
     if (auto* const obj = this->get_if<object>()) {
@@ -285,9 +285,9 @@ public:
   using policies = std::remove_reference_t<PJPolicies>;
   using element = ::peejay::dom::element<PJPolicies>;
 
-  using char_type = typename PJPolicies::char_type;
-  using integer_type = typename PJPolicies::integer_type;
-  using float_type = typename PJPolicies::float_type;
+  using char_type = PJPolicies::char_type;
+  using integer_type = PJPolicies::integer_type;
+  using float_type = PJPolicies::float_type;
   using string_view = std::basic_string_view<char_type>;
   using string = element::string;
   using array = element::array;
