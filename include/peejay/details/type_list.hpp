@@ -195,7 +195,7 @@ struct index_of<Seq<T, Ts...>, T> : std::integral_constant<std::size_t, 0> {};
 template <typename T, typename TOther, template <typename...> typename Seq, typename... Ts>
 struct index_of<Seq<TOther, Ts...>, T>
     : std::integral_constant<std::size_t,
-                             (index_of<Seq<Ts...>, T>::value != npos) ? 1 + (index_of<Seq<Ts...>, T>::value) : npos> {};
+                             (index_of<Seq<Ts...>, T>::value != npos) ? 1 + index_of<Seq<Ts...>, T>::value : npos> {};
 
 }  // end namespace details
 
