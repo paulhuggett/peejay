@@ -63,8 +63,8 @@ protected:
                    InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>);
 
   template <std::integral SizeType, typename... Args>
-  static void init(pbi begin, SizeType *const size, SizeType count,
-                   Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>);
+  static void init(pbi begin, SizeType* size, SizeType count,
+                   Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>);
 
   template <bool IsMove, std::integral SizeType, typename SrcType>
   static void operator_assign(T *destp, SizeType *destsize, std::pair<SrcType *, std::size_t> const &src) noexcept(
@@ -625,9 +625,9 @@ public:
   ///@{
 
   /// Direct access to the underlying array.
-  constexpr T const *data() const noexcept { return std::bit_cast<T const *>(data_.data()); }
+  [[nodiscard]] constexpr T const* data() const noexcept { return std::bit_cast<T const*>(data_.data()); }
   /// Direct access to the underlying array.
-  constexpr T *data() noexcept { return std::bit_cast<T *>(data_.data()); }
+  [[nodiscard]] constexpr T* data() noexcept { return std::bit_cast<T*>(data_.data()); }
 
   /// \brief Access the specified element.
   ///
@@ -637,7 +637,7 @@ public:
   /// \param n  Position of the element to return.
   /// \returns  A reference to the requested element.
   constexpr const_reference operator[](size_type n) const noexcept {
-    assert(n < this->size());
+    assert(n < this->size() && "arrayvec index out of range");
     return *(this->data() + n);
   }
   /// \brief Access the specified element.
@@ -648,7 +648,7 @@ public:
   /// \param n  Position of the element to return.
   /// \returns  A reference to the requested element.
   constexpr reference operator[](size_type n) noexcept {
-    assert(n < this->size());
+    assert(n < this->size() && "arrayvec index out of range");
     return *(this->data() + n);
   }
 
@@ -669,24 +669,24 @@ public:
   ///
   /// \param pos  Position of the element to return.
   /// \returns  A reference to the requested element.
-  const_reference at(size_type pos) const;
+  [[nodiscard]] const_reference at(size_type pos) const;
 
   /// \brief Access the first element.
   ///
   /// The effect of calling front() on a zero-sized arrayvec is undefined.
-  constexpr reference front() noexcept;
+  [[nodiscard]] constexpr reference front() noexcept;
   /// \brief Access the first element.
   ///
   /// The effect of calling front() on a zero-sized arrayvec is undefined.
-  constexpr const_reference front() const noexcept;
+  [[nodiscard]] constexpr const_reference front() const noexcept;
   /// \brief Access the last element.
   ///
   /// The effect of calling back() on a zero-sized arrayvec is undefined.
-  constexpr reference back() noexcept;
+  [[nodiscard]] constexpr reference back() noexcept;
   /// \brief Access the last element.
   ///
   /// The effect of calling back() on a zero-sized arrayvec is undefined.
-  constexpr const_reference back() const noexcept;
+  [[nodiscard]] constexpr const_reference back() const noexcept;
 
   ///@}
 

@@ -46,6 +46,8 @@
 using peejay::arrayvec;
 using testing::ElementsAre;
 
+namespace {
+
 // NOLINTNEXTLINE
 TEST(ArrayVec, DefaultCtor) {
   arrayvec<int, 8> b;
@@ -551,7 +553,7 @@ TEST(ArrayVec, EraseRangeSecondToEnd) {
 
 enum class action { added, copy_ctor, move_ctor, deleted, copy_assign, move_assign };
 
-static std::ostream &operator<<(std::ostream &os, action a) {
+std::ostream& operator<<(std::ostream& os, action a) {
   // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
   char const *str = "";
   switch (a) {
@@ -650,7 +652,7 @@ private:
 TEST(ArrayVec, TrackedAssignCountSmaller) {
   tracker t;
   arrayvec<trackee, 3> b{trackee{&t, 1}, trackee{&t, 3}};
-  trackee c{&t, 7};
+  trackee const c{&t, 7};
   t.actions.clear();
   b.assign(size_t{1}, c);
   EXPECT_THAT(t.actions,
@@ -661,7 +663,7 @@ TEST(ArrayVec, TrackedAssignCountSmaller) {
 // NOLINTNEXTLINE
 TEST(ArrayVec, TrackedCopyInsert) {
   tracker t;
-  peejay::arrayvec<trackee, 3> v{trackee{&t, 1}, trackee{&t, 2}, trackee{&t, 3}};
+  peejay::arrayvec<trackee, 3> const v{trackee{&t, 1}, trackee{&t, 2}, trackee{&t, 3}};
   EXPECT_THAT(t.actions,
               testing::ElementsAre(std::make_tuple(1, 0, action::added), std::make_tuple(2, 0, action::added),
                                    std::make_tuple(3, 0, action::added), std::make_tuple(1, 0, action::copy_ctor),
@@ -1174,3 +1176,5 @@ TEST(ArrayVec, RangeReverse) {
   EXPECT_THAT(av, ElementsAre(3, 2, 1));
 }
 #endif
+
+}  // end anonymous namespace
