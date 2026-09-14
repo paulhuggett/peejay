@@ -193,7 +193,7 @@ public:
 
 private:
   std::error_code append(std::u8string_view const &s) {
-    if (out_.length() > 0) {
+    if (!out_.empty()) {
       out_ += ' ';
     }
     out_ += s;
