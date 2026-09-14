@@ -67,14 +67,14 @@ public:
   /// Returns a pointer to a C string naming the error category.
   ///
   /// \returns The string "PJ JSON Parser".
-  constexpr char const* name() const noexcept override { return "PJ JSON Parser"; }
+  [[nodiscard]] constexpr char const* name() const noexcept override { return "PJ JSON Parser"; }
 
   /// Returns a string describing the given error in the PJ category.
   ///
   /// \param err  An error number which should be one of the values in the
   ///   peejay::error enumeration.
   /// \returns  The message that corresponds to the error \p err.
-  std::string message(int const err) const override {
+  [[nodiscard]] std::string message(int const err) const override {
     switch (static_cast<error>(err)) {
     case error::none: return "none";
     case error::bad_unicode_code_point: return "bad UNICODE code point";
@@ -104,7 +104,7 @@ public:
 ///
 /// \param e  The peejay::error value to be converted.
 /// \returns  A std::error_code which encapsulates the error \p e.
-inline std::error_code make_error_code(error const e) noexcept {
+[[nodiscard]] inline std::error_code make_error_code(error const e) noexcept {
   static error_category const cat;
   return {static_cast<int>(e), cat};
 }
