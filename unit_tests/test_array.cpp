@@ -46,7 +46,8 @@ using testing::StrictMock;
 
 namespace peejay {
 
-inline void PrintTo(coord<true> const& c, std::ostream* os) {
+void PrintTo(coord<true> const& c, std::ostream* os);
+void PrintTo(coord<true> const& c, std::ostream* const os) {
   *os << "{.line=" << c.line << ", .column=" << c.column << '}';
 }
 
