@@ -36,6 +36,8 @@
 
 #include "peejay/json.hpp"
 
+namespace {
+
 struct policy : public peejay::default_policies {
   static constexpr std::size_t max_length = 64;
   static constexpr std::size_t max_stack_depth = 8;
@@ -45,72 +47,46 @@ struct policy : public peejay::default_policies {
   using integer_type = std::int64_t;
 };
 
-/// A backend which prints tokens as they arrive.
-class null {
+/// A simple backend which prints tokens as they arrive. The resulting output should
+/// look somewhat like the input, but is not legal JSON!
+class print_tokens {
 public:
   using policies = policy;
   static constexpr void result() noexcept {
-    // The null output backend produces no result at all.
+    // This backend produces no result at all.
   }
 
-  static std::error_code boolean_value(bool const b) noexcept {
-    std::cout << (b ? "true" : "false") << ' ';
-    return {};
-  }
-  static std::error_code float_value(policy::float_type const v) {
-    std::cout << v << ' ';
-    return {};
-  }
-  static std::error_code integer_value(policy::integer_type const v) {
-    std::cout << v << ' ';
-    return {};
-  }
-  static std::error_code null_value() {
-    std::cout << "null";
-    return {};
-  }
-  static std::error_code string_value(std::u8string_view const &sv) {
-    show_string(sv);
-    std::cout << ' ';
-    return {};
-  }
-
-  static std::error_code begin_array() {
-    std::cout << "[ ";
-    return {};
-  }
-  static std::error_code end_array() {
-    std::cout << "] ";
-    return {};
-  }
-
-  static std::error_code begin_object() {
-    std::cout << "{ ";
-    return {};
-  }
-  static std::error_code key(std::u8string_view const &sv) {
-    show_string(sv);
-    std::cout << ": ";
-    return {};
-  }
-  static std::error_code end_object() {
-    std::cout << "} ";
-    return {};
-  }
+  static std::error_code boolean_value(bool const b) { return show(b ? "true" : "false"); }
+  static std::error_code float_value(policy::float_type const v) { return show(v); }
+  static std::error_code integer_value(policy::integer_type const v) { return show(v); }
+  static std::error_code null_value() { return show("null"); }
+  static std::error_code string_value(std::u8string_view const& sv) { return show(sv); }
+  static std::error_code begin_array() { return show('['); }
+  static std::error_code end_array() { return show(']'); }
+  static std::error_code begin_object() { return show('{'); }
+  static std::error_code key(std::u8string_view const& sv) { return show(sv); }
+  static std::error_code end_object() { return show('}'); }
 
 private:
-  static void show_string(std::u8string_view const &sv) {
+  template <typename T> static std::error_code show(T const& value) {
+    std::cout << value << '\n';
+    return {};
+  }
+  static std::error_code show(std::u8string_view const& sv) {
     std::cout << '"';
     std::ranges::copy(std::ranges::subrange{sv} | std::ranges::views::transform([] (char8_t c) { return static_cast<char>(c); }), std::ostream_iterator<char>{std::cout});
-    std::cout << '"';
+    std::cout << "\"\n";
+    return {};
   }
 };
+
+}  // end anonymous namespace
 
 int main() {
   using namespace std::string_view_literals;
 
   int exit_code = EXIT_SUCCESS;
-  peejay::parser<null> p;
+  peejay::parser<print_tokens> p;
   p.input(u8R"(  { "a":123, "b" : [false,"c"], "c":true }  )"sv).eof();
   if (auto const err = p.last_error()) {
     std::cout << "Error: " << err.message() << '\n';
