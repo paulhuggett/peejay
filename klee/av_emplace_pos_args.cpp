@@ -12,7 +12,7 @@
 //*  \__,_|_|  \__, |___/ *
 //*            |___/      *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// Copyright © 2026 Paul Bowen-Huggett
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the

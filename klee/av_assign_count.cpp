@@ -6,7 +6,7 @@
 //*  \__,_| \_/    \__,_|___/___/_|\__, |_| |_|  \___\___/ \__,_|_| |_|\__| *
 //*                                |___/                                    *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// Copyright © 2026 Paul Bowen-Huggett
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
