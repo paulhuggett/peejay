@@ -76,7 +76,6 @@ concept policy = requires(Policy &&p) {
 
   /// The type used for integer values. The unsigned type will also be derived when necessary.
   requires std::signed_integral<typename Policy::integer_type>;
-  requires character<typename Policy::char_type>;
 };
 
 template <typename Backend>
@@ -90,9 +89,7 @@ concept backend = requires(Backend &&be) {
   be.result();
 
   /// Called when a JSON string has been parsed.
-  {
-    be.string_value(std::basic_string_view<typename std::remove_reference_t<Backend>::policies::char_type>{})
-  } -> std::convertible_to<std::error_code>;
+  { be.string_value(std::u8string_view{}) } -> std::convertible_to<std::error_code>;
   /// Called when an integer value has been parsed.
   {
     be.integer_value(std::make_signed_t<typename std::remove_reference_t<Backend>::policies::integer_type>{})
@@ -119,9 +116,7 @@ concept backend = requires(Backend &&be) {
   /// are for members of this object until a matching call to end_object().
   { be.begin_object() } -> std::convertible_to<std::error_code>;
   /// Called when an object key string has been parsed.
-  {
-    be.key(std::basic_string_view<typename std::remove_reference_t<Backend>::policies::char_type>{})
-  } -> std::convertible_to<std::error_code>;
+  { be.key(std::u8string_view{}) } -> std::convertible_to<std::error_code>;
   /// Called to indicate that an object has been completely parsed. This will
   /// always follow an earlier call to begin_object().
   { be.end_object() } -> std::convertible_to<std::error_code>;

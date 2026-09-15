@@ -241,7 +241,7 @@ TEST_F(Number, OneExpMinusZero2) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, IntegerMax) {
-  constexpr auto long_max = std::numeric_limits<decltype(proxy_)::integer_type>::max();
+  constexpr auto long_max = std::numeric_limits<decltype(proxy_)::policies::integer_type>::max();
   auto const str_max = to_u8string(long_max);
 
   EXPECT_CALL(callbacks_, integer_value(long_max)).Times(1);

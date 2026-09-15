@@ -47,13 +47,12 @@ namespace peejay {
 template <policy Policies = default_policies> class null {
 public:
   using policies = std::remove_reference_t<Policies>;
-  using string_view = std::basic_string_view<typename policies::char_type>;
 
   static constexpr void result() noexcept {
     // The null output produces no result at all.
   }
 
-  static std::error_code string_value(string_view const &sv) noexcept {
+  static std::error_code string_value(std::u8string_view const& sv) noexcept {
     (void)sv;
     return {};
   }
@@ -75,7 +74,7 @@ public:
   static std::error_code end_array() noexcept { return {}; }
 
   static std::error_code begin_object() noexcept { return {}; }
-  static std::error_code key(string_view const &sv) noexcept {
+  static std::error_code key(std::u8string_view const& sv) noexcept {
     (void)sv;
     return {};
   }

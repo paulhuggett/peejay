@@ -92,7 +92,7 @@ private:
   /// converted to UTF-8 and added to the output.
   uint_least16_t hex_ = 0U;
   /// The accumulated string contents.
-  arrayvec<typename policies::char_type, policies::max_length> str_;
+  arrayvec<char8_t, policies::max_length> str_;
 };
 
 // normal
@@ -112,7 +112,7 @@ template <backend Backend> bool string_matcher<Backend>::normal(parser_type& par
   // The end of the string?
   if (code_unit == '"') {
     auto &backend = parser.backend();
-    auto const result = std::basic_string_view<typename policies::char_type>{str_.data(), str_.size()};
+    auto const result = std::u8string_view{str_.data(), str_.size()};
     parser.set_error(is_key_ ? backend.key(result) : backend.string_value(result));
     parser.pop();  // unconditionally pop this matcher.
     return true;

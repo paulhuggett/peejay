@@ -38,6 +38,7 @@
 #ifndef PEEJAY_DOM_HPP
 #define PEEJAY_DOM_HPP
 
+#include <functional>
 #include <memory>
 #include <stack>
 #include <string>
@@ -53,17 +54,13 @@ namespace peejay::dom {
 namespace details {
 
 // A custom hasher string_hash with is_transparent to enable heterogenous lookup in objects.
-template <typename CharType> struct string_hash {
+struct string_hash {
   using is_transparent = void;
-  [[nodiscard]] size_t operator()(CharType const* str) const {
-    return std::hash<std::basic_string_view<CharType>>{}(str);
+  [[nodiscard]] constexpr size_t operator()(char8_t const* str) const { return std::hash<std::u8string_view>{}(str); }
+  [[nodiscard]] constexpr size_t operator()(std::u8string_view const& str) const {
+    return std::hash<std::u8string_view>{}(str);
   }
-  [[nodiscard]] size_t operator()(std::basic_string_view<CharType> const& str) const {
-    return std::hash<std::basic_string_view<CharType>>{}(str);
-  }
-  [[nodiscard]] size_t operator()(std::basic_string<CharType> const& str) const {
-    return std::hash<std::basic_string<CharType>>{}(str);
-  }
+  [[nodiscard]] constexpr size_t operator()(std::u8string const& str) const { return std::hash<std::u8string>{}(str); }
 };
 
 }  // end namespace details
@@ -87,9 +84,8 @@ public:
   using integer_type = typename PJPolicies::integer_type;
   using float_type = typename PJPolicies::float_type;
   // TODO: here be allocations in  the following three containers.
-  using string = std::basic_string<typename PJPolicies::char_type>;
-  using object =
-      std::unordered_map<string, element, details::string_hash<typename PJPolicies::char_type>, std::equal_to<>>;
+  using string = std::u8string;
+  using object = std::unordered_map<string, element, details::string_hash, std::equal_to<>>;
   using array = std::vector<element>;
 
   using simple_types = type_list::concat<type_list::type_list<null, bool, integer_type, string>,
@@ -184,7 +180,7 @@ public:
   template <typename Desired>
     requires type_list::has_type_v<element::member_types, Desired>
   [[nodiscard]] constexpr std::optional<std::reference_wrapper<Desired const>> get_object_element(
-      std::basic_string_view<typename PJPolicies::char_type> const& key) const {
+      std::u8string_view const& key) const {
     if (auto const* const obj = this->get_if<object>()) {
       if (auto const pos = obj->find(key); pos != obj->end()) {
         if (auto const* const ptr = pos->second.template get_if<Desired>()) {
@@ -198,7 +194,7 @@ public:
   template <typename Desired>
     requires type_list::has_type_v<element::member_types, Desired>
   [[nodiscard]] constexpr std::optional<std::reference_wrapper<Desired>> get_object_element(
-      std::basic_string_view<typename PJPolicies::char_type> const& key) {
+      std::u8string_view const& key) {
     if (auto* const obj = this->get_if<object>()) {
       if (auto const pos = obj->find(key); pos != obj->end()) {
         if (auto* const ptr = pos->second.template get_if<Desired>()) {
@@ -285,10 +281,8 @@ public:
   using policies = std::remove_reference_t<PJPolicies>;
   using element = ::peejay::dom::element<PJPolicies>;
 
-  using char_type = PJPolicies::char_type;
   using integer_type = PJPolicies::integer_type;
   using float_type = PJPolicies::float_type;
-  using string_view = std::basic_string_view<char_type>;
   using string = element::string;
   using array = element::array;
   using object = element::object;
@@ -303,7 +297,7 @@ public:
 
   std::optional<element> result() noexcept;
 
-  std::error_code string_value(string_view const &v) { return this->record<string>(v); }
+  std::error_code string_value(std::u8string_view const& v) { return this->record<string>(v); }
   std::error_code integer_value(std::make_signed_t<integer_type> v) { return this->record<integer_type>(v); }
   std::error_code float_value(float_type v);
   std::error_code boolean_value(bool v) { return this->record<bool>(v); }
@@ -313,7 +307,7 @@ public:
   std::error_code end_array();
 
   std::error_code begin_object();
-  std::error_code key(string_view const &s);
+  std::error_code key(std::u8string_view const& s);
   std::error_code end_object();
 
 private:
@@ -424,7 +418,7 @@ template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPol
 // key
 // ~~~
 template <policy PJPolicies, dom_policies DOMPolicies>
-std::error_code dom<PJPolicies, DOMPolicies>::key(string_view const &s) {
+std::error_code dom<PJPolicies, DOMPolicies>::key(std::u8string_view const& s) {
   key_.emplace(s);
   return {};
 }

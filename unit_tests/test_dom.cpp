@@ -31,6 +31,8 @@
 //===----------------------------------------------------------------------===//
 #include <gmock/gmock.h>
 
+#include <functional>
+
 #include "callbacks.hpp"
 #include "peejay/dom.hpp"
 
@@ -106,20 +108,23 @@ private:
   const ::testing::Matcher<T const&> matcher_;
 };
 
+
 template <typename T>
-testing::PolymorphicMatcher<ElementMatcher<T>> ElementWith(testing::Matcher<T const&> const& matcher) {
-  return testing::MakePolymorphicMatcher(ElementMatcher<T>(matcher));
+::testing::PolymorphicMatcher<ElementMatcher<T>> ElementWith(::testing::Matcher<T const&> const& matcher) {
+  return ::testing::MakePolymorphicMatcher(ElementMatcher<T>(matcher));
+}
+template <typename T>
+::testing::PolymorphicMatcher<ElementMatcher<T>> ElementWith(T const& value) {
+  return ElementWith<T>(::testing::Matcher<T const &>{value});
 }
 
-namespace {
 
 template <peejay::policy Policies = peejay::default_policies>
-std::optional<element<Policies>> parse(std::basic_string_view<typename Policies::char_type> s) {
+std::optional<element<Policies>> parse(std::u8string_view const& s) {
   auto p = make_parser(dom<Policies>{});
   return input(p, s).eof();
 }
 
-}  // end anonymous namespace
 
 class Dom : public Test {
 protected:
@@ -127,12 +132,9 @@ protected:
   using el = element<policies>;
   using object = peejay::dom::element<policies>::object;
   using array = peejay::dom::element<policies>::array;
-  using string = std::basic_string<typename policies::char_type>;
   using null = peejay::dom::null;
 
   using integer = policies::integer_type;
-  //  el *el::*object_parent_field = &object::element_type::value_type::second_type::parent;
-  //  el *el::*parent_field = &el::parent;
 };
 
 // NOLINTNEXTLINE
@@ -148,32 +150,32 @@ TEST_F(Dom, Null) {
 // NOLINTNEXTLINE
 TEST_F(Dom, One) {
   auto const root = parse(u8"1"sv);
-  ASSERT_THAT(root, Optional(ElementWith<integer>(1)));
+  ASSERT_THAT(root, Optional(ElementWith(integer{1})));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, NegativeOne) {
   auto const root = parse(u8"-1"sv);
-  ASSERT_THAT(root, Optional(ElementWith<integer>(-1)));
+  ASSERT_THAT(root, Optional(ElementWith(integer{-1})));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, String) {
   auto const root = parse(u8R"("string")"sv);
-  ASSERT_THAT(root, Optional(ElementWith<string>(u8"string"s)));
+  ASSERT_THAT(root, Optional(ElementWith(u8"string"s)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, Double) {
   auto const root = parse(u8"3.14"sv);
-  ASSERT_THAT(root, Optional(ElementWith<double>(3.14)));
+  ASSERT_THAT(root, Optional(ElementWith(3.14)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, BooleanTrue) {
   auto const root = parse(u8"true"sv);
-  ASSERT_THAT(root, Optional(ElementWith<bool>(true)));
+  ASSERT_THAT(root, Optional(ElementWith(true)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, BooleanFalse) {
   auto const root = parse(u8"false"sv);
-  ASSERT_THAT(root, Optional(ElementWith<bool>(false)));
+  ASSERT_THAT(root, Optional(ElementWith(false)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, Array) {
@@ -182,7 +184,7 @@ TEST_F(Dom, Array) {
   ASSERT_THAT(root, Optional(ElementWith<array>(_)));
   auto const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<integer>(1), ElementWith<integer>(2)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith(integer{1}), ElementWith(integer{2})));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, Array2) {
@@ -191,11 +193,12 @@ TEST_F(Dom, Array2) {
   auto const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
   // Check the array contents.
-  std::array<std::byte, 4> const expected_bytes = {{
+  std::array const expected_bytes = {
       std::byte{0xEF}, std::byte{0xBF}, std::byte{0xBD},  // REPLACEMENT CHARACTER
       std::byte{0x00}                                     // NULL
-  }};
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<string>(string{reinterpret_cast<char8_t const*>(expected_bytes.data())})));
+  };
+  auto const expected_str = std::u8string{reinterpret_cast<char8_t const*>(expected_bytes.data())};
+  ASSERT_THAT(*arr, ElementsAre(ElementWith(expected_str)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, Object) {
@@ -204,7 +207,7 @@ TEST_F(Dom, Object) {
   auto const* const root_element = root->get_if<object>();
   ASSERT_NE(root_element, nullptr);
   EXPECT_THAT(*root_element,
-              UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(1)), Pair(u8"b"s, ElementWith<integer>(2))));
+              UnorderedElementsAre(Pair(u8"a"s, ElementWith(integer{1})), Pair(u8"b"s, ElementWith(integer{2}))));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, NestedObject) {
@@ -217,9 +220,9 @@ TEST_F(Dom, NestedObject) {
   ASSERT_NE(nested_pos, root_element->end());
   auto const* const b = nested_pos->second.get_if<object>();
   ASSERT_NE(b, nullptr);
-  EXPECT_THAT(*b, UnorderedElementsAre(Pair(u8"c"sv, ElementWith<integer>(3)), Pair(u8"d"sv, ElementWith<integer>(4))));
+  EXPECT_THAT(*b, UnorderedElementsAre(Pair(u8"c"sv, ElementWith(integer{3})), Pair(u8"d"sv, ElementWith(integer{4}))));
 
-  EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(1)), Pair(u8"b"s, _)));
+  EXPECT_THAT(*root_element, UnorderedElementsAre(Pair(u8"a"s, ElementWith(integer{1})), Pair(u8"b"s, _)));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ObjectInsideArray1) {
@@ -227,10 +230,10 @@ TEST_F(Dom, ObjectInsideArray1) {
   ASSERT_THAT(root, Optional(ElementWith<array>(_)));
   element<policies>::array const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<object>(_), ElementWith<integer>(3)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith<object>(_), ElementWith(integer{3})));
   element<policies>::object const* const obj = arr->at(0).get_if<object>();
   ASSERT_NE(obj, nullptr);
-  EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(1)), Pair(u8"b"s, ElementWith<integer>(2))));
+  EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith(integer{1})), Pair(u8"b"s, ElementWith(integer{2}))));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ObjectInsideArray2) {
@@ -238,10 +241,10 @@ TEST_F(Dom, ObjectInsideArray2) {
   ASSERT_THAT(root, Optional(ElementWith<array>(_)));
   element<policies>::array const* const arr = root->get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<integer>(1), ElementWith<object>(_)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith(integer{1}), ElementWith<object>(_)));
   element<policies>::object const* const ind1 = arr->at(1).get_if<object>();
   EXPECT_THAT(*ind1,
-              UnorderedElementsAre(Pair(u8"a"s, ElementWith<integer>(2)), Pair(u8"b"s, ElementWith<integer>(3))));
+              UnorderedElementsAre(Pair(u8"a"s, ElementWith(integer{2})), Pair(u8"b"s, ElementWith(integer{3}))));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, ArrayInsideObject) {
@@ -249,12 +252,12 @@ TEST_F(Dom, ArrayInsideObject) {
   ASSERT_THAT(root, Optional(ElementWith<object>(_)));
   auto const* const obj = root->get_if<object>();
   ASSERT_NE(obj, nullptr);
-  ASSERT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<array>(_)), Pair(u8"b"s, ElementWith<integer>(3))));
+  ASSERT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<array>(_)), Pair(u8"b"s, ElementWith(integer{3}))));
   auto const pos = obj->find(u8"a");
   ASSERT_NE(pos, obj->end());
   auto const* const arr = pos->second.get_if<array>();
   ASSERT_NE(arr, nullptr);
-  ASSERT_THAT(*arr, ElementsAre(ElementWith<integer>(1), ElementWith<integer>(2)));
+  ASSERT_THAT(*arr, ElementsAre(ElementWith(integer{1}), ElementWith(integer{2})));
 }
 // NOLINTNEXTLINE
 TEST_F(Dom, DuplicateKeys) {
@@ -262,7 +265,7 @@ TEST_F(Dom, DuplicateKeys) {
   ASSERT_THAT(root, Optional(ElementWith<object>(_)));
   auto const* const obj = root->get_if<object>();
   ASSERT_NE(obj, nullptr);
-  EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith<string>(u8"c"s))));
+  EXPECT_THAT(*obj, UnorderedElementsAre(Pair(u8"a"s, ElementWith(u8"c"s))));
 }
 // DOM policies to limit the number of array members to 10.
 struct dom_array_10 : peejay::dom::default_dom_policies {
@@ -379,11 +382,12 @@ TEST(Element, SetObjectElementFromObject) {
   auto root = parse(u8R"({"a":1,"b":2)"sv);
   using integer_type = decltype(root)::value_type::integer_type;
   ASSERT_THAT(root, Optional(_));
-  auto v = root->get_object_element<integer_type>(u8"a");
+  auto v = root->get_object_element<integer_type>(u8"a"sv);
   ASSERT_THAT(v, Optional(_));
-  int& integer = *v;
-  integer = 3;
-  EXPECT_THAT(root->get_object_element<integer_type>(u8"a"), Optional(3));
+  v->get() = 3;
+
+  int const expected = 3;
+  EXPECT_THAT(root->get_object_element<integer_type>(u8"a"sv), Optional(std::reference_wrapper{expected}));
 }
 
 TEST(DomError, What) {

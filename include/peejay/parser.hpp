@@ -134,8 +134,6 @@ struct default_policies {
   /// Representation of integers. Select a suitable signed type for the
   /// expected input and target hardware.
   using integer_type = int;
-  /// Representation of characters.
-  using char_type = char8_t;
 };
 
 //*                              *
@@ -169,7 +167,7 @@ public:
   /// \param range  The ranges of code units to be processed
   /// \returns *this
   template <std::ranges::input_range Range>
-    requires(std::is_same_v<std::ranges::range_value_t<Range>, typename policies::char_type>)
+    requires(std::is_same_v<std::ranges::range_value_t<Range>, char8_t>)
   parser& input(Range const& range) {
     if (error_) {
       return *this;
