@@ -56,11 +56,11 @@ namespace details {
 // A custom hasher string_hash with is_transparent to enable heterogenous lookup in objects.
 struct string_hash {
   using is_transparent = void;
-  [[nodiscard]] constexpr size_t operator()(char8_t const* str) const { return std::hash<std::u8string_view>{}(str); }
-  [[nodiscard]] constexpr size_t operator()(std::u8string_view const& str) const {
+  [[nodiscard]] size_t operator()(char8_t const* str) const { return std::hash<std::u8string_view>{}(str); }
+  [[nodiscard]] size_t operator()(std::u8string_view const& str) const {
     return std::hash<std::u8string_view>{}(str);
   }
-  [[nodiscard]] constexpr size_t operator()(std::u8string const& str) const { return std::hash<std::u8string>{}(str); }
+  [[nodiscard]] size_t operator()(std::u8string const& str) const { return std::hash<std::u8string>{}(str); }
 };
 
 }  // end namespace details
