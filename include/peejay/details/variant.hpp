@@ -154,7 +154,7 @@ public:
   /// \returns A reference to the new contained value.
   template <typename T, typename... Args>
     requires type_list::has_type_v<Members, T>
-  T &emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+  T& emplace(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
     this->protect(/*usable=*/true);
     assert((holds_ == type_list::npos) && "The variant is already holding a value");
     // TODO: validate the pattern...
@@ -167,13 +167,13 @@ public:
 
   template <typename T>
     requires type_list::has_type_v<Members, T>
-  T &get() noexcept {
+  T& get() noexcept {
     assert(holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>));
     return *std::bit_cast<T *>(&contents_[0]);
   }
   template <typename T>
     requires type_list::has_type_v<Members, T>
-  T const &get() const noexcept {
+  T const& get() const noexcept {
     assert(holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>));
     return *std::bit_cast<T const *>(&contents_[0]);
   }
@@ -214,14 +214,14 @@ PEEJAY_CLANG_DIAG_POP
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-variant<Members>::variant(variant &&other) noexcept : contents_{std::move(other.contents_)} {
+variant<Members>::variant(variant&& other) noexcept : contents_{std::move(other.contents_)} {
   holds_ = other.holds_;
   other.holds_ = type_list::npos;
 }
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-auto variant<Members>::operator=(variant &&other) noexcept -> variant & {
+auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
   this->protect(/*usable=*/true);
   other.protect(/*usable=*/true);
   contents_ = std::move(other.contents_);
@@ -279,18 +279,17 @@ void variant<Members>::protect(bool usable) noexcept {
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-variant<Members>::variant(variant &&other) noexcept {
+variant<Members>::variant(variant&& other) noexcept : holds_{other.holds_} {
+  other.holds_ = type_list::npos;
   // memcpy() is safe here because we assert that the contained member types are trivially copyable.
   std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
-  holds_ = other.holds_;
-  other.holds_ = type_list::npos;
 }
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-auto variant<Members>::operator=(variant &&other) noexcept -> variant & {
-  std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
+auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
   holds_ = other.holds_;
   other.holds_ = type_list::npos;
+  std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
   return *this;
 }
 
