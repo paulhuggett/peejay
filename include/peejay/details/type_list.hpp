@@ -224,8 +224,8 @@ template <std::integral ResultType, template <typename...> typename Seq, typenam
 
 template <std::integral ResultType, template <typename...> typename Seq, typename... Ts, typename T, typename M>
 struct max<ResultType, Seq<T, Ts...>, M> {
-  using type = typename std::conditional<(T::value > M::value), typename max<ResultType, Seq<Ts...>, T>::type,
-                                         typename max<ResultType, Seq<Ts...>, M>::type>::type;
+  using type = std::conditional_t<(T::value > M::value), typename max<ResultType, Seq<Ts...>, T>::type,
+                                  typename max<ResultType, Seq<Ts...>, M>::type>;
 };
 
 }  // end namespace details
