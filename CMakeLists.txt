@@ -282,6 +282,7 @@ add_dependencies (install-peejay peejay)
 add_executable(dump main.cpp)
 setup_peejay_target(dump)
 target_link_libraries(dump PUBLIC peejay)
+add_test(NAME dump COMMAND dump)
 
 if (TARGET gtest)
   set (prelink_target dump)

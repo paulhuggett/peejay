@@ -44,7 +44,11 @@ jobs:
 
       - name: Build
         run: |
-            cmake --build "$BUILD_DIR" --verbose
+          cmake --build "$BUILD_DIR" --verbose
+
+      - name: Run CTest
+        run: |
+          ctest --build-dir "$BUILD_DIR"
 
       - name: Collect the Coverage
         run: |
