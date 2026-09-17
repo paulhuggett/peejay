@@ -127,7 +127,7 @@ std::optional<element<Policies>> parse(std::u8string_view const& s) {
 
 
 class Dom : public Test {
-protected:
+public:
   using policies = peejay::default_policies;
   using el = element<policies>;
   using object = peejay::dom::element<policies>::object;
@@ -390,6 +390,50 @@ TEST(Element, SetObjectElementFromObject) {
   EXPECT_THAT(root->get_object_element<integer_type>(u8"a"sv), Optional(std::reference_wrapper{expected}));
 }
 
+template <typename T> class ElementHolds : public testing::Test {};
+using element_type = element<peejay::default_policies>;
+using all_element_types =
+    ::testing::Types<element_type::array, element_type::object, element_type::integer_type, element_type::float_type,
+                     element_type::boolean, element_type::string, element_type::null>;
+TYPED_TEST_SUITE(ElementHolds, all_element_types);
+
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, Array) {
+  using type = element_type::array;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, Object) {
+  using type = element_type::object;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, Integer) {
+  using type = element_type::integer_type;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, Float) {
+  using type = element_type::float_type;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, Boolean) {
+  using type = element_type::boolean;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, String) {
+  using type = element_type::string;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+// NOLINTNEXTLINE
+TYPED_TEST(ElementHolds, Null) {
+  using type = element_type::null;
+  EXPECT_EQ((element_type::template make<type>().template holds<TypeParam>()), (std::is_same_v<TypeParam, type>));
+}
+
+// NOLINTNEXTLINE
 TEST(DomError, What) {
   EXPECT_GT(make_error_code(peejay::dom::dom_error::none).message().length(), 0);
   EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_array_members).message().length(), 0);

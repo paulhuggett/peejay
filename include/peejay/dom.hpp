@@ -81,6 +81,8 @@ template <typename T> static constexpr inline bool is_unique_pointer_v = is_uniq
 //*                               *
 template <policy PJPolicies> class element {
 public:
+  using null = peejay::dom::null;
+  using boolean = bool;
   using integer_type = typename PJPolicies::integer_type;
   using float_type = typename PJPolicies::float_type;
   // TODO: here be allocations in  the following three containers.
@@ -88,7 +90,7 @@ public:
   using object = std::unordered_map<string, element, details::string_hash, std::equal_to<>>;
   using array = std::vector<element>;
 
-  using simple_types = type_list::concat<type_list::type_list<null, bool, integer_type, string>,
+  using simple_types = type_list::concat<type_list::type_list<null, boolean, integer_type, string>,
                                          std::conditional_t<std::is_same_v<float_type, no_float_type>,
                                                             type_list::type_list<>, type_list::type_list<float_type>>>;
   using composite_types = type_list::type_list<array, object>;
