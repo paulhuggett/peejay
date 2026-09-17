@@ -168,6 +168,14 @@ TEST_F(Dom, Double) {
   ASSERT_THAT(root, Optional(ElementWith(3.14)));
 }
 // NOLINTNEXTLINE
+TEST_F(Dom, DoubleEqual) {
+  auto const a = element<policies>::make<policies::float_type>(3.14);
+  auto const b = element<policies>::make<policies::float_type>(4.0);
+  ASSERT_EQ(a, a);
+  ASSERT_NE(a, b);
+  EXPECT_NE(a, (element<policies>::make<element<policies>::null>()));
+}
+// NOLINTNEXTLINE
 TEST_F(Dom, BooleanTrue) {
   auto const root = parse(u8"true"sv);
   ASSERT_THAT(root, Optional(ElementWith(true)));
