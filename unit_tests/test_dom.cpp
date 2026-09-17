@@ -143,6 +143,11 @@ TEST_F(Dom, NullObjectsAllEqual) {
   EXPECT_FALSE(null{} != null{});
 }
 // NOLINTNEXTLINE
+TEST_F(Dom, EmptyInput) {
+  auto const root = parse(u8""sv);
+  ASSERT_THAT(root, Eq(std::nullopt));
+}
+// NOLINTNEXTLINE
 TEST_F(Dom, Null) {
   auto const root = parse(u8"null"sv);
   ASSERT_THAT(root, Optional(ElementWith<null>(_)));
