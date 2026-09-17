@@ -192,6 +192,9 @@ TEST_F(JsonArray, MisplacedComma1) {
   parser p{json_out_callbacks{}};
   input(p, u8"[,"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token));
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 // NOLINTNEXTLINE
 TEST_F(JsonArray, MisplacedComma2) {
@@ -286,6 +289,9 @@ TEST_F(JsonArray, TooDeeplyNested) {
   parser p{json_out_callbacks{}};
   p.input(std::u8string(std::string::size_type{200}, '[')).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::nesting_too_deep)) << "Real error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE

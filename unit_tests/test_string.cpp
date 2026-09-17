@@ -117,6 +117,9 @@ TEST_F(String, BadEscape1) {
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char));
   EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 4U}));
   EXPECT_EQ(p.pos(), p.input_pos());
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
@@ -336,6 +339,9 @@ TEST_F(String, SlashBadHexChar) {
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_hex_char));
   EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 6U}));
   EXPECT_EQ(p.pos(), p.input_pos());
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
@@ -401,6 +407,9 @@ TEST_F(StringLength10, OnePastMaxLength) {
   auto p = make_parser(proxy_);
   input(p, u8R"("01234567890")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::string_too_long)) << "Real error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE

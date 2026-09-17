@@ -102,6 +102,9 @@ TEST_F(Number, LeadingZero) {
   p.input(u8"01"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unexpected_extra_input))
       << "Real error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
@@ -134,6 +137,9 @@ TEST_F(Number, MinusOnly) {
   parser p{proxy_};
   p.input(u8"-"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_digits)) << "Real error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 // NOLINTNEXTLINE
 TEST_F(Number, MinusMinus) {
@@ -256,6 +262,9 @@ TEST_F(Number, RealPositiveOverflow) {
   p.input(u8"123123e100000"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE

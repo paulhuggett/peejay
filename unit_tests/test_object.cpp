@@ -87,6 +87,9 @@ TEST_F(Object, OpeningBraceOnly) {
   EXPECT_TRUE(p.has_error());
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_member))
       << "JSON error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
@@ -202,6 +205,9 @@ TEST_F(Object, MisplacedCommaBeforeCloseBrace) {
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_key))
       << "JSON error was: " << p.last_error().message();
   EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 8U}));
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
@@ -239,6 +245,9 @@ TEST_F(Object, BadNestedObject) {
   input(p, u8"{\"a\":nu}"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "JSON error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
