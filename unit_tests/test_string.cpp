@@ -98,6 +98,15 @@ TEST_F(String, EscapeN) {
 }
 
 // NOLINTNEXTLINE
+TEST_F(String, GoodEscapes) {
+  EXPECT_CALL(callbacks_, string_value(u8"\b\f\n\r\t"sv)).Times(1);
+
+  auto p = make_parser(proxy_);
+  input(p, u8R"("\b\f\n\r\t")"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
+  EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
+}
+// NOLINTNEXTLINE
 TEST_F(String, BadEscape1) {
   auto p = make_parser(proxy_);
   input(p, u8R"("a\qb")"sv).eof();
