@@ -48,7 +48,7 @@ jobs:
 
       - name: Run CTest
         run: |
-          ctest --build-dir "$BUILD_DIR"
+          ctest --test-dir "$BUILD_DIR"
 
       - name: Collect the Coverage
         run: |
