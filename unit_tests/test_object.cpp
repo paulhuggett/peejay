@@ -228,6 +228,9 @@ TEST_F(Object, MissingColon) {
   p.input(u8R"({"a" 1)"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_colon)) << "JSON error was: " << p.last_error().message();
   EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 6U}));
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE

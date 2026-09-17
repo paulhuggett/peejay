@@ -81,6 +81,10 @@ TEST_F(String, UnterminatedDoubleQuote) {
   auto p = make_parser(proxy_);
   input(p, u8R"("hello)"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_close_quote));
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
+
   EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 7U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
@@ -258,6 +262,10 @@ TEST_F(String, Utf16HighWithNoLowSurrogate) {
   input(p, u8R"("\uD834\u30A1")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::bad_unicode_code_point))
       << "JSON error was: " << p.last_error().message();
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
+
   EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 13U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }

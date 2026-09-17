@@ -104,6 +104,9 @@ TEST_F(JsonArray, ArrayNoCloseBracket) {
   auto p = make_parser(json_out_callbacks{});
   input(p, u8"["sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_array_member));
+
+  std::error_code const& err = p.last_error();
+  EXPECT_GE(err.category().message(err.value()).length(), 0);
 }
 
 // NOLINTNEXTLINE
