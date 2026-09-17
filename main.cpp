@@ -36,6 +36,8 @@
 
 #include "peejay/json.hpp"
 
+using namespace std::literals::string_view_literals;
+
 namespace {
 
 struct policy : public peejay::default_policies {
@@ -56,15 +58,15 @@ public:
     // This backend produces no result at all.
   }
 
-  static std::error_code boolean_value(bool const b) { return show(b ? "true" : "false"); }
+  static std::error_code boolean_value(bool const b) { return show(b ? "true"sv : "false"sv); }
   static std::error_code float_value(policy::float_type const v) { return show(v); }
   static std::error_code integer_value(policy::integer_type const v) { return show(v); }
-  static std::error_code null_value() { return show("null"); }
-  static std::error_code string_value(std::u8string_view const& sv) { return show(sv); }
+  static std::error_code null_value() { return show("null"sv); }
+  static std::error_code string_value(std::u8string_view const& sv) { return show(sv, /*is_key=*/false); }
   static std::error_code begin_array() { return show('['); }
   static std::error_code end_array() { return show(']'); }
   static std::error_code begin_object() { return show('{'); }
-  static std::error_code key(std::u8string_view const& sv) { return show(sv); }
+  static std::error_code key(std::u8string_view const& sv) { return show(sv, /*is_key=*/true); }
   static std::error_code end_object() { return show('}'); }
 
 private:
@@ -72,10 +74,10 @@ private:
     std::cout << value << '\n';
     return {};
   }
-  static std::error_code show(std::u8string_view const& sv) {
+  static std::error_code show(std::u8string_view const& sv, bool const is_key) {
     std::cout << '"';
     std::ranges::copy(std::ranges::subrange{sv} | std::ranges::views::transform([] (char8_t c) { return static_cast<char>(c); }), std::ostream_iterator<char>{std::cout});
-    std::cout << "\"\n";
+    std::cout << '"' << (is_key ? ":" : "") << '\n';
     return {};
   }
 };
@@ -87,7 +89,7 @@ int main() {
 
   int exit_code = EXIT_SUCCESS;
   peejay::parser<print_tokens> p;
-  p.input(u8R"(  { "a":123, "b" : [false,"c"], "c":true }  )"sv).eof();
+  p.input(u8R"(  { "a":123, "b" : [false, null, "c", 3.14], "c":true }  )"sv).eof();
   if (auto const err = p.last_error()) {
     std::cout << "Error: " << err.message() << '\n';
     exit_code = EXIT_FAILURE;
