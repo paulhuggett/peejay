@@ -248,9 +248,11 @@ private:
     PEEJAY_CLANG_DIAG_POP
   }
 
-  template <std::size_t Index = 0> static constexpr bool variant_equal(element const &lhs, element const &rhs) {
+  template <std::size_t Index = 0>
+    requires(Index <= std::variant_size_v<decltype(element::var_)>)
+  static constexpr bool variant_equal(element const& lhs, element const& rhs) {
     assert(!lhs.var_.valueless_by_exception() && lhs.var_.index() == rhs.var_.index() && lhs.var_.index() >= Index);
-    if constexpr (Index >= std::variant_size_v<decltype(lhs.var_)>) {
+    if constexpr (Index == std::variant_size_v<decltype(element::var_)>) {
       return false;
     } else {
       if (lhs.var_.index() == Index) {
@@ -337,7 +339,7 @@ public:
   /// Returns a pointer to a C string naming the error category.
   ///
   /// \returns The string "PJ JSON Parser".
-  [[nodiscard]] constexpr char const* name() const noexcept override { return "PJ JSON Parser"; }
+  [[nodiscard]] constexpr char const* name() const noexcept override { return "PJ JSON DOM"; }
 
   /// Returns a string describing the given error in the PJ category.
   ///

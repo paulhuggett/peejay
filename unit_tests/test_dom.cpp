@@ -448,8 +448,12 @@ TYPED_TEST(ElementHolds, Null) {
 
 // NOLINTNEXTLINE
 TEST(DomError, What) {
+  EXPECT_NE(peejay::dom::dom_error_category{}.name(), nullptr);
+  EXPECT_GT(peejay::dom::dom_error_category{}.message(-1).length(), 0);
+
   EXPECT_GT(make_error_code(peejay::dom::dom_error::none).message().length(), 0);
   EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_array_members).message().length(), 0);
+  EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_object_members).message().length(), 0);
   EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_object_members).message().length(), 0);
 }
 

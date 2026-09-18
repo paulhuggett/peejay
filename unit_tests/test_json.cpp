@@ -218,3 +218,9 @@ INSTANTIATE_TEST_SUITE_P(BadKeyword, BadKeyword,
                                          std::make_tuple(u8"bad"sv, peejay::error::expected_token),
                                          std::make_tuple(u8"fal"sv, peejay::error::unrecognized_token),
                                          std::make_tuple(u8"falsehood"sv, peejay::error::unexpected_extra_input)));
+
+TEST(ErrorCategory, None) {
+  EXPECT_NE(peejay::error_category{}.name(), nullptr);
+  EXPECT_GT(peejay::error_category{}.message(-1).length(), 0);
+  EXPECT_EQ(make_error_code(peejay::error::none).message(), "none");
+}
