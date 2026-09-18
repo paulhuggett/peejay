@@ -541,11 +541,11 @@ public:
       requires(!std::is_trivially_move_constructible_v<T>) {
     this->flood();
     auto *dest = this->data();
-    std::ranges::for_each(other, [this, &dest](T &src) {
-      std::construct_at(std::to_address(dest), std::move(src));
+    for (auto&& v : other) {
+      std::construct_at(std::to_address(dest), std::move(v));
       ++dest;
       ++size_;
-    });
+    }
   }
 
   constexpr ~arrayvec() noexcept requires(std::is_trivially_destructible_v<T>) = default;
