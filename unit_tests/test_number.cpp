@@ -55,50 +55,47 @@ namespace {
 
 class Number : public ::testing::Test {
 protected:
-  using policies = peejay::default_policies;
-  using mocks = mock_json_callbacks<policies>;
-  StrictMock<mocks> callbacks_;
-  callbacks_proxy<mocks> proxy_{callbacks_};
+  mockable_callbacks<peejay::default_policies> mock_;
 };
 
 }  // end of anonymous namespace
 
 // NOLINTNEXTLINE
 TEST_F(Number, Zero) {
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"0"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, NegativeZero) {
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"-0"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, One) {
-  EXPECT_CALL(callbacks_, integer_value(1)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(1)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8" 1 "sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, Ten) {
-  EXPECT_CALL(callbacks_, integer_value(10)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(10)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"10"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, LeadingZero) {
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"01"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unexpected_extra_input))
       << "Real error was: " << p.last_error().message();
@@ -109,15 +106,15 @@ TEST_F(Number, LeadingZero) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, MinusOne) {
-  EXPECT_CALL(callbacks_, integer_value(-1)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(-1)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"-1"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, LeadingPlusExtensionDisabled) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"+1"sv).eof();
   EXPECT_TRUE(p.has_error());
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token)) << "Real error was: " << p.last_error().message();
@@ -125,8 +122,8 @@ TEST_F(Number, LeadingPlusExtensionDisabled) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, MinusOneLeadingZero) {
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"-01"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unexpected_extra_input))
       << "Real error was: " << p.last_error().message();
@@ -134,7 +131,7 @@ TEST_F(Number, MinusOneLeadingZero) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, MinusOnly) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"-"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_digits)) << "Real error was: " << p.last_error().message();
 
@@ -143,7 +140,7 @@ TEST_F(Number, MinusOnly) {
 }
 // NOLINTNEXTLINE
 TEST_F(Number, MinusMinus) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"--"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
@@ -151,114 +148,114 @@ TEST_F(Number, MinusMinus) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, AllDigits) {
-  EXPECT_CALL(callbacks_, integer_value(INT64_C(1234567890))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(INT64_C(1234567890))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"1234567890"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, PositivePi) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(3.1415))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(3.1415))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"3.1415"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, NegativePi) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(-3.1415))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(-3.1415))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"-3.1415"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, PositiveZeroPoint45) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(0.45))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(0.45))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"0.45"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, NegativeZeroPoint45) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(-0.45))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(-0.45))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"-0.45"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, ZeroExp2) {
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"0e2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneExp2) {
-  EXPECT_CALL(callbacks_, integer_value(100)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(100)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"1e2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneExpPlus2) {
-  EXPECT_CALL(callbacks_, integer_value(100)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(100)).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"1e+2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, ZeroPointZeroOne) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(0.01))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"0.01"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneExpMinus2) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(0.01))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"1e-2"sv).eof();
   EXPECT_FALSE(p.has_error());
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneCapitalExpMinus2) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(0.01))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"1E-2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneExpMinusZero2) {
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(0.01))).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(0.01))).Times(1);
+  parser p{mock_.proxy};
   p.input(u8"1E-02"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, IntegerMax) {
-  constexpr auto long_max = std::numeric_limits<decltype(proxy_)::policies::integer_type>::max();
+  constexpr auto long_max = std::numeric_limits<decltype(mock_.proxy)::policies::integer_type>::max();
   auto const str_max = to_u8string(long_max);
 
-  EXPECT_CALL(callbacks_, integer_value(long_max)).Times(1);
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(long_max)).Times(1);
+  parser p{mock_.proxy};
   input(p, str_max).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST_F(Number, RealPositiveOverflow) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"123123e100000"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
@@ -269,7 +266,7 @@ TEST_F(Number, RealPositiveOverflow) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, RealPositiveOverflow2) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"9999E999"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
@@ -277,7 +274,7 @@ TEST_F(Number, RealPositiveOverflow2) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, RealUnderflow) {
-  parser p = make_parser(proxy_);
+  parser p = make_parser(mock_.proxy);
   p.input(u8"123e-10000000"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
@@ -285,7 +282,7 @@ TEST_F(Number, RealUnderflow) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, BadExponentDigit) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"1Ex"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
@@ -293,21 +290,21 @@ TEST_F(Number, BadExponentDigit) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, BadFractionDigit) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"1.."sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TEST_F(Number, BadExponentAfterPoint) {
-  parser p{proxy_};
+  parser p{mock_.proxy};
   p.input(u8"1.E"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
       << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TEST_F(Number, LeadingDotExtensionDisabled) {
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8".1234"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token)) << "Real error was: " << p.last_error().message();
 }
@@ -316,8 +313,8 @@ TEST_F(Number, LeadingDotExtensionDisabled) {
 TEST_F(Number, IntegerValueReturnsAnError) {
   using testing::Return;
   auto const erc = make_error_code(std::errc::io_error);
-  EXPECT_CALL(callbacks_, integer_value(10)).Times(1).WillOnce(Return(erc));
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, integer_value(10)).Times(1).WillOnce(Return(erc));
+  parser p{mock_.proxy};
   p.input(u8"10"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
@@ -326,8 +323,8 @@ TEST_F(Number, IntegerValueReturnsAnError) {
 TEST_F(Number, FloatValueReturnsAnError) {
   using testing::Return;
   auto const erc = make_error_code(std::errc::io_error);
-  EXPECT_CALL(callbacks_, float_value(0.1)).Times(1).WillOnce(Return(erc));
-  parser p{proxy_};
+  EXPECT_CALL(mock_.callbacks, float_value(0.1)).Times(1).WillOnce(Return(erc));
+  parser p{mock_.proxy};
   p.input(u8"0.1"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
@@ -412,13 +409,10 @@ template <> struct limits<16> {
 }  // end anonymous namespace
 
 template <typename TypeParam> class NumberLimits : public testing::Test {
-public:
+protected:
   static constexpr int bits_param = TypeParam();
-  using policy = typename limits<bits_param>::policy;
-
-  using mocks = mock_json_callbacks<policy>;
-  StrictMock<mocks> callbacks_;
-  callbacks_proxy<mocks> proxy_{callbacks_};
+  using policy = limits<bits_param>::policy;
+  mockable_callbacks<policy> mock_;
 };
 
 using Sizes =
@@ -430,8 +424,8 @@ TYPED_TEST(NumberLimits, IntMax) {
   constexpr auto bits = TypeParam();
   assert(limits<bits>::int_max_str == to_u8string(limits<bits>::int_max) &&
          "The hard-wired unsigned max string seems to be incorrect");
-  EXPECT_CALL(TestFixture::callbacks_, integer_value(limits<bits>::int_max)).Times(1);
-  auto p = make_parser(TestFixture::proxy_);
+  EXPECT_CALL(TestFixture::mock_.callbacks, integer_value(limits<bits>::int_max)).Times(1);
+  auto p = make_parser(TestFixture::mock_.proxy);
   input(p, std::u8string_view{limits<bits>::int_max_str}).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
@@ -440,22 +434,22 @@ TYPED_TEST(NumberLimits, IntMin) {
   constexpr auto bits = TypeParam();
   assert(limits<bits>::int_min_str == to_u8string(limits<bits>::int_min) &&
          "The hard-wired signed min string seems to be incorrect");
-  EXPECT_CALL(TestFixture::callbacks_, integer_value(limits<bits>::int_min)).Times(1);
-  auto p = make_parser(TestFixture::proxy_);
+  EXPECT_CALL(TestFixture::mock_.callbacks, integer_value(limits<bits>::int_min)).Times(1);
+  auto p = make_parser(TestFixture::mock_.proxy);
   input(p, std::u8string_view{limits<bits>::int_min_str}).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TYPED_TEST(NumberLimits, IntegerPositiveOverflow) {
   constexpr auto bits = TypeParam();
-  auto p = make_parser(TestFixture::proxy_);
+  auto p = make_parser(TestFixture::mock_.proxy);
   input(p, std::u8string_view{limits<bits>::int_overflow}).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TYPED_TEST(NumberLimits, IntegerNegativeOverflow1) {
-  auto p = make_parser(TestFixture::proxy_);
+  auto p = make_parser(TestFixture::mock_.proxy);
   p.input(u8"-123123123123123123123123123123"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();
@@ -463,7 +457,7 @@ TYPED_TEST(NumberLimits, IntegerNegativeOverflow1) {
 // NOLINTNEXTLINE
 TYPED_TEST(NumberLimits, IntegerNegativeOverflow2) {
   constexpr auto bits = TypeParam();
-  auto p = make_parser(TestFixture::proxy_);
+  auto p = make_parser(TestFixture::mock_.proxy);
   input(p, std::u8string_view{limits<bits>::int_underflow}).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
       << "Real error was: " << p.last_error().message();

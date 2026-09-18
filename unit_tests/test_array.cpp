@@ -57,19 +57,16 @@ namespace {
 
 class JsonArray : public testing::Test {
 protected:
-  using policies = peejay::default_policies;
-  using mocks = mock_json_callbacks<policies>;
-  StrictMock<mocks> callbacks_;
-  callbacks_proxy<mocks> proxy_{callbacks_};
+  mockable_callbacks<peejay::default_policies> mock_;
 };
 
 // NOLINTNEXTLINE
 TEST_F(JsonArray, EmptyNoWhitespace) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[]"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
@@ -77,10 +74,10 @@ TEST_F(JsonArray, EmptyNoWhitespace) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, Empty) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[\n]\n"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
   EXPECT_EQ(p.pos(), (coord{.line = 3U, .column = 1U}));
@@ -91,9 +88,9 @@ TEST_F(JsonArray, Empty) {
 TEST_F(JsonArray, BeginArrayReturnsError) {
   std::error_code const error = make_error_code(std::errc::io_error);
   using testing::Return;
-  EXPECT_CALL(callbacks_, begin_array()).WillOnce(Return(error));
+  EXPECT_CALL(mock_.callbacks, begin_array()).WillOnce(Return(error));
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[\n]\n"sv);
   EXPECT_EQ(p.last_error(), error) << "Real error was: " << p.last_error().message();
   EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 2U}));
@@ -112,11 +109,11 @@ TEST_F(JsonArray, ArrayNoCloseBracket) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, SingleElement) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, integer_value(1)).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, integer_value(1)).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   auto const str = u8"[ 1 ]"sv;
   input(p, str).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
@@ -127,11 +124,11 @@ TEST_F(JsonArray, SingleElement) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, SingleStringElement) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, string_value(u8"a"sv)).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, string_value(u8"a"sv)).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[\"a\"]"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
@@ -139,11 +136,11 @@ TEST_F(JsonArray, SingleStringElement) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, ZeroExpPlus1) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[0e+1]"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
@@ -151,11 +148,11 @@ TEST_F(JsonArray, ZeroExpPlus1) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, SimpleFloat) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, float_value(DoubleEq(1.234))).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(1.234))).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[1.234]"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
@@ -163,11 +160,11 @@ TEST_F(JsonArray, SimpleFloat) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, MinusZero) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, integer_value(0)).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[-0]"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
@@ -175,12 +172,12 @@ TEST_F(JsonArray, MinusZero) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, TwoElements) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, integer_value(1)).Times(1);
-  EXPECT_CALL(callbacks_, string_value(u8"hello"sv)).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, integer_value(1)).Times(1);
+  EXPECT_CALL(mock_.callbacks, string_value(u8"hello"sv)).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[ 1 ,\n \"hello\" ]"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
   EXPECT_EQ(p.input_pos(), (coord{.line = 2U, .column = 11U}));
@@ -218,10 +215,10 @@ TEST_F(JsonArray, MisplacedComma4) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, TrailingComma) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, integer_value(1)).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, integer_value(1)).Times(1);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[1 , ]"sv).eof();
   EXPECT_EQ(p.last_error(), peejay::error::expected_token);
 }
@@ -260,11 +257,11 @@ TEST_F(JsonArray, NestedError2) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, Nested) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(2);
-  EXPECT_CALL(callbacks_, null_value()).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(2);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(2);
+  EXPECT_CALL(mock_.callbacks, null_value()).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(2);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[[null]]"sv).eof();
   EXPECT_FALSE(p.has_error());
 }
@@ -272,14 +269,14 @@ TEST_F(JsonArray, Nested) {
 // NOLINTNEXTLINE
 TEST_F(JsonArray, Nested2) {
   InSequence const _;
-  EXPECT_CALL(callbacks_, begin_array()).Times(2);
-  EXPECT_CALL(callbacks_, null_value()).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(1);
-  EXPECT_CALL(callbacks_, begin_array()).Times(1);
-  EXPECT_CALL(callbacks_, integer_value(1)).Times(1);
-  EXPECT_CALL(callbacks_, end_array()).Times(2);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(2);
+  EXPECT_CALL(mock_.callbacks, null_value()).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
+  EXPECT_CALL(mock_.callbacks, integer_value(1)).Times(1);
+  EXPECT_CALL(mock_.callbacks, end_array()).Times(2);
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   input(p, u8"[[null], [1]]"sv).eof();
   EXPECT_FALSE(p.has_error());
 }
@@ -298,9 +295,9 @@ TEST_F(JsonArray, TooDeeplyNested) {
 TEST_F(JsonArray, BeginFails) {
   using testing::Return;
   auto const erc = make_error_code(std::errc::file_exists);
-  EXPECT_CALL(callbacks_, begin_array()).WillOnce(Return(erc));
+  EXPECT_CALL(mock_.callbacks, begin_array()).WillOnce(Return(erc));
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[]"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
@@ -309,9 +306,9 @@ TEST_F(JsonArray, BeginFails) {
 TEST_F(JsonArray, BeginFails2) {
   using testing::Return;
   auto const erc = make_error_code(std::errc::file_exists);
-  EXPECT_CALL(callbacks_, begin_array()).WillOnce(Return(erc));
+  EXPECT_CALL(mock_.callbacks, begin_array()).WillOnce(Return(erc));
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[ 1 ]"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
@@ -320,10 +317,10 @@ TEST_F(JsonArray, BeginFails2) {
 TEST_F(JsonArray, EndFails) {
   using testing::Return;
   auto const erc = make_error_code(std::errc::file_exists);
-  EXPECT_CALL(callbacks_, begin_array());
-  EXPECT_CALL(callbacks_, end_array()).WillOnce(Return(erc));
+  EXPECT_CALL(mock_.callbacks, begin_array());
+  EXPECT_CALL(mock_.callbacks, end_array()).WillOnce(Return(erc));
 
-  auto p = make_parser(proxy_);
+  auto p = make_parser(mock_.proxy);
   p.input(u8"[]"sv).eof();
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }

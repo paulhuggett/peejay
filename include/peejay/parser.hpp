@@ -237,7 +237,10 @@ private:
   /// error code is recorded. An error may be reported at any time during the
   /// parse; all subsequent text is ignored.
   ///
+  /// The parser must not already be in an erorr state when this function is called.
+  ///
   /// \param err  The json error code to be stored in the parser.
+  /// \returns True if \p err represented an error condition, false otherwise.
   bool set_error(std::error_code const &err) noexcept {
     assert(!error_ || err);
     error_ = err;

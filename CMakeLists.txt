@@ -217,8 +217,8 @@ enable_testing()
 set(google_test_targets gtest gmock gmock_main gtest_main)
 if (PEEJAY_FUZZTEST)
   set (FUZZTEST_FUZZING_MODE On)
-  set (FUZZTEST_REPO_BRANCH "HEAD" CACHE STRING "FuzzTest repository branch.")
-  message ("Building fuzztest at branch " ${FUZZTEST_REPO_BRANCH})
+  set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
+  message ("Building fuzztest at tag " ${FUZZTEST_REPO_BRANCH})
   FetchContent_Declare (
     fuzztest
     GIT_REPOSITORY https://github.com/google/fuzztest.git

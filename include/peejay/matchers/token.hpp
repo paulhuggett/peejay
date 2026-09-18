@@ -43,36 +43,34 @@ namespace peejay::details {
 
 /// \brief A matcher which checks for a specific keyword such as "true",
 ///   "false", or "null".
+///
+/// Once a token has been recognized, the matcher invokes the relevant backend function ---
+/// boolean_value() or null_value() --- then removes itself from the parserr's parse stack and
+/// self-destructs.
+///
 /// \tparam Backend  The parser callback structure.
 template <backend Backend> class token_matcher {
 public:
-  /// \param t  Which of the tokens is to be consumed.
+  /// \param t  Which of the tokens is to be consumed
   constexpr explicit token_matcher(token const t) noexcept : token_{t} {
+    using namespace std::literals::string_view_literals;
     switch (t) {
-    case token::true_token: text_ = u8"rue"; break;
-    case token::false_token: text_ = u8"alse"; break;
-    case token::null_token: text_ = u8"ull"; break;
+    case token::true_token: text_ = u8"rue"sv; break;
+    case token::false_token: text_ = u8"alse"sv; break;
+    case token::null_token: text_ = u8"ull"sv; break;
     default: unreachable(); break;
     }
   }
 
   bool consume(parser<Backend>& parser, char8_t const code_unit) {
+    assert(!parser.has_error() && "The parser should not be in an error state here");
     assert(!text_.empty() && "Input text must not be empty");
-    if (auto const c = text_.front(); code_unit != c) {
+    if (text_.empty() || code_unit != text_.front()) {
       return parser.set_error_and_pop(error::unrecognized_token);
     }
     text_.remove_prefix(1);
     if (text_.empty()) {
-      auto &backend = parser.backend();
-      std::error_code err{};
-      switch (token_) {
-      case token::true_token: err = backend.boolean_value(true); break;
-      case token::false_token: err = backend.boolean_value(false); break;
-      case token::null_token: err = backend.null_value(); break;
-      default: unreachable(); break;
-      }
-      parser.set_error(err);
-      parser.pop();  // unconditionally pop this matcher.
+      this->end(parser);
     }
     return true;
   }
@@ -86,6 +84,24 @@ private:
   std::u8string_view text_;
   /// This function is called once the complete token text has been matched.
   token token_;
+
+  /// When called, we have successfully processed the input text to the end of the specified token.
+  /// Call the relevant backend function to signal the token then self-destruct this object,
+  /// removing it from the parse stack.
+  /// \param parser The owning parser instance
+  void end(parser<Backend>& parser) const {
+    auto& backend = parser.backend();
+    std::error_code err{};
+    switch (token_) {
+    case token::true_token: err = backend.boolean_value(true); break;
+    case token::false_token: err = backend.boolean_value(false); break;
+    case token::null_token: err = backend.null_value(); break;
+    default: unreachable(); break;
+    }
+    parser.set_error(err);
+    // Unconditionally pop this matcher. This instance is destroyed.
+    parser.pop();
+  }
 };
 
 }  // end namespace peejay::details

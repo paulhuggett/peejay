@@ -152,6 +152,11 @@ private:
 template <typename T> callbacks_proxy(testing::StrictMock<T> &) -> callbacks_proxy<T>;
 template <typename T> callbacks_proxy(T &) -> callbacks_proxy<T>;
 
+template <typename Policies> struct mockable_callbacks {
+  testing::StrictMock<mock_json_callbacks<Policies>> callbacks;
+  callbacks_proxy<mock_json_callbacks<Policies>> proxy{callbacks};
+};
+
 template <typename T>
   requires(std::is_arithmetic_v<T>)
 static std::u8string to_u8string(T const v) {

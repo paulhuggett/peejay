@@ -1,10 +1,10 @@
-//===- unit_tests/test_boolean.cpp ----------------------------------------===//
-//*  _                 _                   *
-//* | |__   ___   ___ | | ___  __ _ _ __   *
-//* | '_ \ / _ \ / _ \| |/ _ \/ _` | '_ \  *
-//* | |_) | (_) | (_) | |  __/ (_| | | | | *
-//* |_.__/ \___/ \___/|_|\___|\__,_|_| |_| *
-//*                                        *
+//===- unit_tests/test_null.cpp -------------------------------------------===//
+//*                          _  *
+//*   ___ ___   ___  _ __ __| | *
+//*  / __/ _ \ / _ \| '__/ _` | *
+//* | (_| (_) | (_) | | | (_| | *
+//*  \___\___/ \___/|_|  \__,_| *
+//*                             *
 //===----------------------------------------------------------------------===//
 // Copyright © 2026 Paul Bowen-Huggett
 //
@@ -29,6 +29,7 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+
 // DUT
 #include "peejay/json.hpp"
 #include "peejay/null.hpp"
@@ -48,75 +49,52 @@ using namespace std::string_view_literals;
 
 namespace {
 
-class JsonBoolean : public testing::Test {
+class JsonNull : public testing::Test {
 public:
   mockable_callbacks<peejay::default_policies> mock_;
 };
 
 // NOLINTNEXTLINE
-TEST_F(JsonBoolean, True) {
-  EXPECT_CALL(mock_.callbacks, boolean_value(true)).Times(1);
-
-  auto p = peejay::make_parser(mock_.proxy);
-  p.input(u8"true"sv).eof();
-  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
-}
-
-// NOLINTNEXTLINE
-TEST_F(JsonBoolean, False) {
-  EXPECT_CALL(mock_.callbacks, boolean_value(false)).Times(1);
+TEST_F(JsonNull, False) {
+  EXPECT_CALL(mock_.callbacks, null_value()).Times(1);
 
   peejay::parser p = peejay::make_parser(mock_.proxy);
-  p.input(u8" false "sv).eof();
+  p.input(u8" null "sv).eof();
   EXPECT_FALSE(p.has_error());
 }
 
 // NOLINTNEXTLINE
-TEST_F(JsonBoolean, CallbackReturnsError) {
+TEST_F(JsonNull, CallbackReturnsError) {
   using testing::Return;
   auto const err = make_error_code(std::errc::io_error);
-  EXPECT_CALL(mock_.callbacks, boolean_value(false)).Times(1).WillOnce(Return(err));
+  EXPECT_CALL(mock_.callbacks, null_value()).Times(1).WillOnce(Return(err));
 
   peejay::parser p = peejay::make_parser(mock_.proxy);
-  p.input(u8" false "sv).eof();
+  p.input(u8"null"sv).eof();
   EXPECT_EQ(p.last_error(), err) << "Real error was: " << p.last_error().message();
 }
 
-void BooleanTokenNeverCrashes(std::u8string const& str, bool value, std::u8string const& input) {
+void NullTokenNeverCrashes(std::u8string const& input) {
   using testing::AnyOf;
   using testing::Eq;
   using testing::Return;
-  mockable_callbacks<peejay::default_policies> mock;
 
-  if (input.starts_with(str.substr(1, std::u8string::npos))) {
-    EXPECT_CALL(mock.callbacks, boolean_value(value)).WillOnce(Return(std::error_code{}));
+  mockable_callbacks<peejay::default_policies> mock;
+  if (input == u8"ull"sv) {
+    EXPECT_CALL(mock.callbacks, null_value()).WillOnce(Return(std::error_code{}));
   }
 
   peejay::parser p = peejay::make_parser(mock.proxy);
-  p.input(str.substr(0, 1)).input(input).eof();
-
+  p.input(u8"n"sv).input(input).eof();
   EXPECT_THAT(p.last_error(), AnyOf(std::error_code{}, make_error_code(peejay::error::unrecognized_token),
                                     make_error_code(peejay::error::unexpected_extra_input)));
 }
 
-void TrueTokenNeverCrashes(std::u8string const& input) {
-  BooleanTokenNeverCrashes(u8"true", true, input);
-}
-TEST(TrueToken, Empty) {
-  TrueTokenNeverCrashes(u8"");
+TEST(NullToken, Empty) {
+  NullTokenNeverCrashes(u8"");
 }
 #if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
-FUZZ_TEST(TrueToken, TrueTokenNeverCrashes);
-#endif  // PEEJAY_FUZZTEST
-
-void FalseTokenNeverCrashes(std::u8string const& input) {
-  BooleanTokenNeverCrashes(u8"false", false, input);
-}
-TEST(FalseToken, Empty) {
-  FalseTokenNeverCrashes(u8"");
-}
-#if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
-FUZZ_TEST(FalseToken, FalseTokenNeverCrashes);
+FUZZ_TEST(NullToken, NullTokenNeverCrashes);
 #endif  // PEEJAY_FUZZTEST
 
 }  // end anonymous namespace
