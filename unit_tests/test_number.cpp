@@ -29,15 +29,26 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#include <gtest/gtest.h>
 
+// DUT
+#include "peejay/json.hpp"
+#include "peejay/null.hpp"
+
+// Standard Library
+#include <charconv>
 #include <limits>
 #include <string_view>
 
+// Google test/mock/fuzz
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
+#include <fuzztest/fuzztest.h>
+#endif
+
+// Local
 #include "callbacks.hpp"
 #include "config.hpp"
-#include "peejay/json.hpp"
-#include "peejay/null.hpp"
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -57,8 +68,6 @@ class Number : public ::testing::Test {
 protected:
   mockable_callbacks<peejay::default_policies> mock_;
 };
-
-}  // end of anonymous namespace
 
 // NOLINTNEXTLINE
 TEST_F(Number, Zero) {
@@ -253,6 +262,13 @@ TEST_F(Number, IntegerMax) {
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
+TEST_F(Number, IntegerOverflow) {
+  parser p{mock_.proxy};
+  p.input(u8"21000000000000000000"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+
 // NOLINTNEXTLINE
 TEST_F(Number, RealPositiveOverflow) {
   parser p{mock_.proxy};
@@ -329,8 +345,6 @@ TEST_F(Number, FloatValueReturnsAnError) {
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
 
-namespace {
-
 struct policy_common : public peejay::default_policies {
   static constexpr auto max_length = std::size_t{20};
   static constexpr auto max_stack_depth = std::size_t{8};
@@ -405,8 +419,6 @@ template <> struct limits<16> {
   static constexpr auto int_min_str = u8"-32768";
   static constexpr auto int_underflow = u8"-32769";  // int_min minus 1.
 };
-
-}  // end anonymous namespace
 
 template <typename TypeParam> class NumberLimits : public testing::Test {
 protected:
@@ -529,3 +541,50 @@ TEST(NumberInt128, LongDouble) {
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
 #endif  // PEEJAY_HAVE_INT128
+
+struct integer_fuzz_policies : peejay::default_policies {
+  static constexpr std::size_t max_stack_depth = 3;
+  using integer_type = long;
+};
+
+void IntegerNeverCrashes(std::u8string const& input) {
+  using testing::_;
+  using testing::AnyOf;
+  using testing::AtMost;
+  using testing::Return;
+
+  auto const is_float_char = [](char8_t const c) constexpr { return c == '.' || c == 'e' || c == 'E'; };
+  auto const is_interesting_first = [](char const c) constexpr { return c == '-' || (c > '0' && c <= '9'); };
+  assert(!is_interesting_first('\0'));
+  assert(!is_float_char('\0'));
+
+  if (input.empty() || input.starts_with(u8"-0") || !is_interesting_first(input.front()) ||
+      std::ranges::find_if(input, is_float_char) != std::end(input)) {
+    return;
+  }
+
+  auto expected = 0L;
+  auto const* const first = reinterpret_cast<char const*>(input.data());
+  std::from_chars_result const fcr = std::from_chars(first, first + input.size(), expected, 10);
+
+  mockable_callbacks<integer_fuzz_policies> mock;
+  if (fcr.ec == std::errc{}) {
+    EXPECT_CALL(mock.callbacks, integer_value(expected)).Times(1).WillOnce(Return(std::error_code{}));
+  }
+
+  peejay::parser p = peejay::make_parser(mock.proxy);
+  p.input(input).eof();
+  using enum peejay::error;
+  EXPECT_THAT(p.last_error(),
+              AnyOf(std::error_code{}, make_error_code(number_out_of_range), make_error_code(unexpected_extra_input),
+                    make_error_code(expected_digits), make_error_code(unrecognized_token)));
+}
+
+TEST(NumberInteger, a) {
+  IntegerNeverCrashes(u8"10");
+}
+#if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
+FUZZ_TEST(NumberInteger, IntegerNeverCrashes);
+#endif  // PEEJAY_FUZZTEST
+
+}  // end of anonymous namespace

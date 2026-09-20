@@ -84,10 +84,9 @@ TEST_F(JsonBoolean, CallbackReturnsError) {
 
 void BooleanTokenNeverCrashes(std::u8string const& str, bool value, std::u8string const& input) {
   using testing::AnyOf;
-  using testing::Eq;
   using testing::Return;
-  mockable_callbacks<peejay::default_policies> mock;
 
+  mockable_callbacks<peejay::default_policies> mock;
   if (input.starts_with(str.substr(1, std::u8string::npos))) {
     EXPECT_CALL(mock.callbacks, boolean_value(value)).WillOnce(Return(std::error_code{}));
   }

@@ -282,10 +282,11 @@ template <backend Backend> bool number_matcher<Backend>::do_integer_digit_state(
     }
   } else if (is_digit(c)) {
     auto &int_acc = std::get<uinteger_type>(acc_);
-    auto const new_acc = static_cast<uinteger_type>((int_acc * 10U) + static_cast<uinteger_type>(c) - '0');
-    if (new_acc < int_acc) {  // Did this overflow?
+    // Will this cause overflow?
+    if (int_acc >= std::numeric_limits<uinteger_type>::max() / 10U + static_cast<uinteger_type>(c) - '0') {
       return parser.set_error_and_pop(error::number_out_of_range);
     }
+    auto const new_acc = static_cast<uinteger_type>((int_acc * 10U) + static_cast<uinteger_type>(c) - '0');
     int_acc = new_acc;
   } else {
     match = false;

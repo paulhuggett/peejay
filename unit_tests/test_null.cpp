@@ -76,11 +76,10 @@ TEST_F(JsonNull, CallbackReturnsError) {
 
 void NullTokenNeverCrashes(std::u8string const& input) {
   using testing::AnyOf;
-  using testing::Eq;
   using testing::Return;
 
   mockable_callbacks<peejay::default_policies> mock;
-  if (input == u8"ull"sv) {
+  if (input.starts_with(u8"ull"sv)) {
     EXPECT_CALL(mock.callbacks, null_value()).WillOnce(Return(std::error_code{}));
   }
 
