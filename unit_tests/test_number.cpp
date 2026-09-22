@@ -554,7 +554,7 @@ void IntegerNeverCrashes(std::u8string const& input) {
   using testing::Return;
 
   auto const is_float_char = [](char8_t const c) constexpr { return c == '.' || c == 'e' || c == 'E'; };
-  auto const is_interesting_first = [](char const c) constexpr { return c == '-' || (c > '0' && c <= '9'); };
+  auto const is_interesting_first = [](char8_t const c) constexpr { return c == '-' || (c > '0' && c <= '9'); };
   assert(!is_interesting_first('\0'));
   assert(!is_float_char('\0'));
 
