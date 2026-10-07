@@ -541,7 +541,7 @@ public:
       requires(!std::is_trivially_move_constructible_v<T>) {
     this->flood();
     auto *dest = this->data();
-    for (value_type&& v : other) {
+    for (auto&& v : other) {
       std::construct_at(std::to_address(dest), std::move(v));
       ++dest;
       ++size_;
