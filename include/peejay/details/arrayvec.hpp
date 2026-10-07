@@ -540,9 +540,11 @@ public:
       noexcept(std::is_nothrow_move_constructible_v<T>)
       requires(!std::is_trivially_move_constructible_v<T>) {
     this->flood();
+    auto* src = other.data();
+    auto* const src_end = src + other.size();
     auto *dest = this->data();
-    for (auto&& v : other) {
-      std::construct_at(std::to_address(dest), std::move(v));
+    for (; src != src_end; ++src) {
+      std::construct_at(std::to_address(dest), std::move(*src));
       ++dest;
       ++size_;
     }
