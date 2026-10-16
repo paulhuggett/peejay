@@ -54,11 +54,7 @@ namespace peejay::details {
 /// \brief Satisfied by the unsigned integer types that big_uint can use as a limb.
 ///
 /// A limb must be an unsigned integer type (so not `bool`, a character type, or a signed type)
-/// that is 8, 16, 32 or 64 bits wide. The width is the number of value bits of the type itself,
-/// which is not necessarily what its name suggests: on some targets `std::uint_fast32_t` is a
-/// 64-bit type.
-///
-/// \tparam T The candidate limb type.
+/// that is 8, 16, 32 or 64 bits wide.
 template <typename T>
 concept big_uint_limb =
     std::is_integral_v<T> && std::is_unsigned_v<T> && requires(T const x) { std::countl_zero(x); } &&
