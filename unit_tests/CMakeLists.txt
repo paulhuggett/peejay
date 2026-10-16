@@ -45,6 +45,7 @@ add_executable(pj2-unittests
   callbacks.hpp
   test_array.cpp
   test_arrayvec.cpp
+  test_big_uint.cpp
   test_boolean.cpp
   test_coord.cpp
   test_dom.cpp

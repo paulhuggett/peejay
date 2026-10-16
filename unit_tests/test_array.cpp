@@ -137,7 +137,7 @@ TEST_F(JsonArray, SingleStringElement) {
 TEST_F(JsonArray, ZeroExpPlus1) {
   InSequence const _;
   EXPECT_CALL(mock_.callbacks, begin_array()).Times(1);
-  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  EXPECT_CALL(mock_.callbacks, float_value(0)).Times(1);
   EXPECT_CALL(mock_.callbacks, end_array()).Times(1);
 
   auto p = make_parser(mock_.proxy);

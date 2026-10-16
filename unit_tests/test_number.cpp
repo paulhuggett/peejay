@@ -63,7 +63,6 @@ using testing::IsNan;
 using testing::StrictMock;
 
 namespace {
-
 class Number : public ::testing::Test {
 protected:
   mockable_callbacks<peejay::default_policies> mock_;
@@ -151,8 +150,7 @@ TEST_F(Number, MinusOnly) {
 TEST_F(Number, MinusMinus) {
   parser p{mock_.proxy};
   p.input(u8"--"sv).eof();
-  EXPECT_EQ(p.last_error(), make_error_code(error::unrecognized_token))
-      << "Real error was: " << p.last_error().message();
+  EXPECT_EQ(p.last_error(), make_error_code(error::expected_digits)) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
@@ -197,7 +195,7 @@ TEST_F(Number, NegativeZeroPoint45) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, ZeroExp2) {
-  EXPECT_CALL(mock_.callbacks, integer_value(0)).Times(1);
+  EXPECT_CALL(mock_.callbacks, float_value(0)).Times(1);
   parser p{mock_.proxy};
   p.input(u8"0e2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
@@ -205,7 +203,7 @@ TEST_F(Number, ZeroExp2) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneExp2) {
-  EXPECT_CALL(mock_.callbacks, integer_value(100)).Times(1);
+  EXPECT_CALL(mock_.callbacks, float_value(100)).Times(1);
   parser p{mock_.proxy};
   p.input(u8"1e2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
@@ -213,7 +211,7 @@ TEST_F(Number, OneExp2) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, OneExpPlus2) {
-  EXPECT_CALL(mock_.callbacks, integer_value(100)).Times(1);
+  EXPECT_CALL(mock_.callbacks, float_value(100)).Times(1);
   parser p{mock_.proxy};
   p.input(u8"1e+2"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
@@ -262,11 +260,11 @@ TEST_F(Number, IntegerMax) {
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
-TEST_F(Number, IntegerOverflow) {
+TEST_F(Number, IntegerOverflowToFloat) {
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(2.1e19))).Times(1);
   parser p{mock_.proxy};
   p.input(u8"21000000000000000000"sv).eof();
-  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
-      << "Real error was: " << p.last_error().message();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
@@ -290,10 +288,10 @@ TEST_F(Number, RealPositiveOverflow2) {
 
 // NOLINTNEXTLINE
 TEST_F(Number, RealUnderflow) {
+  EXPECT_CALL(mock_.callbacks, float_value(DoubleEq(0))).Times(1);
   parser p = make_parser(mock_.proxy);
   p.input(u8"123e-10000000"sv).eof();
-  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
-      << "Real error was: " << p.last_error().message();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
@@ -455,24 +453,24 @@ TYPED_TEST(NumberLimits, IntMin) {
 TYPED_TEST(NumberLimits, IntegerPositiveOverflow) {
   constexpr auto bits = TypeParam();
   auto p = make_parser(TestFixture::mock_.proxy);
+  EXPECT_CALL(TestFixture::mock_.callbacks, float_value(limits<bits>::int_max + 1.0)).Times(1);
   input(p, std::u8string_view{limits<bits>::int_overflow}).eof();
-  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
-      << "Real error was: " << p.last_error().message();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TYPED_TEST(NumberLimits, IntegerNegativeOverflow1) {
   auto p = make_parser(TestFixture::mock_.proxy);
+  EXPECT_CALL(TestFixture::mock_.callbacks, float_value(-1.2312312312312312e+29)).Times(1);
   p.input(u8"-123123123123123123123123123123"sv).eof();
-  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
-      << "Real error was: " << p.last_error().message();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 // NOLINTNEXTLINE
 TYPED_TEST(NumberLimits, IntegerNegativeOverflow2) {
   constexpr auto bits = TypeParam();
   auto p = make_parser(TestFixture::mock_.proxy);
+  EXPECT_CALL(TestFixture::mock_.callbacks, float_value(limits<bits>::int_min - 1.0)).Times(1);
   input(p, std::u8string_view{limits<bits>::int_underflow}).eof();
-  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
-      << "Real error was: " << p.last_error().message();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
 struct no_float_policy : public peejay::default_policies {
@@ -542,32 +540,38 @@ TEST(NumberInt128, LongDouble) {
 }
 #endif  // PEEJAY_HAVE_INT128
 
+constexpr bool is_interesting_first(char8_t const c) {
+  return c == '-' || (c > '0' && c <= '9');
+}
+constexpr bool is_float_char(char8_t const c) {
+  return c == '.' || c == 'e' || c == 'E';
+}
+static_assert(!is_interesting_first('\0'));
+static_assert(!is_float_char('\0'));
+
+template <typename Integer>
 struct integer_fuzz_policies : peejay::default_policies {
+  static constexpr std::size_t max_length = 0;
   static constexpr std::size_t max_stack_depth = 3;
-  using integer_type = long;
+  using integer_type = Integer;
+  using float_type = peejay::no_float_type;
 };
 
-void IntegerNeverCrashes(std::u8string const& input) {
-  using testing::_;
+template <typename Integer>
+void IntegerMatchesFromChars(std::u8string const& input) {
   using testing::AnyOf;
-  using testing::AtMost;
   using testing::Return;
-
-  auto const is_float_char = [](char8_t const c) constexpr { return c == '.' || c == 'e' || c == 'E'; };
-  auto const is_interesting_first = [](char8_t const c) constexpr { return c == '-' || (c > '0' && c <= '9'); };
-  assert(!is_interesting_first('\0'));
-  assert(!is_float_char('\0'));
 
   if (input.empty() || input.starts_with(u8"-0") || !is_interesting_first(input.front()) ||
       std::ranges::find_if(input, is_float_char) != std::end(input)) {
     return;
   }
 
-  auto expected = 0L;
+  auto expected = Integer{0};
   auto const* const first = reinterpret_cast<char const*>(input.data());
   std::from_chars_result const fcr = std::from_chars(first, first + input.size(), expected, 10);
 
-  mockable_callbacks<integer_fuzz_policies> mock;
+  mockable_callbacks<integer_fuzz_policies<Integer>> mock;
   if (fcr.ec == std::errc{}) {
     EXPECT_CALL(mock.callbacks, integer_value(expected)).Times(1).WillOnce(Return(std::error_code{}));
   }
@@ -579,12 +583,107 @@ void IntegerNeverCrashes(std::u8string const& input) {
               AnyOf(std::error_code{}, make_error_code(number_out_of_range), make_error_code(unexpected_extra_input),
                     make_error_code(expected_digits), make_error_code(unrecognized_token)));
 }
-
-TEST(NumberInteger, a) {
-  IntegerNeverCrashes(u8"10");
+TEST(NumberFuzz, Ten) {
+  IntegerMatchesFromChars<long>(u8"10");
 }
 #if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
-FUZZ_TEST(NumberInteger, IntegerNeverCrashes);
+constexpr auto IntegerMatchesFromCharsShort = IntegerMatchesFromChars<short>;
+FUZZ_TEST(NumberFuzz, IntegerMatchesFromCharsShort);
+constexpr auto IntegerMatchesFromCharsInt = IntegerMatchesFromChars<int>;
+FUZZ_TEST(NumberFuzz, IntegerMatchesFromCharsInt);
+constexpr auto IntegerMatchesFromCharsLong = IntegerMatchesFromChars<long>;
+FUZZ_TEST(NumberFuzz, IntegerMatchesFromCharsLong);
+constexpr auto IntegerMatchesFromCharsLongLong = IntegerMatchesFromChars<long long>;
+FUZZ_TEST(NumberFuzz, IntegerMatchesFromCharsLongLong);
 #endif  // PEEJAY_FUZZTEST
+
+template <typename Float>
+struct float_fuzz_policies : peejay::default_policies {
+  static constexpr std::size_t max_length = 0;
+  static constexpr std::size_t max_stack_depth = 3;
+  using integer_type = long;
+  using float_type = Float;
+};
+
+bool input_is_reasonable(std::u8string const& input) {
+  auto it = std::begin(input);
+  auto end = std::end(input);
+  auto st = peejay::details::state::number_start;
+  for (; it != end; ++it) {
+    auto const var = peejay::details::number_grammar::transition(st, *it);
+    if (std::holds_alternative<std::error_code>(var)) {
+      break;
+    }
+    st = std::get<peejay::details::state>(var);
+  }
+  return it == end && peejay::details::number_grammar::complete(st);
+}
+
+template <typename Float>
+Float str_to_float(char const * str);
+template <>
+float str_to_float<float>(char const * str) {
+  char * remaining = nullptr;
+  return std::strtof(str, &remaining);
+}
+template <>
+double str_to_float<double>(char const * str) {
+  char * remaining = nullptr;
+  return std::strtod(str, &remaining);
+}
+template<typename Float> auto matcher(Float expected);
+template<> auto matcher<float>(float const expected) { return testing::FloatEq(expected); }
+template<> auto matcher<double>(double const expected) { return testing::DoubleEq(expected); }
+
+template <typename Float>
+void FloatMatchesStrToD(std::u8string const& input) {
+  using testing::Return;
+
+  if (input.empty()) {
+    return;
+  }
+  if (!input_is_reasonable(input) || input.find_first_of(u8".eE") == std::u8string::npos) {
+    return;
+  }
+  if (input.find(u8'\0') != std::string::npos) {
+    return;
+  }
+
+  mockable_callbacks<float_fuzz_policies<Float>> mock;
+  auto const expected = str_to_float<Float>(reinterpret_cast<char const *>(input.c_str()));
+
+  auto erc = std::error_code{};
+  if (std::isfinite(expected)) {
+    EXPECT_CALL(mock.callbacks, float_value(matcher(expected))).Times(1).WillOnce(Return(std::error_code{}));
+  } else {
+    erc = make_error_code(error::number_out_of_range);
+  }
+
+  peejay::parser p = peejay::make_parser(mock.proxy);
+  p.input(input).eof();
+  EXPECT_THAT(p.last_error(), erc);
+}
+
+TEST(NumberFuzz, ThreePointOneFour) {
+  FloatMatchesStrToD<double>(u8"3.14");
+}
+TEST(NumberFuzz, Match1) {
+  FloatMatchesStrToD<double>(u8"1111111110000000000000000000.0");
+}
+TEST(NumberFuzz, Match2) {
+  FloatMatchesStrToD<double>(u8"1E-400");
+}
+TEST(NumberFuzz, Match3) {
+  FloatMatchesStrToD<double>(u8"1E1000");
+}
+TEST(NumberFuzz, Match4) {
+  FloatMatchesStrToD<double>(u8"200000003150199999999999999999999999991000100000000000000000000000000000000000000000000100000000100000000200000010000010000000000000000000000000000000100000000000000000000020100000000000000000001000000000000000010100010000000000000000000000000000000000000000000000000000000100000000000000010000001000000010000010000000000000000000100E-314");
+}
+#if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
+constexpr auto FloatMatchesDouble = FloatMatchesStrToD<double>;
+FUZZ_TEST(NumberFuzz, FloatMatchesDouble);
+constexpr auto FloatMatchesFloat = (FloatMatchesStrToD<float>);
+FUZZ_TEST(NumberFuzz, FloatMatchesFloat);
+#endif
 
 }  // end of anonymous namespace
