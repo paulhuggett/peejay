@@ -363,10 +363,11 @@ public:
   }
 
   void eof(parser_type& parser) {
-    switch (parser.get_state()) {
-    case state::number_minus: parser.set_error_and_pop(error::expected_digits); break;
-    default: this->post_result(parser); break;
+    if (parser.get_state() == state::number_minus) {
+      parser.set_error_and_pop(error::expected_digits);
+      return;
     }
+    this->post_result(parser);
   }
 
 private:
