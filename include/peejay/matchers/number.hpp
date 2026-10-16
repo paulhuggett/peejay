@@ -436,7 +436,7 @@ private:
 
   template <std::size_t LimbCount> using big_uint = details::big_uint<LimbCount>;
 
-  // Optional policy: `static constexpr int max_significant_digits`. The matcher keeps
+  // Optional policy: `static constexpr unsigned max_significant_digits`. The matcher keeps
   // only this many significant digits of the input. A value that lies strictly
   // between two retainable neighbours of a rounding boundary cannot be rounded
   // correctly from fewer digits, so it is reported as number_out_of_range rather
@@ -448,6 +448,8 @@ private:
   // and a pass over those limbs for every digit read.
   static constexpr int requested_digits = [] {
     if constexpr (requires { policies::max_significant_digits; }) {
+      static_assert(policies::max_significant_digits <= std::numeric_limits<std::uint16_t>::max(),
+                    "policies::max_significant_digits is too large");
       return static_cast<int>(policies::max_significant_digits);
     } else {
       return 0;
@@ -546,157 +548,36 @@ private:
 
   // Shifts n left so that floor(n / 5^count) keeps at least mant_bits + 3 bits.
   // Returns the number of bits shifted.
-  static std::int64_t scale_up_for_division(work_uint& n, std::int64_t const count) noexcept {
-    std::int64_t const need = (count * 1193 + 511) / 512 + mant_bits + 3;  // >= count*log2(5)+...
-    auto const have = static_cast<std::int64_t>(n.bit_length());
-    std::int64_t const up = need > have ? need - have : 0;
-    n.shift_left(static_cast<std::size_t>(up));
-    return up;
-  }
+  static std::int64_t scale_up_for_division(work_uint& n, std::int64_t const count) noexcept;
 
   // w * 10^e10 as n * 2^p2, adjusted infinitesimally up or down according to `bias`.
   static binary_value to_binary(big_uint<mant_limbs> const& w, std::int64_t const e10,
-                                tail_bias const bias) noexcept {
-    binary_value v;
-    for (std::size_t i = 0; i < mant_limbs; ++i) {
-      v.n.set_limb(i, w.limb(i));
-    }
-    v.sticky = bias == tail_bias::above;
-    v.below = bias == tail_bias::below;
-    if (e10 >= 0) {
-      v.overflow = multiply_by_pow5(v.n, e10) != 0;
-      v.p2 = e10;
-    } else {
-      std::int64_t const count = -e10;
-      std::int64_t const up = number_matcher::scale_up_for_division(v.n, count);
-      if (divide_by_pow5(v.n, count)) {
-        v.sticky = true;
-      }
-      v.p2 = -count - up;
-    }
-    return v;
-  }
+                                tail_bias const bias) noexcept;
 
   // Number of low bits to discard from a `length`-bit significand scaled by 2^p2
   // so that at most mant_bits remain and no bit is lighter than the smallest
   // subnormal.
-  static std::int64_t discarded_bits(std::int64_t const length, std::int64_t const p2) noexcept {
-    std::int64_t shift = length - mant_bits;
-    if (p2 + shift < -subnormal_bits) {
-      shift = -subnormal_bits - p2;
-    }
-    if (shift < 0) {
-      shift = 0;
-    }
-    return shift;
-  }
+  static std::int64_t discarded_bits(std::int64_t const length, std::int64_t const p2) noexcept;
 
   // Rounds to nearest, ties to even: adds one unit in the last place when the
   // discarded bits call for it, renormalising if the mantissa was all ones. A
   // value infinitesimally `below` an exact tie is not a tie: it rounds down.
   static void round_half_even(rounded_value& r, bool const round_bit, bool const sticky,
-                              bool const below) noexcept {
-    bool const round_up = below ? (round_bit && sticky)
-                                : (round_bit && (sticky || (r.mantissa & 1U) != 0));
-    if (round_up) {
-      if (r.mantissa == ~std::uint64_t{0}) {  // only when mant_bits == 64
-        r.mantissa = std::uint64_t{1} << 63;
-        ++r.exponent;
-      } else {
-        ++r.mantissa;
-      }
-    }
-  }
+                              bool const below) noexcept;
 
   // Keeps the top mant_bits bits of v.n and rounds them.
-  static rounded_value round_to_mantissa(binary_value& v) noexcept {
-    std::int64_t const shift = number_matcher::discarded_bits(
-        static_cast<std::int64_t>(v.n.bit_length()), v.p2);
-    auto round_bit = false;
-    if (shift > 0) {
-      auto const s = static_cast<std::size_t>(shift);
-      round_bit = v.n.bit(s - 1);
-      v.sticky = v.sticky || v.n.any_below(s - 1);
-      v.n.shift_right(s);
-    }
-    rounded_value r{.mantissa = v.n.low64(), .exponent=v.p2 + shift, .overflow=v.overflow};
-    number_matcher::round_half_even(r, round_bit, v.sticky, v.below);
-    return r;
-  }
+  static rounded_value round_to_mantissa(binary_value& v) noexcept;
 
   // mantissa * 2^exponent as a float_type; std::nullopt if it exceeds the
   // largest finite value.
-  static std::optional<float_type> assemble(rounded_value const& r) noexcept {
-    if (r.overflow) {
-      return std::nullopt;
-    }
-    if (r.mantissa == 0) {
-      return float_type{0};
-    }
-    auto const width = static_cast<std::int64_t>(std::bit_width(r.mantissa));
-    if (width + r.exponent > float_limits::max_exponent) {
-      return std::nullopt;
-    }
-    return std::ldexp(static_cast<float_type>(r.mantissa), static_cast<int>(r.exponent));
-  }
+  static std::optional<float_type> assemble(rounded_value const& r) noexcept;
 
   // Nearest float_type to w * 10^e10 (nudged infinitesimally up or down according
   // to `bias`). std::nullopt means overflow.
   static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t const e10,
-                                           tail_bias const bias) noexcept {
-    binary_value value = number_matcher::to_binary(w, e10, bias);
-    return number_matcher::assemble(number_matcher::round_to_mantissa(value));
-  }
+                                           tail_bias const bias) noexcept;
 
-  [[nodiscard]] std::variant<std::error_code, float_type> to_floating() const noexcept {
-    if constexpr (std::is_same_v<float_type, no_float_type>) {
-      return make_error_code(error::number_out_of_range);
-    } else {
-      auto const sign = static_cast<float_type>(negative_ ? -1 : 1);
-      if (digit_count_ == 0) {
-        return sign * float_type{0};
-      }
-
-      std::int64_t const e10 = scale_ + (exp_negative_ ? -exp_ : exp_);
-      std::int64_t const magnitude = e10 + digit_count_;  // value is in [10^(m-1), 10^m)
-      if (magnitude > overflow_decimal) {
-        return make_error_code(error::number_out_of_range);  // certainly overflows
-      }
-      if (magnitude < -underflow_decimal) {
-        return sign * float_type{0};  // certainly below half the smallest subnormal
-      }
-
-  #if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
-      // Clinger's fast path: both operands exact, one correctly rounded IEEE op.
-      if (!sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() &&
-          mant_.low64() <= max_mantissa) {
-        auto p = float_type{1};
-        for (std::int64_t i = 0; i < (e10 < 0 ? -e10 : e10); ++i) {
-          p *= float_type{10};  // exact up to 10^exact_pow10
-        }
-        auto const m = static_cast<float_type>(mant_.low64());
-        return sign * (e10 < 0 ? m / p : m * p);
-      }
-  #endif
-
-      std::optional<float_type> const low =
-          number_matcher::convert(mant_, e10, sticky_ ? tail_bias::above : tail_bias::none);
-      if (sticky_) {
-        // The true value lies in the OPEN interval (W, W+1) * 10^e10, so bracket it
-        // from just above W and just below W+1: both must round to the same value.
-        // (W+1 may itself be an exact halfway point; the value is strictly below it.)
-        big_uint<mant_limbs> upper = mant_;
-        upper.mul_add(1U, 1U);  // upper = mant_ + 1
-        if (number_matcher::convert(upper, e10, tail_bias::below) != low) {
-          return make_error_code(error::number_out_of_range);
-        }
-      }
-      if (!low) {
-        return make_error_code(error::number_out_of_range);
-      }
-      return sign * *low;
-    }
-  }
+  [[nodiscard]] std::variant<std::error_code, float_type> to_floating() const noexcept;
 
   big_uint<mant_limbs> mant_;     // first (up to) max_digits significant digits
   std::int64_t scale_ = 0;        // value = mant_ * 10^(scale_ + exponent)
@@ -707,6 +588,160 @@ private:
   bool exp_negative_ = false;
   bool sticky_ = false;           // a non-zero digit was dropped
 };
+
+template <backend Backend>
+std::int64_t
+number_matcher<Backend>::scale_up_for_division(work_uint& n, std::int64_t const count) noexcept {
+  std::int64_t const need = (count * 1193 + 511) / 512 + mant_bits + 3;  // >= count*log2(5)+...
+  auto const have = static_cast<std::int64_t>(n.bit_length());
+  std::int64_t const up = need > have ? need - have : 0;
+  n.shift_left(static_cast<std::size_t>(up));
+  return up;
+}
+
+template <backend Backend>
+number_matcher<Backend>::binary_value
+number_matcher<Backend>::to_binary(big_uint<mant_limbs> const& w, std::int64_t const e10,
+                              tail_bias const bias) noexcept {
+  binary_value v;
+  for (std::size_t i = 0; i < mant_limbs; ++i) {
+    v.n.set_limb(i, w.limb(i));
+  }
+  v.sticky = bias == tail_bias::above;
+  v.below = bias == tail_bias::below;
+  if (e10 >= 0) {
+    v.overflow = multiply_by_pow5(v.n, e10) != 0;
+    v.p2 = e10;
+  } else {
+    std::int64_t const count = -e10;
+    std::int64_t const up = number_matcher::scale_up_for_division(v.n, count);
+    if (divide_by_pow5(v.n, count)) {
+      v.sticky = true;
+    }
+    v.p2 = -count - up;
+  }
+  return v;
+}
+
+template <backend Backend>
+std::int64_t number_matcher<Backend>::discarded_bits(std::int64_t const length, std::int64_t const p2) noexcept {
+  std::int64_t shift = length - mant_bits;
+  if (p2 + shift < -subnormal_bits) {
+    shift = -subnormal_bits - p2;
+  }
+  if (shift < 0) {
+    shift = 0;
+  }
+  return shift;
+}
+
+template <backend Backend>
+void number_matcher<Backend>::round_half_even(typename number_matcher<Backend>::rounded_value& r, bool const round_bit, bool const sticky,
+                            bool const below) noexcept {
+  bool const round_up = below ? (round_bit && sticky)
+                              : (round_bit && (sticky || (r.mantissa & 1U) != 0));
+  if (round_up) {
+    if (r.mantissa == ~std::uint64_t{0}) {  // only when mant_bits == 64
+      r.mantissa = std::uint64_t{1} << 63;
+      ++r.exponent;
+    } else {
+      ++r.mantissa;
+    }
+  }
+}
+
+template <backend Backend>
+number_matcher<Backend>::rounded_value
+number_matcher<Backend>::round_to_mantissa(typename number_matcher<Backend>::binary_value& v) noexcept {
+  std::int64_t const shift = number_matcher::discarded_bits(
+      static_cast<std::int64_t>(v.n.bit_length()), v.p2);
+  auto round_bit = false;
+  if (shift > 0) {
+    auto const s = static_cast<std::size_t>(shift);
+    round_bit = v.n.bit(s - 1);
+    v.sticky = v.sticky || v.n.any_below(s - 1);
+    v.n.shift_right(s);
+  }
+  rounded_value r{.mantissa = v.n.low64(), .exponent=v.p2 + shift, .overflow=v.overflow};
+  number_matcher::round_half_even(r, round_bit, v.sticky, v.below);
+  return r;
+}
+
+template <backend Backend>
+std::optional<typename number_matcher<Backend>::float_type>
+number_matcher<Backend>::assemble(rounded_value const& r) noexcept {
+  if (r.overflow) {
+    return std::nullopt;
+  }
+  if (r.mantissa == 0) {
+    return float_type{0};
+  }
+  auto const width = static_cast<std::int64_t>(std::bit_width(r.mantissa));
+  if (width + r.exponent > float_limits::max_exponent) {
+    return std::nullopt;
+  }
+  return std::ldexp(static_cast<float_type>(r.mantissa), static_cast<int>(r.exponent));
+}
+
+
+template <backend Backend>
+std::optional<typename number_matcher<Backend>::float_type>
+number_matcher<Backend>::convert(big_uint<mant_limbs> const& w, std::int64_t const e10, tail_bias const bias) noexcept {
+  binary_value value = number_matcher::to_binary(w, e10, bias);
+  return number_matcher::assemble(number_matcher::round_to_mantissa(value));
+}
+
+template <backend Backend>
+std::variant<std::error_code, typename number_matcher<Backend>::float_type>
+number_matcher<Backend>::to_floating() const noexcept {
+  if constexpr (std::is_same_v<float_type, no_float_type>) {
+    return make_error_code(error::number_out_of_range);
+  } else {
+    auto const sign = static_cast<float_type>(negative_ ? -1 : 1);
+    if (digit_count_ == 0) {
+      return sign * float_type{0};
+    }
+
+    std::int64_t const e10 = scale_ + (exp_negative_ ? -exp_ : exp_);
+    std::int64_t const magnitude = e10 + digit_count_;  // value is in [10^(m-1), 10^m)
+    if (magnitude > overflow_decimal) {
+      return make_error_code(error::number_out_of_range);  // certainly overflows
+    }
+    if (magnitude < -underflow_decimal) {
+      return sign * float_type{0};  // certainly below half the smallest subnormal
+    }
+
+#if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
+    // Clinger's fast path: both operands exact, one correctly rounded IEEE op.
+    if (!sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() &&
+        mant_.low64() <= max_mantissa) {
+      auto p = float_type{1};
+      for (std::int64_t i = 0; i < (e10 < 0 ? -e10 : e10); ++i) {
+        p *= float_type{10};  // exact up to 10^exact_pow10
+      }
+      auto const m = static_cast<float_type>(mant_.low64());
+      return sign * (e10 < 0 ? m / p : m * p);
+    }
+#endif
+
+    std::optional<float_type> const low =
+        number_matcher::convert(mant_, e10, sticky_ ? tail_bias::above : tail_bias::none);
+    if (sticky_) {
+      // The true value lies in the OPEN interval (W, W+1) * 10^e10, so bracket it
+      // from just above W and just below W+1: both must round to the same value.
+      // (W+1 may itself be an exact halfway point; the value is strictly below it.)
+      big_uint<mant_limbs> upper = mant_;
+      upper.mul_add(1U, 1U);  // upper = mant_ + 1
+      if (number_matcher::convert(upper, e10, tail_bias::below) != low) {
+        return make_error_code(error::number_out_of_range);
+      }
+    }
+    if (!low) {
+      return make_error_code(error::number_out_of_range);
+    }
+    return sign * *low;
+  }
+}
 
 }  // end namespace peejay::details
 
