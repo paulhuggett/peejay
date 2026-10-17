@@ -111,7 +111,7 @@ constexpr std::variant<std::error_code, state> transition(state const s, char8_t
 
   for (auto const* p = grammar[index];; ++p) {
     auto* const handler = p->get_terminal();
-    if (handler == is_done) {
+    if (handler == &is_done) {
       return error{*p};
     }
     if (handler(c)) {

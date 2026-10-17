@@ -65,7 +65,7 @@ concept big_uint_limb =
 /// True if the compiler's 128-bit integer is used for 64-bit limbs.
 inline constexpr bool big_uint_has_int128 = true;
 /// An unsigned 128-bit integer, used as the double-width intermediate for 64-bit limbs.
-__extension__ typedef unsigned __int128 big_uint_u128;
+using big_uint_u128 = unsigned __int128;
 #else
 /// False: 64-bit limbs use the portable 64x64 -> 128 multiplication and 128 / 64 division.
 inline constexpr bool big_uint_has_int128 = false;
@@ -111,7 +111,7 @@ constexpr limb_pair<Limb> mul_add_limb(Limb const x, Limb const m, Limb const ca
     // A native unsigned type of at least twice the limb width.
     //using wide = std::conditional_t<(bits <= 16U), std::uint32_t, std::uint64_t>;
     using wide = uinteger_t<bits * 2U>;
-    wide const t = static_cast<wide>(static_cast<wide>(x) * static_cast<wide>(m) + carry);
+    auto const t = static_cast<wide>(static_cast<wide>(x) * static_cast<wide>(m) + carry);
     return {static_cast<Limb>(t), static_cast<Limb>(t >> bits)};
   } else {
 #if defined(__SIZEOF_INT128__) && !defined(PEEJAY_BIG_UINT_NO_INT128)
@@ -164,8 +164,8 @@ constexpr limb_quotient<Limb> div_limb(Limb const high, Limb const low, Limb con
   if constexpr (bits <= 32U) {
     // A native unsigned type of at least twice the limb width.
     using wide = std::conditional_t<(bits <= 16U), std::uint32_t, std::uint64_t>;
-    wide const t = static_cast<wide>(static_cast<wide>(high) << bits) | static_cast<wide>(low);
-    wide const q = static_cast<wide>(t / static_cast<wide>(d));
+    auto const t = static_cast<wide>(static_cast<wide>(high) << bits) | static_cast<wide>(low);
+    auto const q = static_cast<wide>(t / static_cast<wide>(d));
     return {static_cast<Limb>(q), static_cast<Limb>(t - q * static_cast<wide>(d))};
   } else {
 #if defined(__SIZEOF_INT128__) && !defined(PEEJAY_BIG_UINT_NO_INT128)
@@ -388,8 +388,7 @@ public:
     std::size_t const bit_shift = bits % limb_bits;
     for (std::size_t i = 0; i < LimbCount; ++i) {
       auto v = limb_type{0};
-      std::size_t const src = i + limb_shift;
-      if (src < LimbCount) {
+      if (std::size_t const src = i + limb_shift; src < LimbCount) {
         v = static_cast<limb_type>(limbs_[src] >> bit_shift);
         // The low bits of the next higher limb fill the vacated top of the result limb. The
         // bit_shift != 0 guard also avoids shifting by the full width of a limb, which is undefined.
