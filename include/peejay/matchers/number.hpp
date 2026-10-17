@@ -792,8 +792,8 @@ number_matcher<Backend>::assemble(rounded_value const& r) noexcept {
   if (r.mantissa == 0) {
     return float_type{0};
   }
-  auto const width = static_cast<std::int64_t>(std::bit_width(r.mantissa));
-  if (width + r.exponent > float_limits::max_exponent) {
+
+  if (static_cast<std::int64_t>(std::bit_width(r.mantissa)) + r.exponent > float_limits::max_exponent) {
     return std::nullopt;
   }
   return std::ldexp(static_cast<float_type>(r.mantissa), static_cast<int>(r.exponent));
