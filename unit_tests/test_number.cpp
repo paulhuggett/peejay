@@ -343,6 +343,119 @@ TEST_F(Number, FloatValueReturnsAnError) {
   EXPECT_EQ(p.last_error(), erc) << "Real error was: " << p.last_error().message();
 }
 
+// Input that ends before the number is complete.
+
+// NOLINTNEXTLINE
+TEST_F(Number, EndsAfterDecimalPoint) {
+  parser p{mock_.proxy};
+  p.input(u8"1."sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, EndsAfterExponentMark) {
+  parser p{mock_.proxy};
+  p.input(u8"1e"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, EndsAfterExponentSign) {
+  parser p{mock_.proxy};
+  p.input(u8"1e+"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+
+// Values that cannot take the fast path (the significand or the power of ten is not exact in a double) and are
+// converted using exact integer arithmetic.
+
+// NOLINTNEXTLINE
+TEST_F(Number, PowerOfTenAboveTheFastPathLimit) {
+  // 10^23 needs 5^23, which is larger than 2^53: one 5^13 step and one 5^10 step.
+  EXPECT_CALL(mock_.callbacks, float_value(1e23)).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"1e23"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, HalfwayRoundsDownToEven) {
+  // 2^53 + 1 lies halfway between 2^53 and 2^53 + 2.
+  EXPECT_CALL(mock_.callbacks, float_value(9007199254740992.0)).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"9007199254740993.0"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, HalfwayRoundsUpToEven) {
+  // 2^53 + 3 lies halfway between 2^53 + 2 and 2^53 + 4.
+  EXPECT_CALL(mock_.callbacks, float_value(9007199254740996.0)).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"9007199254740995.0"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, Subnormal) {
+  EXPECT_CALL(mock_.callbacks, float_value(1e-310)).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"1e-310"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, SmallestSubnormal) {
+  EXPECT_CALL(mock_.callbacks, float_value(std::numeric_limits<double>::denorm_min())).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"5e-324"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, BelowHalfTheSmallestSubnormalRoundsToZero) {
+  // Too close to the smallest subnormal to be rejected without doing the conversion.
+  EXPECT_CALL(mock_.callbacks, float_value(0.0)).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"2e-324"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, LargestDouble) {
+  EXPECT_CALL(mock_.callbacks, float_value(std::numeric_limits<double>::max())).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"1.7976931348623157e308"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, JustAboveTheLargestDoubleOverflows) {
+  // Too close to the largest double to be rejected without doing the conversion.
+  parser p{mock_.proxy};
+  p.input(u8"1.8e308"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, TooManyDigitsBesideAHalfwayPointIsAnError) {
+  // 1 + 2^-53 (1.00000000000000011102230246251565404236316680908203125) is halfway between 1 and the next double.
+  // Only the first 38 significant digits are retained, and the halfway point lies between them and the next
+  // 38-digit value, so the correct rounding cannot be known.
+  parser p{mock_.proxy};
+  p.input(u8"1.00000000000000011102230246251565404237"sv).eof();
+  EXPECT_EQ(p.last_error(), make_error_code(error::number_out_of_range))
+      << "Real error was: " << p.last_error().message();
+}
+// NOLINTNEXTLINE
+TEST_F(Number, TooManyDigitsAwayFromAHalfwayPoint) {
+  // The digits dropped beyond the 38th cannot change the result.
+  EXPECT_CALL(mock_.callbacks, float_value(0.1)).Times(1);
+  parser p{mock_.proxy};
+  p.input(u8"0.1000000000000000000000000000000000000000001"sv).eof();
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+}
+
+TEST(NumberGrammar, IsDoneMatchesEverything) {
+  // is_done marks the end of each grammar table and is normally compared rather than called.
+  EXPECT_TRUE(peejay::details::number_grammar::is_done(u8'0'));
+  EXPECT_TRUE(peejay::details::number_grammar::is_done(u8'x'));
+}
+
 struct policy_common : public peejay::default_policies {
   static constexpr auto max_length = std::size_t{20};
   static constexpr auto max_stack_depth = std::size_t{8};
@@ -514,6 +627,22 @@ TEST(NumberFloat, LongDouble) {
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
 
+TEST(NumberFloat, LongDoubleRoundingCarriesOutOfTheMantissa) {
+  if constexpr (std::numeric_limits<long double>::digits != 64) {
+    GTEST_SKIP() << "long double does not have a 64-bit mantissa";
+  } else {
+    using mocks = mock_json_callbacks<long_double_policy>;
+    StrictMock<mocks> callbacks;
+    callbacks_proxy<mocks> proxy{callbacks};
+    // 2^64 - 0.5 is halfway between 2^64 - 1 (odd) and 2^64, so rounding to even carries out of the 64-bit mantissa.
+    EXPECT_CALL(callbacks, float_value(18446744073709551616.0L)).Times(1);
+
+    auto p = make_parser(proxy);
+    p.input(u8"18446744073709551615.5"sv).eof();
+    EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
+  }
+}
+
 #if PEEJAY_HAVE_INT128
 struct int128_policy : public peejay::default_policies {
   using integer_type = __int128;
@@ -586,6 +715,9 @@ void IntegerMatchesFromChars(std::u8string const& input) {
 TEST(NumberFuzz, Ten) {
   IntegerMatchesFromChars<long>(u8"10");
 }
+TEST(NumberFuzz, IgnoresNonInteger) {
+  IntegerMatchesFromChars<long>(u8"1.5");
+}
 #if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
 constexpr auto IntegerMatchesFromCharsShort = IntegerMatchesFromChars<short>;
 FUZZ_TEST(NumberFuzz, IntegerMatchesFromCharsShort);
@@ -645,9 +777,6 @@ void FloatMatchesStrToD(std::u8string const& input) {
   if (!input_is_reasonable(input) || input.find_first_of(u8".eE") == std::u8string::npos) {
     return;
   }
-  if (input.find(u8'\0') != std::string::npos) {
-    return;
-  }
 
   mockable_callbacks<float_fuzz_policies<Float>> mock;
   auto const expected = str_to_float<Float>(reinterpret_cast<char const *>(input.c_str()));
@@ -668,6 +797,22 @@ TEST(NumberFuzz, ThreePointOneFourFloat) {
 }
 TEST(NumberFuzz, ThreePointOneFourDouble) {
   FloatMatchesStrToD<double>(u8"3.14");
+}
+// The harness ignores inputs that strtod() and the parser would not agree to treat as a floating-point number.
+TEST(NumberFuzz, IgnoresEmptyInput) {
+  FloatMatchesStrToD<double>(u8"");
+}
+TEST(NumberFuzz, IgnoresInputThatIsNotANumber) {
+  FloatMatchesStrToD<double>(u8"1.5x");
+}
+TEST(NumberFuzz, IgnoresEmbeddedNul) {
+  FloatMatchesStrToD<double>(
+      std::u8string{u8"1.5\0"
+                    u8"1",
+                    5});
+}
+TEST(NumberFuzz, IgnoresInteger) {
+  FloatMatchesStrToD<double>(u8"12");
 }
 TEST(NumberFuzz, Match1) {
   FloatMatchesStrToD<double>(u8"1111111110000000000000000000.0");

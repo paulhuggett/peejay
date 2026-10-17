@@ -377,7 +377,7 @@ public:
         exp_ = (exp_ * 10) + (c - '0');
       }
       break;
-    default: break;
+    default: break;  // LCOV_EXCL_LINE: transition() only returns the number states handled above.
     }
     parser.set_state(std::get<state>(next));
     return true;
@@ -746,7 +746,9 @@ std::int64_t number_matcher<Backend>::discarded_bits(std::int64_t const length, 
     shift = -subnormal_bits - p2;
   }
   if (shift < 0) {
-    shift = 0;
+    // Only reachable if the fast path is disabled: every value that it does not handle has at least mant_bits
+    // significant bits by this point.
+    shift = 0;  // LCOV_EXCL_LINE
   }
   return shift;
 }
@@ -787,7 +789,7 @@ template <backend Backend>
 std::optional<typename number_matcher<Backend>::float_type>
 number_matcher<Backend>::assemble(rounded_value const& r) noexcept {
   if (r.overflow) {
-    return std::nullopt;
+    return std::nullopt;  // LCOV_EXCL_LINE: work_limbs is sized so that this cannot happen.
   }
   if (r.mantissa == 0) {
     return float_type{0};
