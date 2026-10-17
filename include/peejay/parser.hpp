@@ -50,9 +50,6 @@
 #include <format>
 #endif
 
-// icubaby
-#include "icubaby/icubaby.hpp"
-
 // peejay local includes
 #include "peejay/concepts.hpp"
 #include "peejay/details/arrayvec.hpp"
@@ -108,14 +105,13 @@ template <> struct coord<true> {
   friend constexpr std::strong_ordering operator<=>(coord const &, coord const &) noexcept = default;
 #if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
   friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) { return os << lhs.to_string(); }
-  [[nodiscard]] std::string to_string() const { return std::format("({}:{})", line, column); }
+  [[nodiscard]] std::string to_string() const { return std::format("({})", line); }
 #else
   friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) {
-    return os << '(' << lhs.line << ':' << lhs.column << ')';
+    return os << '(' << lhs.line << ')';
   }
 #endif
   unsigned line = 1U;
-  unsigned column = 1U;
 };
 
 struct default_policies {
@@ -123,8 +119,8 @@ struct default_policies {
   /// a string_too_long is raised.
   static constexpr std::size_t max_length = 64;
   static constexpr std::size_t max_stack_depth = 8;
-  /// Should the library track the position (that is, the line and column number
-  /// in the input). This can be important for detailed error reporting but can
+  /// Should the library track the position (that is, the line number in the
+  /// input). This can be important for detailed error reporting but can
   /// be unnecessary in some applications.
   static constexpr bool pos_tracking = true;
 
@@ -176,9 +172,6 @@ public:
       this->consume_code_unit(cu);
       if (error_) {
         break;
-      }
-      if (icubaby::is_code_point_start(cu)) {
-        this->advance_column();
       }
     }
     return *this;
@@ -253,34 +246,12 @@ private:
     }
     return res;
   }
-  ///@{
-  /// \brief Managing the column and row number.
-
-  /// Resets the column count but does not affect the row number.
-  void reset_column() noexcept {
-    if constexpr (policies::pos_tracking) {
-      pos_.column = 0U;
-    }
-  }
-
-  /// Increments the column number.
-  void advance_column() noexcept {
-    if constexpr (policies::pos_tracking) {
-      ++pos_.column;
-    }
-  }
-
-  /// Increments the row number and resets the column.
+  /// Increments the row number.
   void advance_row() noexcept {
     if constexpr (policies::pos_tracking) {
-      // The column number is set to 0. This is because the outer parse loop
-      // automatically advances the column number for each character consumed.
-      // This happens after the row is advanced by a matcher's consume() function.
-      pos_.column = 0U;
       ++pos_.line;
     }
   }
-  ///@}
 
   ///@{
   /// \brief Managing the parse stack.
@@ -326,9 +297,9 @@ private:
   details::variant<type_list::type_list<string_matcher, number_matcher, token_matcher>> storage_;
   std::error_code error_;
 
-  /// The column and row number of the parse within the input stream.
+  /// The row number of the parse within the input stream.
   [[no_unique_address]] coord<policies::pos_tracking> pos_;
-  /// The column and row number of the most recent token consumed from the input.
+  /// The row number of the most recent token consumed from the input.
   [[no_unique_address]] coord<policies::pos_tracking> matcher_pos_;
   [[no_unique_address]] Backend backend_;
 };

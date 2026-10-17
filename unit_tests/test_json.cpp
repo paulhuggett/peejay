@@ -59,7 +59,7 @@ TEST_F(Json, Empty) {
   input(p, u8""sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(peejay::error::expected_token))
       << "Real error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 1U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -68,7 +68,7 @@ TEST_F(Json, JustEof) {
   p.eof();
   EXPECT_EQ(p.last_error(), make_error_code(peejay::error::expected_token))
       << "Real error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 1U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -77,8 +77,8 @@ TEST_F(Json, StringInput) {
   std::u8string const res = input(p, keyword).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
   EXPECT_EQ(res, keyword);
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 5U}));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 5U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -155,8 +155,8 @@ TEST_F(Json, Move) {
   auto p2 = std::move(p1);
   input(p2, u8"null"sv).eof();
   EXPECT_FALSE(p2.has_error()) << "Real error was: " << p2.last_error().message();
-  EXPECT_EQ(p2.pos(), (coord{.line = 1U, .column = 5U}));
-  EXPECT_EQ(p2.input_pos(), (coord{.line = 1U, .column = 5U}));
+  EXPECT_EQ(p2.pos(), (coord{.line = 1U}));
+  EXPECT_EQ(p2.input_pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
