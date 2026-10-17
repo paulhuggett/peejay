@@ -442,8 +442,8 @@ public:
   /// every bit of the value is examined, so the result is `true` exactly when the value is
   /// non-zero.
   ///
-  /// \param index The bit position; bits at positions less than this are tested. An \p index of
-  ///        zero tests no bits and always gives `false`.
+  /// \param index  The bit position; bits at positions less than this are tested. An \p index of
+  ///               zero tests no bits and always gives `false`.
   /// \returns `true` if at least one of the bits `[0, index)` is set; otherwise `false`.
   [[nodiscard]] bool any_below(std::size_t const index) const noexcept {
     std::size_t const whole = index / limb_bits;
@@ -452,8 +452,8 @@ public:
         return true;
       }
     }
-    if (std::size_t const rest = index % limb_bits; rest != 0 && whole < LimbCount) {
-      return (limbs_[whole] & ((limb_type{1} << rest) - 1U)) != 0U;
+    if (std::size_t const rest = index % limb_bits; rest != 0U && whole < LimbCount) {
+      return (limbs_[whole] & (static_cast<limb_type>(limb_type{1U} << rest) - 1U)) != 0U;
     }
     return false;
   }
@@ -465,8 +465,8 @@ public:
   ///
   /// \returns `true` if the value is less than `2^64`; otherwise `false`.
   [[nodiscard]] bool fits_u64() const noexcept {
-    for (std::size_t i = limbs_in_u64; i < LimbCount; ++i) {
-      if (limbs_[i] != 0U) {
+    for (std::size_t index = limbs_in_u64; index < LimbCount; ++index) {
+      if (limbs_[index] != 0U) {
         return false;
       }
     }

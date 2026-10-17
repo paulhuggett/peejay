@@ -282,39 +282,45 @@ template <typename T>
 concept parser_float = std::numeric_limits<T>::is_specialized && !std::numeric_limits<T>::is_integer &&
                        std::numeric_limits<T>::radix == 2 && std::numeric_limits<T>::digits <= 64;
 
-// Allocation-free, incremental (push) parser for the grammar:
-//
-//   number = '-'? ( '0' | digit9 {digit}* ) [ '.' {digit}+ ] [ ('E'|'e') ['+'|'-'] {digit}+ ]
-//   digit  = '0' | digit9
-//   digit9 = '1' | ... | '9'
-//
-// Retained state (about 40 bytes, 48 for 128-bit integers): the first 38
-// significant decimal digits (39 for 128-bit integers, whose limits have 39
-// digits) as a multi-limb integer, a decimal scale, the exponent, a "non-zero
-// digits were dropped" flag, and a few flags. Nothing is allocated and nothing
-// throws.
-//
-// Compile-time option: define NUMBER_PARSER_NO_FAST_PATH to disable the
-// exact-IEEE-operation shortcut and always use the bignum path (the results
-// are identical; the shortcut is merely faster).
-//
-// Result selection:
-//  * A number with no fraction and no exponent that is representable in
-//    IntegerType is returned as IntegerType (for an unsigned IntegerType,
-//    "-0" is the only negative number that qualifies).
-//  * Everything else is returned as the correctly rounded (nearest, ties to
-//    even) FloatType, computed with exact integer arithmetic on a small
-//    stack-local bignum that only exists while result() runs. Its size is
-//    derived from FloatType (about 40 bytes for float, 140 for double,
-//    2 KiB for x87 long double).
-//  * Inputs with more than 38 significant digits cannot be retained. The
-//    parser then knows the value lies strictly between W and W+1 (in units of
-//    the last retained digit). If both ends round to the same FloatType that
-//    value is returned, which is exact. If a rounding boundary lies inside the
-//    interval, the correct result cannot be known and result() returns
-//    std::nullopt rather than guessing.
-//  * result() also returns std::nullopt for incomplete/invalid input and for
-//    magnitudes too large for a finite FloatType.
+/// \brief Matches a JSON number and reports its value to the backend.
+///
+/// An allocation-free, incremental (push) parser for the grammar:
+///
+///     number = '-'? ( '0' | digit9 {digit}* ) [ '.' {digit}+ ] [ ('E'|'e') ['+'|'-'] {digit}+ ]
+///     digit  = '0' | digit9
+///     digit9 = '1' | ... | '9'
+///
+/// See the notes below for the state retained, the compile-time options and how the type of the result is chosen.
+///
+/// Retained state (about 40 bytes, 48 for 128-bit integers): the first 38
+/// significant decimal digits (39 for 128-bit integers, whose limits have 39
+/// digits) as a multi-limb integer, a decimal scale, the exponent, a "non-zero
+/// digits were dropped" flag, and a few flags. Nothing is allocated and nothing
+/// throws.
+///
+/// Compile-time option: define NUMBER_PARSER_NO_FAST_PATH to disable the
+/// exact-IEEE-operation shortcut and always use the bignum path (the results
+/// are identical; the shortcut is merely faster).
+///
+/// Result selection:
+/// - A number with no fraction and no exponent that is representable in
+///   IntegerType is returned as IntegerType (for an unsigned IntegerType,
+///   "-0" is the only negative number that qualifies).
+/// - Everything else is returned as the correctly rounded (nearest, ties to
+///   even) FloatType, computed with exact integer arithmetic on a small
+///   stack-local bignum that only exists while result() runs. Its size is
+///   derived from FloatType (about 40 bytes for float, 140 for double,
+///   2 KiB for x87 long double).
+/// - Inputs with more than 38 significant digits cannot be retained. The
+///   parser then knows the value lies strictly between W and W+1 (in units of
+///   the last retained digit). If both ends round to the same FloatType that
+///   value is returned, which is exact. If a rounding boundary lies inside the
+///   interval, the correct result cannot be known and result() returns
+///   std::nullopt rather than guessing.
+///
+/// \tparam Backend  A type meeting the backend<> requirements. Its `policies` member type supplies the integer and
+///                  floating-point types of the results and the optional `max_significant_digits` setting. The
+///                  integer_value() and float_value() member functions of the backend receive the result.
 template <backend Backend> class number_matcher {
   using policies = std::remove_reference_t<Backend>::policies;
 
@@ -332,7 +338,19 @@ template <backend Backend> class number_matcher {
   using float_limits = std::numeric_limits<float_type>;
 
 public:
-  // Feeds one character. Returns true if this character is to be consumed, false otherwise.
+  /// \brief Feeds one character of the input to the matcher.
+  ///
+  /// Advances the number grammar from the parser's current state. A character that continues the number updates
+  /// the retained digits, sign, scale or exponent and becomes the parser's new state. A character that cannot
+  /// continue the number either ends it, in which case the value is posted to the backend and the matcher is
+  /// popped, or is an error, which is recorded in the parser before the matcher is popped. In both cases the
+  /// character is not consumed so that the parser can offer it to the matcher which is then on top of the stack.
+  ///
+  /// \param parser  The parser that owns this matcher. Its state is read and updated; errors are reported to it and
+  ///                completed values are passed to its backend.
+  /// \param c  The next UTF-8 code unit of the input.
+  /// \returns true if \p c was consumed as part of the number, false if it ended the number or was an error and
+  ///   must be processed again by another matcher.
   bool consume(parser_type& parser, char8_t const c) noexcept {
     auto const next = number_grammar::transition(parser.get_state(), c);
     if (auto const* const err = std::get_if<std::error_code>(&next)) {
@@ -362,6 +380,13 @@ public:
     return true;
   }
 
+  /// \brief Signals that the input ended while this matcher was active.
+  ///
+  /// The end of the input ends the number. A lone '-' is reported as error::expected_digits. Otherwise the result
+  /// is posted exactly as if a terminating character had been seen; see post_result().
+  ///
+  /// \param parser  The parser that owns this matcher. Errors are reported to it and a completed value is passed
+  ///                to its backend. The matcher is popped from the parser's stack.
   void eof(parser_type& parser) {
     if (parser.get_state() == state::number_minus) {
       parser.set_error_and_pop(error::expected_digits);
@@ -371,7 +396,15 @@ public:
   }
 
 private:
-  // Call after the final character. See the notes at the top of the file.
+  /// \brief Delivers the completed number to the backend.
+  ///
+  /// Called once the number has ended. If the grammar is not in an accepting state (for example, the input was
+  /// "1." or "1e"), error::number_out_of_range is reported. Otherwise a plain integer that fits in the policy's
+  /// integer type is passed to the backend's integer_value(), and every other value to its float_value(). If
+  /// floating point is disabled, or the value cannot be converted (see to_floating()), the error is reported
+  /// instead. In every case the matcher is popped from the parser's stack. See the notes at the top of the class.
+  ///
+  /// \param parser  The parser that owns this matcher. It receives any error, and its backend receives the value.
   void post_result(parser_type& parser) const noexcept {
     if (!number_grammar::complete(parser.get_state())) {
       parser.set_error_and_pop(error::number_out_of_range);
@@ -397,8 +430,13 @@ private:
     }
   }
 
-  // The text as a sinteger_type, if it was a plain integer (no fraction, no
-  // exponent, no dropped digits) that fits.
+  /// \brief Returns the number as an integer if it is exactly representable as one.
+  ///
+  /// The number qualifies only if it was written as a plain integer: no '.', no exponent and no digits dropped
+  /// beyond max_digits. Its magnitude must also fit the signed integer type, whose negative range is one larger
+  /// than its positive range. "-0" yields 0.
+  ///
+  /// \returns The value as sinteger_type, or std::nullopt if the number must be reported as floating point.
   [[nodiscard]] std::optional<sinteger_type> to_integer() const noexcept {
     if (!is_integer_ || scale_ != 0 || !this->magnitude_fits()) {
       return std::nullopt;
@@ -415,7 +453,11 @@ private:
     return std::nullopt;
   }
 
-  // True if the retained digits form a value that fits in magnitude_type.
+  /// \brief Checks whether the retained digits fit in magnitude_type.
+  ///
+  /// Only the bits held in `mant_` are considered. The sign and any dropped digits are ignored.
+  ///
+  /// \returns true if the value of `mant_` can be represented by magnitude_type, false otherwise.
   [[nodiscard]] bool magnitude_fits() const noexcept {
     if constexpr (int_traits::magnitude_bits <= 64) {
       return mant_.fits_u64();
@@ -424,7 +466,12 @@ private:
     }
   }
 
-  // The retained digits as a magnitude_type; only valid if magnitude_fits().
+  /// \brief Returns the retained digits as an unsigned magnitude.
+  ///
+  /// Reads the low 64 bits of `mant_`, and the next 64 bits too when magnitude_type is 128 bits wide.
+  ///
+  /// \pre magnitude_fits() is true; otherwise the high bits of the value are silently lost.
+  /// \returns The value of `mant_` as magnitude_type.
   [[nodiscard]] magnitude_type magnitude() const noexcept {
     auto value = static_cast<magnitude_type>(mant_.low64());
     if constexpr (int_traits::magnitude_bits > 64) {
@@ -488,10 +535,16 @@ private:
   // huge ones.
   static constexpr std::size_t work_limbs = get_work_limbs<float_type>(underflow_decimal, max_digits, mant_limbs);
 
-  /// \brief Digit accumulation
+  /// \brief Accumulates one decimal digit of the mantissa.
   ///
-  /// Retains the digit in `mant_` while there is room. Afterwards digits are
-  /// dropped: integer digits move the scale up, non-zero ones set `sticky_`.
+  /// Leading zeros are not stored; a leading fractional zero only moves the decimal point (decrements `scale_`).
+  /// While fewer than max_digits significant digits are held, the digit is appended to `mant_`. Each fractional
+  /// digit stored decrements `scale_`. After that, digits are dropped: a dropped integer digit increments `scale_`
+  /// so that the value keeps its magnitude, and a dropped non-zero digit sets `sticky_` to record that the true
+  /// value lies strictly above the retained one.
+  ///
+  /// \param digit  The value of the digit, in the range [0, 9].
+  /// \param fractional  true if the digit follows the decimal point, false if it is part of the integer part.
   void add_digit(int const digit, bool const fractional) noexcept {
     if (digit_count_ == 0 && digit == 0) {  // leading zero: only moves the point
       if (fractional) {
@@ -515,8 +568,7 @@ private:
     }
   }
 
-  // ------------------------------------------------ decimal -> float ------
-  // The conversion runs on exact integers in three steps:
+  // The decimal to float conversion runs on exact integers in three steps:
   //   to_binary()         rewrites w * 10^e10 as n * 2^p2, exactly, apart from a
   //                       sticky flag that records non-zero bits lost on the way;
   //   round_to_mantissa() keeps the top mant_bits bits and rounds half to even;
@@ -546,37 +598,98 @@ private:
     bool overflow = false;
   };
 
-  // Shifts n left so that floor(n / 5^count) keeps at least mant_bits + 3 bits.
-  // Returns the number of bits shifted.
+  /// \brief Pre-scales a dividend so that division by a power of five keeps enough precision.
+  ///
+  /// Shifts \p n left so that floor(n / 5^count) still has at least mant_bits + 3 significant bits: enough for the
+  /// mantissa, a round bit and a guard bit. The number of bits required is overestimated slightly (1193/512 is a
+  /// little more than log2(5)), and nothing is shifted if \p n is already wide enough.
+  ///
+  /// \param n  The dividend. It is shifted left in place.
+  /// \param count  The power of five by which \p n will be divided. Must not be negative.
+  /// \returns The number of bits by which \p n was shifted left. The caller subtracts this from the binary exponent.
   static std::int64_t scale_up_for_division(work_uint& n, std::int64_t const count) noexcept;
 
-  // w * 10^e10 as n * 2^p2, adjusted infinitesimally up or down according to `bias`.
+  /// \brief Converts a decimal value to an exact binary value.
+  ///
+  /// Rewrites w * 10^e10 as n * 2^p2 using 10^e = 5^e * 2^e. For a non-negative \p e10, \p w is multiplied by
+  /// 5^e10, which is exact. For a negative one, \p w is first scaled up (see scale_up_for_division()) and then
+  /// divided by 5^-e10; a non-zero remainder sets `sticky`. \p bias records whether the value to be rounded lies
+  /// infinitesimally above or below w * 10^e10, so that the endpoints of an open interval can be rounded.
+  ///
+  /// \param w  The decimal significand.
+  /// \param e10  The power of ten by which \p w is scaled.
+  /// \param bias  Where the true value lies relative to w * 10^e10: tail_bias::above sets `sticky`, tail_bias::below
+  ///              sets `below`, and tail_bias::none sets neither.
+  /// \returns The binary value with its `sticky`, `below` and `overflow` flags set. `overflow` cannot be set if
+  ///   work_limbs is large enough, which the constant is chosen to guarantee.
   static binary_value to_binary(big_uint<mant_limbs> const& w, std::int64_t const e10,
                                 tail_bias const bias) noexcept;
 
-  // Number of low bits to discard from a `length`-bit significand scaled by 2^p2
-  // so that at most mant_bits remain and no bit is lighter than the smallest
-  // subnormal.
+  /// \brief Calculates how many low bits must be discarded to form the floating-point mantissa.
+  ///
+  /// Enough bits are discarded to leave at most mant_bits. More are discarded if necessary so that no remaining bit
+  /// is worth less than the least significant bit of the smallest subnormal, which gives gradual underflow.
+  ///
+  /// \param length  The number of significant bits in the binary significand.
+  /// \param p2  The power of two by which the significand is scaled.
+  /// \returns The number of low bits to discard. Never negative.
   static std::int64_t discarded_bits(std::int64_t const length, std::int64_t const p2) noexcept;
 
-  // Rounds to nearest, ties to even: adds one unit in the last place when the
-  // discarded bits call for it, renormalising if the mantissa was all ones. A
-  // value infinitesimally `below` an exact tie is not a tie: it rounds down.
+  /// \brief Rounds a truncated mantissa to nearest, ties to even.
+  ///
+  /// Adds one unit in the last place when the discarded bits call for it: when they are more than half a unit,
+  /// or exactly half and the mantissa is odd. If the mantissa was all ones (possible only when mant_bits is 64),
+  /// it is renormalised and the exponent incremented. A value infinitesimally below an exact tie is not a tie, so
+  /// it rounds down.
+  ///
+  /// \param r  The truncated mantissa and its exponent. Updated in place.
+  /// \param round_bit  The most significant discarded bit (worth half a unit in the last place).
+  /// \param sticky  true if any discarded bit below \p round_bit, or any part of the value already lost, is
+  ///                non-zero.
+  /// \param below  true if the true value lies infinitesimally below the value represented by the bits.
   static void round_half_even(rounded_value& r, bool const round_bit, bool const sticky,
                               bool const below) noexcept;
 
-  // Keeps the top mant_bits bits of v.n and rounds them.
+  /// \brief Rounds an exact binary value to a floating-point mantissa and exponent.
+  ///
+  /// Discards the low bits of v.n that do not fit (see discarded_bits()), folding all but the most significant of
+  /// them into the sticky flag, then rounds the remainder with round_half_even().
+  ///
+  /// \param v  The exact binary value. Its significand is shifted right and its sticky flag updated in place.
+  /// \returns The rounded mantissa and the power of two that scales it, with the overflow flag of \p v.
   static rounded_value round_to_mantissa(binary_value& v) noexcept;
 
-  // mantissa * 2^exponent as a float_type; std::nullopt if it exceeds the
-  // largest finite value.
+  /// \brief Builds a floating-point value from a rounded mantissa and exponent.
+  ///
+  /// \param r  The rounded mantissa, its power of two, and an overflow flag.
+  /// \returns mantissa * 2^exponent as float_type, or std::nullopt if \p r is flagged as overflowing or its value
+  ///   exceeds the largest finite float_type.
   static std::optional<float_type> assemble(rounded_value const& r) noexcept;
 
-  // Nearest float_type to w * 10^e10 (nudged infinitesimally up or down according
-  // to `bias`). std::nullopt means overflow.
+  /// \brief Converts a decimal value to the nearest floating-point value.
+  ///
+  /// Runs the three conversion steps in order: to_binary(), round_to_mantissa() and assemble(). The result is
+  /// correctly rounded, to nearest with ties to even.
+  ///
+  /// \param w  The decimal significand.
+  /// \param e10  The power of ten by which \p w is scaled.
+  /// \param bias  Whether the value to be converted lies infinitesimally above or below w * 10^e10, or exactly on it.
+  /// \returns The nearest float_type to w * 10^e10, unsigned, or std::nullopt if it overflows.
   static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t const e10,
                                            tail_bias const bias) noexcept;
 
+  /// \brief Converts the matched number to the nearest floating-point value.
+  ///
+  /// Values whose decimal magnitude is certainly too large are rejected and values that are certainly too small
+  /// become a signed zero, both without any bignum arithmetic. Unless NUMBER_PARSER_NO_FAST_PATH is defined, a
+  /// value whose significand and power of ten are both exact in float_type is computed with a single, correctly
+  /// rounded, floating-point operation (Clinger's fast path). Otherwise the value is converted with convert().
+  /// If digits were dropped, the true value lies in the open interval (W, W+1) * 10^e10. Both endpoints are then
+  /// converted, and the result is accepted only if they round to the same value.
+  ///
+  /// \returns The correctly rounded value, carrying the sign of the input (so "-0" yields negative zero), or
+  ///   error::number_out_of_range if floating point is disabled, the value overflows, or too many digits were
+  ///   dropped to determine the correct rounding.
   [[nodiscard]] std::variant<std::error_code, float_type> to_floating() const noexcept;
 
   big_uint<mant_limbs> mant_;     // first (up to) max_digits significant digits
