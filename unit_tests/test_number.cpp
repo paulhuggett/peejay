@@ -654,7 +654,7 @@ void FloatMatchesStrToD(std::u8string const& input) {
 
   auto erc = std::error_code{};
   if (std::isfinite(expected)) {
-    EXPECT_CALL(mock.callbacks, float_value(matcher(expected))).Times(1).WillOnce(Return(std::error_code{}));
+    EXPECT_CALL(mock.callbacks, float_value(matcher<Float>(expected))).Times(1).WillOnce(Return(std::error_code{}));
   } else {
     erc = make_error_code(error::number_out_of_range);
   }
