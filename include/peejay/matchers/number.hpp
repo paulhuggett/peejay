@@ -188,10 +188,13 @@ struct integer_traits<T> : integer_traits_base<std::make_signed_t<T>, std::make_
                                                std::numeric_limits<std::make_signed_t<T>>::digits> {};
 
 #if __SIZEOF_INT128__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 template <>
 struct integer_traits<__int128> : integer_traits_base<__int128, unsigned __int128, unsigned __int128, 127> {};
 template <>
 struct integer_traits<unsigned __int128> : integer_traits_base<__int128, unsigned __int128, unsigned __int128, 127> {};
+#pragma GCC diagnostic pop
 #endif  // __SIZEOF_INT128__
 
 // Integer types the matcher can deliver: standard integers of up to 64 bits
