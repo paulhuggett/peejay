@@ -683,6 +683,10 @@ private:
   static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t const e10,
                                            tail_bias const bias) noexcept;
 
+#if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
+  bool can_use_fast_path(std::int64_t const e10) const noexcept;
+#endif
+
   /// \brief Converts the matched number to the nearest floating-point value.
   ///
   /// Values whose decimal magnitude is certainly too large are rejected and values that are certainly too small
@@ -811,6 +815,12 @@ number_matcher<Backend>::convert(big_uint<mant_limbs> const& w, std::int64_t con
   return number_matcher::assemble(number_matcher::round_to_mantissa(value));
 }
 
+#if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
+template <backend Backend> bool number_matcher<Backend>::can_use_fast_path(std::int64_t const e10) const noexcept {
+  return !sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() && mant_.low64() <= max_mantissa;
+}
+#endif
+
 template <backend Backend>
 std::variant<std::error_code, typename number_matcher<Backend>::float_type>
 number_matcher<Backend>::to_floating() const noexcept {
@@ -833,10 +843,9 @@ number_matcher<Backend>::to_floating() const noexcept {
 
 #if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
     // Clinger's fast path: both operands exact, one correctly rounded IEEE op.
-    if (!sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() &&
-        mant_.low64() <= max_mantissa) {
+    if (this->can_use_fast_path(e10)) {
       auto p = float_type{1};
-      for (std::int64_t i = 0; i < (e10 < 0 ? -e10 : e10); ++i) {
+      for (std::int64_t i = 0, ae10 = std::abs(e10); i < ae10; ++i) {
         p *= float_type{10};  // exact up to 10^exact_pow10
       }
       auto const m = static_cast<float_type>(mant_.low64());
@@ -844,8 +853,7 @@ number_matcher<Backend>::to_floating() const noexcept {
     }
 #endif
 
-    std::optional<float_type> const low =
-        number_matcher::convert(mant_, e10, sticky_ ? tail_bias::above : tail_bias::none);
+    auto const low = number_matcher::convert(mant_, e10, sticky_ ? tail_bias::above : tail_bias::none);
     if (sticky_) {
       // The true value lies in the OPEN interval (W, W+1) * 10^e10, so bracket it
       // from just above W and just below W+1: both must round to the same value.
@@ -856,10 +864,10 @@ number_matcher<Backend>::to_floating() const noexcept {
         return make_error_code(error::number_out_of_range);
       }
     }
-    if (!low) {
+    if (!low.has_value()) {
       return make_error_code(error::number_out_of_range);
     }
-    return sign * *low;
+    return sign * low.value();
   }
 }
 
