@@ -663,8 +663,10 @@ void FloatMatchesStrToD(std::u8string const& input) {
   p.input(input).eof();
   EXPECT_THAT(p.last_error(), erc);
 }
-
-TEST(NumberFuzz, ThreePointOneFour) {
+TEST(NumberFuzz, ThreePointOneFourFloat) {
+  FloatMatchesStrToD<float>(u8"3.14");
+}
+TEST(NumberFuzz, ThreePointOneFourDouble) {
   FloatMatchesStrToD<double>(u8"3.14");
 }
 TEST(NumberFuzz, Match1) {
