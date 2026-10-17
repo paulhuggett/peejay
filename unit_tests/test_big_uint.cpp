@@ -50,7 +50,9 @@
 
 namespace {
 
+#if defined(__SIZEOF_INT128__)
 using u128 = unsigned __int128;
+#endif  // defined(__SIZEOF_INT128__)
 
 constexpr std::uint32_t max32 = std::numeric_limits<std::uint32_t>::max();
 constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
@@ -88,6 +90,7 @@ template <std::size_t N> big_uint<N> make_limbs(std::initializer_list<std::uint3
   return b;
 }
 
+#if defined(__SIZEOF_INT128__)
 big4 make_big(u128 const v) {
   big4 b;
   for (auto index = std::size_t{0}; index < 4; ++index) {
@@ -95,6 +98,7 @@ big4 make_big(u128 const v) {
   }
   return b;
 }
+#endif  // defined(__SIZEOF_INT128__)
 
 big4 from_limbs(limbs4 const& limbs) {
   big4 b;
@@ -574,17 +578,20 @@ TEST(BigUintBitLength, TopBitGivesTheFullWidth) {
 TEST(BigUintBitLength, LowerLimbsDoNotAffectASetHigherLimb) {
   EXPECT_EQ((make_limbs<4>({max32, max32, 4, 0}).bit_length()), 67U);
 }
+#if defined(__SIZEOF_INT128__)
 TEST(BigUintBitLength, EverySingleBitPosition) {
   for (std::size_t k = 0; k < 128; ++k) {
     EXPECT_EQ(make_big(u128{1} << k).bit_length(), k + 1) << k;
   }
 }
+#endif  // defined(__SIZEOF_INT128__)
 TEST(BigUintBitLength, Pattern) {
   EXPECT_EQ(from_limbs(pattern4).bit_length(), 127U);
 }
 
 // bit
 
+#if defined(__SIZEOF_INT128__)
 TEST(BigUintBit, ReadsEverySingleBitPosition) {
   for (std::size_t k = 0; k < 128; ++k) {
     big4 const b = make_big(u128{1} << k);
@@ -593,6 +600,7 @@ TEST(BigUintBit, ReadsEverySingleBitPosition) {
     }
   }
 }
+#endif  // defined(__SIZEOF_INT128__)
 TEST(BigUintBit, LimbBoundaries) {
   big4 const b = make_limbs<4>({0x80000000U, 1, 0, 0});
   EXPECT_TRUE(b.bit(31));
@@ -637,6 +645,7 @@ TEST(BigUintAnyBelow, WholeLimbsBelowAreEmptyButThePartialLimbIsNot) {
   EXPECT_TRUE(b.any_below(65));
   EXPECT_FALSE(b.any_below(63));
 }
+#if defined(__SIZEOF_INT128__)
 TEST(BigUintAnyBelow, BitAtTheIndexItselfIsExcluded) {
   for (std::size_t shift = 0; shift < 128; ++shift) {
     big4 const b = make_big(u128{1} << shift);
@@ -644,6 +653,7 @@ TEST(BigUintAnyBelow, BitAtTheIndexItselfIsExcluded) {
     EXPECT_TRUE(b.any_below(shift + 1)) << shift;
   }
 }
+#endif  // defined(__SIZEOF_INT128__)
 TEST(BigUintAnyBelow, IndexEqualToTheCapacityLooksAtEverything) {
   EXPECT_TRUE((make_limbs<4>({0, 0, 0, 0x80000000U}).any_below(128)));
   EXPECT_FALSE(big4{}.any_below(128));
@@ -901,7 +911,9 @@ static_assert(!big_uint_limb<std::int32_t>);
 static_assert(!big_uint_limb<std::int64_t>);
 static_assert(!big_uint_limb<float>);
 static_assert(!big_uint_limb<double>);
+#if defined(__SIZEOF_INT128__)
 static_assert(!big_uint_limb<u128>);
+#endif  // defined(__SIZEOF_INT128__)
 static_assert(!big_uint_limb<std::uint32_t&>);
 static_assert(!big_uint_limb<std::uint32_t*>);
 
