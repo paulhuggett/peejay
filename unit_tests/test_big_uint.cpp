@@ -774,7 +774,7 @@ TYPED_TEST(BigUintGeneric, RepeatedMultiplicationByFiveIsUndoneByDivision) {
   for (std::size_t shift = 0; shift < passes; ++shift) {
     EXPECT_EQ(b.mul_add(pow5_13, 0), 0U) << shift;
   }
-  if (passes > 0) {
+  if constexpr (passes > 0) {
     EXPECT_GT(b.bit_length(), original.bit_length());
   }
   for (std::size_t shift = 0; shift < passes; ++shift) {
