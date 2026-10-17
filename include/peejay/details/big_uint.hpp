@@ -65,7 +65,7 @@ concept big_uint_limb =
 /// True if the compiler's 128-bit integer is used for 64-bit limbs.
 inline constexpr bool big_uint_has_int128 = true;
 /// An unsigned 128-bit integer, used as the double-width intermediate for 64-bit limbs.
-using big_uint_u128 = unsigned __int128;
+__extension__ using big_uint_u128 =  unsigned __int128;
 #else
 /// False: 64-bit limbs use the portable 64x64 -> 128 multiplication and 128 / 64 division.
 inline constexpr bool big_uint_has_int128 = false;
