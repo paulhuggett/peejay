@@ -769,16 +769,17 @@ TYPED_TEST(BigUintGeneric, RepeatedMultiplicationByFiveIsUndoneByDivision) {
   original.set_limb(0, 0xCAFEBABEU);
   original.set_limb(1, 0x0BADF00DU);
 
-  std::size_t const passes = ((32 * n) - 64) / 31;
+  // The number of multiplications that fit above the 64 bits of the original value (none for two limbs).
+  constexpr std::size_t passes = ((32 * n) - 64) / 31;
   big_uint<n> b = original;
-  for (std::size_t shift = 0; shift < passes; ++shift) {
-    EXPECT_EQ(b.mul_add(pow5_13, 0), 0U) << shift;
-  }
   if constexpr (passes > 0) {
+    for (std::size_t shift = 0; shift < passes; ++shift) {
+      EXPECT_EQ(b.mul_add(pow5_13, 0), 0U) << shift;
+    }
     EXPECT_GT(b.bit_length(), original.bit_length());
-  }
-  for (std::size_t shift = 0; shift < passes; ++shift) {
-    EXPECT_EQ(b.div_small(pow5_13), 0U) << shift;
+    for (std::size_t shift = 0; shift < passes; ++shift) {
+      EXPECT_EQ(b.div_small(pow5_13), 0U) << shift;
+    }
   }
   for (std::size_t shift = 0; shift < n; ++shift) {
     EXPECT_EQ(b.limb(shift), original.limb(shift)) << shift;

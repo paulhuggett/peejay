@@ -465,9 +465,12 @@ public:
   ///
   /// \returns `true` if the value is less than `2^64`; otherwise `false`.
   [[nodiscard]] bool fits_u64() const noexcept {
-    for (std::size_t index = limbs_in_u64; index < LimbCount; ++index) {
-      if (limbs_[index] != 0U) {
-        return false;
+    // With a capacity of exactly 64 bits there are no higher limbs to check.
+    if constexpr (LimbCount > limbs_in_u64) {
+      for (std::size_t index = limbs_in_u64; index < LimbCount; ++index) {
+        if (limbs_[index] != 0U) {
+          return false;
+        }
       }
     }
     return true;
