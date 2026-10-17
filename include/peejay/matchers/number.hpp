@@ -103,7 +103,9 @@ constexpr std::array grammar{
     number_exp_mark.data(),   number_exp_sign.data(), number_exp_digits.data(),
 };
 
-constexpr std::variant<std::error_code, state> transition(state const s, char8_t const c) noexcept {
+// Not constexpr: std::error_code is not a literal type, so a C++20 compiler that predates P2448 rejects a constexpr
+// function returning this variant.
+inline std::variant<std::error_code, state> transition(state const s, char8_t const c) noexcept {
   using state_ut = std::underlying_type_t<state>;
   assert(static_cast<state_ut>(s) >= static_cast<state_ut>(state::number_start));
   auto const index = static_cast<std::size_t>(static_cast<state_ut>(s) - static_cast<state_ut>(state::number_start));
