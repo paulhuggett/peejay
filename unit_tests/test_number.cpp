@@ -453,7 +453,7 @@ TYPED_TEST(NumberLimits, IntMin) {
 TYPED_TEST(NumberLimits, IntegerPositiveOverflow) {
   constexpr auto bits = TypeParam();
   auto p = make_parser(TestFixture::mock_.proxy);
-  EXPECT_CALL(TestFixture::mock_.callbacks, float_value(limits<bits>::int_max + 1.0)).Times(1);
+  EXPECT_CALL(TestFixture::mock_.callbacks, float_value(static_cast<double>(limits<bits>::int_max) + 1.0)).Times(1);
   input(p, std::u8string_view{limits<bits>::int_overflow}).eof();
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
