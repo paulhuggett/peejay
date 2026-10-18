@@ -76,6 +76,10 @@ concept policy = requires(Policy &&p) {
 
   /// The type used for integer values. The unsigned type will also be derived when necessary.
   requires std::signed_integral<typename Policy::integer_type>;
+
+  /// Optional. The number of significant digits of a number retained by the number matcher. If present, it must be
+  /// an unsigned integer.
+  requires !requires { p.max_significant_digits; } || std::unsigned_integral<decltype(p.max_significant_digits)>;
 };
 
 template <typename Backend>
