@@ -62,6 +62,13 @@
 
 namespace peejay::details {
 
+#if defined(FLT_EVAL_METHOD) && FLT_EVAL_METHOD == 0 && \
+    !(defined(PEEJAY_NUMBER_PARSER_NO_FAST_PATH) && PEEJAY_NUMBER_PARSER_NO_FAST_PATH)
+constexpr auto number_parser_no_fast_path = true;
+#else
+constexpr auto number_parser_no_fast_path = false;
+#endif
+
 namespace number_grammar {
 
 constexpr bool is_minus(char8_t const c) noexcept { return c == '-'; }
@@ -683,9 +690,8 @@ private:
   static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t const e10,
                                            tail_bias const bias) noexcept;
 
-#if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
-  bool can_use_fast_path(std::int64_t const e10) const noexcept;
-#endif
+  bool can_use_fast_path(std::int64_t e10) const noexcept;
+  float_type fast_path(std::int64_t e10) const noexcept;
 
   /// \brief Converts the matched number to the nearest floating-point value.
   ///
@@ -815,11 +821,28 @@ number_matcher<Backend>::convert(big_uint<mant_limbs> const& w, std::int64_t con
   return number_matcher::assemble(number_matcher::round_to_mantissa(value));
 }
 
-#if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
 template <backend Backend> bool number_matcher<Backend>::can_use_fast_path(std::int64_t const e10) const noexcept {
-  return !sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() && mant_.low64() <= max_mantissa;
+  if constexpr (number_parser_no_fast_path) {
+    return false;
+  } else {
+    return !sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() && mant_.low64() <= max_mantissa;
+  }
 }
-#endif
+template <backend Backend>
+number_matcher<Backend>::float_type number_matcher<Backend>::fast_path(std::int64_t const e10) const noexcept {
+  if constexpr (number_parser_no_fast_path) {
+    assert(false && "fast path is disabled");
+    return 0;
+  } else {
+    auto const m = static_cast<float_type>(mant_.low64());
+    auto p = float_type{1};
+    for (std::int64_t i = 0, ae10 = std::abs(e10); i < ae10; ++i) {
+      p *= float_type{10};  // exact up to 10^exact_pow10
+    }
+    auto const sign = static_cast<float_type>(negative_ ? -1 : 1);
+    return sign * (e10 < 0 ? m / p : m * p);
+  }
+}
 
 template <backend Backend>
 std::variant<std::error_code, typename number_matcher<Backend>::float_type>
@@ -841,17 +864,10 @@ number_matcher<Backend>::to_floating() const noexcept {
       return sign * float_type{0};  // certainly below half the smallest subnormal
     }
 
-#if defined(FLT_EVAL_METHOD) && (FLT_EVAL_METHOD == 0) && !defined(NUMBER_PARSER_NO_FAST_PATH)
     // Clinger's fast path: both operands exact, one correctly rounded IEEE op.
     if (this->can_use_fast_path(e10)) {
-      auto p = float_type{1};
-      for (std::int64_t i = 0, ae10 = std::abs(e10); i < ae10; ++i) {
-        p *= float_type{10};  // exact up to 10^exact_pow10
-      }
-      auto const m = static_cast<float_type>(mant_.low64());
-      return sign * (e10 < 0 ? m / p : m * p);
+      return this->fast_path(e10);
     }
-#endif
 
     auto const low = number_matcher::convert(mant_, e10, sticky_ ? tail_bias::above : tail_bias::none);
 
