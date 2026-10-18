@@ -94,8 +94,8 @@ template <typename Limb> struct limb_quotient {
 /// This is the inner step of big_uint::mul_add(). The exact result needs twice the width of a limb
 /// and cannot overflow it: `(2^w - 1) * (2^w - 1) + (2^w - 1) < 2^(2w)` for a limb of `w` bits.
 ///
-/// Limbs of up to 32 bits use a native integer of twice the width. 64-bit limbs use the compiler's
-/// 128-bit integer if there is one, and otherwise multiply by splitting each operand into 32-bit
+/// Limbs of up to 32 bits use a native integer of at least twice the width. 64-bit limbs use the
+/// compiler's 128-bit integer if there is one, and otherwise multiply by splitting each operand into 32-bit
 /// halves.
 ///
 /// \tparam Limb The limb type (see big_uint_limb).
@@ -147,8 +147,8 @@ constexpr limb_pair<Limb> mul_add_limb(Limb const x, Limb const m, Limb const ca
 /// guarantees that the quotient fits in a single limb. That always holds in long division because
 /// `high` is the remainder of the previous step.
 ///
-/// Limbs of up to 32 bits use a native integer of twice the width. 64-bit limbs use the compiler's
-/// 128-bit integer if there is one, and otherwise the classic two-step algorithm that divides a
+/// Limbs of up to 32 bits use a native integer of at least twice the width. 64-bit limbs use the
+/// compiler's 128-bit integer if there is one, and otherwise the classic two-step algorithm that divides a
 /// normalised divisor using 32-bit digits (Knuth's algorithm D specialised to two limbs, as in
 /// Hacker's Delight, "divlu").
 ///
@@ -223,7 +223,7 @@ constexpr limb_quotient<Limb> div_limb(Limb const high, Limb const low, Limb con
 /// `LimbCount - 1` is the most significant. The capacity is therefore `LimbCount * limb_bits` bits
 /// and the representable values are `0` through `2^(LimbCount * limb_bits) - 1`.
 ///
-/// Only the operations needed by number_parser are provided.
+/// Only the operations needed by number_matcher are provided.
 /// All operations are modulo 2^(LimbCount * limb_bits) unless stated otherwise: results that do not
 /// fit are silently truncated (mul_add() additionally reports the bits that were lost). A default
 /// constructed object has the value zero.
@@ -263,8 +263,8 @@ public:
   /// \brief Returns one limb of the value.
   ///
   /// Limb 0 holds the least significant limb_bits bits of the value, limb 1 the next limb_bits
-  /// bits, and so on. The index is not range checked: an index that is not less than `LimbCount`
-  /// is undefined behaviour.
+  /// bits, and so on. The index is checked only by an assertion: an index that is not less than
+  /// `LimbCount` is undefined behaviour.
   ///
   /// \param index The zero-based position of the limb to read, in the range `[0, LimbCount)`.
   /// \returns The limb at position \p index.
@@ -273,10 +273,11 @@ public:
     return limbs_[index];
   }
 
-  /// \brief Overwrites one 32-bit limb of the value.
+  /// \brief Overwrites one limb of the value.
   ///
   /// The other limbs are left untouched, so this can be used to build an arbitrary value
-  /// one limb at a time. An index that is not less than `LimbCount` is undefined behaviour.
+  /// one limb at a time. As with limb(), the index is checked only by an assertion: an index that
+  /// is not less than `LimbCount` is undefined behaviour.
   ///
   /// \param index The zero-based position of the limb to write, in the range `[0, LimbCount)`.
   /// \param v The new value of the limb.
@@ -285,16 +286,24 @@ public:
 	limbs_[index] = v; 
   }
 
+  /// \brief Adds a single limb to a value.
+  ///
+  /// The sum is computed with mul_add(1, rhs). Like the other operations it is modulo
+  /// `2^capacity_bits`: a carry out of the most significant limb is discarded.
+  ///
+  /// \param lhs The value to which \p rhs is added.
+  /// \param rhs The amount to add.
+  /// \returns `(lhs + rhs) mod 2^capacity_bits`.
   friend big_uint operator+(big_uint lhs, limb_type rhs) noexcept {
     lhs.mul_add(limb_type{1}, rhs);
     return lhs;
   }
 
-  /// \brief Sets the value with `value * m + a`.
+  /// \brief Replaces the value with `value * multiplier + addend`.
   ///
   /// This is the multiply-and-accumulate primitive of the class. Appending a decimal
-  /// digit to a number is `mul_add(10, digit)`, scaling by a power of five is `mul_add(5^k, 0)`,
-  /// and incrementing is `mul_add(1, 1)`.
+  /// digit to a number is `mul_add(10, digit)`, scaling by a power of five that fits in a limb is
+  /// `mul_add(5^k, 0)`, and incrementing is `mul_add(1, 1)`.
   ///
   /// The multiplication is performed one limb at a time from the least significant limb upwards,
   /// carrying into the next limb. Each step computes `limb * m + carry` in a double-width integer
@@ -305,7 +314,7 @@ public:
   /// \param multiplier The multiplier.
   /// \param addend  Added after the multiplication.
   /// \returns The carry out of the most significant limb: the part of the exact result
-  ///          `value * m + a` that lies at or above `2^(LimbCount * limb_bits)` and was therefore
+  ///          `value * multiplier + addend` that lies at or above `2^(LimbCount * limb_bits)` and was therefore
   ///          discarded. It is always less than `2^limb_bits`, and is zero if and only if the
   ///          result fitted in the capacity of the object.
   constexpr limb_type mul_add(limb_type const multiplier, limb_type const addend) noexcept {
@@ -351,8 +360,8 @@ public:
   ///
   /// The shift is split into a whole-limb part (`bits / limb_bits` limbs) and a remaining bit
   /// part (`bits % limb_bits` bits). Limbs are rewritten from the most significant down to the
-  /// least, so each result limb is built from source limbs at lower indices that have not been
-  /// overwritten yet; the operation is therefore safe to do in place.
+  /// least, so each result limb is built from source limbs at the same or lower indices that have
+  /// not been overwritten yet; the operation is therefore safe to do in place.
   ///
   /// Any value of \p bits is accepted. A shift of `capacity_bits` or more leaves the value
   /// zero.
@@ -482,8 +491,8 @@ public:
 
   /// \brief Returns the low 64 bits of the value.
   ///
-  /// The result is the value modulo 2^64, formed from the lowest limbs (the higher limb
-  /// supplying the high part). It equals the whole value only if fits_u64() is `true`; otherwise
+  /// The result is the value modulo 2^64, assembled from the limbs that hold the low 64 bits
+  /// (a single limb if limbs are 64 bits wide). It equals the whole value only if fits_u64() is `true`; otherwise
   /// the higher limbs are ignored.
   ///
   /// \returns `value mod 2^64`.

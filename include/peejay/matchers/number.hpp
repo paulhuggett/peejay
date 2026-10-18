@@ -181,7 +181,7 @@ template <typename Signed, typename Unsigned, typename Magnitude, int ValueBits>
   /// An unsigned type wide enough for |value| of signed_type
   using magnitude_type = Magnitude;
 
-  /// The number value bits of signed_type (63 for int64_t, 127 for __int128)
+  /// The number of value bits of signed_type (63 for int64_t, 127 for __int128)
   static constexpr auto value_bits = ValueBits;
   /// The width of magnitude_type
   static constexpr auto magnitude_bits =
@@ -211,10 +211,11 @@ struct integer_traits<unsigned __int128> : integer_traits_base<__int128, unsigne
 template <typename T>
 concept parser_integer = requires { typename integer_traits<std::remove_cv_t<T>>::signed_type; };
 
-// Number of significant decimal digits the matcher retains. It must be able to
-// hold every value of the signed result type exactly (2^value_bits has
-// floor(value_bits * log10(2)) + 1 digits. 30103/100000 slightly exceeds
-// log10(2)), and is never less than 38.
+// Number of significant decimal digits the matcher retains: `requested` if that
+// is larger, otherwise the minimum. The minimum is never less than 38 and is
+// enough to hold every value of the signed result type exactly: 2^value_bits
+// has floor(value_bits * log10(2)) + 1 digits (30103/100000 slightly exceeds
+// log10(2)).
 [[nodiscard]] constexpr int retained_digits(int const value_bits, int const requested = 0) {
   int const needed = std::max((value_bits * 30103) / 100000 + 1, 38);
   return requested > needed ? requested : needed;
@@ -301,31 +302,30 @@ concept parser_float = std::numeric_limits<T>::is_specialized && !std::numeric_l
 ///
 /// See the notes below for the state retained, the compile-time options and how the type of the result is chosen.
 ///
-/// Retained state (about 40 bytes, 48 for 128-bit integers): the first 38
-/// significant decimal digits (39 for 128-bit integers, whose limits have 39
-/// digits) as a multi-limb integer, a decimal scale, the exponent, a "non-zero
-/// digits were dropped" flag, and a few flags. Nothing is allocated and nothing
-/// throws.
+/// Retained state (about 40 bytes, 48 for 128-bit integers, by default): the first max_digits
+/// significant decimal digits as a multi-limb integer, a decimal scale, the exponent, a "non-zero
+/// digits were dropped" flag, and a few flags. max_digits is 38 by default (39 for 128-bit
+/// integers, whose limits have 39 digits) and can be raised with the policy's
+/// `max_significant_digits`. Nothing is allocated and nothing throws.
 ///
-/// Compile-time option: define NUMBER_PARSER_NO_FAST_PATH to disable the
-/// exact-IEEE-operation shortcut and always use the bignum path (the results
-/// are identical; the shortcut is merely faster).
+/// Compile-time option: define PEEJAY_NUMBER_PARSER_NO_FAST_PATH to a non-zero value to disable
+/// the exact-IEEE-operation shortcut and always use the bignum path (the results are identical;
+/// the shortcut is merely faster). The shortcut is also disabled unless FLT_EVAL_METHOD is 0.
 ///
 /// Result selection:
-/// - A number with no fraction and no exponent that is representable in
-///   IntegerType is returned as IntegerType (for an unsigned IntegerType,
-///   "-0" is the only negative number that qualifies).
-/// - Everything else is returned as the correctly rounded (nearest, ties to
-///   even) FloatType, computed with exact integer arithmetic on a small
-///   stack-local bignum that only exists while result() runs. Its size is
-///   derived from FloatType (about 40 bytes for float, 140 for double,
+/// - A number with no fraction and no exponent that is representable in the
+///   policy's integer_type is passed to the backend's integer_value().
+/// - Everything else is passed to float_value() as the correctly rounded (nearest,
+///   ties to even) float_type, computed with exact integer arithmetic on a small
+///   stack-local bignum that only exists while to_floating() runs. Its size is
+///   derived from float_type (about 40 bytes for float, 140 for double,
 ///   2 KiB for x87 long double).
-/// - Inputs with more than 38 significant digits cannot be retained. The
-///   parser then knows the value lies strictly between W and W+1 (in units of
-///   the last retained digit). If both ends round to the same FloatType that
+/// - Inputs with more than max_digits significant digits cannot be retained. The
+///   matcher then knows the value lies strictly between W and W+1 (in units of
+///   the last retained digit). If both ends round to the same float_type that
 ///   value is returned, which is exact. If a rounding boundary lies inside the
-///   interval, the correct result cannot be known and result() returns
-///   std::nullopt rather than guessing.
+///   interval, the correct result cannot be known and error::number_out_of_range
+///   is reported rather than guessing.
 ///
 /// \tparam Backend  A type meeting the backend<> requirements. Its `policies` member type supplies the integer and
 ///                  floating-point types of the results and the optional `max_significant_digits` setting. The
@@ -341,7 +341,7 @@ template <backend Backend> class number_matcher {
 
   /// A radix-2 floating-point type with at most 64 mantissa bits:
   /// float, double, or an x87 80-bit long double. Subnormals are
-  /// assumed to be supported.
+  /// assumed to be supported. no_float_type if floating point is disabled.
   using float_type = std::remove_cv_t<typename policies::float_type>;
 
   using float_limits = std::numeric_limits<float_type>;
@@ -350,16 +350,16 @@ public:
   /// \brief Feeds one character of the input to the matcher.
   ///
   /// Advances the number grammar from the parser's current state. A character that continues the number updates
-  /// the retained digits, sign, scale or exponent and becomes the parser's new state. A character that cannot
-  /// continue the number either ends it, in which case the value is posted to the backend and the matcher is
-  /// popped, or is an error, which is recorded in the parser before the matcher is popped. In both cases the
-  /// character is not consumed so that the parser can offer it to the matcher which is then on top of the stack.
+  /// the retained digits, sign, scale or exponent and moves the parser to the next state of the grammar. A
+  /// character that cannot continue the number either ends it, in which case the value is posted to the backend
+  /// and the matcher is popped, or is an error, which is recorded in the parser before the matcher is popped. In
+  /// both cases the character is not consumed: a character that ended the number is offered to the matcher that
+  /// is then on top of the stack.
   ///
   /// \param parser  The parser that owns this matcher. Its state is read and updated; errors are reported to it and
   ///                completed values are passed to its backend.
   /// \param c  The next UTF-8 code unit of the input.
-  /// \returns true if \p c was consumed as part of the number, false if it ended the number or was an error and
-  ///   must be processed again by another matcher.
+  /// \returns true if \p c was consumed as part of the number, false if it ended the number or was an error.
   bool consume(parser_type& parser, char8_t const c) noexcept {
     auto const next = number_grammar::transition(parser.get_state(), c);
     if (auto const* const err = std::get_if<std::error_code>(&next)) {
@@ -497,7 +497,7 @@ private:
   // between two retainable neighbours of a rounding boundary cannot be rounded
   // correctly from fewer digits, so it is reported as number_out_of_range rather
   // than guessed (see to_floating()). The default (38, or 39 for 128-bit
-  // integers) leaves that possible only for inputs that agree with an exact
+  // integers) is also the minimum: a smaller value is ignored. It leaves that possible only for inputs that agree with an exact
   // halfway point to ~38 digits; 768 digits make it impossible, because no double's
   // halfway point has more than 767 significant digits. The cost: 4 bytes of
   // object state per 32 bits retained (about 340 bytes in total for 768 digits)
@@ -684,15 +684,32 @@ private:
   /// \returns The nearest float_type to w * 10^e10, unsigned, or std::nullopt if it overflows.
   static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t e10, tail_bias bias) noexcept;
 
+  /// \brief Checks whether the value can be computed by Clinger's fast path.
+  ///
+  /// The fast path is exact when no digits were dropped, the retained significand is no larger than
+  /// max_mantissa (so it converts to float_type exactly), and 10^|e10| is itself exact in float_type. It is
+  /// never used when number_parser_fast_path_available is false.
+  ///
+  /// \param e10  The power of ten by which the retained significand is scaled.
+  /// \returns true if fast_path() may be called with \p e10, false otherwise.
   [[nodiscard]] bool can_use_fast_path(std::int64_t e10) const noexcept;
+
+  /// \brief Computes the value with a single floating-point multiplication or division.
+  ///
+  /// Both operands, the significand and 10^|e10|, are exact in float_type, so one correctly rounded IEEE
+  /// operation gives the correctly rounded result.
+  ///
+  /// \pre can_use_fast_path(e10) is true.
+  /// \param e10  The power of ten by which the retained significand is scaled.
+  /// \returns The correctly rounded value, carrying the sign of the input.
   float_type fast_path(std::int64_t e10) const noexcept;
 
   /// \brief Converts the matched number to the nearest floating-point value.
   ///
   /// Values whose decimal magnitude is certainly too large are rejected and values that are certainly too small
-  /// become a signed zero, both without any bignum arithmetic. Unless NUMBER_PARSER_NO_FAST_PATH is defined, a
-  /// value whose significand and power of ten are both exact in float_type is computed with a single, correctly
-  /// rounded, floating-point operation (Clinger's fast path). Otherwise the value is converted with convert().
+  /// become a signed zero, both without any bignum arithmetic. If can_use_fast_path() allows it, the value is
+  /// computed with a single, correctly rounded, floating-point operation (Clinger's fast path; see fast_path()).
+  /// Otherwise the value is converted with convert().
   /// If digits were dropped, the true value lies in the open interval (W, W+1) * 10^e10. Both endpoints are then
   /// converted, and the result is accepted only if they round to the same value.
   ///
