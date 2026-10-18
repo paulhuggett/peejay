@@ -285,6 +285,11 @@ public:
 	limbs_[index] = v; 
   }
 
+  friend big_uint operator+(big_uint lhs, limb_type rhs) noexcept {
+    lhs.mul_add(limb_type{1}, rhs);
+    return lhs;
+  }
+
   /// \brief Sets the value with `value * m + a`.
   ///
   /// This is the multiply-and-accumulate primitive of the class. Appending a decimal

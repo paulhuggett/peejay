@@ -854,15 +854,12 @@ number_matcher<Backend>::to_floating() const noexcept {
 #endif
 
     auto const low = number_matcher::convert(mant_, e10, sticky_ ? tail_bias::above : tail_bias::none);
-    if (sticky_) {
-      // The true value lies in the OPEN interval (W, W+1) * 10^e10, so bracket it
-      // from just above W and just below W+1: both must round to the same value.
-      // (W+1 may itself be an exact halfway point; the value is strictly below it.)
-      big_uint<mant_limbs> upper = mant_;
-      upper.mul_add(1U, 1U);  // upper = mant_ + 1
-      if (number_matcher::convert(upper, e10, tail_bias::below) != low) {
-        return make_error_code(error::number_out_of_range);
-      }
+
+    // The true value lies in the open interval (W, W+1) * 10^e10, so bracket it
+    // from just above W and just below W+1: both must round to the same value.
+    // (W+1 may itself be an exact halfway point; the value is strictly below it.)
+    if (sticky_ && number_matcher::convert(mant_ + 1U, e10, tail_bias::below) != low) {
+      return make_error_code(error::number_out_of_range);
     }
     if (!low.has_value()) {
       return make_error_code(error::number_out_of_range);
