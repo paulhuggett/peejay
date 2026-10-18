@@ -64,9 +64,9 @@ namespace peejay::details {
 
 #if defined(FLT_EVAL_METHOD) && FLT_EVAL_METHOD == 0 && \
     !(defined(PEEJAY_NUMBER_PARSER_NO_FAST_PATH) && PEEJAY_NUMBER_PARSER_NO_FAST_PATH)
-constexpr auto number_parser_no_fast_path = true;
+constexpr auto number_parser_fast_path_available = true;
 #else
-constexpr auto number_parser_no_fast_path = false;
+constexpr auto number_parser_fast_path_available = false;
 #endif
 
 namespace number_grammar {
@@ -85,7 +85,7 @@ class term {
 public:
   constexpr explicit term(terminal const g, state const s) : g_{g}, value_{to_underlying(s)} {}
   constexpr explicit term(error const err) : g_{is_done}, value_{to_underlying(err)} {}
-  constexpr terminal get_terminal() const noexcept { return g_; }
+  [[nodiscard]] constexpr terminal get_terminal() const noexcept { return g_; }
   constexpr explicit operator state() const { return static_cast<state>(value_); }
   constexpr explicit operator error() const { return static_cast<error>(value_); }
 
@@ -140,7 +140,7 @@ inline std::variant<std::error_code, state> transition(state const s, char8_t co
   }
 }
 
-}  // end namespace grammar
+}  // end namespace number_grammar
 
 // Largest k such that 5^k <= max_mantissa, i.e. 10^k is exact in float_type.
 constexpr std::int64_t get_exact_pow10(std::uint64_t max_mantissa) {
@@ -215,17 +215,14 @@ concept parser_integer = requires { typename integer_traits<std::remove_cv_t<T>>
 // hold every value of the signed result type exactly (2^value_bits has
 // floor(value_bits * log10(2)) + 1 digits. 30103/100000 slightly exceeds
 // log10(2)), and is never less than 38.
-constexpr int retained_digits(int const value_bits, int const requested = 0) {
-  int needed = (value_bits * 30103) / 100000 + 1;
-  if (needed < 38) {
-    needed = 38;
-  }
+[[nodiscard]] constexpr int retained_digits(int const value_bits, int const requested = 0) {
+  int const needed = std::max((value_bits * 30103) / 100000 + 1, 38);
   return requested > needed ? requested : needed;
 }
 
 // 32-bit limbs needed to hold any `digits`-digit decimal number
 // (3322/1000 slightly exceeds log2(10), so this rounds up).
-constexpr std::size_t limbs_for_digits(int const digits) {
+[[nodiscard]] constexpr std::size_t limbs_for_digits(int const digits) {
   int const bits = (digits * 3322 + 999) / 1000;
   return static_cast<std::size_t>((bits + 31) / 32);
 }
@@ -518,7 +515,7 @@ private:
       details::retained_digits(int_traits::value_bits, requested_digits);
   static_assert(max_digits <= std::numeric_limits<std::uint16_t>::max(),
                 "policies::max_significant_digits is too large");
-  using digit_count_type = std::conditional_t<(max_digits <= 255), std::uint8_t, std::uint16_t>;
+  using digit_count_type = std::conditional_t<max_digits <= 255U, std::uint8_t, std::uint16_t>;
   // The written exponent saturates here only to avoid overflow while reading an
   // absurdly long exponent. It cannot be a floating-point limit: the exponent
   // is combined with scale_, which grows with the number of mantissa digits
@@ -592,7 +589,7 @@ private:
   // conversion is exact for the decimal itself; `above` / `below` ask for the
   // result for a value infinitesimally larger / smaller, which is how an open
   // interval (W, W+1) * 10^e10 is bracketed.
-  enum class tail_bias { none, above, below };
+  enum class tail_bias : std::uint8_t { none, above, below };
 
   // An exact value n * 2^p2, plus a flag if anything non-zero lies below n.
   struct binary_value {
@@ -619,7 +616,7 @@ private:
   /// \param n  The dividend. It is shifted left in place.
   /// \param count  The power of five by which \p n will be divided. Must not be negative.
   /// \returns The number of bits by which \p n was shifted left. The caller subtracts this from the binary exponent.
-  static std::int64_t scale_up_for_division(work_uint& n, std::int64_t const count) noexcept;
+  static std::int64_t scale_up_for_division(work_uint& n, std::int64_t count) noexcept;
 
   /// \brief Converts a decimal value to an exact binary value.
   ///
@@ -634,8 +631,7 @@ private:
   ///              sets `below`, and tail_bias::none sets neither.
   /// \returns The binary value with its `sticky`, `below` and `overflow` flags set. `overflow` cannot be set if
   ///   work_limbs is large enough, which the constant is chosen to guarantee.
-  static binary_value to_binary(big_uint<mant_limbs> const& w, std::int64_t const e10,
-                                tail_bias const bias) noexcept;
+  static binary_value to_binary(big_uint<mant_limbs> const& w, std::int64_t e10, tail_bias bias) noexcept;
 
   /// \brief Calculates how many low bits must be discarded to form the floating-point mantissa.
   ///
@@ -645,7 +641,7 @@ private:
   /// \param length  The number of significant bits in the binary significand.
   /// \param p2  The power of two by which the significand is scaled.
   /// \returns The number of low bits to discard. Never negative.
-  static std::int64_t discarded_bits(std::int64_t const length, std::int64_t const p2) noexcept;
+  [[nodiscard]] static std::int64_t discarded_bits(std::int64_t length, std::int64_t p2) noexcept;
 
   /// \brief Rounds a truncated mantissa to nearest, ties to even.
   ///
@@ -659,8 +655,7 @@ private:
   /// \param sticky  true if any discarded bit below \p round_bit, or any part of the value already lost, is
   ///                non-zero.
   /// \param below  true if the true value lies infinitesimally below the value represented by the bits.
-  static void round_half_even(rounded_value& r, bool const round_bit, bool const sticky,
-                              bool const below) noexcept;
+  static void round_half_even(rounded_value& r, bool round_bit, bool sticky, bool below) noexcept;
 
   /// \brief Rounds an exact binary value to a floating-point mantissa and exponent.
   ///
@@ -687,10 +682,9 @@ private:
   /// \param e10  The power of ten by which \p w is scaled.
   /// \param bias  Whether the value to be converted lies infinitesimally above or below w * 10^e10, or exactly on it.
   /// \returns The nearest float_type to w * 10^e10, unsigned, or std::nullopt if it overflows.
-  static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t const e10,
-                                           tail_bias const bias) noexcept;
+  static std::optional<float_type> convert(big_uint<mant_limbs> const& w, std::int64_t e10, tail_bias bias) noexcept;
 
-  bool can_use_fast_path(std::int64_t e10) const noexcept;
+  [[nodiscard]] bool can_use_fast_path(std::int64_t e10) const noexcept;
   float_type fast_path(std::int64_t e10) const noexcept;
 
   /// \brief Converts the matched number to the nearest floating-point value.
@@ -757,17 +751,12 @@ std::int64_t number_matcher<Backend>::discarded_bits(std::int64_t const length, 
   if (p2 + shift < -subnormal_bits) {
     shift = -subnormal_bits - p2;
   }
-  if (shift < 0) {
-    // Only reachable if the fast path is disabled: every value that it does not handle has at least mant_bits
-    // significant bits by this point.
-    shift = 0;  // LCOV_EXCL_LINE
-  }
-  return shift;
+  return std::max(shift, std::int64_t{0});
 }
 
 template <backend Backend>
-void number_matcher<Backend>::round_half_even(typename number_matcher<Backend>::rounded_value& r, bool const round_bit, bool const sticky,
-                            bool const below) noexcept {
+void number_matcher<Backend>::round_half_even(rounded_value& r, bool const round_bit, bool const sticky,
+                                              bool const below) noexcept {
   bool const round_up = below ? (round_bit && sticky)
                               : (round_bit && (sticky || (r.mantissa & 1U) != 0));
   if (round_up) {
@@ -781,8 +770,7 @@ void number_matcher<Backend>::round_half_even(typename number_matcher<Backend>::
 }
 
 template <backend Backend>
-number_matcher<Backend>::rounded_value
-number_matcher<Backend>::round_to_mantissa(typename number_matcher<Backend>::binary_value& v) noexcept {
+number_matcher<Backend>::rounded_value number_matcher<Backend>::round_to_mantissa(binary_value& v) noexcept {
   std::int64_t const shift = number_matcher::discarded_bits(
       static_cast<std::int64_t>(v.n.bit_length()), v.p2);
   auto round_bit = false;
@@ -822,7 +810,7 @@ number_matcher<Backend>::convert(big_uint<mant_limbs> const& w, std::int64_t con
 }
 
 template <backend Backend> bool number_matcher<Backend>::can_use_fast_path(std::int64_t const e10) const noexcept {
-  if constexpr (number_parser_no_fast_path) {
+  if constexpr (!number_parser_fast_path_available) {
     return false;
   } else {
     return !sticky_ && e10 >= -exact_pow10 && e10 <= exact_pow10 && mant_.fits_u64() && mant_.low64() <= max_mantissa;
@@ -830,7 +818,7 @@ template <backend Backend> bool number_matcher<Backend>::can_use_fast_path(std::
 }
 template <backend Backend>
 number_matcher<Backend>::float_type number_matcher<Backend>::fast_path(std::int64_t const e10) const noexcept {
-  if constexpr (number_parser_no_fast_path) {
+  if constexpr (!number_parser_fast_path_available) {
     assert(false && "fast path is disabled");
     return 0;
   } else {
