@@ -65,9 +65,9 @@ concept policy = requires(Policy &&p) {
   /// for the parse stack to be fixed.
   requires requires { requires std::integral<decltype(p.max_stack_depth)> && requires { p.max_stack_depth >= 2; }; };
 
-  /// This boolean value determines whether the library tracks the line and column position in the
-  /// input. These values can be used for reporting error to the user but can be disabled if they
-  /// are not required.
+  /// This boolean value determines whether the library tracks the line number in the input.
+  /// This value can be used for reporting error to the user but can be disabled if it is
+  /// not required.
   requires std::same_as<std::remove_cv_t<decltype(p.pos_tracking)>, bool>;
 
   /// The type used for floating point values or no_float_type. The latter indicates that floating point

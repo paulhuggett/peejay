@@ -147,7 +147,7 @@ TEST_F(Object, SingleKvpBadEndObject) {
   p.eof();
   EXPECT_TRUE(p.has_error());
   EXPECT_EQ(p.last_error(), end_object_error) << "Expected the error to be propagated from the end_object() callback";
-  EXPECT_EQ(p.pos(), (coord{.line = 3U, .column = 1U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 3U}));
 }
 
 // NOLINTNEXTLINE
@@ -204,7 +204,7 @@ TEST_F(Object, MisplacedCommaBeforeCloseBrace) {
   input(p, u8R"({"a":1,})"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_key))
       << "JSON error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 8U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 
   std::error_code const& err = p.last_error();
   EXPECT_GE(err.category().message(err.value()).length(), 0);
@@ -216,7 +216,7 @@ TEST_F(Object, NoCommaBeforeProperty) {
   input(p, u8R"({"a":1 "b":1})"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_member))
       << "JSON error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 8U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -225,7 +225,7 @@ TEST_F(Object, TwoCommasBeforeProperty) {
   input(p, u8R"({"a":1,,"b":1})"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_key))
       << "JSON error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 8U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -233,7 +233,7 @@ TEST_F(Object, MissingColon) {
   parser p{null{}};
   p.input(u8R"({"a" 1)"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_colon)) << "JSON error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 6U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 
   std::error_code const& err = p.last_error();
   EXPECT_GE(err.category().message(err.value()).length(), 0);
@@ -268,7 +268,7 @@ TEST_F(Object, KeyIsNotString) {
   input(p, u8"{{}:{}}"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_object_key))
       << "JSON error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 2U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 #if 0
@@ -282,11 +282,11 @@ TEST(ObjectWithLimitedStack, Two) {
   input(parser, u8"123"sv).eof();
   EXPECT_EQ(parser.last_error(), make_error_code(error::expected_object_key))
   << "JSON error was: " << parser.last_error().message();
-  EXPECT_EQ(parser.pos(), (coord{.line = 1U, .column = 2U}));
+  EXPECT_EQ(parser.pos(), (coord{.line = 1U}));
 
   input(parser, u8R"({"key":"value"})"sv).eof();
   EXPECT_EQ(parser.last_error(), make_error_code(error::expected_object_key))
   << "JSON error was: " << parser.last_error().message();
-  EXPECT_EQ(parser.pos(), (coord{.line = 1U, .column = 2U}));
+  EXPECT_EQ(parser.pos(), (coord{.line = 1U}));
 }
 #endif

@@ -48,7 +48,7 @@ namespace peejay {
 
 void PrintTo(coord<true> const& c, std::ostream* os);
 void PrintTo(coord<true> const& c, std::ostream* const os) {
-  *os << "{.line=" << c.line << ", .column=" << c.column << '}';
+  *os << "{.line=" << c.line << '}';
 }
 
 }  // end namespace peejay
@@ -80,8 +80,8 @@ TEST_F(JsonArray, Empty) {
   auto p = make_parser(mock_.proxy);
   p.input(u8"[\n]\n"sv).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 3U, .column = 1U}));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 3U, .column = 1U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 3U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 3U}));
 }
 
 // NOLINTNEXTLINE
@@ -93,7 +93,7 @@ TEST_F(JsonArray, BeginArrayReturnsError) {
   auto p = make_parser(mock_.proxy);
   p.input(u8"[\n]\n"sv);
   EXPECT_EQ(p.last_error(), error) << "Real error was: " << p.last_error().message();
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 2U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -117,7 +117,7 @@ TEST_F(JsonArray, SingleElement) {
   auto const str = u8"[ 1 ]"sv;
   input(p, str).eof();
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = static_cast<unsigned>(str.length()) + 1U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -180,8 +180,8 @@ TEST_F(JsonArray, TwoElements) {
   auto p = make_parser(mock_.proxy);
   input(p, u8"[ 1 ,\n \"hello\" ]"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
-  EXPECT_EQ(p.input_pos(), (coord{.line = 2U, .column = 11U}));
-  EXPECT_EQ(p.pos(), (coord{.line = 2U, .column = 10U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 2U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 2U}));
 }
 
 // NOLINTNEXTLINE
@@ -228,7 +228,7 @@ TEST_F(JsonArray, TrailingComma1) {
   parser p{json_out_callbacks{}};
   input(p, u8"[,]"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token));
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 2U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE
@@ -236,7 +236,7 @@ TEST_F(JsonArray, TrailingComma2) {
   parser p{json_out_callbacks{}};
   input(p, u8"[1,]"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_token));
-  EXPECT_EQ(p.pos(), (coord{.line = 1U, .column = 4U}));
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
 }
 
 // NOLINTNEXTLINE

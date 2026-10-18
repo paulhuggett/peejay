@@ -40,53 +40,40 @@ using coord = peejay::coord<true>;
 TEST(Coord, DefaultCtor) {
   coord c;
   EXPECT_EQ(c.line, 1U);
-  EXPECT_EQ(c.column, 1U);
 }
 
 // NOLINTNEXTLINE
-TEST(Coord, RowThenColumnInit) {
-  coord c{.line = 2U, .column = 3U};
+TEST(Coord, LineInit) {
+  coord c{.line = 2U};
   EXPECT_EQ(c.line, 2U);
-  EXPECT_EQ(c.column, 3U);
-}
-
-// NOLINTNEXTLINE
-TEST(Coord, ColumnThenRowInit) {
-  coord c{.line = 3U, .column = 2U};
-  EXPECT_EQ(c.line, 3U);
-  EXPECT_EQ(c.column, 2U);
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, Eq) {
-  coord lhs{.line = 3U, .column = 2U};
-  coord rhs{.line = 3U, .column = 2U};
+  coord lhs{.line = 3U};
+  coord rhs{.line = 3U};
   EXPECT_TRUE(lhs == rhs);
   EXPECT_FALSE(lhs != rhs);
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, Neq) {
-  coord lhs{.line = 3U, .column = 2U};
-  coord rhs{.line = 5U, .column = 7U};
+  coord lhs{.line = 3U};
+  coord rhs{.line = 5U};
   EXPECT_TRUE(lhs != rhs);
   EXPECT_FALSE(lhs == rhs);
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, Lt) {
-  EXPECT_TRUE((coord{.line = 3U, .column = 1U} < coord{.line = 4U, .column = 1U}));
-  EXPECT_TRUE((coord{.line = 3U, .column = 2U} < coord{.line = 4U, .column = 1U}));
-  EXPECT_TRUE((coord{.line = 3U, .column = 1U} < coord{.line = 3U, .column = 2U}));
-  EXPECT_FALSE((coord{.line = 4U, .column = 1U} < coord{.line = 3U, .column = 2U}));
+  EXPECT_TRUE((coord{.line = 3U} < coord{.line = 4U}));
+  EXPECT_FALSE((coord{.line = 4U} < coord{.line = 3U}));
   EXPECT_FALSE(coord{} < coord{});
 }
 
 // NOLINTNEXTLINE
 TEST(Coord, LtEq) {
-  EXPECT_TRUE((coord{.line = 3U, .column = 1U} <= coord{.line = 4U, .column = 1U}));
-  EXPECT_TRUE((coord{.line = 3U, .column = 2U} <= coord{.line = 4U, .column = 1U}));
-  EXPECT_TRUE((coord{.line = 3U, .column = 1U} <= coord{.line = 3U, .column = 2U}));
-  EXPECT_FALSE((coord{.line = 4U, .column = 1U} <= coord{.line = 3U, .column = 2U}));
+  EXPECT_TRUE((coord{.line = 3U} <= coord{.line = 4U}));
+  EXPECT_FALSE((coord{.line = 4U} <= coord{.line = 3U}));
   EXPECT_TRUE(coord{} <= coord{});
 }

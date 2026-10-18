@@ -74,9 +74,7 @@ private:
   static bool body(parser_type& parser, char8_t const code_unit) {
     switch (code_unit) {
     case ' ':
-    case '\t':
-      // TODO(paul) tab expansion.
-      break;
+    case '\t': break;
     case '\n': parser.advance_row(); break;
     case '\r':
       parser.advance_row();
@@ -94,11 +92,7 @@ private:
   /// if the character should be treated as whitespace.
   static bool crlf(parser_type& parser, char8_t const code_unit) {
     parser.stack_.top() = state::whitespace_start;
-    if (code_unit != '\n') {
-      return false;
-    }
-    parser.reset_column();
-    return true;
+    return code_unit == '\n';
   }
 };
 

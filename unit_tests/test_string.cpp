@@ -58,7 +58,7 @@ TEST_F(String, EmptyDoubleQuote) {
   input(p, u8R"("")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 3U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -70,7 +70,7 @@ TEST_F(String, SimpleDoubleQuote) {
   p.input(u8R"("hello")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 8U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -83,7 +83,7 @@ TEST_F(String, UnterminatedDoubleQuote) {
   std::error_code const& err = p.last_error();
   EXPECT_GE(err.category().message(err.value()).length(), 0);
 
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 7U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -95,7 +95,7 @@ TEST_F(String, EscapeN) {
   input(p, u8R"("a\n")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 6U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -113,7 +113,7 @@ TEST_F(String, BadEscape1) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("a\qb")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 4U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 
   std::error_code const& err = p.last_error();
@@ -128,7 +128,7 @@ TEST_F(String, BadEscape2) {
   auto const *const b = std::bit_cast<char8_t const *>(input.data());
   p.input(std::ranges::subrange{b, b + input.size()}).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 3U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -137,7 +137,7 @@ TEST_F(String, BackslashQuoteUnterminated) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("a\")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_close_quote));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 5U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -146,7 +146,7 @@ TEST_F(String, TrailingBackslashUnterminated) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("a\)"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_close_quote));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 4U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -166,7 +166,6 @@ TEST_F(String, FourWaysToWriteSolidus) {
 // NOLINTNEXTLINE
 TEST_F(String, GCleffUtf8) {
   // Encoding for MUSICAL SYMBOL G CLEF (U+1D11E) expressed in UTF-8
-  // Note that the 4 bytes making up the code point count as a single column.
   std::array const gclef{static_cast<char8_t>(0xF0), static_cast<char8_t>(0x9D), static_cast<char8_t>(0x84),
                          static_cast<char8_t>(0x9E)};
   EXPECT_CALL(mock_.callbacks, string_value(std::u8string_view{gclef.data(), gclef.size()})).Times(1);
@@ -174,14 +173,14 @@ TEST_F(String, GCleffUtf8) {
   auto p = make_parser(mock_.proxy);
 
   std::vector<char8_t> src;
-  src.push_back(u8'"');  // code point 1
+  src.push_back(u8'"');
   std::ranges::copy(gclef, std::back_inserter(src));
-  src.push_back(u8'"');  // code point 3
+  src.push_back(u8'"');
   p.input(src).eof();
 
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 4U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -193,7 +192,7 @@ TEST_F(String, SlashUnicodeUpper) {
   input(p, u8R"("\u002F")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 9U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -206,7 +205,7 @@ TEST_F(String, SlashUnicodeLower) {
   input(p, u8R"("\u00af")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 9U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -220,7 +219,7 @@ TEST_F(String, FourFs) {
   input(p, u8R"("\uFFFF")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 9U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -236,7 +235,7 @@ TEST_F(String, TwoUtf16Chars) {
   input(p, u8R"("\u214B\u30A1")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 15U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -252,7 +251,7 @@ TEST_F(String, Utf16Surrogates) {
   input(p, u8R"("\uD834\uDD1E")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero but was " << p.last_error().message();
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 15U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -267,7 +266,7 @@ TEST_F(String, Utf16HighWithNoLowSurrogate) {
   std::error_code const& err = p.last_error();
   EXPECT_GE(err.category().message(err.value()).length(), 0);
 
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 13U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -277,7 +276,7 @@ TEST_F(String, Utf16HighFollowedByUtf8Char) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\uD834!")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 8U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -286,7 +285,7 @@ TEST_F(String, Utf16HighWithMissingLowSurrogate) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\uDD1E\u30A1")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 7U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -295,7 +294,7 @@ TEST_F(String, Utf16HighSurrogateFollowedByHighSurrogate) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\uD800\uD800")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 13U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -304,7 +303,7 @@ TEST_F(String, ControlCharacter) {
   auto p = make_parser(mock_.proxy);
   input(p, u8"\"\t\""sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 2U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -316,7 +315,7 @@ TEST_F(String, ControlCharacterUTF16) {
   input(p, u8R"("\u0009")"sv).eof();
   EXPECT_FALSE(p.has_error()) << "Expected the parse to succeed";
   EXPECT_FALSE(p.last_error()) << "Expected the parse error to be zero";
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 9U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -326,7 +325,7 @@ TEST_F(String, Utf16LowWithNoHighSurrogate) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\uD834")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 8U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -335,7 +334,7 @@ TEST_F(String, SlashBadHexChar) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\u00xf")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_hex_char));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 6U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 
   std::error_code const& err = p.last_error();
@@ -347,7 +346,7 @@ TEST_F(String, PartialHexChar) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\u00)"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::expected_close_quote));
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 6U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -356,7 +355,7 @@ TEST_F(String, Escape0Disabled) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\0")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char)) << "Error was: " << p.last_error().message();
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 3U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
@@ -365,7 +364,7 @@ TEST_F(String, EscapeVDisabled) {
   auto p = make_parser(mock_.proxy);
   input(p, u8R"("\v")"sv).eof();
   EXPECT_EQ(p.last_error(), make_error_code(error::invalid_escape_char)) << "Error was: " << p.last_error().message();
-  EXPECT_EQ(p.input_pos(), (coord{.line = 1U, .column = 3U}));
+  EXPECT_EQ(p.input_pos(), (coord{.line = 1U}));
   EXPECT_EQ(p.pos(), p.input_pos());
 }
 
