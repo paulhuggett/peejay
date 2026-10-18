@@ -65,8 +65,15 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          find . -name \*.\?pp -not -path "$BUILD_DIR*/*" -not -path ./klee/\* -not -path ./systemtests/\* -print0 | \
-          xargs -0 "clang-tidy-$CLANG_VERSION" "-p=$BUILD_DIR/compile_commands.json" | \
+          find . -name \*.\?pp                          \
+                 -not -path "$BUILD_DIR*/*"             \
+                 -not -path ./klee/\*                   \
+                 -not -path ./systemtests/\*            \
+                 -not -path ./unit_tests/\*             \
+                 -print0 |                              \
+          xargs -0                                      \
+                "clang-tidy-$CLANG_VERSION"             \
+                "-p=$BUILD_DIR/compile_commands.json" | \
           tee -a "${{ env.CLANG_TIDY_OUT }}"
 
       # Convert the clang-tidy output to a format that the Codacy API accepts
