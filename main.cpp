@@ -88,19 +88,36 @@ private:
   }
 };
 
+class deleter {
+public:
+  constexpr explicit deleter(bool const enabled) : enabled_{enabled} {}
+  void operator()(std::istream* ptr) const noexcept {
+    if (enabled_) {
+      delete ptr;
+    }
+  }
+
+private:
+  bool enabled_ = false;
+};
+
 }  // end anonymous namespace
 
 int main(int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
-  if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " <file>\n";
-    return EXIT_FAILURE;
-  }
 
-  std::ifstream in{argv[1], std::ios::binary};
-  if (!in) {
-    std::cerr << "Could not open \"" << argv[1] << "\"\n";
-    return EXIT_FAILURE;
+  using uptr = std::unique_ptr<std::istream, deleter>;
+  uptr in{nullptr, deleter{false}};
+  std::string_view file_name = "<stdin>";
+  if (argc < 2) {
+    in = uptr{&std::cin, deleter{false}};
+  } else {
+    file_name = std::string_view{argv[1]};
+    in = uptr{new std::ifstream{argv[1], std::ios::binary}, deleter{true}};
+    if (!*in) {
+      std::cerr << "Could not open \"" << file_name << "\"\n";
+      return EXIT_FAILURE;
+    }
   }
 
   peejay::parser<print_tokens> p;
@@ -113,8 +130,8 @@ int main(int argc, char const* argv[]) {
   std::size_t offset = 0;
   while (in && utf8.well_formed()) {
     // char may alias any object type, so filling the char8_t array through a char* is OK.
-    in.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-    auto const n = static_cast<std::size_t>(in.gcount());
+    in->read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
+    auto const n = static_cast<std::size_t>(in->gcount());
     if (n == 0) {
       break;
     }
@@ -132,20 +149,20 @@ int main(int argc, char const* argv[]) {
 
   p.input(std::span{trans_out.begin(), utf8.end_cp(trans_out.begin())});
 
-  if (in.bad()) {
-    std::cerr << argv[1] << ": error: I/O error\n";
+  if (in->bad()) {
+    std::cerr << file_name << ": error: I/O error\n";
     exit_code = EXIT_FAILURE;
   } else if (!utf8.well_formed()) {
-    std::cerr << argv[1] << ": error: ill-formed UTF-8 at byte offset " << offset << '\n';
+    std::cerr << file_name << ": error: ill-formed UTF-8 at byte offset " << offset << '\n';
     exit_code = EXIT_FAILURE;
   } else if (utf8.partial()) {
-    std::cerr << argv[1] << ": error: input ends with an incomplete UTF-8 sequence\n";
+    std::cerr << file_name << ": error: input ends with an incomplete UTF-8 sequence\n";
     exit_code = EXIT_FAILURE;
   } else {
     // Tell the parser that the input has ended.
     p.eof();
     if (auto const err = p.last_error()) {
-      std::cerr << argv[1] << ':' << p.pos().line << ": error: " << err.message() << '\n';
+      std::cerr << file_name << ':' << p.pos().line << ": error: " << err.message() << '\n';
       exit_code = EXIT_FAILURE;
     }
   }
