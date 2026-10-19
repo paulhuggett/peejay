@@ -104,18 +104,16 @@ int main(int argc, char const* argv[]) {
   }
 
   peejay::parser<print_tokens> p;
-  std::array<char8_t, 256> buffer;
+  std::array<char8_t, 256> buffer{};
+  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> trans_out{};
   // The UTF-8 to UTF-8 transcoder is used purely to validate the incoming byte stream:
   // for well-formed input its output is identical to its input, so we discard it and
   // pass the original bytes to the parser.
   icubaby::t8_8 utf8;
-  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> discard;
   std::size_t offset = 0;
   while (in && utf8.well_formed()) {
     // char may alias any object type, so filling the char8_t array through a char* is OK.
     in.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-    // gcount() is still correct after a short final read, even though that read
-    // sets eofbit and failbit.
     auto const n = static_cast<std::size_t>(in.gcount());
     if (n == 0) {
       break;
@@ -123,7 +121,7 @@ int main(int argc, char const* argv[]) {
     // Count the bytes that are well formed and give just those to the parser.
     std::size_t good = 0;
     for (; good < n; ++good) {
-      utf8(buffer[good], discard.begin());
+      utf8(buffer[good], trans_out.begin());
       if (!utf8.well_formed()) {
         break;
       }
@@ -132,21 +130,24 @@ int main(int argc, char const* argv[]) {
     p.input(std::span{buffer.data(), good});
   }
 
-  bool const truncated = utf8.well_formed() && utf8.partial();
-  // The parser must always be told that the input has ended, even if we stopped early.
-  p.eof();
+  p.input(std::span{trans_out.begin(), utf8.end_cp(trans_out.begin())});
+
   if (in.bad()) {
-    std::cerr << "I/O error reading \"" << argv[1] << "\"\n";
-    exit_code = EXIT_FAILURE;
-  } else if (truncated) {
-    std::cerr << "Error: input ends with an incomplete UTF-8 sequence\n";
+    std::cerr << argv[1] << ": error: I/O error\n";
     exit_code = EXIT_FAILURE;
   } else if (!utf8.well_formed()) {
-    std::cerr << "Error: ill-formed UTF-8 at byte offset " << offset << '\n';
+    std::cerr << argv[1] << ": error: ill-formed UTF-8 at byte offset " << offset << '\n';
     exit_code = EXIT_FAILURE;
-  } else if (auto const err = p.last_error()) {
-    std::cerr << "Error: " << err.message() << '\n';
+  } else if (utf8.partial()) {
+    std::cerr << argv[1] << ": error: input ends with an incomplete UTF-8 sequence\n";
     exit_code = EXIT_FAILURE;
+  } else {
+    // Tell the parser that the input has ended.
+    p.eof();
+    if (auto const err = p.last_error()) {
+      std::cerr << argv[1] << ':' << p.pos().line << ": error: " << err.message() << '\n';
+      exit_code = EXIT_FAILURE;
+    }
   }
   return exit_code;
 }
