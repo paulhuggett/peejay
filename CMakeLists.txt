@@ -310,7 +310,7 @@ endif ()
 FetchContent_MakeAvailable(jsontestsuite)
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
-  add_custom_target(check
+  add_custom_target(pj2-check
     "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_jsontestsuite.py"
       "$<TARGET_FILE:pj2-dump>" "${jsontestsuite_SOURCE_DIR}/test_parsing"
     DEPENDS pj2-dump
