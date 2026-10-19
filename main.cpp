@@ -29,9 +29,14 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+#include <array>
+#include <codecvt>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <ranges>
+#include <span>
 #include <string>
 
 #include "peejay/json.hpp"
@@ -84,15 +89,42 @@ private:
 
 }  // end anonymous namespace
 
-int main() {
-  using namespace std::string_view_literals;
-
+int main(int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
+  if (argc < 2) {
+    std::cerr << "Usage: " << argv[0] << " <file>\n";
+    return EXIT_FAILURE;
+  }
+
+  std::ifstream in{argv[1], std::ios::binary};
+  if (!in) {
+    std::cerr << "Could not open \"" << argv[1] << "\"\n";
+    return EXIT_FAILURE;
+  }
+
   peejay::parser<print_tokens> p;
-  p.input(u8R"(  { "a":123, "b" : [false, null, "c", 3.14], "c":true }  )"sv).eof();
-  if (auto const err = p.last_error()) {
-    std::cout << "Error: " << err.message() << '\n';
+  std::array<char8_t, 256> buffer;
+  while (in) {
+    // char may alias any object type, so filling the char8_t array through a char* is OK.
+    in.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
+    // gcount() is still correct after a short final read, even though that read
+    // sets eofbit and failbit.
+    auto const n = static_cast<std::size_t>(in.gcount());
+    if (n == 0) {
+      break;
+    }
+    p.input(std::span{buffer.data(), n});
+  }
+
+  if (in.bad()) {
+    std::cerr << "I/O error reading \"" << argv[1] << "\"\n";
     exit_code = EXIT_FAILURE;
+  } else {
+    p.eof();
+    if (auto const err = p.last_error()) {
+      std::cerr << "Error: " << err.message() << '\n';
+      exit_code = EXIT_FAILURE;
+    }
   }
   return exit_code;
 }
