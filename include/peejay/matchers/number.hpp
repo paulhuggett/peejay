@@ -78,19 +78,19 @@ constexpr bool is_digit(char8_t const c) noexcept { return c >= '0' && c <= '9';
 constexpr bool is_digit9(char8_t const c) noexcept { return c >= '1' && c <= '9'; }
 constexpr bool is_exp(char8_t const c) noexcept { return c == 'e' || c == 'E'; }
 constexpr bool is_sign(char8_t const c) noexcept { return c == '+' || c == '-'; }
-constexpr bool is_done(char8_t const) noexcept { return true; }
+constexpr bool is_done(char8_t const c [[maybe_unused]]) noexcept { return true; }
 
-using terminal = bool (*)(char8_t);
+using is_terminal_fn = bool (*)(char8_t);
 class term {
 public:
-  constexpr explicit term(terminal const g, state const s) : g_{g}, value_{to_underlying(s)} {}
+  constexpr explicit term(is_terminal_fn const g, state const s) : g_{g}, value_{to_underlying(s)} {}
   constexpr explicit term(error const err) : g_{is_done}, value_{to_underlying(err)} {}
-  [[nodiscard]] constexpr terminal get_terminal() const noexcept { return g_; }
+  [[nodiscard]] constexpr is_terminal_fn get_terminal() const noexcept { return g_; }
   constexpr explicit operator state() const { return static_cast<state>(value_); }
   constexpr explicit operator error() const { return static_cast<error>(value_); }
 
 private:
-  terminal g_;
+  is_terminal_fn g_;
   std::common_type_t<std::underlying_type_t<state>, std::underlying_type_t<peejay::error>> value_;
 };
 
