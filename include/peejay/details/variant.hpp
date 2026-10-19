@@ -140,6 +140,12 @@ public:
   void destroy() noexcept(std::is_nothrow_destructible_v<T>) {
     assert((holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>)) &&
            "The variant does not hold the expected type");
+#if PEEJAY_MPROTECT_VARIANT
+    if (contents_.get() == nullptr) {
+      holds_ = type_list::npos;
+      return;
+    }
+#endif  // PEEJAY_MPROTECT_VARIANT
     std::destroy_at(std::bit_cast<T *>(&contents_[0]));
 #ifndef NDEBUG
     std::memset(&contents_[0], 0, sizeof(contents_));
@@ -214,9 +220,7 @@ PEEJAY_CLANG_DIAG_POP
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-variant<Members>::variant(variant&& other) noexcept : contents_{std::move(other.contents_)} {
-  holds_ = other.holds_;
-  other.holds_ = type_list::npos;
+variant<Members>::variant(variant&& other) noexcept : holds_{other.holds_}, contents_{std::move(other.contents_)} {
 }
 
 template <type_list::sequence Members>
@@ -226,7 +230,6 @@ auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
   other.protect(/*usable=*/true);
   contents_ = std::move(other.contents_);
   holds_ = other.holds_;
-  other.holds_ = type_list::npos;
   other.protect(/*usable=*/other.holds_ != type_list::npos);
   this->protect(/*usable=*/holds_ != type_list::npos);
   return *this;
