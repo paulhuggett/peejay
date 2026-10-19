@@ -65,7 +65,8 @@ void parser<Backend>::push_terminal(Args &&...args) {
 
 // pop
 // ~~~
-template <backend Backend> void parser<Backend>::pop() {
+template <backend Backend> void parser<Backend>::pop() noexcept {
+  assert(!stack_.empty() && "The parse stack must contain at least one matcher");
   using enum details::group;
 
   switch (get_group(stack_.top())) {

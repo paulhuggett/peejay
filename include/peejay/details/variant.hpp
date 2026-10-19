@@ -280,7 +280,6 @@ void variant<Members>::protect(bool usable) noexcept {
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 variant<Members>::variant(variant&& other) noexcept : holds_{other.holds_} {
-  other.holds_ = type_list::npos;
   // memcpy() is safe here because we assert that the contained member types are trivially copyable.
   std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
 }
@@ -288,7 +287,6 @@ template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
   holds_ = other.holds_;
-  other.holds_ = type_list::npos;
   std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
   return *this;
 }
