@@ -140,3 +140,7 @@ jobs:
       - name: Build
         shell: bash
         run: cmake --build "${{ github.workspace }}/build" --config ${{ matrix.build_type }}
+
+      - name: Check
+        shell: bash
+        run: cmake --build "${{ github.workspace }}/build" --config ${{ matrix.build_type }} --target pj2-check
