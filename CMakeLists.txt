@@ -289,6 +289,7 @@ add_executable(pj2-dump main.cpp)
 setup_peejay_target(pj2-dump)
 target_link_libraries(pj2-dump PRIVATE peejay)
 add_test(NAME pj2-dump COMMAND sh -c "echo [1] | $<TARGET_FILE:pj2-dump>")
+add_test(NAME "pj2-dump (missing file)" COMMAND sh -c "! $<TARGET_FILE:pj2-dump> DOES_NOT_EXIST")
 
 if (TARGET gtest)
   set (prelink_target pj2-dump)

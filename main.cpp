@@ -115,7 +115,7 @@ int main(int argc, char const* argv[]) {
     file_name = std::string_view{argv[1]};
     in = uptr{new std::ifstream{argv[1], std::ios::binary}, deleter{true}};
     if (!*in) {
-      std::cerr << "Could not open \"" << file_name << "\"\n";
+      std::cerr << file_name << ": error: file not found\n";
       return EXIT_FAILURE;
     }
   }
