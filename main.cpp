@@ -122,7 +122,7 @@ int main(int argc, char const* argv[]) {
 
   peejay::parser<print_tokens> p;
   std::array<char8_t, 256> buffer{};
-  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> trans_out{};
+  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> discard{};
   // The UTF-8 to UTF-8 transcoder is used purely to validate the incoming byte stream:
   // for well-formed input its output is identical to its input, so we discard it and
   // pass the original bytes to the parser.
@@ -138,7 +138,7 @@ int main(int argc, char const* argv[]) {
     // Count the bytes that are well formed and give just those to the parser.
     std::size_t good = 0;
     for (; good < n; ++good) {
-      utf8(buffer[good], trans_out.begin());
+      utf8(buffer[good], discard.begin());
       if (!utf8.well_formed()) {
         break;
       }
@@ -147,11 +147,9 @@ int main(int argc, char const* argv[]) {
     p.input(std::span{buffer.data(), good});
   }
 
-  p.input(std::span{trans_out.begin(), utf8.end_cp(trans_out.begin())});
-
   if (in->bad()) {
-    std::cerr << file_name << ": error: I/O error\n";
-    exit_code = EXIT_FAILURE;
+    std::cerr << file_name << ": error: I/O error\n";  // LCOV_EXCL_LINE: I/O failure isn't easy to inject.
+    exit_code = EXIT_FAILURE;                          // LCOV_EXCL_LINE: I/O failure isn't easy to inject.
   } else if (!utf8.well_formed()) {
     std::cerr << file_name << ": error: ill-formed UTF-8 at byte offset " << offset << '\n';
     exit_code = EXIT_FAILURE;
@@ -159,6 +157,7 @@ int main(int argc, char const* argv[]) {
     std::cerr << file_name << ": error: input ends with an incomplete UTF-8 sequence\n";
     exit_code = EXIT_FAILURE;
   } else {
+    assert(utf8.end_cp(discard.begin()) == discard.begin() && "end_cp() should not produce any output");
     // Tell the parser that the input has ended.
     p.eof();
     if (auto const err = p.last_error()) {
