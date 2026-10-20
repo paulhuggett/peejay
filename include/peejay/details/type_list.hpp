@@ -222,11 +222,15 @@ template <sequence Seq, typename T>
 struct index_of : std::integral_constant<std::size_t, details::index_of<Seq, T>::value> {};
 
 /// A helper variable template for convenient use of index_of<Seq, T>::value.
-template <sequence Seq, typename T> inline constexpr bool index_of_v = index_of<Seq, T>::value;
+template <sequence Seq, typename T> inline constexpr std::size_t index_of_v = index_of<Seq, T>::value;
+
 
 static_assert(index_of<type_list<double, char, bool, double>, double>::value == 0, "type_list index_of<> is broken");
 static_assert(index_of<type_list<double, char, bool, double>, char>::value == 1, "type_list index_of<> is broken");
 static_assert(index_of<type_list<double, char, bool>, long>::value == npos, "type_list index_of<> is broken");
+static_assert(index_of_v<type_list<double, char, bool, double>, double> == 0, "type_list index_of_v<> is broken");
+static_assert(index_of_v<type_list<double, char, bool, double>, bool> == 2, "type_list index_of_v<> is broken");
+static_assert(index_of_v<type_list<double, char, bool>, long> == npos, "type_list index_of_v<> is broken");
 
 //                 *
 // _ __  __ ___ __ *
