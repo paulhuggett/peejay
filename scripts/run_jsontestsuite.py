@@ -66,7 +66,6 @@ def is_inside_project_tree(inp:Union[pathlib.Path, str]) -> bool:
     project_tree = pathlib.Path(__file__).parents[1]
     for root, dirs, _ in project_tree.walk(on_error=print):
         r = pathlib.Path(root).resolve()
-        a = any(r / d == inp for d in dirs)
         ok = ok or any(r / d == inp for d in dirs)
     return ok
 
