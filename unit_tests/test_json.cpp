@@ -72,6 +72,15 @@ TEST_F(Json, JustEof) {
 }
 
 // NOLINTNEXTLINE
+TEST_F(Json, NoEof) {
+  parser p{json_out_callbacks{}};
+  input(p, u8"[ 8"sv);
+  // There shouldn't yet be an error because we haven't told the parser that this is the end.
+  EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
+  EXPECT_EQ(p.pos(), (coord{.line = 1U}));
+}
+
+// NOLINTNEXTLINE
 TEST_F(Json, StringInput) {
   parser p{json_out_callbacks{}};
   std::u8string const res = input(p, keyword).eof();

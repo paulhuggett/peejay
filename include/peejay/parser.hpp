@@ -149,7 +149,12 @@ public:
   constexpr parser(parser &&other) noexcept = default;
   explicit parser(std::remove_reference_t<Backend> &backend) : backend_{backend} { this->init_stack(); }
   explicit parser(std::remove_reference_t<Backend> &&backend) : backend_{std::move(backend)} { this->init_stack(); }
-  constexpr ~parser() noexcept = default;
+  ~parser() noexcept {
+    // Pop any states that may remain on the stack.
+    while (!stack_.empty()) {
+      this->pop();
+    }
+  }
 
   parser &operator=(parser const &other) = default;
   parser &operator=(parser &&other) noexcept = default;
@@ -268,7 +273,9 @@ private:
     assert(get_group(stack_.top()) == get_group(state));
     stack_.top() = state;
   }
-  void pop();
+  /// Remove the top-most match from the parse stack.
+  /// \pre  The stack must contain at least one element
+  void pop() noexcept;
 
   void push_number_matcher() { push_terminal<details::state::number_start>(); }
   void push_string_matcher(bool const object_key) { push_terminal<details::state::string_start>(object_key); }

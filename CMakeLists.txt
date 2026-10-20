@@ -55,6 +55,11 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/paulhuggett/icubaby.git
   GIT_TAG HEAD
 )
+FetchContent_Declare(
+  jsontestsuite
+  GIT_REPOSITORY https://github.com/nst/JSONTestSuite.git
+  GIT_TAG HEAD
+)
 
 # A custom target from which the installs will hang.
 add_custom_target (
@@ -280,13 +285,14 @@ add_dependencies (install-peejay peejay)
 #
 # dump
 #
-add_executable(dump main.cpp)
-setup_peejay_target(dump)
-target_link_libraries(dump PUBLIC peejay)
-add_test(NAME dump COMMAND dump)
+add_executable(pj2-dump main.cpp)
+setup_peejay_target(pj2-dump)
+target_link_libraries(pj2-dump PRIVATE peejay)
+add_test(NAME pj2-dump COMMAND sh -c "echo [1] | $<TARGET_FILE:pj2-dump>")
+add_test(NAME "pj2-dump (missing file)" COMMAND sh -c "! $<TARGET_FILE:pj2-dump> DOES_NOT_EXIST")
 
 if (TARGET gtest)
-  set (prelink_target dump)
+  set (prelink_target pj2-dump)
   set (test_target pj2-unittests)
   set (out_xml "${CMAKE_BINARY_DIR}/${test_target}.xml")
   add_custom_command (
@@ -298,5 +304,17 @@ if (TARGET gtest)
     BYPRODUCTS ${out_xml}
     VERBATIM
   )
-  add_dependencies(dump ${test_target})
+  add_dependencies(pj2-dump ${test_target})
 endif ()
+
+
+FetchContent_MakeAvailable(jsontestsuite)
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_FOUND)
+  add_custom_target(pj2-check
+    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_jsontestsuite.py"
+      "$<TARGET_FILE:pj2-dump>" "${jsontestsuite_SOURCE_DIR}/test_parsing"
+    DEPENDS pj2-dump
+    VERBATIM
+  )
+endif()

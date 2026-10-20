@@ -29,11 +29,17 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+#include <array>
+#include <codecvt>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <ranges>
+#include <span>
 #include <string>
 
+#include "icubaby/icubaby.hpp"
 #include "peejay/json.hpp"
 
 using namespace std::literals::string_view_literals;
@@ -82,17 +88,82 @@ private:
   }
 };
 
+class deleter {
+public:
+  constexpr explicit deleter(bool const enabled) : enabled_{enabled} {}
+  void operator()(std::istream* ptr) const noexcept {
+    if (enabled_) {
+      delete ptr;
+    }
+  }
+
+private:
+  bool enabled_ = false;
+};
+
 }  // end anonymous namespace
 
-int main() {
-  using namespace std::string_view_literals;
-
+int main(int argc, char const* argv[]) {
   int exit_code = EXIT_SUCCESS;
+
+  using uptr = std::unique_ptr<std::istream, deleter>;
+  uptr in{nullptr, deleter{false}};
+  std::string_view file_name = "<stdin>";
+  if (argc < 2) {
+    in = uptr{&std::cin, deleter{false}};
+  } else {
+    file_name = std::string_view{argv[1]};
+    in = uptr{new std::ifstream{argv[1], std::ios::binary}, deleter{true}};
+    if (!*in) {
+      std::cerr << file_name << ": error: file not found\n";
+      return EXIT_FAILURE;
+    }
+  }
+
   peejay::parser<print_tokens> p;
-  p.input(u8R"(  { "a":123, "b" : [false, null, "c", 3.14], "c":true }  )"sv).eof();
-  if (auto const err = p.last_error()) {
-    std::cout << "Error: " << err.message() << '\n';
+  std::array<char8_t, 256> buffer{};
+  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> discard{};
+  // The UTF-8 to UTF-8 transcoder is used purely to validate the incoming byte stream:
+  // for well-formed input its output is identical to its input, so we discard it and
+  // pass the original bytes to the parser.
+  icubaby::t8_8 utf8;
+  std::size_t offset = 0;
+  while (in && utf8.well_formed()) {
+    // char may alias any object type, so filling the char8_t array through a char* is OK.
+    in->read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
+    auto const n = static_cast<std::size_t>(in->gcount());
+    if (n == 0) {
+      break;
+    }
+    // Count the bytes that are well formed and give just those to the parser.
+    std::size_t good = 0;
+    for (; good < n; ++good) {
+      utf8(buffer[good], discard.begin());
+      if (!utf8.well_formed()) {
+        break;
+      }
+    }
+    offset += good;
+    p.input(std::span{buffer.data(), good});
+  }
+
+  if (in->bad()) {
+    std::cerr << file_name << ": error: I/O error\n";  // LCOV_EXCL_LINE: I/O failure isn't easy to inject.
+    exit_code = EXIT_FAILURE;                          // LCOV_EXCL_LINE: I/O failure isn't easy to inject.
+  } else if (!utf8.well_formed()) {
+    std::cerr << file_name << ": error: ill-formed UTF-8 at byte offset " << offset << '\n';
     exit_code = EXIT_FAILURE;
+  } else if (utf8.partial()) {
+    std::cerr << file_name << ": error: input ends with an incomplete UTF-8 sequence\n";
+    exit_code = EXIT_FAILURE;
+  } else {
+    assert(utf8.end_cp(discard.begin()) == discard.begin() && "end_cp() should not produce any output");
+    // Tell the parser that the input has ended.
+    p.eof();
+    if (auto const err = p.last_error()) {
+      std::cerr << file_name << ':' << p.pos().line << ": error: " << err.message() << '\n';
+      exit_code = EXIT_FAILURE;
+    }
   }
   return exit_code;
 }
