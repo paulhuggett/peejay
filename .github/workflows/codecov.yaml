@@ -46,6 +46,9 @@ jobs:
         run: |
           cmake --build "$BUILD_DIR" --verbose
 
+      - name: Check
+        run: cmake --build "$BUILD_DIR" --target pj2-check
+
       - name: Run CTest
         run: |
           ctest --test-dir "$BUILD_DIR"
