@@ -70,4 +70,18 @@ TEST(Variant, EmplaceAndDestroy) {
 #endif
 }
 
+// NOLINTNEXTLINE
+TEST(Variant, HoldsThirdMember) {
+  variant<type_list<char, int, long>> v;
+  v.emplace<long>(42L);
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), 2);
+#endif
+  EXPECT_EQ(v.get<long>(), 42L);
+  v.destroy<long>();
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), peejay::type_list::npos);
+#endif
+}
+
 }  // end anonymous namespace
