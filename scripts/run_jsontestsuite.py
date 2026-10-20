@@ -23,6 +23,7 @@ import os
 import pathlib
 import subprocess
 import sys
+from typing import Union
 
 EXPECTED_RESULT = "EXPECTED_RESULT"
 SHOULD_HAVE_PASSED = "SHOULD_HAVE_PASSED"
@@ -82,6 +83,10 @@ class CheckPathAction(argparse.Action):
 def run_test(parser: pathlib.Path, path: pathlib.Path, timeout: float) -> str:
     """Runs the parser on a single test file and returns its status."""
 
+    if not is_inside_project_tree(os.path.dirname(parser.name)):
+        raise ValueError("parser must be inside the project tree")
+    if not is_inside_project_tree(os.path.dirname(path)):
+        raise ValueError("test path must be inside the project tree")
     try:
         status = subprocess.call(
             [str(parser), str(path)],
