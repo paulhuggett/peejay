@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file portab.hpp
+/// \brief Portability helpers: compiler-specific pragmas, unreachable(), and to_underlying().
 #ifndef PEEJAY_DETAILS_PORTAB_HPP
 #define PEEJAY_DETAILS_PORTAB_HPP
 
@@ -38,14 +40,20 @@
 #include <version>
 
 #ifdef __clang__
+/// Emits the pragma \p x when compiling with clang; expands to nothing otherwise.
 #define PEEJAY_CLANG_PRAGMA(x) _Pragma(x)
 #else
+/// Emits the pragma \p x when compiling with clang; expands to nothing otherwise.
 #define PEEJAY_CLANG_PRAGMA(x)
 #endif
 
+/// Saves the current clang diagnostic state.
 #define PEEJAY_CLANG_DIAG_PUSH PEEJAY_CLANG_PRAGMA("clang diagnostic push")
+/// Restores the clang diagnostic state saved by PEEJAY_CLANG_DIAG_PUSH.
 #define PEEJAY_CLANG_DIAG_POP PEEJAY_CLANG_PRAGMA("clang diagnostic pop")
+/// Disables clang's -Wfloat-equal warning.
 #define PEEJAY_CLANG_DIAG_NO_FLOAT_EQUAL PEEJAY_CLANG_PRAGMA("clang diagnostic ignored \"-Wfloat-equal\"")
+/// Disables clang's -Wglobal-constructors warning.
 #define PEEJAY_CLANG_DIAG_NO_GLOBAL_CONSTRUCTORS \
   PEEJAY_CLANG_PRAGMA("clang diagnostic ignored \"-Wglobal-constructors\"")
 
@@ -63,11 +71,13 @@ namespace peejay {
   std::unreachable();
 }
 #elif defined(__GNUC__)  // GCC 4.8+, Clang, Intel and other compilers
+/// Executing unreachable() results in undefined behavior.
 [[noreturn]] inline __attribute__((always_inline)) void unreachable() {
   assert(false && "unreachable");
   __builtin_unreachable();
 }
 #elif defined(_MSC_VER)
+/// Executing unreachable() results in undefined behavior.
 [[noreturn, maybe_unused]] __forceinline void unreachable() {
   assert(false && "unreachable");
   __assume(0);
@@ -75,14 +85,16 @@ namespace peejay {
 #else
 // Unknown compiler so no extension is used, Undefined behavior is still raised
 // by an empty function body and the noreturn attribute.
+/// Executing unreachable() results in undefined behavior.
 [[noreturn, maybe_unused]] inline void unreachable() {
   assert(false && "unreachable");
 }
 #endif
 
-/// Converts an enumeration value to its underlying type
+/// Converts an enumeration value to its underlying type.
 ///
-/// \param e  The enumeration value to convert
+/// \tparam Enum  An enumeration type.
+/// \param e  The enumeration value to convert.
 /// \returns The integer value of the underlying type of Enum, converted from \p e.
 template <typename Enum>
   requires std::is_enum_v<Enum>

@@ -29,6 +29,9 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file uinteger.hpp
+/// \brief Provides peejay::uinteger, which yields the smallest unsigned integral type with at least a given
+///   number of bits.
 #ifndef PEEJAY_DETAILS_UINTEGER_HPP
 #define PEEJAY_DETAILS_UINTEGER_HPP
 
@@ -38,6 +41,10 @@
 
 namespace peejay {
 
+/// \brief Returns the number of bits needed to represent an unsigned value.
+///
+/// \param value  The value to be represented.
+/// \returns The position of the most significant set bit of \p value plus one, or zero if \p value is zero.
 template <std::unsigned_integral T> consteval unsigned bits_required(T value) {
   if (value == 0U) {
     return 0U;
@@ -46,6 +53,8 @@ template <std::unsigned_integral T> consteval unsigned bits_required(T value) {
 }
 
 /// \brief Yields the smallest unsigned integral type with at least \p N bits.
+///
+/// \tparam N  The minimum number of bits. Must be no more than 64.
 template <std::size_t N>
   requires(N <= 64)
 struct uinteger {

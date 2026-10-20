@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file eof.hpp
+/// \brief Provides the matcher for the end of the input.
 #ifndef PEEJAY_MATCHERS_EOF_HPP
 #define PEEJAY_MATCHERS_EOF_HPP
 
@@ -45,9 +47,17 @@
 
 namespace peejay::details {
 
-/// Matches the end of the input.
+/// Matches the end of the input. Only whitespace is permitted between the top-level value and the end of the input.
+///
+/// \tparam Backend  The parser backend type.
 template <backend Backend> class eof_matcher {
 public:
+  /// Consumes a code unit. Whitespace is consumed; any other input raises error::unexpected_extra_input.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   constexpr static bool consume(parser<Backend>& parser, char8_t const code_unit) {
     // Allow whitespace and only whitespace between the top-level object and the end of input.
     if (whitespace(parser, code_unit)) {
@@ -56,6 +66,8 @@ public:
     return parser.set_error_and_pop(error::unexpected_extra_input);
   }
 
+  /// Signals the end of the input. The matcher is popped from the parse stack.
+  /// \param parser  The owning parser instance.
   constexpr static void eof(parser<Backend> &parser) { parser.pop(); }
 };
 

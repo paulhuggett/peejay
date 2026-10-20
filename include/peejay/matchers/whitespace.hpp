@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file whitespace.hpp
+/// \brief Provides the matcher for whitespace.
 #ifndef PEEJAY_MATCHERS_WHITESPACE_HPP
 #define PEEJAY_MATCHERS_WHITESPACE_HPP
 
@@ -43,10 +45,19 @@
 
 namespace peejay::details {
 
+/// Matches a run of whitespace. Line endings (LF, CR, or CR/LF) advance the parser's line number.
+///
+/// \tparam Backend  The parser backend type.
 template <backend Backend> class whitespace_matcher {
 public:
+  /// The type of the owning parser.
   using parser_type = parser<Backend>;
 
+  /// If \p code_unit is a whitespace character, pushes a whitespace matcher onto the parse stack.
+  ///
+  /// \param p  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit is whitespace and a whitespace matcher was pushed, false otherwise.
   static bool whitespace(parser_type& p, char8_t const code_unit) {
     if (code_unit == ' ' || code_unit == '\t' || code_unit == '\n' || code_unit == '\r') {
       p.push_whitespace_matcher();
@@ -55,6 +66,12 @@ public:
     return false;
   }
 
+  /// Consumes a code unit.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   static bool consume(parser_type& parser, char8_t code_unit) {
     switch (parser.stack_.top()) {
       // Handles the LF part of a Windows-style CR/LF pair.
@@ -68,9 +85,16 @@ public:
     }
   }
 
+  /// Signals the end of the input. The matcher is popped from the parse stack.
+  /// \param parser  The owning parser instance.
   static void eof(parser_type &parser) { parser.pop(); }
 
 private:
+  /// Processes a single code unit. Whitespace is consumed; any other code unit causes the matcher to be popped.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false otherwise.
   static bool body(parser_type& parser, char8_t const code_unit) {
     switch (code_unit) {
     case ' ':
@@ -88,14 +112,24 @@ private:
     return true;  // Consume this character.
   }
 
-  /// Processes the second character of a Windows-style CR/LF pair. Returns true
-  /// if the character should be treated as whitespace.
+  /// Processes the character following a CR. If it is LF, it completes a Windows-style CR/LF pair and is
+  /// consumed without advancing the line number a second time.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was LF and has been consumed, false otherwise.
   static bool crlf(parser_type& parser, char8_t const code_unit) {
     parser.stack_.top() = state::whitespace_start;
     return code_unit == '\n';
   }
 };
 
+/// If \p code_unit is a whitespace character, pushes a whitespace matcher onto the parse stack.
+///
+/// \tparam Backend  The parser backend type.
+/// \param p  The owning parser instance.
+/// \param code_unit  A UTF-8 code unit from the input.
+/// \returns True if \p code_unit is whitespace and a whitespace matcher was pushed, false otherwise.
 template <backend Backend> bool whitespace(parser<Backend>& p, char8_t const code_unit) {
   return whitespace_matcher<Backend>::whitespace(p, code_unit);
 }

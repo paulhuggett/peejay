@@ -29,6 +29,9 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file error.hpp
+/// \brief Defines peejay::error, the error codes raised by the PJ JSON parser, and
+///   its integration with std::error_code.
 #ifndef PEEJAY_ERROR_HPP
 #define PEEJAY_ERROR_HPP
 
@@ -39,29 +42,47 @@
 
 namespace peejay {
 
+/// The errors that may be reported by the PJ JSON parser.
 enum class error : int {
+  /// No error.
   none,
+  /// A string contained an invalid UTF-16 escape sequence or an unescaped control character.
   bad_unicode_code_point,
+  /// An array member was expected but not found.
   expected_array_member,
+  /// The input ended within a string.
   expected_close_quote,
+  /// A colon was expected between an object's key and its value.
   expected_colon,
+  /// A digit was expected in a number.
   expected_digits,
+  /// A string was expected for an object key.
   expected_object_key,
+  /// An object member was expected but not found.
   expected_object_member,
+  /// A value was expected but not found.
   expected_token,
+  /// A backslash in a string was followed by an unrecognized escape character.
   invalid_escape_char,
+  /// A \\u escape in a string contained a character that is not a hexadecimal digit.
   invalid_hex_char,
+  /// Arrays and/or objects are nested more deeply than the policy's max_stack_depth permits.
   nesting_too_deep,
+  /// A number could not be represented by the policy's integer or floating-point types, or the input ended
+  /// part-way through a number.
   number_out_of_range,
+  /// Non-whitespace input followed the top-level value.
   unexpected_extra_input,
+  /// The input contained a token that was not recognized.
   unrecognized_token,
+  /// A string exceeded the policy's max_length.
   string_too_long,
 };
 
 // ******************
 // * error category *
 // ******************
-/// The error category object for PJ errors
+/// The error category object for PJ errors.
 class error_category final : public std::error_category {
 public:
   /// Returns a pointer to a C string naming the error category.
@@ -111,6 +132,7 @@ public:
 
 }  // end namespace peejay
 
+/// Enables implicit conversion from peejay::error to std::error_code.
 template <> struct std::is_error_code_enum<peejay::error> : std::true_type {};
 
 #endif  // PEEJAY_ERROR_HPP

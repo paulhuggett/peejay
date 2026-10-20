@@ -55,6 +55,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+/// \file type_list.hpp
+/// \brief Provides compile-time lists of types and operations on them.
 #ifndef PEEJAY_DETAILS_TYPE_LIST_HPP
 #define PEEJAY_DETAILS_TYPE_LIST_HPP
 
@@ -63,7 +65,10 @@
 
 namespace peejay::type_list {
 
+/// A compile-time list of types.
+/// \tparam Ts  The types in the list.
 template <typename... Ts> struct type_list {
+  /// The number of types in the list.
   static constexpr std::size_t size = sizeof...(Ts);
 };
 
@@ -84,6 +89,7 @@ template <template <typename...> typename Seq> struct is_type_list<Seq<>> : std:
 
 /// Test if a type is a type list
 template <typename T> inline constexpr bool is_type_list = details::is_type_list<T>::value;
+/// The concept sequence<T> is satisfied if T is a type list.
 template <typename T>
 concept sequence = is_type_list<T>;
 
@@ -98,24 +104,28 @@ static_assert(is_type_list<type_list<>>, "type_list is_type_list<> is broken");
 namespace details {
 
 template <typename... Seq> struct concat;
-// Both input lists are empty: result is empty.
+/// Both input lists are empty: result is empty.
 template <template <typename...> typename Seq1, template <typename...> typename Seq2> struct concat<Seq1<>, Seq2<>> {
+  /// The concatenated list.
   using type = Seq1<>;
 };
-// The second list is empty: result is the first list,
+/// The second list is empty: result is the first list.
 template <template <typename...> typename Seq1, template <typename...> typename Seq2, typename... Ts>
 struct concat<Seq1<Ts...>, Seq2<>> {
+  /// The concatenated list.
   using type = Seq1<Ts...>;
 };
-// Recursively move a type from the head of the second to the tail of the first list.
+/// Recursively move a type from the head of the second to the tail of the first list.
 template <template <typename...> typename Seq1, typename... Ts1, template <typename...> typename Seq2, typename T,
           typename... Ts2>
 struct concat<Seq1<Ts1...>, Seq2<T, Ts2...>> {
+  /// The concatenated list.
   using type = typename concat<Seq1<Ts1..., T>, Seq2<Ts2...>>::type;
 };
 
 }  // end namespace details
 
+/// A type list containing the types of the first list followed by those of the second.
 template <sequence... Seq> using concat = typename details::concat<Seq...>::type;
 
 static_assert(std::is_same_v<concat<type_list<double, int>, type_list<>>, type_list<double, int>>,
@@ -133,13 +143,15 @@ static_assert(
 namespace details {
 
 template <typename Seq> struct to_variant;
+/// Converts a type list to a std::variant.
 template <template <typename...> typename Seq, typename... Ts> struct to_variant<Seq<Ts...>> {
+  /// The std::variant type.
   using type = std::variant<Ts...>;
 };
 
 }  // end namespace details
 
-/// A variant type whose alternatie types are taken from the type list \p Seq
+/// A std::variant type whose alternative types are taken from the type list \p Seq.
 template <sequence Seq> using to_variant = typename details::to_variant<Seq>::type;
 
 static_assert(std::is_same_v<to_variant<type_list<double, int, char>>, std::variant<double, int, char>>,
@@ -158,18 +170,23 @@ namespace details {
 template <typename Seq, typename T> struct has_type;
 /// An empty list always yields false.
 template <template <typename...> typename Seq, typename T> struct has_type<Seq<>, T> {
+  /// False: an empty list contains no types.
   static constexpr bool value = false;
 };
-/// Recursively check whether the head of the list matches.
+/// Check whether any of the members of the list matches.
 template <template <typename...> typename Seq, typename... Ts, typename T> struct has_type<Seq<Ts...>, T> {
+  /// True if \p T is a member of the list.
   static constexpr bool value = (std::is_same_v<T, Ts> || ...);
 };
 
 }  // end namespace details
 
+/// Checks whether the type \p T is a member of the type list \p Seq.
 template <sequence Seq, typename T> struct has_type {
+  /// True if \p T is a member of \p Seq, false otherwise.
   static constexpr bool value = details::has_type<Seq, T>::value;
 };
+/// A helper variable template for convenient use of has_type<Seq, T>::value.
 template <sequence Seq, typename T> inline constexpr bool has_type_v = has_type<Seq, T>::value;
 
 static_assert(has_type<type_list<double, int, char, double>, char>::value, "typelist has_type<> is broken");
@@ -180,6 +197,7 @@ static_assert(!has_type<type_list<double, int, char, double>, float>::value, "ty
 // | | ' \/ _` / -_) \ / / _ \  _| *
 // |_|_||_\__,_\___/_\_\ \___/_|   *
 //                                 *
+/// The value used by index_of to indicate that a type was not found.
 constexpr inline auto npos = std::numeric_limits<std::size_t>::max();
 
 namespace details {
@@ -203,6 +221,7 @@ struct index_of<Seq<TOther, Ts...>, T>
 template <sequence Seq, typename T>
 struct index_of : std::integral_constant<std::size_t, details::index_of<Seq, T>::value> {};
 
+/// A helper variable template for convenient use of index_of<Seq, T>::value.
 template <sequence Seq, typename T> inline constexpr bool index_of_v = index_of<Seq, T>::value;
 
 static_assert(index_of<type_list<double, char, bool, double>, double>::value == 0, "type_list index_of<> is broken");
@@ -218,12 +237,16 @@ namespace details {
 
 template <std::integral ResultType, typename Seq, typename M> struct max;
 
+/// The list is exhausted: the result is the current maximum \p M.
 template <std::integral ResultType, template <typename...> typename Seq, typename M> struct max<ResultType, Seq<>, M> {
+  /// The maximum.
   using type = M;
 };
 
+/// Recursively compare the head of the list with the current maximum \p M.
 template <std::integral ResultType, template <typename...> typename Seq, typename... Ts, typename T, typename M>
 struct max<ResultType, Seq<T, Ts...>, M> {
+  /// The maximum.
   using type = std::conditional_t<(T::value > M::value), typename max<ResultType, Seq<Ts...>, T>::type,
                                   typename max<ResultType, Seq<Ts...>, M>::type>;
 };
@@ -234,6 +257,7 @@ struct max<ResultType, Seq<T, Ts...>, M> {
 template <std::integral ResultType, sequence Seq>
 using max = typename details::max<ResultType, Seq, std::integral_constant<ResultType, 0>>::type;
 
+/// A helper variable template for convenient use of max<ResultType, Seq>::value.
 template <std::integral ResultType, sequence Seq> inline constexpr auto max_v = max<ResultType, Seq>::type::value;
 
 static_assert(
@@ -256,8 +280,10 @@ namespace details {
 
 template <typename List, template <typename...> typename Fun> struct transform;
 
+/// Applies \p Fun to each member of the list.
 template <template <typename...> typename Seq, typename... Ts, template <typename...> typename Fun>
 struct transform<Seq<Ts...>, Fun> {
+  /// The transformed list.
   using type = Seq<Fun<Ts>...>;
 };
 
@@ -286,14 +312,15 @@ namespace details {
 template <typename Seq> struct all_of;
 /// An empty list always yields false.
 template <template <typename...> typename Seq> struct all_of<Seq<>> : std::bool_constant<false> {};
-/// Recursively check whether the head of the list is true.
+/// Check whether all of the members of the list are true.
 template <template <typename...> typename Seq, typename... Ts>
 struct all_of<Seq<Ts...>> : std::bool_constant<(Ts::value && ...)> {};
 
 }  // end namespace details
 
-/// Checks if a list of std::bool_constant-like types are all true.
+/// Checks if a list of std::bool_constant-like types are all true. Note that an empty list yields false.
 template <sequence Seq> using all_of = typename details::all_of<Seq>;
+/// A helper variable template for convenient use of all_of<Seq>::value.
 template <sequence Seq> inline constexpr bool all_of_v = all_of<Seq>::value;
 
 static_assert(all_of_v<type_list<std::bool_constant<true>, std::bool_constant<true>>>);

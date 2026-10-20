@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file string.hpp
+/// \brief Provides the matcher for a JSON string.
 #ifndef PEEJAY_MATCHERS_STRING_HPP
 #define PEEJAY_MATCHERS_STRING_HPP
 
@@ -55,15 +57,29 @@
 
 namespace peejay::details {
 
-/// Matches a string.
+/// Matches a string. The opening quote has already been consumed when the matcher is pushed. Once the closing quote
+/// is consumed, the string is passed to the backend's key() or string_value() member function.
+///
+/// \tparam Backend  The parser backend type.
 template <backend Backend> class string_matcher {
 public:
+  /// The type of the owning parser.
   using parser_type = parser<Backend>;
+  /// The parser policies.
   using policies = std::remove_reference_t<Backend>::policies;
 
+  /// \param is_key  True if this string is an object's property name, false if it is a value.
   constexpr explicit string_matcher(bool const is_key) noexcept : is_key_{is_key} {}
 
+  /// Consumes a code unit.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   bool consume(parser_type& parser, char8_t code_unit);
+  /// Signals the end of the input. The string is incomplete so error::expected_close_quote is raised.
+  /// \param parser  The owning parser instance.
   void eof(parser_type &parser);
 
 private:
@@ -72,23 +88,24 @@ private:
   ///
   /// \param parser  The parent parser instance.
   /// \param code_unit  A UTF-8 code unit for the character being processed.
+  /// \returns True (the code unit is always consumed).
   bool normal(parser_type& parser, char8_t code_unit);
 
-  /// Processes a code point as part of a escape sequence for a string.
+  /// Processes the character following a backslash in a string.
   /// \param parser  The owning parser instance.
   /// \param code_unit  A UTF-8 code unit for the character being processed.
   void escape(parser_type& parser, char8_t code_unit);
 
-  /// Processes a code point as part of a hex escape sequence (uXXXX) for a string.
+  /// Processes one of the hex digits of a \\uXXXX escape sequence for a string.
   /// \param parser  The owning parser instance.
   /// \param code_unit  A UTF-8 code unit for the character being processed.
   void hex(parser_type& parser, char8_t code_unit);
-  //// True if this string is an object's property name, false otherwise.
+  /// True if this string is an object's property name, false otherwise.
   bool is_key_;
   /// UTF-16 to UTF-8 converter.
   icubaby::t16_8 utf_16_to_8_;
-  /// Used to accumulate the code point value from the four hex digits. After
-  /// the four digits have been consumed, this UTF-16 code point value is
+  /// Used to accumulate the code unit value from the four hex digits. After
+  /// the four digits have been consumed, this UTF-16 code unit is
   /// converted to UTF-8 and added to the output.
   uint_least16_t hex_ = 0U;
   /// The accumulated string contents.
