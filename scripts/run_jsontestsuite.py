@@ -19,6 +19,7 @@ unexpected result, crashed, or timed out.
 
 import argparse
 import collections
+import os
 import pathlib
 import subprocess
 import sys
@@ -58,6 +59,26 @@ def classify(filename: str, exit_status: int) -> str:
     return IMPLEMENTATION_PASS if passed else IMPLEMENTATION_FAIL
 
 
+def is_inside_project_tree(inp:Union[pathlib.Path, str]) -> bool:
+    inp = pathlib.Path(inp).resolve()
+    ok = False
+    project_tree = pathlib.Path(__file__).parents[1]
+    for root, dirs, _ in project_tree.walk(on_error=print):
+        r = pathlib.Path(root).resolve()
+        a = any(r / d == inp for d in dirs)
+        ok = ok or any(r / d == inp for d in dirs)
+    return ok
+
+class CheckPathAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super().__init__(option_strings, dest, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not is_inside_project_tree(os.path.dirname(values)):
+            raise ValueError("parser must be inside the project tree")
+        setattr(namespace, self.dest, values)
+
 def run_test(parser: pathlib.Path, path: pathlib.Path, timeout: float) -> str:
     """Runs the parser on a single test file and returns its status."""
 
@@ -78,7 +99,7 @@ def main() -> int:
     """Runs every test and reports the results. Returns the process exit status."""
 
     arg_parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    arg_parser.add_argument("parser", type=pathlib.Path, help="path to the pj2-dump executable")
+    arg_parser.add_argument("parser", type=pathlib.Path, action=CheckPathAction, help="path to the pj2-dump executable")
     arg_parser.add_argument(
         "tests", type=pathlib.Path, help="path to the JSONTestSuite test_parsing directory"
     )
