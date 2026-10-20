@@ -51,6 +51,14 @@ struct Json : testing::Test {
   unsigned const xord = static_cast<unsigned>(keyword.length()) + 1U;
 };
 
+template <std::size_t StackDepth> struct stack_depth_policies : peejay::default_policies {
+  static constexpr std::size_t max_stack_depth = StackDepth;
+};
+static_assert(!peejay::policy<stack_depth_policies<0>>);
+static_assert(!peejay::policy<stack_depth_policies<1>>);
+static_assert(peejay::policy<stack_depth_policies<2>>);
+static_assert(peejay::policy<stack_depth_policies<3>>);
+
 }  // end anonymous namespace
 
 // NOLINTNEXTLINE

@@ -63,7 +63,8 @@ concept policy = requires(Policy &&p) {
   /// The maximum depth to which we allow the parse stack to grow. This should be given a value
   /// sufficient for any reasonable input. The setting is intended to enable the memory required
   /// for the parse stack to be fixed.
-  requires requires { requires std::integral<decltype(p.max_stack_depth)> && requires { p.max_stack_depth >= 2; }; };
+  requires std::integral<decltype(p.max_stack_depth)>;
+  requires(std::remove_cvref_t<Policy>::max_stack_depth >= 2);
 
   /// This boolean value determines whether the library tracks the line number in the input.
   /// This value can be used for reporting error to the user but can be disabled if it is
