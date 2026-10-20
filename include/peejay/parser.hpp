@@ -104,11 +104,11 @@ template <bool> struct coord {};
 template <> struct coord<true> {
   friend constexpr std::strong_ordering operator<=>(coord const &, coord const &) noexcept = default;
 #if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
-  friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) { return os << lhs.to_string(); }
+  friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) { return os << c.to_string(); }
   [[nodiscard]] std::string to_string() const { return std::format("({})", line); }
 #else
-  friend std::ostream &operator<<(coord<true> const &lhs, std::ostream &os) {
-    return os << '(' << lhs.line << ')';
+  friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) {
+    return os << '(' << c.line << ')';
   }
 #endif
   unsigned line = 1U;

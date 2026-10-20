@@ -31,6 +31,9 @@
 //===----------------------------------------------------------------------===//
 #include "peejay/json.hpp"
 
+// standard library
+#include <sstream>
+
 // 3rd party includes
 #include <gtest/gtest.h>
 
@@ -76,4 +79,11 @@ TEST(Coord, LtEq) {
   EXPECT_TRUE((coord{.line = 3U} <= coord{.line = 4U}));
   EXPECT_FALSE((coord{.line = 4U} <= coord{.line = 3U}));
   EXPECT_TRUE(coord{} <= coord{});
+}
+
+// NOLINTNEXTLINE
+TEST(Coord, Stream) {
+  std::ostringstream os;
+  os << coord{.line = 3U};
+  EXPECT_EQ(os.str(), "(3)");
 }
