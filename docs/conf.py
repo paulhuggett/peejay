@@ -7,6 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 import os
+import pathlib
 import subprocess
 
 project = 'peejay'
@@ -39,4 +40,15 @@ html_theme = 'furo'
 html_static_path = ['_static']
 
 if os.environ.get('READTHEDOCS', None) == 'True':
-     subprocess.call('cd ..; doxygen', shell=True)
+     # Run doxygen to produce the XML consumed by Breathe. The Doxyfile's
+     # clang-assisted parsing options hard-code host-specific include paths
+     # that don't exist on Read the Docs, so turn that off and append the
+     # overrides to the Doxyfile (later settings win).
+     root = pathlib.Path(__file__).resolve().parent.parent
+     overrides = '\n'.join([
+          'CLANG_ASSISTED_PARSING = NO',
+          'GENERATE_HTML = NO',
+          'GENERATE_XML = YES',
+     ])
+     doxyfile = (root / 'Doxyfile').read_text() + '\n' + overrides + '\n'
+     subprocess.run(['doxygen', '-'], cwd=root, input=doxyfile, text=True, check=True)

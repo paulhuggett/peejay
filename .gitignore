@@ -31,3 +31,6 @@
 *.app
 
 __pycache__
+
+# Doxygen XML generated for Sphinx/Breathe
+docs/xml/
