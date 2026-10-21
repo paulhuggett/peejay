@@ -145,13 +145,13 @@ function (setup_peejay_target target)
   set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
 
   target_compile_options(${target}
-    PUBLIC
+    PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
   )
   target_link_options(${target}
-    PUBLIC
+    PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:>
@@ -203,12 +203,14 @@ add_library(peejay STATIC
   ${peejay_details}
   lib/peejay/dummy.cpp
 )
+# The same name that find_package(peejay) provides, for clients that use add_subdirectory() or FetchContent.
+add_library(peejay::peejay ALIAS peejay)
 source_group(public FILES ${peejay_public})
 source_group(matchers FILES ${peejay_matchers})
 source_group(details FILES ${peejay_details})
 target_include_directories(peejay PUBLIC
   $<BUILD_INTERFACE:${include_dir}>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 if(PEEJAY_FUZZTEST)
   # If we're fuzz testing, stop icubaby from dragging in Google Test.
@@ -263,20 +265,48 @@ endif (PEEJAY_FUZZTEST)
 
 add_subdirectory(unit_tests)
 add_subdirectory(klee)
+add_subdirectory(docs/examples)
 
 install(
   TARGETS peejay
   EXPORT peejay
-  PUBLIC_HEADER
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
+  ARCHIVE
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     COMPONENT peejay
-  LIBRARY COMPONENT peejay
-  ARCHIVE COMPONENT peejay
-  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 install(
+  DIRECTORY "${include_dir}/peejay"
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  COMPONENT peejay
+  FILES_MATCHING PATTERN "*.hpp"
+)
+
+# Install a CMake package so that clients can use find_package(peejay) and link
+# with the peejay::peejay target.
+set(peejay_config_dir "${CMAKE_INSTALL_LIBDIR}/cmake/peejay")
+install(
   EXPORT peejay
-  DESTINATION <dir>
+  NAMESPACE peejay::
+  FILE peejayTargets.cmake
+  DESTINATION "${peejay_config_dir}"
+  COMPONENT peejay
+)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/peejayConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/peejayConfig.cmake"
+  INSTALL_DESTINATION "${peejay_config_dir}"
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/peejayConfigVersion.cmake"
+  COMPATIBILITY SameMajorVersion
+)
+install(
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/peejayConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/peejayConfigVersion.cmake"
+  DESTINATION "${peejay_config_dir}"
+  COMPONENT peejay
 )
 
 add_dependencies (install-peejay peejay)
