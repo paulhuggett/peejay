@@ -429,7 +429,7 @@ private:
 /// Deduction guide for copying or moving a parser.
 template <backend Backend> explicit parser(parser<Backend>) -> parser<Backend>;
 /// Deduction guide for constructing a parser from a backend.
-template <backend Backend> explicit parser(Backend &&backend) -> parser<Backend>;
+template <backend Backend> explicit parser(Backend &&) -> parser<Backend>;
 
 /// Creates a parser for the given backend.
 ///
