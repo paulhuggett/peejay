@@ -29,6 +29,12 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file variant.hpp
+/// \brief Provides peejay::details::variant, a minimal untagged variant used to hold the active parser matcher.
+///
+/// If PEEJAY_MPROTECT_VARIANT is defined to a non-zero value (and NDEBUG is not defined), the variant's storage is
+/// allocated in its own memory pages which are protected whenever the variant does not hold a value, so that any
+/// access to a stale value faults.
 #ifndef PEEJAY_DETAILS_VARIANT_HPP
 #define PEEJAY_DETAILS_VARIANT_HPP
 
@@ -44,6 +50,7 @@
 
 // mprotect-mode is supported on Linux, macOS, and Windows if NDEBUG is not defined.
 #ifndef PEEJAY_MPROTECT_VARIANT
+/// If non-zero, the storage of peejay::details::variant is protected whenever it does not hold a value.
 #  define PEEJAY_MPROTECT_VARIANT 0
 #elif defined(PEEJAY_MPROTECT_VARIANT) && \
     (defined(NDEBUG) || !(defined(__linux__) || defined(__APPLE__) || defined(_WIN32)))
@@ -71,6 +78,7 @@ constexpr bool is_power_of_two(std::size_t const n) noexcept {
   return n > 0U && !(n & (n - 1U));
 }
 
+/// \returns The size of a virtual memory page, or zero if it cannot be determined or is not a power of 2.
 inline std::size_t system_page_size() noexcept {
 #ifdef _WIN32
   SYSTEM_INFO system_info;
@@ -92,49 +100,76 @@ inline std::size_t system_page_size() noexcept {
 
 /// \param alignment  The alignment required for \p v.
 /// \param v  The value to be aligned.
-/// \returns  The value closest to but greater than or equal to \p v for which
-///   \p v modulo \p align is zero.
+/// \returns  The value closest to but greater than or equal to \p v which is a
+///   multiple of \p alignment.
 constexpr std::size_t aligned(std::size_t const alignment, std::size_t const v) noexcept {
   assert(is_power_of_two(alignment) && "alignment must be a power of 2");
   return (v + alignment - 1U) & ~(alignment - 1U);
 }
 
 #ifdef _MSC_VER
+/// A unique pointer to memory allocated with _aligned_malloc().
 template <typename T> using unique_ptr_aligned = std::unique_ptr<T, decltype(&_aligned_free)>;
 #else
+/// A unique pointer to memory allocated with std::aligned_alloc().
 template <typename T> using unique_ptr_aligned = std::unique_ptr<T, decltype(&std::free)>;
 #endif
 
 #endif  // PEEJAY_MPROTECT_VARIANT
 
+/// A unary type function which yields true if \p T is trivially copyable.
+/// \tparam T  The type to be checked.
 template <typename T> struct type_is_trivially_copyable : std::bool_constant<std::is_trivially_copyable_v<T>> {};
 
+/// \brief A minimal variant which holds at most one value from a list of types.
+///
+/// Unlike std::variant, this class does not record which type it holds (except in debug builds, where the type
+/// is checked by assertions). The owner is responsible for knowing the type of the value held and for destroying
+/// it (by calling destroy()) before the variant is destroyed or another value is emplaced.
+///
+/// \tparam Members  A type list of the types that the variant may hold. All must be trivially copyable.
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 class variant {
 public:
 #if PEEJAY_MPROTECT_VARIANT
+  /// True if the variant allocates its storage on the heap.
   static constexpr bool allocates = true;
 #else
+  /// True if the variant allocates its storage on the heap.
   static constexpr bool allocates = false;
 #endif  // PEEJAY_MPROTECT_VARIANT
 
+  /// Constructs a variant which holds no value.
   variant() noexcept(allocates) { this->protect(/*usable=*/false); }
   variant(variant const &) noexcept = delete;
   variant &operator=(variant const &other) noexcept = delete;
 #if !defined(NDEBUG) || PEEJAY_MPROTECT_VARIANT
+  /// Move constructor.
+  /// \param other  The variant to be moved.
   variant(variant &&other) noexcept;
+  /// Move assignment.
+  /// \param other  The variant to be moved.
+  /// \returns *this.
   variant &operator=(variant &&other) noexcept;
 #else
+  /// Move constructor.
+  /// \param other  The variant to be moved.
   variant(variant &&other) noexcept = default;
+  /// Move assignment.
+  /// \param other  The variant to be moved.
+  /// \returns *this.
   variant &operator=(variant &&other) noexcept = default;
 #endif
 
+  /// Destructor. The variant must not be holding a value.
   ~variant() noexcept {
     this->protect(/*usable=*/true);
     assert((holds_ == type_list::npos) && "Must not destruct a variant that is holding a value");
     // TODO: validate the pattern...
   }
+  /// Destroys the value held by the variant.
+  /// \tparam T  The type of the value held by the variant.
   template <typename T>
     requires type_list::has_type_v<Members, T>
   void destroy() noexcept(std::is_nothrow_destructible_v<T>) {
@@ -156,7 +191,9 @@ public:
 
   /// Creates a new value in-place, in an existing variant object.
   /// The object must not be holding any currently contained value when this function is called.
-  /// \p args Constructor arguments to use when constructing the new value
+  /// \tparam T  The type of the value to be constructed.
+  /// \tparam Args  The types of the constructor arguments.
+  /// \param args  Constructor arguments to use when constructing the new value.
   /// \returns A reference to the new contained value.
   template <typename T, typename... Args>
     requires type_list::has_type_v<Members, T>
@@ -171,12 +208,16 @@ public:
     return *result;
   }
 
+  /// \tparam T  The type of the value held by the variant.
+  /// \returns A reference to the value held by the variant.
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T& get() noexcept {
     assert(holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>));
     return *std::bit_cast<T *>(&contents_[0]);
   }
+  /// \tparam T  The type of the value held by the variant.
+  /// \returns A reference to the value held by the variant.
   template <typename T>
     requires type_list::has_type_v<Members, T>
   T const& get() const noexcept {
@@ -184,11 +225,14 @@ public:
     return *std::bit_cast<T const *>(&contents_[0]);
   }
 #ifndef NDEBUG
+  /// \returns The index within Members of the type of the value held by the variant, or type_list::npos if the
+  ///   variant does not hold a value. Available only in debug builds.
   constexpr std::size_t holds() const noexcept { return holds_; }
 #endif  // NDEBUG
 
 private:
 #ifndef NDEBUG
+  /// The index within Members of the type of the value held, or type_list::npos.
   std::size_t holds_ = type_list::npos;
 #endif  // NDEBUG
   static constexpr auto max_size_ =
@@ -200,11 +244,19 @@ private:
   static std::size_t const page_size_;
   unique_ptr_aligned<std::byte[]> contents_ = aligned_unique_ptr<std::byte[]>();
 
+  /// \returns The size of the storage, rounded up to a whole number of pages.
   static constexpr std::size_t adjusted_size();
+  /// Allocates page-aligned storage for the variant's value.
+  /// \returns A pointer to the new storage.
   template <typename T> static unique_ptr_aligned<T> aligned_unique_ptr();
+  /// Changes the memory protection of the variant's storage.
+  /// \param usable  If true, the storage is made readable and writable. If false, all access is prohibited.
   void protect(bool usable) noexcept;
 #else
+  /// The storage for the variant's value.
   alignas(max_align_) std::byte contents_[max_size_]{};
+  /// A no-op: memory protection is disabled.
+  /// \param usable  Ignored.
   constexpr void protect(bool const usable) noexcept { (void)usable; }
 #endif  // !PEEJAY_MPROTECT_VARIANT
 };

@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file array.hpp
+/// \brief Provides the matcher for a JSON array.
 #ifndef PEEJAY_MATCHERS_ARRAY_HPP
 #define PEEJAY_MATCHERS_ARRAY_HPP
 
@@ -48,8 +50,16 @@
 
 namespace peejay::details {
 /// Matches an array.
+///
+/// \tparam Backend  The parser backend type.
 template <backend Backend> class array_matcher {
 public:
+  /// Consumes a code unit.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   static bool consume(parser<Backend>& parser, char8_t code_unit) {
     switch (parser.stack_.top()) {
     case state::array_start:
@@ -75,14 +85,24 @@ public:
     }
   }
 
+  /// Signals the end of the input. The array is incomplete so error::expected_array_member is raised.
+  /// \param parser  The owning parser instance.
   static void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::expected_array_member); }
 
 private:
+  /// Notifies the backend that the array is complete and pops this matcher.
+  /// \param parser  The owning parser instance.
+  /// \returns True (the closing bracket is consumed).
   static bool end_array(parser<Backend> &parser) {
     parser.set_error(parser.backend().end_array());
     parser.pop();  // unconditionally pop this matcher.
     return true;
   }
+  /// Consumes a code unit following an array member: whitespace, a comma, or the closing bracket.
+  /// \param parser  The owning parser instance.
+  /// \param c  A UTF-8 code unit from the input.
+  /// \returns True if \p c was consumed, false if it should be passed to the matcher which is now on top of the
+  ///   parse stack.
   static bool comma(parser<Backend>& parser, char8_t const c) {
     // There can be whitespace between the end of an object and a subsequent comma or right square bracket.
     if (whitespace(parser, c)) {

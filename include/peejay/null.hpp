@@ -44,40 +44,69 @@
 namespace peejay {
 
 /// A PJ JSON parser backend which simply discards all of its input.
+///
+/// \tparam Policies  A type satisfying the policy concept which configures the parser.
 template <policy Policies = default_policies> class null {
 public:
+  /// The parser policies used with this backend.
   using policies = std::remove_reference_t<Policies>;
 
+  /// Called at the end of the parse. The null backend produces no result.
   static constexpr void result() noexcept {
     // The null output produces no result at all.
   }
 
+  /// Called when a string value has been parsed.
+  /// \param sv  The string value (ignored).
+  /// \returns An empty (success) error code.
   static std::error_code string_value(std::u8string_view const& sv) noexcept {
     (void)sv;
     return {};
   }
+  /// Called when an integer value has been parsed.
+  /// \param v  The integer value (ignored).
+  /// \returns An empty (success) error code.
   static std::error_code integer_value(policies::integer_type v) noexcept {
     (void)v;
     return {};
   }
+  /// Called when a floating-point value has been parsed.
+  /// \param v  The floating-point value (ignored).
+  /// \returns An empty (success) error code.
   static std::error_code float_value(policies::float_type v) noexcept {
     (void)v;
     return {};
   }
+  /// Called when a boolean value has been parsed.
+  /// \param b  The boolean value (ignored).
+  /// \returns An empty (success) error code.
   static std::error_code boolean_value(bool b) noexcept {
     (void)b;
     return {};
   }
+  /// Called when a null value has been parsed.
+  /// \returns An empty (success) error code.
   static std::error_code null_value() noexcept { return {}; }
 
+  /// Called at the start of an array.
+  /// \returns An empty (success) error code.
   static std::error_code begin_array() noexcept { return {}; }
+  /// Called at the end of an array.
+  /// \returns An empty (success) error code.
   static std::error_code end_array() noexcept { return {}; }
 
+  /// Called at the start of an object.
+  /// \returns An empty (success) error code.
   static std::error_code begin_object() noexcept { return {}; }
+  /// Called when an object key has been parsed.
+  /// \param sv  The key (ignored).
+  /// \returns An empty (success) error code.
   static std::error_code key(std::u8string_view const& sv) noexcept {
     (void)sv;
     return {};
   }
+  /// Called at the end of an object.
+  /// \returns An empty (success) error code.
   static std::error_code end_object() noexcept { return {}; }
 };
 

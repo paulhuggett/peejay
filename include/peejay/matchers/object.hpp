@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file object.hpp
+/// \brief Provides the matcher for a JSON object.
 #ifndef PEEJAY_MATCHERS_OBJECT_HPP
 #define PEEJAY_MATCHERS_OBJECT_HPP
 
@@ -45,15 +47,39 @@
 
 namespace peejay::details {
 
+/// Matches an object.
+///
+/// \tparam Backend  The parser backend type.
 template <backend Backend> class object_matcher {
 public:
+  /// The type of the owning parser.
   using parser_type = parser<Backend>;
+  /// Consumes a code unit.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   static bool consume(parser_type& parser, char8_t code_unit);
+  /// Signals the end of the input. The object is incomplete so error::expected_object_member is raised.
+  /// \param parser  The owning parser instance.
   static void eof(parser_type &parser);
 
 private:
+  /// Notifies the backend that the object is complete and pops this matcher.
+  /// \param parser  The owning parser instance.
   static void end_object(parser_type &parser);
+  /// Consumes a code unit following an object member: whitespace, a comma, or the closing brace.
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   static bool comma(parser_type& parser, char8_t code_unit);
+  /// Matches the opening quote of a property name, pushes a string matcher for the name, and then expects a colon.
+  /// If \p code_unit is not a quote, error::expected_object_key is raised.
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True.
   static bool key(parser_type& parser, char8_t code_unit);
 };
 
@@ -109,7 +135,6 @@ template <backend Backend> void object_matcher<Backend>::eof(parser_type &parser
 
 // key
 // ~~~
-/// Match a property name then expect a colon.
 template <backend Backend> bool object_matcher<Backend>::key(parser_type& parser, char8_t const code_unit) {
   parser.set_state(state::object_colon);
   if (code_unit != '"') {

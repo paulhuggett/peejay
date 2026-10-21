@@ -29,7 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-/// \brief Provides a sequence container, arrayvec<>. that encapsulates
+/// \file arrayvec.hpp
+/// \brief Provides a sequence container, arrayvec<>, that encapsulates
 ///   dynamically sized arrays within a fixed size container.
 #ifndef PEEJAY_DETAILS_ARRAYVEC_HPP
 #define PEEJAY_DETAILS_ARRAYVEC_HPP
@@ -54,46 +55,125 @@ namespace details {
 //* / _` \ V / '_ \/ _` (_-</ -_) *
 //* \__,_|\_/|_.__/\__,_/__/\___| *
 //*                               *
+/// \brief The implementation of arrayvec<> operations which do not depend on the container's capacity.
+///
+/// \tparam T  The type of the container's elements.
 template <typename T> class avbase {
 protected:
+  /// An iterator over the container's elements.
   using pbi = pointer_based_iterator<T>;
 
+  /// Constructs the elements of the container from the range [\p first, \p last). If an exception is thrown,
+  /// any elements that have been constructed are destroyed.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
+  /// \param begin  The start of the (uninitialized) array data.
+  /// \param size  On exit, the number of elements constructed.
+  /// \param first  The start of the range from which to copy the elements.
+  /// \param last  The end of the range from which to copy the elements.
   template <std::integral SizeType, std::input_iterator InputIterator>
   static void init(pbi begin, SizeType *size, InputIterator first,
                    InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>);
 
+  /// Constructs \p count elements of the container. If an exception is thrown, any elements that have been
+  /// constructed are destroyed.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \tparam Args  The types of the arguments passed to the T constructor.
+  /// \param begin  The start of the (uninitialized) array data.
+  /// \param size  On exit, the number of elements constructed.
+  /// \param count  The number of elements to construct.
+  /// \param args  Arguments passed to the T constructor for each element.
   template <std::integral SizeType, typename... Args>
   static void init(pbi begin, SizeType* size, SizeType count,
                    Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>);
 
+  /// Replaces the contents of a container with copies of (or values moved from) the elements of another.
+  ///
+  /// \tparam IsMove  True if the source elements are to be moved, false if they are to be copied.
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \tparam SrcType  The type of the source elements.
+  /// \param destp  The start of the destination array data.
+  /// \param destsize  On entry, the original size of the destination container. On exit, the new size.
+  /// \param src  A pointer to the source elements and the number of source elements.
   template <bool IsMove, std::integral SizeType, typename SrcType>
   static void operator_assign(T *destp, SizeType *destsize, std::pair<SrcType *, std::size_t> const &src) noexcept(
       IsMove ? std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>
              : std::is_nothrow_copy_constructible_v<T> && std::is_nothrow_copy_assignable_v<T>);
 
+  /// Destroys the elements in the range [\p first, \p last).
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \param size  On entry, the original size of the container. On exit, this is reduced by the number of
+  ///   elements destroyed.
+  /// \param first  The first element to be destroyed.
+  /// \param last  The end of the range of elements to be destroyed.
   template <std::integral SizeType> static void clear(SizeType *size, pbi first, pbi last) noexcept;
 
+  /// Resizes the container to contain \p new_size elements. If the container grows, the new elements are
+  /// constructed from \p args; if an exception is thrown, the new elements are destroyed.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \tparam Args  The types of the arguments passed to the T constructor.
+  /// \param begin  The start of the array data.
+  /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param new_size  The required number of elements.
+  /// \param args  Arguments passed to the T constructor for each new element.
   template <std::integral SizeType, typename... Args>
   static void resize(pbi begin, SizeType *size, std::size_t new_size,
                      Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>);
 
+  /// Replaces the contents of the container with \p count copies of \p value.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \param begin  The start of the array data.
+  /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param count  The new size of the container.
+  /// \param value  The value with which to initialize elements of the container.
   template <std::integral SizeType> static void assign(pbi begin, SizeType *size, std::size_t count, T const &value);
 
+  /// Moves the elements in the range [\p from, \p end) so that they begin at \p to (which must be at or after
+  /// \p from). Elements that land beyond \p end are move-constructed; the others are move-assigned.
+  ///
+  /// \param from  The start of the range of elements to be moved.
+  /// \param end  The end of the range of elements to be moved. This must be the end of the container's
+  ///   initialized elements.
+  /// \param to  The new position of the first element.
   static void move_range(pbi from, pbi end, pbi to) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                              std::is_nothrow_move_assignable_v<T>);
 
+  /// Erases the element at \p pos.
+  ///
+  /// \param pos  The element to be erased.
+  /// \param end  The end of the container's elements.
+  /// \param size  The original size of the container.
+  /// \returns The new size of the container.
   static std::size_t erase(pbi pos, pbi end, std::size_t size);
 
+  /// Erases the elements in the range [\p first, \p last).
+  ///
+  /// \param first  The first of the range of elements to remove.
+  /// \param last  The end of the range of elements to remove.
+  /// \param end  The end of the container's elements.
+  /// \param size  The original size of the container.
+  /// \returns The new size of the container.
   static std::size_t erase(pbi first, pbi last, pbi end, std::size_t size);
 
+  /// Inserts \p value before \p pos.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
   /// \param begin  The start of the array data.
   /// \param size  On entry, the original size of the container. On exit, the new container size.
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param value  Element value to insert.
+  /// \returns An iterator referring to the inserted element.
   template <std::integral SizeType>
   static pbi insert(pbi begin, SizeType *size, pbi pos, T &&value) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                                             std::is_nothrow_move_assignable_v<T>);
 
+  /// Inserts the elements of the range [\p first, \p last) before \p pos.
+  ///
   /// \tparam SizeType  The type of the array-vector size value.
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param begin  The start of the array data.
@@ -101,24 +181,35 @@ protected:
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
+  /// \returns An iterator referring to the first inserted element, or \p pos if \p first == \p last.
   template <std::integral SizeType, std::input_iterator InputIterator>
   static pbi insert(pbi begin, SizeType *size, pbi pos, InputIterator first, InputIterator last);
 
+  /// Inserts \p count copies of \p value before \p pos.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
   /// \param data  The start of the array data.
   /// \param size  On entry, the original size of the container. On exit, the new container size.
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param count The number of copies to insert.
   /// \param value  Element value to insert.
+  /// \returns An iterator referring to the first inserted element, or \p pos if \p count is 0.
   template <std::integral SizeType>
   static pbi insert(pbi data, SizeType *size, pbi pos, SizeType count, T const &value);
 
+  /// Constructs a new element in-place before \p pos.
+  ///
+  /// \tparam SizeType  The type of the array-vector size value.
+  /// \tparam Args  The types of the arguments forwarded to the T constructor.
   /// \param end  The end of the array data.
   /// \param size  On entry, the original size of the container. On exit, the new container size.
   /// \param pos  Iterator before which the new elements will be constructed.
   /// \param args  Arguments forwarded to the T constructor.
+  /// \returns An iterator referring to the new element.
   template <std::integral SizeType, typename... Args>
   static pbi emplace(pbi end, SizeType *size, pbi pos, Args &&...args);
 
+  /// Throws std::out_of_range.
   [[noreturn]] static void raise_out_of_range() { throw std::out_of_range{"peejay arrayvec"}; }
 };
 
@@ -453,7 +544,7 @@ auto avbase<T>::emplace(pbi end, SizeType *const size, pbi pos, Args &&...args) 
 ///   within a fixed size container.
 ///
 /// The elements of an arrayvec are stored within the body of the object
-/// itself, in constrast to std::vector<> which maintains a heap-allocated
+/// itself, in contrast to std::vector<> which maintains a heap-allocated
 /// buffer to store its contents.
 ///
 /// The elements are stored contiguously, which means that elements can be
@@ -466,8 +557,11 @@ auto avbase<T>::emplace(pbi end, SizeType *const size, pbi pos, Args &&...args) 
 /// of the object.
 ///
 /// Most member functions offer the basic exception guarantee. Some functions
-/// have support the strong exception guarantee to leave the object in its
+/// support the strong exception guarantee to leave the object in its
 /// original state in the event of an exception being thrown.
+///
+/// \tparam T  The type of the elements.
+/// \tparam Size  The maximum number of elements that the container can hold.
 template <typename T, std::size_t Size> class arrayvec : public details::avbase<T> {
 public:
   /// The type of an element in this container.
@@ -485,7 +579,7 @@ public:
   /// \brief An unsigned integer type which is sufficiently wide to hold a maximum
   /// value of \p Size.
   using size_type = uinteger_t<bits_required(Size)>;
-  /// \brief A signed integer typed which can represent the difference between the
+  /// \brief A signed integer type which can represent the difference between the
   /// addresses of any two elements in the container.
   using difference_type = std::ptrdiff_t;
 
@@ -530,12 +624,20 @@ public:
   ///   container.
   arrayvec(size_type count, const_reference value);
 
+  /// Copy constructor.
+  /// \param other  The container to be copied.
   constexpr arrayvec(arrayvec const &other) noexcept requires(std::is_trivially_copyable_v<T>) = default;
+  /// Copy constructor.
+  /// \param other  The container to be copied.
   arrayvec(arrayvec const &other)
       noexcept(std::is_nothrow_copy_constructible_v<T>)
       requires(!std::is_trivially_copyable_v<T>)
     : arrayvec(std::begin(other), std::end(other)) {}
+  /// Move constructor.
+  /// \param other  The container to be moved.
   constexpr arrayvec(arrayvec &&other) noexcept requires(std::is_trivially_move_constructible_v<T>) = default;
+  /// Move constructor. The elements of \p other are moved into the new container.
+  /// \param other  The container to be moved.
   arrayvec(arrayvec &&other)
       noexcept(std::is_nothrow_move_constructible_v<T>)
       requires(!std::is_trivially_move_constructible_v<T>) {
@@ -550,11 +652,17 @@ public:
     }
   }
 
+  /// Destructor.
   constexpr ~arrayvec() noexcept requires(std::is_trivially_destructible_v<T>) = default;
+  /// Destructor. Destroys the container's elements.
   ~arrayvec() noexcept requires(!std::is_trivially_destructible_v<T>) {
     this->clear();
   }
 
+  /// Replaces the contents of the container with copies of the elements of \p other.
+  /// \tparam OtherSize  The capacity of \p other. Must not be greater than Size.
+  /// \param other  The container whose elements are to be copied.
+  /// \returns *this.
   template <std::size_t OtherSize>
     requires(OtherSize <= Size)
   arrayvec &operator=(arrayvec<T, OtherSize> const &other) noexcept(std::is_nothrow_copy_constructible_v<T> &&
@@ -570,6 +678,10 @@ public:
     return *this;
   }
 
+  /// Replaces the contents of the container with the elements of \p other, which are moved.
+  /// \tparam OtherSize  The capacity of \p other. Must not be greater than Size.
+  /// \param other  The container whose elements are to be moved.
+  /// \returns *this.
   template <std::size_t OtherSize>
     requires(OtherSize <= Size)
   arrayvec &operator=(arrayvec<T, OtherSize> &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
@@ -586,10 +698,19 @@ public:
   }
 
   // clang-format off
+  /// Copy assignment.
+  /// \param other  The container to be copied.
+  /// \returns *this.
   constexpr arrayvec &operator=(arrayvec const &other) noexcept requires(std::is_trivially_copyable_v<T>) = default;
+  /// Move assignment.
+  /// \param other  The container to be moved.
+  /// \returns *this.
   constexpr arrayvec &operator=(arrayvec &&other) noexcept requires(std::is_trivially_move_assignable_v<T>) = default;
   // clang-format on
 
+  /// Copy assignment.
+  /// \param other  The container to be copied.
+  /// \returns *this.
   arrayvec &operator=(arrayvec const &other) noexcept(std::is_nothrow_copy_constructible_v<T> &&
                                                       std::is_nothrow_copy_assignable_v<T>)
     requires(!std::is_trivially_copyable_v<T>)
@@ -600,6 +721,9 @@ public:
     return *this;
   }
 
+  /// Move assignment.
+  /// \param other  The container to be moved.
+  /// \returns *this.
   arrayvec &operator=(arrayvec &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                  std::is_nothrow_move_assignable_v<T>)
     requires(!std::is_trivially_move_assignable_v<T>)
@@ -610,11 +734,23 @@ public:
     return *this;
   }
 
+  /// Compares the contents of two containers for equality.
+  /// \tparam RhsSize  The capacity of \p rhs.
+  /// \param lhs  The first container to be compared.
+  /// \param rhs  The second container to be compared.
+  /// \returns True if the containers have the same number of elements and each element of \p lhs compares equal to
+  ///   the corresponding element of \p rhs.
   template <std::size_t RhsSize>
   friend constexpr bool operator==(arrayvec const &lhs, arrayvec<T, RhsSize> const &rhs) {
     return lhs.size() == rhs.size() && std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
   }
 
+  /// Compares the contents of two containers. A shorter container is ordered before a longer one; containers of
+  /// the same size are compared lexicographically.
+  /// \tparam RhsSize  The capacity of \p rhs.
+  /// \param lhs  The first container to be compared.
+  /// \param rhs  The second container to be compared.
+  /// \returns The ordering of \p lhs relative to \p rhs.
   template <std::size_t RhsSize>
   friend constexpr std::strong_ordering operator<=>(arrayvec const& lhs, arrayvec<T, RhsSize> const& rhs) {
     if (auto const cmp = lhs.size() <=> rhs.size(); cmp != std::strong_ordering::equal) {
@@ -627,14 +763,16 @@ public:
   ///@{
 
   /// Direct access to the underlying array.
+  /// \returns A pointer to the first element of the underlying array.
   [[nodiscard]] constexpr T const* data() const noexcept { return std::bit_cast<T const*>(data_.data()); }
   /// Direct access to the underlying array.
+  /// \returns A pointer to the first element of the underlying array.
   [[nodiscard]] constexpr T* data() noexcept { return std::bit_cast<T*>(data_.data()); }
 
   /// \brief Access the specified element.
   ///
   /// Returns a reference to the element at specified location \p n. No bounds
-  /// checking is performed.
+  /// checking is performed (other than by an assertion).
   ///
   /// \param n  Position of the element to return.
   /// \returns  A reference to the requested element.
@@ -645,7 +783,7 @@ public:
   /// \brief Access the specified element.
   ///
   /// Returns a reference to the element at specified location \p n. No bounds
-  /// checking is performed.
+  /// checking is performed (other than by an assertion).
   ///
   /// \param n  Position of the element to return.
   /// \returns  A reference to the requested element.
@@ -676,18 +814,22 @@ public:
   /// \brief Access the first element.
   ///
   /// The effect of calling front() on a zero-sized arrayvec is undefined.
+  /// \returns A reference to the first element.
   [[nodiscard]] constexpr reference front() noexcept;
   /// \brief Access the first element.
   ///
   /// The effect of calling front() on a zero-sized arrayvec is undefined.
+  /// \returns A reference to the first element.
   [[nodiscard]] constexpr const_reference front() const noexcept;
   /// \brief Access the last element.
   ///
   /// The effect of calling back() on a zero-sized arrayvec is undefined.
+  /// \returns A reference to the last element.
   [[nodiscard]] constexpr reference back() noexcept;
   /// \brief Access the last element.
   ///
   /// The effect of calling back() on a zero-sized arrayvec is undefined.
+  /// \returns A reference to the last element.
   [[nodiscard]] constexpr const_reference back() const noexcept;
 
   ///@}
@@ -695,16 +837,17 @@ public:
   /// \name Capacity
   ///@{
 
-  /// Returns the number of elements held by the container.
+  /// \returns The number of elements held by the container.
   [[nodiscard]] constexpr size_type size() const noexcept { return size_; }
 
   /// Checks whether the container is empty.
+  /// \returns True if the container holds no elements, false otherwise.
   [[nodiscard]] constexpr bool empty() const noexcept { return size_ == 0U; }
 
-  /// Returns the number of elements that can be held.
+  /// \returns The number of elements that can be held.
   [[nodiscard]] constexpr size_type capacity() const noexcept { return max_size(); }
 
-  /// Returns the maximum number of elements the container is able to hold.
+  /// \returns The maximum number of elements the container is able to hold.
   [[nodiscard]] constexpr size_type max_size() const noexcept {
     assert(data_.size() == Size);
     return Size;
@@ -712,7 +855,7 @@ public:
 
   /// \brief Resizes the container to contain \p count elements.
   ///
-  /// If the current size is less than \p count, the container is reduced to
+  /// If the current size is greater than \p count, the container is reduced to
   /// its first \p count elements. If the current size is less than \p count,
   /// additional default-inserted elements are appended.
   ///
@@ -723,7 +866,7 @@ public:
   ///               than or equal to Size.
   void resize(size_type count);
 
-  /// \brief Resizes the container to contain count elements.
+  /// \brief Resizes the container to contain \p count elements.
   ///
   /// If the current size is greater than \p count, the container is reduced to
   /// its first \p count elements. If the current size is less than \p count,
@@ -745,35 +888,38 @@ public:
   /// \brief Returns an iterator to the beginning of the container.
   ///
   /// If the arrayvec is empty, the returned iterator will be equal to end().
+  /// \returns An iterator to the first element.
   [[nodiscard]] constexpr iterator begin() noexcept { return iterator{this->data()}; }
   /// \brief Returns an iterator to the beginning of the container.
   ///
   /// If the arrayvec is empty, the returned iterator will be equal to end().
+  /// \returns An iterator to the first element.
   [[nodiscard]] constexpr const_iterator begin() const noexcept { return const_iterator{this->data()}; }
   /// \brief Returns an iterator to the beginning of the container.
   ///
   /// If the arrayvec is empty, the returned iterator will be equal to end().
+  /// \returns An iterator to the first element.
   [[nodiscard]] constexpr const_iterator cbegin() const noexcept { return const_iterator{this->data()}; }
-  /// Returns a reverse iterator to the beginning of the container.
+  /// \returns A reverse iterator to the beginning of the container.
   [[nodiscard]] constexpr reverse_iterator rbegin() noexcept { return reverse_iterator{iterator{this->end()}}; }
-  /// Returns a reverse iterator to the beginning of the container.
+  /// \returns A reverse iterator to the beginning of the container.
   [[nodiscard]] constexpr const_reverse_iterator rbegin() const noexcept { return rcbegin(); }
-  /// Returns a reverse iterator to the beginning of the container.
+  /// \returns A reverse iterator to the beginning of the container.
   [[nodiscard]] constexpr const_reverse_iterator rcbegin() const noexcept {
     return const_reverse_iterator{this->end()};
   }
 
-  /// Returns an iterator to the end of the container.
+  /// \returns An iterator to the end of the container.
   [[nodiscard]] constexpr iterator end() noexcept { return iterator{this->begin() + size_}; }
-  /// Returns an iterator to the end of the container.
+  /// \returns An iterator to the end of the container.
   [[nodiscard]] constexpr const_iterator end() const noexcept { return cend(); }
-  /// Returns an iterator to the end of the container.
+  /// \returns An iterator to the end of the container.
   [[nodiscard]] constexpr const_iterator cend() const noexcept { return this->begin() + this->size(); }
-  /// Returns a reverse iterator to the end of the container.
+  /// \returns A reverse iterator to the end of the container.
   [[nodiscard]] constexpr reverse_iterator rend() noexcept { return reverse_iterator{this->begin()}; }
-  /// Returns a reverse iterator to the end of the container.
+  /// \returns A reverse iterator to the end of the container.
   [[nodiscard]] constexpr const_reverse_iterator rend() const noexcept { return rcend(); }
-  /// Returns a reverse iterator to the end of the container.
+  /// \returns A reverse iterator to the end of the container.
   [[nodiscard]] constexpr const_reverse_iterator rcend() const noexcept {
     return const_reverse_iterator{this->begin()};
   }
@@ -809,12 +955,13 @@ public:
   /// \brief Appends a new element to the end of the container.
   ///
   /// The arguments \p args... are forwarded to the constructor as
-  /// `std::forward<Args>(args)....`.
+  /// `std::forward<Args>(args)...`.
   ///
   /// If an exception is thrown, this function has no effect (strong exception
   /// guarantee).
   ///
   /// \param args   Arguments to forward to the constructor of the element.
+  /// \returns  A reference to the new element.
   template <typename... Args> reference emplace_back(Args &&...args);
 
   /// \brief Replaces the contents with \p count copies of value \p value.
@@ -822,15 +969,15 @@ public:
   /// \param count The new size of the container.
   /// \param value The value with which to initialize elements of the container.
   void assign(size_type count, const_reference value);
-  /// \brief Replaces the contents with copies of those in the range [first,
-  ///   last).
+  /// \brief Replaces the contents with copies of those in the range [\p first,
+  ///   \p last).
   ///
   /// The behavior is undefined if either argument is an iterator into *this.
   ///
   /// \tparam InputIterator  An iterator which will produce the elements to be
   ///   inserted. Must meet the requirements of LegacyInputIterator.
   /// \param first  The first of the range from which elements are to be copied.
-  /// \param last  The last of the range from which elements are to be copied.
+  /// \param last  The end of the range from which elements are to be copied.
   template <std::input_iterator InputIterator> void assign(InputIterator first, InputIterator last);
   /// \brief Replaces the contents with the elements from the initializer
   ///   list \p ilist
@@ -885,7 +1032,7 @@ public:
   /// \brief Inserts elements from the initializer list \p ilist before \p pos.
   ///
   /// \param pos  The Iterator before which the new elements will be constructed.
-  /// \param ilist  An initializer list from which to to insert the values.
+  /// \param ilist  An initializer list from which to insert the values.
   /// \returns  An iterator pointing to the first element inserted, or \p pos
   ///   if \p ilist is empty.
   iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
@@ -914,15 +1061,16 @@ public:
   /// including the end() iterator.
   ///
   /// \param first  The first of the range of elements to remove.
-  /// \param last  The last of the range of elements to remove.
-  /// \returns Iterator following the last removed element. If last == end()
+  /// \param last  The end of the range of elements to remove.
+  /// \returns Iterator following the last removed element. If \p last == end()
   ///   prior to removal, then the updated end() iterator is returned. If
-  ///   [\p first, \p last) is an empty range, then last is returned.
+  ///   [\p first, \p last) is an empty range, then \p last is returned.
   iterator erase(const_iterator first, const_iterator last);
 
   ///@}
 
 private:
+  /// In debug builds, fills the unused storage of the container with a recognizable bit pattern.
   void flood() noexcept {
 #ifndef NDEBUG
     T *const p = this->data();
@@ -931,6 +1079,10 @@ private:
 #endif
   }
 
+  /// Resizes the container to contain \p count elements. Any new elements are constructed from \p args.
+  /// \tparam Args  The types of the arguments passed to the T constructor.
+  /// \param count  The new number of elements in the container. Must be less than or equal to Size.
+  /// \param args  Arguments passed to the T constructor for each new element.
   template <typename... Args> void resize_impl(size_type count, Args &&...args);
 
   /// Converts the const-iterator \p pos, which must be an iterator reference
@@ -940,14 +1092,16 @@ private:
   /// \returns  A non-const iterator referencing the same element as \p pos.
   constexpr iterator to_non_const_iterator(const_iterator pos) noexcept;
 
-  /// The actual number of elements for which this buffer is sized.
-  /// Note that this may be less than Size.
+  /// The number of elements held by the container. This may be less than Size.
   size_type size_ = 0;
   static_assert(std::numeric_limits<size_type>::max() >= Size);
 
+  /// Uninitialized storage for a single element.
   struct aligned_storage {
+    /// The bytes of the element.
     alignas(T) std::byte v[sizeof(T)];
   };
+  /// Storage for the container's elements.
   std::array<aligned_storage, Size> data_;
 };
 

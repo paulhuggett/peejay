@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file parser_impl.hpp
+/// \brief The implementation of the out-of-line member functions of peejay::parser.
 #ifndef PEEJAY_DETAILS_PARSER_IMPL_HPP
 #define PEEJAY_DETAILS_PARSER_IMPL_HPP
 
