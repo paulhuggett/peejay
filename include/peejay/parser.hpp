@@ -148,8 +148,9 @@ template <> struct coord<true> {
   /// \param c  The coordinate to be written.
   /// \param os  The output stream.
   /// \returns \p os.
-  friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) { return os << c.to_string(); }
-  [[nodiscard]] std::string to_string() const { return std::format("({})", line); }
+  friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) {
+    return os << '(' << c.line << ')';
+  }
 #endif
   /// The line number.
   unsigned line = 1U;
