@@ -137,7 +137,7 @@ template <> struct coord<true> {
 
 #if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
   /// Writes a coordinate to an output stream in the form "(line)".
-  /// \param lhs  The coordinate to be written.
+  /// \param c  The coordinate to be written.
   /// \param os  The output stream.
   /// \returns \p os.
   friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) { return os << c.to_string(); }
@@ -145,7 +145,7 @@ template <> struct coord<true> {
   [[nodiscard]] std::string to_string() const { return std::format("({})", line); }
 #else
   /// Writes a coordinate to an output stream in the form "(line)".
-  /// \param lhs  The coordinate to be written.
+  /// \param c  The coordinate to be written.
   /// \param os  The output stream.
   /// \returns \p os.
   friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) { return os << c.to_string(); }
