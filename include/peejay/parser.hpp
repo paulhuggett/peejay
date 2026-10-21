@@ -134,12 +134,13 @@ template <bool Enabled> struct coord {};
 template <> struct coord<true> {
   /// Compares two coordinates.
   friend constexpr std::strong_ordering operator<=>(coord const &, coord const &) noexcept = default;
+
 #if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
   /// Writes a coordinate to an output stream in the form "(line)".
   /// \param lhs  The coordinate to be written.
   /// \param os  The output stream.
   /// \returns \p os.
-  friend std::ostream &operator<<(std::ostream &os, coord<true> const &lhs) { return os << lhs.to_string(); }
+  friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) { return os << c.to_string(); }
   /// \returns The coordinate as a string in the form "(line)".
   [[nodiscard]] std::string to_string() const { return std::format("({})", line); }
 #else
@@ -150,7 +151,7 @@ template <> struct coord<true> {
   friend std::ostream &operator<<(std::ostream &os, coord<true> const &c) { return os << c.to_string(); }
   [[nodiscard]] std::string to_string() const { return std::format("({})", line); }
 #endif
-  /// The line number (starting at 1).
+  /// The line number.
   unsigned line = 1U;
 };
 
