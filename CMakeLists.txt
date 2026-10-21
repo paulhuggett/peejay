@@ -265,6 +265,7 @@ endif (PEEJAY_FUZZTEST)
 
 add_subdirectory(unit_tests)
 add_subdirectory(klee)
+add_subdirectory(docs/examples)
 
 install(
   TARGETS peejay
