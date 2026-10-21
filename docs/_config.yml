@@ -1,0 +1,10 @@
+domain: paulhuggett.github.io
+url: https://paulhuggett.github.io
+baseurl: /docs/
+repository: "paulhuggett/peejay"
+
+theme: jekyll-theme-dinky
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
