@@ -38,6 +38,7 @@
 #ifndef PEEJAY_DETAILS_VARIANT_HPP
 #define PEEJAY_DETAILS_VARIANT_HPP
 
+#include <algorithm>
 #include <bit>
 #include <cassert>
 #include <cstdlib>
