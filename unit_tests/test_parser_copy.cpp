@@ -33,6 +33,7 @@
 #include "peejay/json.hpp"
 
 // standard library
+#include <cassert>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -57,7 +58,7 @@ public:
 
   std::error_code string_value(std::u8string_view const& sv) { return this->append("s:", sv); }
   std::error_code integer_value(int const v) { return this->append("i:" + std::to_string(v)); }
-  std::error_code float_value(double const v) { return this->append("f:" + std::to_string(v)); }
+  std::error_code float_value([[maybe_unused]] double const v) { assert(false); return {}; } // LCOV_EXCL_LINE
   std::error_code boolean_value(bool const v) { return this->append(v ? "b:true" : "b:false"); }
   std::error_code null_value() { return this->append("null"); }
   std::error_code begin_array() { return this->append("["); }
@@ -88,9 +89,9 @@ public:
     if (other.fail) {
       throw std::runtime_error{"backend copy failed"};
     }
-    recorder::operator=(other);
-    fail = other.fail;
-    return *this;
+    recorder::operator=(other); // LCOV_EXCL_LINE
+    fail = other.fail; // LCOV_EXCL_LINE
+    return *this; // LCOV_EXCL_LINE
   }
   bool fail = false;
 };
