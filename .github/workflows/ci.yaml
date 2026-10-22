@@ -15,13 +15,13 @@ jobs:
           - name: macOS-15/Xcode/Debug
             build_type: Debug
             generator: Xcode
-            options:
+            options: -D PEEJAY_SANITIZE=Yes
             os: macos-15
 
           - name: macOS-15/Xcode/Debug/mprotect-variant
             build_type: Debug
             generator: Xcode
-            options: -D PEEJAY_MPROTECT_VARIANT=Yes
+            options: -D PEEJAY_MPROTECT_VARIANT=Yes -D PEEJAY_SANITIZE=Yes
             os: macos-15
 
           - name: macOS-15/Xcode/Release
@@ -38,7 +38,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -D CMAKE_CXX_COMPILER=clang++-18 -D CMAKE_C_COMPILER=clang-18
             generator: Ninja
-            options:
+            options: -D PEEJAY_SANITIZE=Yes
             os: ubuntu-24.04
 
           - name: Ubuntu-24.04/clang-18/Debug/mprotect-variant
@@ -47,7 +47,7 @@ jobs:
             build_type: Debug
             cxx_compiler: -D CMAKE_CXX_COMPILER=clang++-18 -D CMAKE_C_COMPILER=clang-18
             generator: Ninja
-            options: -D PEEJAY_MPROTECT_VARIANT=Yes
+            options: -D PEEJAY_MPROTECT_VARIANT=Yes -D PEEJAY_SANITIZE=Yes
             os: ubuntu-24.04
 
           - name: Ubuntu-24.04/clang-18/Release
@@ -64,7 +64,7 @@ jobs:
             gcc_install: 14
             build_type: Debug
             generator: Ninja Multi-Config
-            options:
+            options: -D PEEJAY_SANITIZE=Yes
             os: ubuntu-24.04
 
           - name: Ubuntu-24.04/gcc-14/Release
@@ -80,12 +80,13 @@ jobs:
           - name: Windows-latest/VS 2022/Debug
             build_type: Debug
             generator: Visual Studio 17 2022
+            options: -D PEEJAY_SANITIZE=Yes
             os: windows-2022
 
           - name: Windows-latest/VS 2022/Debug/mprotect-variant
             build_type: Debug
             generator: Visual Studio 17 2022
-            options: -D PEEJAY_MPROTECT_VARIANT=Yes
+            options: -D PEEJAY_MPROTECT_VARIANT=Yes -D PEEJAY_SANITIZE=Yes
             os: windows-2022
 
           - name: Windows-latest/VS 2022/Release
