@@ -72,6 +72,7 @@ public:
       }
       [[fallthrough]];
     case state::root_new_token:
+      // The root matcher removes itself from the parse stack.
       parser.pop();
       if (code_unit == '-' || (code_unit >= '0' && code_unit <= '9')) {
         parser.push_number_matcher();

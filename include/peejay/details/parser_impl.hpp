@@ -42,7 +42,7 @@ namespace peejay {
 // ~~~~
 template <backend Backend> bool parser<Backend>::push(details::state next_state) {
   assert(storage_.holds() == type_list::npos && "A terminal instance should be destroyed before pushing a new state");
-  if (stack_.size() >= policies::max_stack_depth) {
+  if (stack_.size() >= policies::max_stack_depth + initial_stack_size) {
     set_error_and_pop(error::nesting_too_deep);
     return false;
   }
