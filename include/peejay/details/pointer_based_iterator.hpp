@@ -187,7 +187,7 @@ public:
   /// \returns The result of comparing the addresses to which the iterators refer.
   template <typename Other>
   friend constexpr auto operator<=>(pointer_based_iterator lhs, pointer_based_iterator<Other> rhs) noexcept {
-    return lhs.pos_ <=> &*rhs;
+    return lhs.pos_ <=> std::to_address(rhs);
   }
 
   /// Returns the distance between two iterators \p b - \p a.
