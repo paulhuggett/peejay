@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file number.hpp
+/// \brief Provides the matcher for a JSON number.
 #ifndef PEEJAY_MATCHERS_NUMBER_HPP
 #define PEEJAY_MATCHERS_NUMBER_HPP
 
@@ -64,52 +66,109 @@ namespace peejay::details {
 
 #if defined(FLT_EVAL_METHOD) && FLT_EVAL_METHOD == 0 && \
     !(defined(PEEJAY_NUMBER_PARSER_NO_FAST_PATH) && PEEJAY_NUMBER_PARSER_NO_FAST_PATH)
+/// True if Clinger's fast path may be used to convert numbers to floating point.
 constexpr auto number_parser_fast_path_available = true;
 #else
+/// True if Clinger's fast path may be used to convert numbers to floating point.
 constexpr auto number_parser_fast_path_available = false;
 #endif
 
+/// The state transition tables for the number grammar.
 namespace number_grammar {
 
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is a minus sign.
 constexpr bool is_minus(char8_t const c) noexcept { return c == '-'; }
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is the digit zero.
 constexpr bool is_zero(char8_t const c) noexcept { return c == '0'; }
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is a decimal point.
 constexpr bool is_dot(char8_t const c) noexcept { return c == '.'; }
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is a digit in the range [0, 9].
 constexpr bool is_digit(char8_t const c) noexcept { return c >= '0' && c <= '9'; }
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is a digit in the range [1, 9].
 constexpr bool is_digit9(char8_t const c) noexcept { return c >= '1' && c <= '9'; }
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is an exponent marker ('e' or 'E').
 constexpr bool is_exp(char8_t const c) noexcept { return c == 'e' || c == 'E'; }
+/// \param c  A UTF-8 code unit.
+/// \returns True if \p c is a plus or minus sign.
 constexpr bool is_sign(char8_t const c) noexcept { return c == '+' || c == '-'; }
+/// Marks the final entry of a transition table: matches any code unit.
+/// \param c  A UTF-8 code unit (ignored).
+/// \returns True.
 constexpr bool is_done(char8_t const c [[maybe_unused]]) noexcept { return true; }
 
+/// A predicate which determines whether a code unit matches one entry of a transition table.
 using is_terminal_fn = bool (*)(char8_t);
+/// \brief An entry in a transition table.
+///
+/// An entry is either a predicate and the state to move to if the predicate matches, or (as the final entry of a
+/// table) the error to be reported if no other entry matched. error::none indicates that the code unit ends the
+/// number.
 class term {
 public:
+  /// Constructs a transition entry.
+  /// \param g  The predicate which a code unit must satisfy.
+  /// \param s  The state to move to if \p g is satisfied.
   constexpr explicit term(is_terminal_fn const g, state const s) : g_{g}, value_{to_underlying(s)} {}
+  /// Constructs the final entry of a transition table.
+  /// \param err  The error to be reported if no other entry matched, or error::none if the number is complete.
   constexpr explicit term(error const err) : g_{is_done}, value_{to_underlying(err)} {}
+  /// \returns The entry's predicate.
   [[nodiscard]] constexpr is_terminal_fn get_terminal() const noexcept { return g_; }
+  /// \returns The state to move to. Valid only if the entry is not the final entry of its table.
   constexpr explicit operator state() const { return static_cast<state>(value_); }
+  /// \returns The error to be reported. Valid only for the final entry of a table.
   constexpr explicit operator error() const { return static_cast<error>(value_); }
 
 private:
+  /// The predicate which a code unit must satisfy.
   is_terminal_fn g_;
+  /// The state or error associated with this entry.
   std::common_type_t<std::underlying_type_t<state>, std::underlying_type_t<peejay::error>> value_;
 };
 
+/// \name Transition tables
+/// One table for each of the number states. Each table is searched in order for the first entry whose predicate
+/// matches the code unit.
+///@{
+/// Transitions from state::number_start.
 constexpr std::array number_start = {term{is_minus, state::number_minus}, term{is_zero, state::number_zero}, term{is_digit9, state::number_int_digits}, term{error::none}};
+/// Transitions from state::number_minus.
 constexpr std::array number_minus = {term{is_zero, state::number_zero}, term{is_digit9, state::number_int_digits}, term{error::expected_digits}};
+/// Transitions from state::number_zero.
 constexpr std::array number_zero = {term{is_dot, state::number_dot}, term{is_exp, state::number_exp_mark}, term{error::none}};
+/// Transitions from state::number_int_digits.
 constexpr std::array number_int_digits = {term{is_digit, state::number_int_digits}, term{is_dot, state::number_dot}, term{is_exp, state::number_exp_mark}, term{error::none}};
+/// Transitions from state::number_dot.
 constexpr std::array number_dot = {term{is_digit, state::number_frac_digits}, term{error::unrecognized_token}};
+/// Transitions from state::number_frac_digits.
 constexpr std::array number_frac_digits = {term{is_digit, state::number_frac_digits}, term{is_exp, state::number_exp_mark}, term{error::none}};
+/// Transitions from state::number_exp_mark.
 constexpr std::array number_exp_mark = {term{is_sign, state::number_exp_sign}, term{is_digit, state::number_exp_digits}, term{error::unrecognized_token}};
+/// Transitions from state::number_exp_sign.
 constexpr std::array number_exp_sign = {term{is_digit, state::number_exp_digits}, term{error::unrecognized_token}};
+/// Transitions from state::number_exp_digits.
 constexpr std::array number_exp_digits = {term{is_digit, state::number_exp_digits}, term{error::none}};
+///@}
 
+/// The transition tables, indexed by the offset of the current state from state::number_start.
 constexpr std::array grammar{
     number_start.data(),      number_minus.data(),    number_zero.data(),
     number_int_digits.data(), number_dot.data(),      number_frac_digits.data(),
     number_exp_mark.data(),   number_exp_sign.data(), number_exp_digits.data(),
 };
 
+/// Computes the result of consuming a code unit in a given state of the number grammar.
+///
+/// \param s  The current state. Must be one of the number states.
+/// \param c  The UTF-8 code unit to be consumed.
+/// \returns The next state if \p c continues the number. Otherwise an error code: an empty (success) code if \p c
+///   ends the number, or the error to be reported.
 // Not constexpr: std::error_code is not a literal type, so a C++20 compiler that predates P2448 rejects a constexpr
 // function returning this variant.
 inline std::variant<std::error_code, state> transition(state const s, char8_t const c) noexcept {
@@ -129,7 +188,8 @@ inline std::variant<std::error_code, state> transition(state const s, char8_t co
   }
 }
 
-/// True if the characters consumed so far form a complete, valid number.
+/// \param st  The current state of the number grammar.
+/// \returns True if the characters consumed so far form a complete, valid number.
 [[nodiscard]] constexpr bool complete(state const st) noexcept {
   switch (st) {
   case state::number_zero:
@@ -142,7 +202,8 @@ inline std::variant<std::error_code, state> transition(state const s, char8_t co
 
 }  // end namespace number_grammar
 
-// Largest k such that 5^k <= max_mantissa, i.e. 10^k is exact in float_type.
+/// \param max_mantissa  The largest integer that a floating-point type represents exactly.
+/// \returns The largest k such that 5^k <= \p max_mantissa, i.e. 10^k is exact in the floating-point type.
 constexpr std::int64_t get_exact_pow10(std::uint64_t max_mantissa) {
   std::uint64_t p = 1;
   std::int64_t k = 0;
@@ -153,6 +214,15 @@ constexpr std::int64_t get_exact_pow10(std::uint64_t max_mantissa) {
   return k;
 }
 
+/// Computes the number of 32-bit limbs needed by the working bignum that converts a decimal number to \p Float.
+/// The bignum must be large enough for both directions: scaled-up division for tiny values and multiplication by a
+/// power of five for huge ones.
+///
+/// \tparam Float  The floating-point type.
+/// \param underflow_decimal  A decimal exponent below which every value certainly rounds to zero.
+/// \param max_digits  The number of significant decimal digits that are retained.
+/// \param mant_limbs  The number of limbs used to hold the retained digits.
+/// \returns The number of limbs required.
 template <typename Float>
 constexpr std::size_t get_work_limbs(std::int64_t underflow_decimal, int max_digits, std::size_t mant_limbs) {
   using float_limits = std::numeric_limits<std::remove_cv_t<Float>>;
@@ -169,10 +239,16 @@ constexpr std::size_t get_work_limbs(std::int64_t underflow_decimal, int max_dig
 
 
 /// Facts about the integer types the matcher can deliver. Standard integers are
-/// described through <limits>; the 128-bit extension types are described
+/// described through std::numeric_limits; the 128-bit extension types are described
 /// explicitly.
 template <typename T> struct integer_traits;
 
+/// The common implementation of integer_traits<>.
+///
+/// \tparam Signed  The signed integer type.
+/// \tparam Unsigned  The unsigned counterpart of \p Signed.
+/// \tparam Magnitude  An unsigned type wide enough for |value| of \p Signed.
+/// \tparam ValueBits  The number of value bits of \p Signed.
 template <typename Signed, typename Unsigned, typename Magnitude, int ValueBits> struct integer_traits_base {
   /// The type handed to the backend (always signed)
   using signed_type = Signed;
@@ -199,30 +275,39 @@ struct integer_traits<T> : integer_traits_base<std::make_signed_t<T>, std::make_
 #if __SIZEOF_INT128__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+/// 128-bit signed integers.
 template <>
 struct integer_traits<__int128> : integer_traits_base<__int128, unsigned __int128, unsigned __int128, 127> {};
+/// 128-bit unsigned integers.
 template <>
 struct integer_traits<unsigned __int128> : integer_traits_base<__int128, unsigned __int128, unsigned __int128, 127> {};
 #pragma GCC diagnostic pop
 #endif  // __SIZEOF_INT128__
 
-// Integer types the matcher can deliver: standard integers of up to 64 bits
-// and, where the compiler provides them, __int128 / unsigned __int128.
+/// Integer types the matcher can deliver: standard integers of up to 64 bits
+/// and, where the compiler provides them, __int128 / unsigned __int128.
 template <typename T>
 concept parser_integer = requires { typename integer_traits<std::remove_cv_t<T>>::signed_type; };
 
-// Number of significant decimal digits the matcher retains: `requested` if that
-// is larger, otherwise the minimum. The minimum is never less than 38 and is
-// enough to hold every value of the signed result type exactly: 2^value_bits
-// has floor(value_bits * log10(2)) + 1 digits (30103/100000 slightly exceeds
-// log10(2)).
+/// Computes the number of significant decimal digits the matcher retains: \p requested if that
+/// is larger, otherwise the minimum. The minimum is never less than 38 and is
+/// enough to hold every value of the signed result type exactly: 2^value_bits
+/// has floor(value_bits * log10(2)) + 1 digits (30103/100000 slightly exceeds
+/// log10(2)).
+///
+/// \param value_bits  The number of value bits of the signed result type.
+/// \param requested  The number of digits requested by the policy, or 0 if none was requested.
+/// \returns The number of significant decimal digits to retain.
 [[nodiscard]] constexpr int retained_digits(int const value_bits, int const requested = 0) {
   int const needed = std::max((value_bits * 30103) / 100000 + 1, 38);
   return requested > needed ? requested : needed;
 }
 
-// 32-bit limbs needed to hold any `digits`-digit decimal number
-// (3322/1000 slightly exceeds log2(10), so this rounds up).
+/// Computes the number of 32-bit limbs needed to hold any \p digits-digit decimal number
+/// (3322/1000 slightly exceeds log2(10), so this rounds up).
+///
+/// \param digits  The number of decimal digits.
+/// \returns The number of 32-bit limbs required.
 [[nodiscard]] constexpr std::size_t limbs_for_digits(int const digits) {
   int const bits = (digits * 3322 + 999) / 1000;
   return static_cast<std::size_t>((bits + 31) / 32);
@@ -246,10 +331,13 @@ concept parser_integer = requires { typename integer_traits<std::remove_cv_t<T>>
 //   i.e. k ≤ 22 for double (5^22 < 2^53). That is the source of exact_pow10, and it is why
 //   Clinger’s single multiply or divide is exact for |e10| ≤ 22.
 
-// 5^13 is the largest power of five below 2^32; used to cut bignum passes.
+/// 5^13 is the largest power of five below 2^32; used to cut bignum passes.
 static constexpr std::uint32_t pow5_chunk = 1'220'703'125U;
+/// The exponent of pow5_chunk.
 static constexpr std::int64_t pow5_chunk_exp = 13;
 
+/// \param exponent  The power to which five is raised. Must be less than or equal to pow5_chunk_exp.
+/// \returns 5^\p exponent.
 constexpr std::uint32_t small_pow5(std::int64_t const exponent) noexcept {
   auto p = std::uint32_t{1};
   for (auto i = std::int64_t{0}; i < exponent; ++i) {
@@ -258,7 +346,12 @@ constexpr std::uint32_t small_pow5(std::int64_t const exponent) noexcept {
   return p;
 }
 
-// n *= 5^exponent. Returns non-zero if any step carried out of the top limb.
+/// Computes n *= 5^exponent.
+///
+/// \tparam Limbs  The number of limbs of \p n.
+/// \param n  The value to be multiplied. Updated in place.
+/// \param exponent  The power of five by which \p n is multiplied. Must not be negative.
+/// \returns Non-zero if any step carried out of the top limb (that is, the result did not fit).
 template <std::size_t Limbs>
 constexpr std::uint32_t multiply_by_pow5(big_uint<Limbs>& n, std::int64_t exponent) noexcept {
   auto carry_out = std::uint32_t{0};
@@ -271,9 +364,15 @@ constexpr std::uint32_t multiply_by_pow5(big_uint<Limbs>& n, std::int64_t expone
   return carry_out;
 }
 
-// n = floor(n / 5^exponent). Returns true if the division was inexact.
-// floor(floor(x/a)/b) == floor(x/(a*b)), and the final remainder is non-zero
-// iff any step's remainder was.
+/// Computes n = floor(n / 5^exponent).
+///
+/// floor(floor(x/a)/b) == floor(x/(a*b)), and the final remainder is non-zero
+/// iff any step's remainder was.
+///
+/// \tparam Limbs  The number of limbs of \p n.
+/// \param n  The value to be divided. Updated in place.
+/// \param exponent  The power of five by which \p n is divided. Must not be negative.
+/// \returns True if the division was inexact.
 template <std::size_t Limbs> constexpr bool divide_by_pow5(big_uint<Limbs>& n, std::int64_t exponent) noexcept {
   bool inexact = false;
   for (; exponent >= pow5_chunk_exp; exponent -= pow5_chunk_exp) {
@@ -287,7 +386,7 @@ template <std::size_t Limbs> constexpr bool divide_by_pow5(big_uint<Limbs>& n, s
   return inexact;
 }
 
-// Radix-2 floating-point types with at most 64 mantissa bits.
+/// Radix-2 floating-point types with at most 64 mantissa bits.
 template <typename T>
 concept parser_float = std::numeric_limits<T>::is_specialized && !std::numeric_limits<T>::is_integer &&
                        std::numeric_limits<T>::radix == 2 && std::numeric_limits<T>::digits <= 64;
@@ -585,26 +684,26 @@ private:
 
   using work_uint = big_uint<work_limbs>;
 
-  // Where the true value lies relative to the decimal that is converted. The
-  // conversion is exact for the decimal itself; `above` / `below` ask for the
-  // result for a value infinitesimally larger / smaller, which is how an open
-  // interval (W, W+1) * 10^e10 is bracketed.
+  /// Where the true value lies relative to the decimal that is converted. The
+  /// conversion is exact for the decimal itself; `above` / `below` ask for the
+  /// result for a value infinitesimally larger / smaller, which is how an open
+  /// interval (W, W+1) * 10^e10 is bracketed.
   enum class tail_bias : std::uint8_t { none, above, below };
 
-  // An exact value n * 2^p2, plus a flag if anything non-zero lies below n.
+  /// An exact value n * 2^p2, plus a flag if anything non-zero lies below n.
   struct binary_value {
-    work_uint n;
-    std::int64_t p2 = 0;
-    bool sticky = false;
-    bool below = false;     // the true value is infinitesimally less than n * 2^p2 (+ sticky)
-    bool overflow = false;  // the product did not fit; work_limbs is sized so it cannot
+    work_uint n;            ///< The significand.
+    std::int64_t p2 = 0;    ///< The power of two by which n is scaled.
+    bool sticky = false;    ///< Non-zero bits lie below n.
+    bool below = false;     ///< The true value is infinitesimally less than n * 2^p2 (+ sticky).
+    bool overflow = false;  ///< The product did not fit; work_limbs is sized so it cannot.
   };
 
-  // A rounded significand and the power of two that scales it.
+  /// A rounded significand and the power of two that scales it.
   struct rounded_value {
-    std::uint64_t mantissa = 0;
-    std::int64_t exponent = 0;
-    bool overflow = false;
+    std::uint64_t mantissa = 0;  ///< The rounded significand.
+    std::int64_t exponent = 0;   ///< The power of two by which mantissa is scaled.
+    bool overflow = false;       ///< The value overflowed during conversion.
   };
 
   /// \brief Pre-scales a dividend so that division by a power of five keeps enough precision.
@@ -718,14 +817,14 @@ private:
   ///   dropped to determine the correct rounding.
   [[nodiscard]] std::variant<std::error_code, float_type> to_floating() const noexcept;
 
-  big_uint<mant_limbs> mant_;     // first (up to) max_digits significant digits
-  std::int64_t scale_ = 0;        // value = mant_ * 10^(scale_ + exponent)
-  std::int64_t exp_ = 0;          // magnitude of the written exponent (saturating)
-  digit_count_type digit_count_ = 0;  // significant digits held in mant_ (<= max_digits)
-  bool negative_ = false;
-  bool is_integer_ = true;        // True if no '.' and no exponent seen
-  bool exp_negative_ = false;
-  bool sticky_ = false;           // a non-zero digit was dropped
+  big_uint<mant_limbs> mant_;     ///< The first (up to) max_digits significant digits.
+  std::int64_t scale_ = 0;        ///< value = mant_ * 10^(scale_ + exponent).
+  std::int64_t exp_ = 0;          ///< The magnitude of the written exponent (saturating).
+  digit_count_type digit_count_ = 0;  ///< The number of significant digits held in mant_ (<= max_digits).
+  bool negative_ = false;         ///< True if the number has a leading minus sign.
+  bool is_integer_ = true;        ///< True if no '.' and no exponent seen.
+  bool exp_negative_ = false;     ///< True if the exponent has a leading minus sign.
+  bool sticky_ = false;           ///< True if a non-zero digit was dropped.
 };
 
 template <backend Backend>

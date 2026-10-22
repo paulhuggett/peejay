@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file root.hpp
+/// \brief Provides the matcher for a JSON value.
 #ifndef PEEJAY_MATCHERS_ROOT_HPP
 #define PEEJAY_MATCHERS_ROOT_HPP
 
@@ -45,10 +47,21 @@
 
 namespace peejay::details {
 
+/// Matches any JSON value (optionally preceded by whitespace). The first character of the value is used to
+/// select the matcher for that type of value, which replaces this matcher on the parse stack.
+///
+/// \tparam Backend  The parser backend type.
 template <backend Backend> class root_matcher {
 public:
+  /// The parser policies.
   using policies = std::remove_reference_t<Backend>::policies;
 
+  /// Consumes a code unit.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True if \p code_unit was consumed, false if it should be passed to the matcher which is now on top
+  ///   of the parse stack.
   static bool consume(parser<Backend>& parser, char8_t code_unit) {
     bool match = false;
     switch (parser.stack_.top()) {
@@ -59,6 +72,7 @@ public:
       }
       [[fallthrough]];
     case state::root_new_token:
+      // The root matcher removes itself from the parse stack.
       parser.pop();
       if (code_unit == '-' || (code_unit >= '0' && code_unit <= '9')) {
         parser.push_number_matcher();
@@ -81,6 +95,8 @@ public:
     return match;
   }
 
+  /// Signals the end of the input. A value was expected so error::expected_token is raised.
+  /// \param parser  The owning parser instance.
   static void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::expected_token); }
 };
 

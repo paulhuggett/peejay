@@ -1,0 +1,14 @@
+#===- cmake/peejayConfig.cmake.in -----------------------------------------===//
+# Copyright © 2026 Paul Bowen-Huggett
+# SPDX-License-Identifier: MIT
+#===----------------------------------------------------------------------===//
+@PACKAGE_INIT@
+
+# peejay depends on icubaby, which is installed alongside it. icubaby doesn't
+# install a package configuration file, so load its exported targets directly.
+if(NOT TARGET icubaby::icubaby)
+  include("${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/icubaby/icubaby.cmake")
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/peejayTargets.cmake")
+check_required_components(peejay)

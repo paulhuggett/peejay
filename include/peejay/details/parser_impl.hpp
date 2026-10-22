@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file parser_impl.hpp
+/// \brief The implementation of the out-of-line member functions of peejay::parser.
 #ifndef PEEJAY_DETAILS_PARSER_IMPL_HPP
 #define PEEJAY_DETAILS_PARSER_IMPL_HPP
 
@@ -40,7 +42,10 @@ namespace peejay {
 // ~~~~
 template <backend Backend> bool parser<Backend>::push(details::state next_state) {
   assert(storage_.holds() == type_list::npos && "A terminal instance should be destroyed before pushing a new state");
-  if (stack_.size() >= policies::max_stack_depth) {
+  // Whitespace may use the extra entry reserved for it, so it never counts towards the nesting depth.
+  auto const limit = policies::max_stack_depth + initial_stack_size +
+                     (get_group(next_state) == details::group::whitespace ? whitespace_stack_size : 0U);
+  if (stack_.size() >= limit) {
     set_error_and_pop(error::nesting_too_deep);
     return false;
   }

@@ -1,0 +1,4 @@
+sphinx
+breathe
+furo
+sphinx-design

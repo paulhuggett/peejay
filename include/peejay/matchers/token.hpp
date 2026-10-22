@@ -29,6 +29,8 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+/// \file token.hpp
+/// \brief Provides the matcher for the keywords "true", "false", and "null".
 #ifndef PEEJAY_MATCHERS_TOKEN_HPP
 #define PEEJAY_MATCHERS_TOKEN_HPP
 
@@ -45,13 +47,13 @@ namespace peejay::details {
 ///   "false", or "null".
 ///
 /// Once a token has been recognized, the matcher invokes the relevant backend function ---
-/// boolean_value() or null_value() --- then removes itself from the parserr's parse stack and
+/// boolean_value() or null_value() --- then removes itself from the parser's parse stack and
 /// self-destructs.
 ///
 /// \tparam Backend  The parser callback structure.
 template <backend Backend> class token_matcher {
 public:
-  /// \param t  Which of the tokens is to be consumed
+  /// \param t  Which of the tokens is to be consumed. The first character of the token has already been consumed.
   constexpr explicit token_matcher(token const t) noexcept : token_{t} {
     using namespace std::literals::string_view_literals;
     switch (t) {
@@ -62,6 +64,12 @@ public:
     }
   }
 
+  /// Consumes a code unit. If it does not match the next character of the token, error::unrecognized_token is
+  /// raised.
+  ///
+  /// \param parser  The owning parser instance.
+  /// \param code_unit  A UTF-8 code unit from the input.
+  /// \returns True.
   bool consume(parser<Backend>& parser, char8_t const code_unit) {
     assert(!parser.has_error() && "The parser should not be in an error state here");
     assert(!text_.empty() && "Input text must not be empty");
@@ -75,14 +83,17 @@ public:
     return true;
   }
 
+  /// Signals the end of the input. The token is incomplete so error::unrecognized_token is raised.
+  /// \param parser  The owning parser instance.
   void eof(parser<Backend> &parser) { parser.set_error_and_pop(error::unrecognized_token); }
 
 private:
-  /// The keyword to be matched. The input sequence must exactly match this
+  /// The remaining characters of the keyword to be matched. The input sequence must exactly match this
   /// string or an unrecognized token error is raised. Once all of the
-  /// characters are matched, the function derived from token_ is called.
+  /// characters are matched, the backend function derived from token_ is called.
   std::u8string_view text_;
-  /// This function is called once the complete token text has been matched.
+  /// The token being matched. This determines the backend function that is called once the complete token text
+  /// has been matched.
   token token_;
 
   /// When called, we have successfully processed the input text to the end of the specified token.
