@@ -42,7 +42,6 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <type_traits>
 
 #include "peejay/details/portab.hpp"
