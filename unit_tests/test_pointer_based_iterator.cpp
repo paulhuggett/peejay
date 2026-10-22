@@ -155,6 +155,11 @@ TEST_F(PointerBasedIterator, TotalOrder) {
   EXPECT_FALSE(b <= a);
   EXPECT_FALSE(b == a);
   EXPECT_TRUE(b != a);
+  // The past-the-end iterator on the right-hand side.
+  EXPECT_TRUE(a < b);
+  EXPECT_TRUE(a <= b);
+  EXPECT_FALSE(a > b);
+  EXPECT_FALSE(a >= b);
 
   // Comparing const- and non-const iterators.
   const_iterator c{&arr[0]};
@@ -164,6 +169,16 @@ TEST_F(PointerBasedIterator, TotalOrder) {
   EXPECT_FALSE(b <= c);
   EXPECT_FALSE(b == c);
   EXPECT_TRUE(b != c);
+}
+
+// NOLINTNEXTLINE
+TEST_F(PointerBasedIterator, CompareNull) {
+  iterator const a{nullptr};
+  iterator const b{nullptr};
+  EXPECT_TRUE(a <= b);
+  EXPECT_TRUE(a >= b);
+  EXPECT_FALSE(a < b);
+  EXPECT_FALSE(a > b);
 }
 
 // NOLINTNEXTLINE
