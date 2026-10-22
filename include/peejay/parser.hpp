@@ -403,6 +403,11 @@ private:
   void consume_eof();
 
   static constexpr auto initial_stack_size = std::size_t{1};
+  /// An extra stack entry reserved for the whitespace matcher. Whitespace may be pushed on top of the matcher for
+  /// the most deeply nested value (or the root matcher which is about to be replaced by it). The whitespace matcher
+  /// never pushes another matcher so a single entry is always sufficient and whitespace never counts towards
+  /// policies::max_stack_depth.
+  static constexpr auto whitespace_stack_size = std::size_t{1};
 
   /// Initializes the parse stack ready to match a single top-level value.
   void init_stack() {
@@ -418,7 +423,9 @@ private:
   }
 
   /// The parse stack.
-  std::stack<details::state, arrayvec<details::state, policies::max_stack_depth + initial_stack_size>> stack_;
+  std::stack<details::state,
+             arrayvec<details::state, policies::max_stack_depth + initial_stack_size + whitespace_stack_size>>
+      stack_;
   /// Storage for the active matcher which carries state of its own (if any).
   details::variant<type_list::type_list<string_matcher, number_matcher, token_matcher>> storage_;
   /// The error (if any) raised by the parse.
