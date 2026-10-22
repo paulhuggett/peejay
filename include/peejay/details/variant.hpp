@@ -142,8 +142,24 @@ public:
 
   /// Constructs a variant which holds no value.
   variant() noexcept(allocates) { this->protect(/*usable=*/false); }
-  variant(variant const &) noexcept = delete;
-  variant &operator=(variant const &other) noexcept = delete;
+  // The contained value is copied byte-for-byte: this is safe because the member types are all trivially copyable.
+#if PEEJAY_MPROTECT_VARIANT
+  /// Copy constructor.
+  /// \param other  The variant to be copied.
+  variant(variant const& other) noexcept;
+  /// Copy assignment.
+  /// \param other  The variant to be copied.
+  /// \returns *this.
+  variant& operator=(variant const& other) noexcept;
+#else
+  /// Copy constructor.
+  /// \param other  The variant to be copied.
+  variant(variant const& other) noexcept = default;
+  /// Copy assignment.
+  /// \param other  The variant to be copied.
+  /// \returns *this.
+  variant& operator=(variant const& other) noexcept = default;
+#endif
 #if !defined(NDEBUG) || PEEJAY_MPROTECT_VARIANT
   /// Move constructor.
   /// \param other  The variant to be moved.
@@ -269,6 +285,35 @@ template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 inline std::size_t const variant<Members>::page_size_ = system_page_size();
 PEEJAY_CLANG_DIAG_POP
+
+template <type_list::sequence Members>
+  requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
+variant<Members>::variant(variant const& other) noexcept : holds_{other.holds_} {
+  // other's storage is readable whenever it holds a value.
+  if (holds_ != type_list::npos && contents_ && other.contents_) {
+    std::memcpy(contents_.get(), other.contents_.get(), max_size_);
+  }
+  this->protect(/*usable=*/holds_ != type_list::npos);
+}
+
+template <type_list::sequence Members>
+  requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
+auto variant<Members>::operator=(variant const& other) noexcept -> variant& {
+  if (this == &other) {
+    return *this;
+  }
+  if (!contents_) {
+    // This variant has been moved from and has no storage of its own.
+    contents_ = aligned_unique_ptr<std::byte[]>();
+  }
+  this->protect(/*usable=*/true);
+  holds_ = other.holds_;
+  if (holds_ != type_list::npos && other.contents_) {
+    std::memcpy(contents_.get(), other.contents_.get(), max_size_);
+  }
+  this->protect(/*usable=*/holds_ != type_list::npos);
+  return *this;
+}
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>

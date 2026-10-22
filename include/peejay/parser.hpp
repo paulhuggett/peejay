@@ -197,9 +197,10 @@ public:
 
   /// Constructs a parser with a default-constructed backend.
   constexpr parser() : parser(Backend{}) {}
-  /// Copy constructor.
+  /// Copy constructor. The new parser has a copy of \p other's backend and continues from the same point in the
+  /// input. Available only if the backend is held by value and is copy-constructible.
   /// \param other  The parser to be copied.
-  constexpr parser(parser const &other) = default;
+  constexpr parser(parser const& other) requires(!std::is_reference_v<Backend>) = default;
   /// Move constructor.
   /// \param other  The parser to be moved.
   constexpr parser(parser &&other) noexcept = default;
@@ -217,7 +218,9 @@ public:
     }
   }
 
-  /// Copy assignment.
+  /// Copy assignment. This parser receives a copy of \p other's backend and continues from the same point in the
+  /// input. Available only if the backend is held by value and is copy-assignable. If copying the backend throws,
+  /// this parser is unchanged.
   /// \param other  The parser to be copied.
   /// \returns *this.
   parser &operator=(parser const &other) = default;
@@ -422,6 +425,12 @@ private:
     assert(stack_.size() == initial_stack_size + 1);
   }
 
+  /// The backend object which receives notifications from the parser.
+  ///
+  /// The defaulted copy and move assignment operators assign members in declaration order, and the
+  /// backend is the only member whose assignment might throw. Assigning it first means that the
+  /// parser is left unchanged if it does.
+  [[no_unique_address]] Backend backend_;
   /// The parse stack.
   std::stack<details::state,
              arrayvec<details::state, policies::max_stack_depth + initial_stack_size + whitespace_stack_size>>
@@ -435,8 +444,6 @@ private:
   [[no_unique_address]] coord<policies::pos_tracking> pos_;
   /// The row number of the most recent token consumed from the input.
   [[no_unique_address]] coord<policies::pos_tracking> matcher_pos_;
-  /// The backend object which receives notifications from the parser.
-  [[no_unique_address]] Backend backend_;
 };
 
 /// Deduction guide for copying or moving a parser.
