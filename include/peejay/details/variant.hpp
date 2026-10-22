@@ -316,7 +316,10 @@ variant<Members>::variant(variant&& other) noexcept : variant(static_cast<varian
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
-  return *this = static_cast<variant const&>(other);
+  if (this != &other) {
+    *this = static_cast<variant const&>(other);
+  }
+  return *this;
 }
 
 template <type_list::sequence Members>
