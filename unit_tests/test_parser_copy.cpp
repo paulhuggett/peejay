@@ -56,25 +56,25 @@ public:
 
   [[nodiscard]] std::string result() const { return out_; }
 
-  std::error_code string_value(std::u8string_view const& sv) { return this->append("s:", sv); }
-  std::error_code integer_value(int const v) { return this->append("i:" + std::to_string(v)); }
-  std::error_code float_value([[maybe_unused]] double const v) { assert(false); return {}; } // LCOV_EXCL_LINE
-  std::error_code boolean_value(bool const v) { return this->append(v ? "b:true" : "b:false"); }
-  std::error_code null_value() { return this->append("null"); }
-  std::error_code begin_array() { return this->append("["); }
-  std::error_code end_array() { return this->append("]"); }
-  std::error_code begin_object() { return this->append("{"); }
-  std::error_code key(std::u8string_view const& sv) { return this->append("k:", sv); }
-  std::error_code end_object() { return this->append("}"); }
+  std::error_code string_value(std::u8string_view const& sv) { return this->append("s:"sv, sv); }
+  std::error_code integer_value(int const v) { return this->append(std::string{"i:"} + std::to_string(v)); }
+  [[maybe_unused]] std::error_code float_value(double const v) { return this->append(std::string{"f:"} + std::to_string(v)); }  // LCOV_EXCL_LINE
+  std::error_code boolean_value(bool const v) { return this->append(v ? "b:true"sv : "b:false"sv); }
+  std::error_code null_value() { return this->append("null"sv); }
+  std::error_code begin_array() { return this->append("["sv); }
+  std::error_code end_array() { return this->append("]"sv); }
+  std::error_code begin_object() { return this->append("{"sv); }
+  std::error_code key(std::u8string_view const& sv) { return this->append("k:"sv, sv); }
+  std::error_code end_object() { return this->append("}"sv); }
 
 private:
-  std::error_code append(std::string const& s) {
+  std::error_code append(std::string_view const& s) {
     out_ += s;
     out_ += ' ';
     return {};
   }
-  std::error_code append(std::string const& prefix, std::u8string_view const& sv) {
-    return this->append(prefix + std::string{sv.begin(), sv.end()});
+  std::error_code append(std::string_view const& prefix, std::u8string_view const& sv) {
+    return this->append(std::string{prefix} + std::string{sv.begin(), sv.end()});
   }
 
   std::string out_;
@@ -85,6 +85,7 @@ class throwing_recorder : public recorder {
 public:
   throwing_recorder() = default;
   throwing_recorder(throwing_recorder const&) = default;
+  ~throwing_recorder() noexcept = default;
   throwing_recorder& operator=(throwing_recorder const& other) {
     if (other.fail) {
       throw std::runtime_error{"backend copy failed"};
