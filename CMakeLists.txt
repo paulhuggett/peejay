@@ -44,6 +44,7 @@ option(PEEJAY_COVERAGE "Generate Source-based Coverage")
 option(PEEJAY_FUZZTEST "Enable fuzztest")
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
 option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
+option(PEEJAY_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer (GCC/Clang only)" No)
 
 FetchContent_Declare(
   googletest
@@ -124,15 +125,20 @@ function (setup_peejay_target target)
   endif ()
 
   if (WERROR)
-    list (APPEND clang_options -Werror)
-    list (APPEND gcc_options -Werror)
-    list (APPEND msvc_options /WX)
+    list(APPEND clang_options -Werror)
+    list(APPEND gcc_options -Werror)
+    list(APPEND msvc_options /WX)
   endif ()
 
-  if (PEEJAY_COVERAGE)
-    list (APPEND gcc_options -fprofile-arcs -ftest-coverage)
-    list (APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
-  endif ()
+  if(PEEJAY_COVERAGE)
+    list(APPEND gcc_options -fprofile-arcs -ftest-coverage)
+    list(APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
+  endif(PEEJAY_COVERAGE)
+
+  if(PEEJAY_SANITIZE)
+    list(APPEND gcc_options -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+    list(APPEND clang_options -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+  endif(PEEJAY_SANITIZE)
 
   target_compile_definitions(${target}
     PUBLIC
