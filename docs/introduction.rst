@@ -76,7 +76,8 @@ Design goals
 Predictable resource use
    The parser front end never allocates memory. Its size is fixed when it is compiled
    and depends only on the policy: there is a buffer of ``max_length`` bytes for
-   strings and a stack of ``max_stack_depth`` entries for nesting. Input that would
+   strings and a stack with one entry for each of the ``max_stack_depth`` levels of
+   nesting that it allows. Input that would
    exceed either limit is rejected with an error. It is never truncated, and it never
    causes the parser to grow. This makes peejay suitable for embedded systems, and
    for services that must not let a hostile document exhaust their memory.

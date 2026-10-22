@@ -126,7 +126,7 @@ Some points to notice:
 .. note::
 
    The DOM backend's default limits are deliberately small: at most 50 members in an
-   array or object, strings of at most 64 bytes, and only a few levels of nesting.
+   array or object, strings of at most 64 bytes, and at most 8 levels of nesting.
    :doc:`howto/configure-policies` and :doc:`howto/work-with-the-dom` show how to
    raise them.
 

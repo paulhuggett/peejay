@@ -37,10 +37,11 @@ Choosing values
    size, so the parser object grows by one byte for each unit you add.
 
 ``max_stack_depth``
-   The number of entries in the parse stack. The parser uses some of the entries for
-   its own bookkeeping, so the deepest nesting it accepts is a little less than this
-   value. With the default of 8, it accepts six levels of nested arrays. Choose a
-   value a few larger than the deepest nesting you expect.
+   The deepest nesting of values that the parser accepts. The top-level value is at
+   depth 1, and every value counts, including the innermost one. So
+   ``{"a": [1]}`` has a depth of 3. With the default of 8, the parser accepts 7
+   nested arrays around a number. Set it to the deepest nesting your input can
+   legitimately have.
 
 ``integer_type``
    The signed integer type passed to ``integer_value()``. The default is ``int``. For

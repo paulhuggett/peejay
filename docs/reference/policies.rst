@@ -27,8 +27,8 @@ normally ``static constexpr`` data members.
      - unsigned integral
      - The maximum length of a string, in UTF-8 code units.
    * - ``max_stack_depth``
-     - integral, at least 2
-     - The number of entries in the parse stack, which limits nesting.
+     - integral, at least 1
+     - The maximum nesting depth of values.
    * - ``pos_tracking``
      - ``bool``
      - Whether the parser counts lines.
@@ -73,14 +73,19 @@ exactly this many ``char8_t``.
 ``max_stack_depth``
 ^^^^^^^^^^^^^^^^^^^
 
-The capacity of the parser's stack. Each open array or object uses one entry. The
-parser also uses entries to mark the end of the input and to track the value that it
-is reading, so the deepest nesting it accepts is less than ``max_stack_depth``. For
-example, with a depth of 8, ``[[[[[[1]]]]]]`` (6 levels) is accepted and
-``[[[[[[[1]]]]]]]`` (7 levels) is rejected. Input that nests too deeply causes
-:cpp:enumerator:`peejay::error::nesting_too_deep`.
+The maximum depth to which values may be nested. The top-level value is at depth 1,
+and each member of an array or object is one level deeper than the array or object
+that contains it. Every value counts, including the innermost one. With the default
+of 8:
 
-The DOM backend also keeps a stack of this many elements.
+* ``[[[[[[[1]]]]]]]`` is accepted: 7 arrays, with the number 1 at depth 8.
+* ``[[[[[[[[]]]]]]]]`` is accepted: 8 arrays, the innermost of them empty.
+* ``[[[[[[[[1]]]]]]]]`` is rejected, because the number 1 is at depth 9.
+
+Input that nests too deeply causes :cpp:enumerator:`peejay::error::nesting_too_deep`.
+The parser's stack holds one entry for each level, plus one more for its own use, so
+its size depends only on this value. The DOM backend also keeps a stack of
+``max_stack_depth`` elements.
 
 ``pos_tracking``
 ^^^^^^^^^^^^^^^^

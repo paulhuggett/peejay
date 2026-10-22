@@ -72,8 +72,8 @@ Each example is a complete input that causes the error.
      - A ``\u`` escape contains a character that is not a hexadecimal digit.
      - ``"\u12g4"``
    * - ``nesting_too_deep``
-     - Arrays and objects are nested more deeply than ``max_stack_depth`` allows.
-     - ``[[[[[[[1]]]]]]]`` with the default policy
+     - Values are nested more deeply than ``max_stack_depth`` allows.
+     - ``[[[[[[[[1]]]]]]]]`` with the default policy
    * - ``number_out_of_range``
      - A number is too large for ``float_type``, is not an integer when floating point
        is disabled, cannot be rounded reliably (see
