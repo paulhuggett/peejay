@@ -104,8 +104,6 @@ static_assert(!std::is_copy_assignable_v<parser<recorder&>>);
 static_assert(!std::is_copy_constructible_v<parser<peejay::dom::dom<>>>);
 static_assert(!std::is_copy_assignable_v<parser<peejay::dom::dom<>>>);
 
-}  // end anonymous namespace
-
 // NOLINTNEXTLINE
 TEST(ParserCopy, MidString) {
   parser<recorder> p;
@@ -223,3 +221,38 @@ TEST(ParserCopy, AssignBackendThrows) {
   EXPECT_EQ(p.eof(), "[ i:123 ] ");
   EXPECT_FALSE(p.has_error());
 }
+
+// NOLINTNEXTLINE
+TEST(ParserMove, MovedFromConstructionInput) {
+  parser<recorder> p;
+  p.input(u8"[\"ab"sv);
+  parser<recorder> q{std::move(p)};
+  // A moved-from parser continues from the point at which it was moved. Its backend has been moved from too so
+  // give it a fresh one.
+  p.backend() = recorder{};  // NOLINT(bugprone-use-after-move,hicpp-invalid-access-moved)
+  p.input(u8"c\"]"sv);
+  q.input(u8"d\"]"sv);
+  EXPECT_EQ(p.eof(), "s:abc ] ");
+  EXPECT_FALSE(p.has_error());
+  EXPECT_EQ(q.eof(), "[ s:abd ] ");
+  EXPECT_FALSE(q.has_error());
+}
+
+// NOLINTNEXTLINE
+TEST(ParserMove, MovedFromAssignmentInput) {
+  // The target is part-way through a number; the source is part-way through a string.
+  parser<recorder> p;
+  p.input(u8"[\"ab"sv);
+  parser<recorder> q;
+  q.input(u8"[12"sv);
+  q = std::move(p);
+  p.backend() = recorder{};  // NOLINT(bugprone-use-after-move,hicpp-invalid-access-moved)
+  p.input(u8"c\"]"sv);
+  q.input(u8"d\"]"sv);
+  EXPECT_EQ(p.eof(), "s:abc ] ");
+  EXPECT_FALSE(p.has_error());
+  EXPECT_EQ(q.eof(), "[ s:abd ] ");
+  EXPECT_FALSE(q.has_error());
+}
+
+}  // end anonymous namespace
