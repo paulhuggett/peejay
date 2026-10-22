@@ -375,24 +375,24 @@ private:
   void pop() noexcept;
 
   /// Pushes a matcher for a number.
-  void push_number_matcher() { push_terminal<details::state::number_start>(); }
+  void push_number_matcher() { this->push_terminal<details::state::number_start>(); }
   /// Pushes a matcher for a string.
   /// \param object_key  True if the string is an object key, false if it is a value.
-  void push_string_matcher(bool const object_key) { push_terminal<details::state::string_start>(object_key); }
+  void push_string_matcher(bool const object_key) { this->push_terminal<details::state::string_start>(object_key); }
   /// Pushes a matcher for one of the keywords "true", "false", or "null".
   /// \param t  The keyword to be matched.
-  void push_token_matcher(details::token const t) { push_terminal<details::state::token_start>(t); }
+  void push_token_matcher(details::token const t) { this->push_terminal<details::state::token_start>(t); }
 
   /// Pushes a matcher for any JSON value.
-  void push_root_matcher() { push(details::state::root_start); }
+  void push_root_matcher() { this->push(details::state::root_start); }
   /// Pushes a matcher for whitespace.
-  void push_whitespace_matcher() { push(details::state::whitespace_start); }
+  void push_whitespace_matcher() { this->push(details::state::whitespace_start); }
   /// Pushes a matcher for an array.
-  void push_array_matcher() { push(details::state::array_start); }
+  void push_array_matcher() { this->push(details::state::array_start); }
   /// Pushes a matcher for an object.
-  void push_object_matcher() { push(details::state::object_start); }
+  void push_object_matcher() { this->push(details::state::object_start); }
   /// Pushes a matcher for the end of the input.
-  void push_eof_matcher() { push(details::state::eof_start); }
+  void push_eof_matcher() { this->push(details::state::eof_start); }
   ///@}
 
   /// Passes a single code unit to the matcher(s) on the parse stack until it is consumed or an error is raised.
@@ -402,6 +402,8 @@ private:
   /// raised.
   void consume_eof();
 
+  static constexpr auto initial_stack_size = std::size_t{1};
+
   /// Initializes the parse stack ready to match a single top-level value.
   void init_stack() {
     // The EOF matcher is placed at the bottom of the stack to ensure that the
@@ -409,10 +411,14 @@ private:
     this->push_eof_matcher();
     // Match a top-level object.
     this->push_root_matcher();
+    // +1 here accounts for the root matcher. This removes itself from the stack
+    // before pushing the matcher for the object type it has identified. It therefore
+    // doesn't count towards the maximum stack depth.
+    assert(stack_.size() == initial_stack_size + 1);
   }
 
   /// The parse stack.
-  std::stack<details::state, arrayvec<details::state, policies::max_stack_depth>> stack_;
+  std::stack<details::state, arrayvec<details::state, policies::max_stack_depth + initial_stack_size>> stack_;
   /// Storage for the active matcher which carries state of its own (if any).
   details::variant<type_list::type_list<string_matcher, number_matcher, token_matcher>> storage_;
   /// The error (if any) raised by the parse.

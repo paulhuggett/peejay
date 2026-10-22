@@ -458,7 +458,7 @@ TEST(NumberGrammar, IsDoneMatchesEverything) {
 
 struct policy_common : public peejay::default_policies {
   static constexpr auto max_length = std::size_t{20};
-  static constexpr auto max_stack_depth = std::size_t{8};
+  static constexpr auto max_stack_depth = std::size_t{6};
 };
 
 template <int Bits> struct limits {};
@@ -681,7 +681,7 @@ static_assert(!is_float_char('\0'));
 template <typename Integer>
 struct integer_fuzz_policies : peejay::default_policies {
   static constexpr std::size_t max_length = 0;
-  static constexpr std::size_t max_stack_depth = 3;
+  static constexpr std::size_t max_stack_depth = 1;
   using integer_type = Integer;
   using float_type = peejay::no_float_type;
 };
@@ -732,7 +732,7 @@ FUZZ_TEST(NumberFuzz, IntegerMatchesFromCharsLongLong);
 template <typename Float>
 struct float_fuzz_policies : peejay::default_policies {
   static constexpr std::size_t max_length = 0;
-  static constexpr std::size_t max_stack_depth = 3;
+  static constexpr std::size_t max_stack_depth = 1;
   using integer_type = long;
   using float_type = Float;
 };
