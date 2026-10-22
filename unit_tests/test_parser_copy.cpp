@@ -54,18 +54,18 @@ class recorder {
 public:
   using policies = peejay::default_policies;
 
-  [[nodiscard]] std::string result() const { return out_; }
+  [[maybe_unused, nodiscard]] std::string result() const { return out_; }
 
-  std::error_code string_value(std::u8string_view const& sv) { return this->append("s:"sv, sv); }
-  std::error_code integer_value(int const v) { return this->append(std::string{"i:"} + std::to_string(v)); }
+  [[maybe_unused]] std::error_code string_value(std::u8string_view const& sv) { return this->append("s:"sv, sv); }
+  [[maybe_unused]] std::error_code integer_value(int const v) { return this->append(std::string{"i:"} + std::to_string(v)); }
   [[maybe_unused]] std::error_code float_value(double const v) { return this->append(std::string{"f:"} + std::to_string(v)); }  // LCOV_EXCL_LINE
-  std::error_code boolean_value(bool const v) { return this->append(v ? "b:true"sv : "b:false"sv); }
-  std::error_code null_value() { return this->append("null"sv); }
-  std::error_code begin_array() { return this->append("["sv); }
-  std::error_code end_array() { return this->append("]"sv); }
-  std::error_code begin_object() { return this->append("{"sv); }
-  std::error_code key(std::u8string_view const& sv) { return this->append("k:"sv, sv); }
-  std::error_code end_object() { return this->append("}"sv); }
+  [[maybe_unused]] std::error_code boolean_value(bool const v) { return this->append(v ? "b:true"sv : "b:false"sv); }
+  [[maybe_unused]] std::error_code null_value() { return this->append("null"sv); }
+  [[maybe_unused]] std::error_code begin_array() { return this->append("["sv); }
+  [[maybe_unused]] std::error_code end_array() { return this->append("]"sv); }
+  [[maybe_unused]] std::error_code begin_object() { return this->append("{"sv); }
+  [[maybe_unused]] std::error_code key(std::u8string_view const& sv) { return this->append("k:"sv, sv); }
+  [[maybe_unused]] std::error_code end_object() { return this->append("}"sv); }
 
 private:
   std::error_code append(std::string_view const& s) {
@@ -84,8 +84,11 @@ private:
 class throwing_recorder : public recorder {
 public:
   throwing_recorder() = default;
-  throwing_recorder(throwing_recorder const&) = default;
+  [[maybe_unused]] throwing_recorder(throwing_recorder const&) = default;
+  [[maybe_unused]] throwing_recorder(throwing_recorder&&) noexcept = default;
   ~throwing_recorder() noexcept = default;
+
+  [[maybe_unused]] throwing_recorder& operator=(throwing_recorder&& other) noexcept = default;
   throwing_recorder& operator=(throwing_recorder const& other) {
     if (other.fail) {
       throw std::runtime_error{"backend copy failed"};
@@ -164,7 +167,7 @@ TEST(ParserCopy, BetweenValues) {
 TEST(ParserCopy, ErrorState) {
   parser<recorder> p;
   p.input(u8"]"sv);
-  parser<recorder> q{p};
+  parser<recorder> const q{p};
   EXPECT_EQ(q.last_error(), make_error_code(peejay::error::expected_token));
 }
 
