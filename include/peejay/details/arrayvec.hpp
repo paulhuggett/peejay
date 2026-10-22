@@ -451,7 +451,7 @@ template <std::integral SizeType>
 auto avbase<T>::insert(pbi begin, SizeType *const size, pbi pos,
                        T &&value) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                            std::is_nothrow_move_assignable_v<T>) -> pbi {
-  static_assert(std::is_move_assignable_v<T>, "avbase::insert: type T must be move-constructible");
+  static_assert(std::is_move_assignable_v<T>, "avbase::insert: type T must be move-assignable");
   if (auto const end = begin + *size; pos == end) {
     std::construct_at(std::to_address(pos), std::move(value));
   } else {
