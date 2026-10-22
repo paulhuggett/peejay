@@ -9,7 +9,7 @@ permissions:
 jobs:
   codecov:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       BUILD_DIR: build_codecov
       GCC_VERSION: 13
