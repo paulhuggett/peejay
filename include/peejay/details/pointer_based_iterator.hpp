@@ -225,7 +225,6 @@ public:
   }
   /// @}
 
-  /// @{
   /// Move an iterator \p it backwards by distance \p n. \p n can be both positive
   /// or negative.
   /// \param it  The iterator to be moved.
@@ -236,16 +235,6 @@ public:
     auto temp = it;
     return temp -= n;
   }
-  /// Move an iterator \p it backwards by distance \p n. \p n can be both positive
-  /// or negative.
-  /// \param n  The distance by which iterator \p it should be moved.
-  /// \param it  The iterator to be moved.
-  /// \returns  The new iterator.
-  template <std::integral U>
-  friend constexpr pointer_based_iterator<T> operator-(U const n, pointer_based_iterator<T> const it) noexcept {
-    return it - n;
-  }
-  /// @}
 private:
   /// The wrapped pointer.
   pointer pos_ = nullptr;
