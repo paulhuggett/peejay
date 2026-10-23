@@ -477,7 +477,7 @@ private:
   std::error_code end_composite();
 
   /// The keys of the objects that are being constructed.
-  std::stack<string> key_;  // TODO: allocations
+  std::stack<string> key_;  // TODO: uses std::deque<> therefore allocations
   /// The elements that are being constructed.
   std::stack<element, arrayvec<element, PJPolicies::max_stack_depth>> stack_;
 };
@@ -580,6 +580,7 @@ template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPol
 // begin object
 // ~~~~~~~~~~~~
 template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_object() {
+  assert(stack_.size() < PJPolicies::max_stack_depth && "The DOM stack has overflowed");
   stack_.emplace(element::template make<object>());
   return {};
 }
@@ -608,8 +609,8 @@ std::error_code dom<PJPolicies, DOMPolicies>::record(Args &&...args) {
 
 template <policy PJPolicies, dom_policies DOMPolicies>
 std::error_code dom<PJPolicies, DOMPolicies>::record(element &&el) {
-  assert(stack_.size() < PJPolicies::max_stack_depth);
   if (stack_.empty()) {
+    assert(stack_.size() < PJPolicies::max_stack_depth && "The DOM stack has overflowed");
     stack_.emplace(std::move(el));
     return {};
   }

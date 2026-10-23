@@ -308,20 +308,20 @@ TEST(Dom2, HugeArray) {
       << "Real error was: " << p.last_error().message();
 }
 
-struct depth5 : peejay::default_policies {
-  static constexpr std::size_t max_stack_depth = 5;
+struct depth4 : peejay::default_policies {
+  static constexpr std::size_t max_stack_depth = 4;
 };
 
 // NOLINTNEXTLINE
 TEST(Dom2, Nesting) {
-  auto p = make_parser(dom<depth5>{});
+  auto p = make_parser(dom<depth4>{});
   p.input(u8R"({"a":{"b":{"c":1}}})"sv);
   EXPECT_FALSE(p.last_error()) << "Real error was: " << p.last_error().message();
 }
 
 // NOLINTNEXTLINE
 TEST(Dom2, NestingTooDeep) {
-  auto p = make_parser(dom<depth5>{});
+  auto p = make_parser(dom<depth4>{});
   p.input(u8R"({"a":{"b":{"c":{"d":1}}}})"sv);
   EXPECT_EQ(p.last_error(), make_error_code(peejay::error::nesting_too_deep))
       << "Real error was: " << p.last_error().message();

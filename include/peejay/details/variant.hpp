@@ -38,11 +38,11 @@
 #ifndef PEEJAY_DETAILS_VARIANT_HPP
 #define PEEJAY_DETAILS_VARIANT_HPP
 
+#include <algorithm>
 #include <bit>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <type_traits>
 
 #include "peejay/details/portab.hpp"
@@ -60,7 +60,9 @@
 
 #if PEEJAY_MPROTECT_VARIANT
 #ifdef _WIN32
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <Windows.h>
 #else
 #include <sys/mman.h>
@@ -142,8 +144,24 @@ public:
 
   /// Constructs a variant which holds no value.
   variant() noexcept(allocates) { this->protect(/*usable=*/false); }
-  variant(variant const &) noexcept = delete;
-  variant &operator=(variant const &other) noexcept = delete;
+  // The contained value is copied byte-for-byte: this is safe because the member types are all trivially copyable.
+#if PEEJAY_MPROTECT_VARIANT
+  /// Copy constructor.
+  /// \param other  The variant to be copied.
+  variant(variant const& other) noexcept;
+  /// Copy assignment.
+  /// \param other  The variant to be copied.
+  /// \returns *this.
+  variant& operator=(variant const& other) noexcept;
+#else
+  /// Copy constructor.
+  /// \param other  The variant to be copied.
+  variant(variant const& other) noexcept = default;
+  /// Copy assignment.
+  /// \param other  The variant to be copied.
+  /// \returns *this.
+  variant& operator=(variant const& other) noexcept = default;
+#endif
 #if !defined(NDEBUG) || PEEJAY_MPROTECT_VARIANT
   /// Move constructor.
   /// \param other  The variant to be moved.
@@ -166,7 +184,6 @@ public:
   ~variant() noexcept {
     this->protect(/*usable=*/true);
     assert((holds_ == type_list::npos) && "Must not destruct a variant that is holding a value");
-    // TODO: validate the pattern...
   }
   /// Destroys the value held by the variant.
   /// \tparam T  The type of the value held by the variant.
@@ -175,12 +192,6 @@ public:
   void destroy() noexcept(std::is_nothrow_destructible_v<T>) {
     assert((holds_ == static_cast<std::size_t>(type_list::index_of_v<Members, T>)) &&
            "The variant does not hold the expected type");
-#if PEEJAY_MPROTECT_VARIANT
-    if (contents_.get() == nullptr) {
-      holds_ = type_list::npos;
-      return;
-    }
-#endif  // PEEJAY_MPROTECT_VARIANT
     std::destroy_at(std::bit_cast<T *>(&contents_[0]));
 #ifndef NDEBUG
     std::memset(&contents_[0], 0, sizeof(contents_));
@@ -257,7 +268,7 @@ private:
   alignas(max_align_) std::byte contents_[max_size_]{};
   /// A no-op: memory protection is disabled.
   /// \param usable  Ignored.
-  constexpr void protect(bool const usable) noexcept { (void)usable; }
+  constexpr void protect(bool const usable) const noexcept { (void)usable; }
 #endif  // !PEEJAY_MPROTECT_VARIANT
 };
 
@@ -272,18 +283,42 @@ PEEJAY_CLANG_DIAG_POP
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
-variant<Members>::variant(variant&& other) noexcept : holds_{other.holds_}, contents_{std::move(other.contents_)} {
+variant<Members>::variant(variant const& other) noexcept : holds_{other.holds_} {
+  // other's storage is readable whenever it holds a value.
+  if (holds_ != type_list::npos) {
+    std::memcpy(contents_.get(), other.contents_.get(), max_size_);
+  }
+  this->protect(/*usable=*/holds_ != type_list::npos);
+}
+
+template <type_list::sequence Members>
+  requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
+auto variant<Members>::operator=(variant const& other) noexcept -> variant& {
+  if (this == &other) {
+    return *this;
+  }
+  this->protect(/*usable=*/true);
+  holds_ = other.holds_;
+  if (holds_ != type_list::npos) {
+    std::memcpy(contents_.get(), other.contents_.get(), max_size_);
+  }
+  this->protect(/*usable=*/holds_ != type_list::npos);
+  return *this;
+}
+
+// Moving copies the value into this variant's own storage rather than taking other's. This leaves other with storage
+// and a copy of its value, exactly as it is left by a move in the other build modes.
+template <type_list::sequence Members>
+  requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
+variant<Members>::variant(variant&& other) noexcept : variant(static_cast<variant const&>(other)) {
 }
 
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
-  this->protect(/*usable=*/true);
-  other.protect(/*usable=*/true);
-  contents_ = std::move(other.contents_);
-  holds_ = other.holds_;
-  other.protect(/*usable=*/other.holds_ != type_list::npos);
-  this->protect(/*usable=*/holds_ != type_list::npos);
+  if (this != &other) {
+    *this = static_cast<variant const&>(other);
+  }
   return *this;
 }
 
@@ -341,8 +376,11 @@ variant<Members>::variant(variant&& other) noexcept : holds_{other.holds_} {
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
-  holds_ = other.holds_;
-  std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
+  // memcpy() must not be called with overlapping source and destination.
+  if (this != &other) {
+    holds_ = other.holds_;
+    std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
+  }
   return *this;
 }
 

@@ -9,7 +9,7 @@ permissions:
 jobs:
   codecov:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       BUILD_DIR: build_codecov
       GCC_VERSION: 13
@@ -62,7 +62,8 @@ jobs:
             --directory "$BUILD_DIR"        \
             --gcov-tool "gcov-$GCC_VERSION" \
             --include "$(pwd)/*.?pp"        \
-            --ignore-errors mismatch
+            --ignore-errors mismatch        \
+            --ignore-errors inconsistent
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

@@ -44,6 +44,7 @@ option(PEEJAY_COVERAGE "Generate Source-based Coverage")
 option(PEEJAY_FUZZTEST "Enable fuzztest")
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
 option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
+option(PEEJAY_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer (GCC/Clang only)" No)
 
 FetchContent_Declare(
   googletest
@@ -124,15 +125,20 @@ function (setup_peejay_target target)
   endif ()
 
   if (WERROR)
-    list (APPEND clang_options -Werror)
-    list (APPEND gcc_options -Werror)
-    list (APPEND msvc_options /WX)
+    list(APPEND clang_options -Werror)
+    list(APPEND gcc_options -Werror)
+    list(APPEND msvc_options /WX)
   endif ()
 
-  if (PEEJAY_COVERAGE)
-    list (APPEND gcc_options -fprofile-arcs -ftest-coverage)
-    list (APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
-  endif ()
+  if(PEEJAY_COVERAGE)
+    list(APPEND gcc_options -fprofile-arcs -ftest-coverage)
+    list(APPEND clang_options -fprofile-instr-generate -fcoverage-mapping)
+  endif(PEEJAY_COVERAGE)
+
+  if(PEEJAY_SANITIZE)
+    list(APPEND gcc_options -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+    list(APPEND clang_options -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+  endif(PEEJAY_SANITIZE)
 
   target_compile_definitions(${target}
     PUBLIC
@@ -145,13 +151,13 @@ function (setup_peejay_target target)
   set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE Yes)
 
   target_compile_options(${target}
-    PUBLIC
+    PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
   )
   target_link_options(${target}
-    PUBLIC
+    PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:>
@@ -203,12 +209,14 @@ add_library(peejay STATIC
   ${peejay_details}
   lib/peejay/dummy.cpp
 )
+# The same name that find_package(peejay) provides, for clients that use add_subdirectory() or FetchContent.
+add_library(peejay::peejay ALIAS peejay)
 source_group(public FILES ${peejay_public})
 source_group(matchers FILES ${peejay_matchers})
 source_group(details FILES ${peejay_details})
 target_include_directories(peejay PUBLIC
   $<BUILD_INTERFACE:${include_dir}>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDE_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 if(PEEJAY_FUZZTEST)
   # If we're fuzz testing, stop icubaby from dragging in Google Test.
@@ -267,16 +275,43 @@ add_subdirectory(klee)
 install(
   TARGETS peejay
   EXPORT peejay
-  PUBLIC_HEADER
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/peejay"
+  ARCHIVE
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     COMPONENT peejay
-  LIBRARY COMPONENT peejay
-  ARCHIVE COMPONENT peejay
-  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 install(
+  DIRECTORY "${include_dir}/peejay"
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  COMPONENT peejay
+  FILES_MATCHING PATTERN "*.hpp"
+)
+
+# Install a CMake package so that clients can use find_package(peejay) and link
+# with the peejay::peejay target.
+set(peejay_config_dir "${CMAKE_INSTALL_LIBDIR}/cmake/peejay")
+install(
   EXPORT peejay
-  DESTINATION <dir>
+  NAMESPACE peejay::
+  FILE peejayTargets.cmake
+  DESTINATION "${peejay_config_dir}"
+  COMPONENT peejay
+)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/peejayConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/peejayConfig.cmake"
+  INSTALL_DESTINATION "${peejay_config_dir}"
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/peejayConfigVersion.cmake"
+  COMPATIBILITY SameMajorVersion
+)
+install(
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/peejayConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/peejayConfigVersion.cmake"
+  DESTINATION "${peejay_config_dir}"
+  COMPONENT peejay
 )
 
 add_dependencies (install-peejay peejay)

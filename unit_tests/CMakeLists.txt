@@ -50,7 +50,9 @@ add_executable(pj2-unittests
   test_coord.cpp
   test_dom.cpp
   test_json.cpp
+  test_nesting.cpp
   test_object.cpp
+  test_parser_copy.cpp
   test_null.cpp
   test_null_backend.cpp
   test_number.cpp

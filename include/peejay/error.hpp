@@ -111,7 +111,7 @@ public:
     case error::number_out_of_range: return "number out of range";
     case error::unexpected_extra_input: return "unexpected extra input";
     case error::unrecognized_token: return "unrecognized token";
-    case error::nesting_too_deep: return "objects are too deeply nested";
+    case error::nesting_too_deep: return "arrays or objects are too deeply nested";
     case error::string_too_long: return "string too long";
     default: break;
     }
