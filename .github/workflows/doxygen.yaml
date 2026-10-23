@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOOL_DIR: "${{ github.workspace }}/doxygen-bin"
-      VERSION: 1.9.7
+      VERSION: 1.18.0
 
     steps:
       - name: Harden Runner
