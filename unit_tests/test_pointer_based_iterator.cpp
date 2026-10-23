@@ -38,6 +38,7 @@
 #include "peejay/details/pointer_based_iterator.hpp"
 // Standard library
 #include <array>
+#include <iterator>
 
 // 3rd party
 #include <gtest/gtest.h>
@@ -49,6 +50,17 @@ protected:
   using iterator = peejay::pointer_based_iterator<int>;
   using const_iterator = peejay::pointer_based_iterator<int const>;
 };
+
+// pointer_based_iterator must model std::contiguous_iterator.
+static_assert(std::contiguous_iterator<peejay::pointer_based_iterator<int>>);
+static_assert(std::contiguous_iterator<peejay::pointer_based_iterator<int const>>);
+// i - n is a valid iterator operation but n - i is not.
+template <typename Iterator>
+concept iterator_minus_n = requires(Iterator it) { it - 1; };
+template <typename Iterator>
+concept n_minus_iterator = requires(Iterator it) { 1 - it; };
+static_assert(iterator_minus_n<peejay::pointer_based_iterator<int>>);
+static_assert(!n_minus_iterator<peejay::pointer_based_iterator<int>>);
 
 }  // end anonymous namespace
 
