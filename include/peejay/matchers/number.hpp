@@ -236,6 +236,9 @@ constexpr std::size_t get_work_limbs(std::int64_t underflow_decimal, int max_dig
   auto const bits = std::max(negative_bits > positive_bits ? negative_bits : positive_bits, floor_bits);
   return static_cast<std::size_t>((bits + 64 + 31) / 32);
 }
+/// \tparam Policy  The parser policies.
+/// \returns The value of Policy::max_significant_digits if the policy provides it, otherwise 0 (meaning that the
+///   default number of digits is retained).
 template <policy Policy>
 static constexpr int get_requested_digits() {
   if constexpr (requires { Policy::max_significant_digits; }) {
