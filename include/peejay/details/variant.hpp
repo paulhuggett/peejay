@@ -376,8 +376,11 @@ variant<Members>::variant(variant&& other) noexcept : holds_{other.holds_} {
 template <type_list::sequence Members>
   requires type_list::all_of_v<type_list::transform<Members, type_is_trivially_copyable>>
 auto variant<Members>::operator=(variant&& other) noexcept -> variant& {
-  holds_ = other.holds_;
-  std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
+  // memcpy() must not be called with overlapping source and destination.
+  if (this != &other) {
+    holds_ = other.holds_;
+    std::memcpy(&contents_[0], &other.contents_[0], sizeof(contents_));
+  }
   return *this;
 }
 
