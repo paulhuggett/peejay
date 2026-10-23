@@ -31,6 +31,8 @@
 //===----------------------------------------------------------------------===//
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include "peejay/details/type_list.hpp"
 #include "peejay/details/variant.hpp"
 
@@ -85,3 +87,16 @@ TEST(Variant, HoldsThirdMember) {
 }
 
 }  // end anonymous namespace
+
+// NOLINTNEXTLINE
+TEST(Variant, SelfMoveAssign) {
+  variant<type_list<char, int>> v;
+  v.emplace<int>(42);
+  auto& alias = v;
+  v = std::move(alias);
+#ifndef NDEBUG
+  EXPECT_EQ(v.holds(), 1);
+#endif
+  EXPECT_EQ(v.get<int>(), 42);
+  v.destroy<int>();
+}
