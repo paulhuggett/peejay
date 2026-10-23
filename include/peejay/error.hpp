@@ -66,7 +66,7 @@ enum class error : int {
   invalid_escape_char,
   /// A \\u escape in a string contained a character that is not a hexadecimal digit.
   invalid_hex_char,
-  /// Arrays and/or objects are nested more deeply than the policy's max_stack_depth permits.
+  /// Values are nested inside arrays and/or objects more deeply than the policy's max_stack_depth permits.
   nesting_too_deep,
   /// A number could not be represented by the policy's integer or floating-point types, or the input ended
   /// part-way through a number.
