@@ -1,7 +1,7 @@
 Introduction
 ============
 
-peejay is a JSON parser for C++20 programs. It is a header-only library that turns
+peejay is a JSON parser library for C++20. It is a header-only library that turns
 UTF-8 text into a sequence of calls to an object you provide. This page explains how
 it works and helps you decide whether it suits your program.
 

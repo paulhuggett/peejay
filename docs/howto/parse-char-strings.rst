@@ -20,6 +20,6 @@ does this.
 
 .. note::
 
-   The conversion does not change the bytes, so the text must already be UTF-8. If
-   it might be in another encoding, such as Latin-1 or UTF-16, convert it to UTF-8
-   first. icubaby, which peejay already depends on, can do this.
+   The conversion does not change the bytes, so the text must already be UTF-8.
+   icubaby, which peejay already depends on, can validate and convert to UTF-8 from
+   other Unicode encodings.
