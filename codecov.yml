@@ -1,2 +1,4 @@
 ignore:
-  - unittests/*
+  - docs/*
+  - tests/*
+  - unit_tests/*
