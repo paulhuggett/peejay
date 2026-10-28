@@ -27,38 +27,38 @@ public:
   // Called by parser<>::eof(). Its return value is returned by eof().
   statistics result() const noexcept { return stats_; }
 
-  std::error_code string_value(std::u8string_view) {
+  std::error_code string_value(std::u8string_view) noexcept {
     ++stats_.strings;
     return {};
   }
-  std::error_code integer_value(policies::integer_type) {
+  std::error_code integer_value(policies::integer_type) noexcept {
     ++stats_.numbers;
     return {};
   }
-  std::error_code float_value(policies::float_type) {
+  std::error_code float_value(policies::float_type) noexcept {
     ++stats_.numbers;
     return {};
   }
-  std::error_code boolean_value(bool) { return {}; }
-  std::error_code null_value() { return {}; }
+  std::error_code boolean_value(bool) const noexcept { return {}; }
+  std::error_code null_value() const noexcept { return {}; }
 
-  std::error_code begin_array() { return this->enter(); }
-  std::error_code end_array() { return this->leave(); }
+  std::error_code begin_array() noexcept { return this->enter(); }
+  std::error_code end_array() noexcept { return this->leave(); }
 
-  std::error_code begin_object() { return this->enter(); }
-  std::error_code key(std::u8string_view) {
+  std::error_code begin_object() noexcept { return this->enter(); }
+  std::error_code key(std::u8string_view) noexcept {
     ++stats_.keys;
     return {};
   }
-  std::error_code end_object() { return this->leave(); }
+  std::error_code end_object() noexcept { return this->leave(); }
 
 private:
-  std::error_code enter() {
+  std::error_code enter() noexcept {
     ++depth_;
     stats_.max_depth = std::max(stats_.max_depth, depth_);
     return {};
   }
-  std::error_code leave() {
+  std::error_code leave() noexcept {
     --depth_;
     return {};
   }
