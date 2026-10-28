@@ -109,7 +109,6 @@ constexpr limb_pair<Limb> mul_add_limb(Limb const x, Limb const m, Limb const ca
   constexpr unsigned bits = std::numeric_limits<Limb>::digits;
   if constexpr (bits <= 32U) {
     // A native unsigned type of at least twice the limb width.
-    //using wide = std::conditional_t<(bits <= 16U), std::uint32_t, std::uint64_t>;
     using wide = uinteger_t<bits * 2U>;
     auto const t = static_cast<wide>(static_cast<wide>(x) * static_cast<wide>(m) + carry);
     return {static_cast<Limb>(t), static_cast<Limb>(t >> bits)};
@@ -163,7 +162,7 @@ constexpr limb_quotient<Limb> div_limb(Limb const high, Limb const low, Limb con
   constexpr unsigned bits = std::numeric_limits<Limb>::digits;
   if constexpr (bits <= 32U) {
     // A native unsigned type of at least twice the limb width.
-    using wide = std::conditional_t<(bits <= 16U), std::uint32_t, std::uint64_t>;
+    using wide = uinteger_t<bits * 2U>;
     auto const t = static_cast<wide>(static_cast<wide>(high) << bits) | static_cast<wide>(low);
     auto const q = static_cast<wide>(t / static_cast<wide>(d));
     return {static_cast<Limb>(q), static_cast<Limb>(t - q * static_cast<wide>(d))};
@@ -269,7 +268,7 @@ public:
   /// \param index The zero-based position of the limb to read, in the range `[0, LimbCount)`.
   /// \returns The limb at position \p index.
   [[nodiscard]] limb_type limb(std::size_t const index) const noexcept {
-    assert(index < LimbCount && "index out of range"); 
+    assert(index < LimbCount && "index out of range");
     return limbs_[index];
   }
 
@@ -282,8 +281,8 @@ public:
   /// \param index The zero-based position of the limb to write, in the range `[0, LimbCount)`.
   /// \param v The new value of the limb.
   void set_limb(std::size_t const index, limb_type const v) noexcept {
-    assert(index < LimbCount && "index out of range"); 
-	limbs_[index] = v; 
+    assert(index < LimbCount && "index out of range");
+    limbs_[index] = v;
   }
 
   /// \brief Adds a single limb to a value.

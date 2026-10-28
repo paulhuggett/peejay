@@ -11,7 +11,7 @@ permissions:
 jobs:
   codacy:
     name: clang-tidy to Codacy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       BUILD_DIR: build_clangtidy
       CCT_VERSION: 1.3.8

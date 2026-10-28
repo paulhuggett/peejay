@@ -236,6 +236,19 @@ constexpr std::size_t get_work_limbs(std::int64_t underflow_decimal, int max_dig
   auto const bits = std::max(negative_bits > positive_bits ? negative_bits : positive_bits, floor_bits);
   return static_cast<std::size_t>((bits + 64 + 31) / 32);
 }
+/// \tparam Policy  The parser policies.
+/// \returns The value of Policy::max_significant_digits if the policy provides it, otherwise 0 (meaning that the
+///   default number of digits is retained).
+template <policy Policy>
+static constexpr int get_requested_digits() {
+  if constexpr (requires { Policy::max_significant_digits; }) {
+    static_assert(Policy::max_significant_digits <= std::numeric_limits<std::uint16_t>::max(),
+                  "policies::max_significant_digits is too large");
+    return static_cast<int>(Policy::max_significant_digits);
+  } else {
+    return 0;
+  }
+}
 
 
 /// Facts about the integer types the matcher can deliver. Standard integers are
@@ -272,7 +285,7 @@ template <typename T>
 struct integer_traits<T> : integer_traits_base<std::make_signed_t<T>, std::make_unsigned_t<T>, std::uint64_t,
                                                std::numeric_limits<std::make_signed_t<T>>::digits> {};
 
-#if __SIZEOF_INT128__
+#ifdef __SIZEOF_INT128__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 /// 128-bit signed integers.
@@ -591,25 +604,14 @@ private:
 
   template <std::size_t LimbCount> using big_uint = details::big_uint<LimbCount>;
 
-  // Optional policy: `static constexpr unsigned max_significant_digits`. The matcher keeps
-  // only this many significant digits of the input. A value that lies strictly
-  // between two retainable neighbours of a rounding boundary cannot be rounded
-  // correctly from fewer digits, so it is reported as number_out_of_range rather
-  // than guessed (see to_floating()). The default (38, or 39 for 128-bit
-  // integers) is also the minimum: a smaller value is ignored. It leaves that possible only for inputs that agree with an exact
-  // halfway point to ~38 digits; 768 digits make it impossible, because no double's
-  // halfway point has more than 767 significant digits. The cost: 4 bytes of
-  // object state per 32 bits retained (about 340 bytes in total for 768 digits)
-  // and a pass over those limbs for every digit read.
-  static constexpr int requested_digits = [] {
-    if constexpr (requires { policies::max_significant_digits; }) {
-      static_assert(policies::max_significant_digits <= std::numeric_limits<std::uint16_t>::max(),
-                    "policies::max_significant_digits is too large");
-      return static_cast<int>(policies::max_significant_digits);
-    } else {
-      return 0;
-    }
-  }();
+  /// \brief Optional policy: `static constexpr unsigned max_significant_digits`. The matcher keeps
+  ///        only this many significant digits of the input.
+  ///
+  /// A value that lies strictly between two retainable neighbours of a rounding boundary cannot be
+  /// rounded correctly from fewer digits, so it is reported as number_out_of_range rather than
+  /// guessed. The default (38, or 39 for 128-bit integers) is also the minimum: a smaller value is
+  /// ignored.
+  static constexpr int requested_digits = details::get_requested_digits<policies>();
   static constexpr int max_digits =
       details::retained_digits(int_traits::value_bits, requested_digits);
   static_assert(max_digits <= std::numeric_limits<std::uint16_t>::max(),

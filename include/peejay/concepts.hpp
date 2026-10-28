@@ -61,8 +61,9 @@ concept character = type_list::has_type_v<type_list::type_list<char8_t, char, si
 ///
 /// A policy type must provide:
 /// - `max_length`: an unsigned integral value giving the maximum length of a string in the input.
-/// - `max_stack_depth`: an integral value giving the maximum depth of the parse stack (and hence the nesting depth
-///   of arrays and objects). It should be at least 2.
+/// - `max_stack_depth`: an integral value giving the maximum nesting depth of values in the input. The top-level
+///   value is at depth 1 and a value inside an array or object is one deeper than its container. Whitespace never
+///   counts. It must be at least 1.
 /// - `pos_tracking`: a bool which enables tracking of the line number in the input.
 /// - `float_type`: a floating-point type, or no_float_type to disable floating-point support.
 /// - `integer_type`: a signed integral type.
@@ -76,9 +77,10 @@ concept policy = requires(Policy &&p) {
   /// instance.
   requires std::unsigned_integral<decltype(p.max_length)>;
 
-  /// The maximum depth to which we allow the parse stack to grow. This should be given a value
-  /// sufficient for any reasonable input. The setting controls the memory required for the parse stack.
-  requires requires { requires std::integral<decltype(p.max_stack_depth)> && requires { p.max_stack_depth > 0; }; };
+  /// The maximum nesting depth of values in the input (the top-level value is at depth 1). This should be given a
+  /// value sufficient for any reasonable input. The setting controls the memory required for the parse stack.
+  requires std::integral<decltype(p.max_stack_depth)>;
+  requires(std::remove_cvref_t<Policy>::max_stack_depth > 0);
 
   /// This boolean value determines whether the library tracks the line number in the input.
   /// This value can be used for reporting errors to the user but can be disabled if it is

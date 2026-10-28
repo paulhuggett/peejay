@@ -161,7 +161,8 @@ struct default_policies {
   /// The maximum length of strings that will be permitted before
   /// a string_too_long is raised.
   static constexpr std::size_t max_length = 64;
-  /// The maximum depth of the parse stack. Exceeding this depth raises error::nesting_too_deep.
+  /// The maximum nesting depth of values in the input. The top-level value is at depth 1 and a value inside an
+  /// array or object is one deeper than its container. Exceeding this depth raises error::nesting_too_deep.
   static constexpr std::size_t max_stack_depth = 8;
   /// Should the library track the position (that is, the line number in the
   /// input). This can be important for detailed error reporting but can
@@ -197,9 +198,10 @@ public:
 
   /// Constructs a parser with a default-constructed backend.
   constexpr parser() : parser(Backend{}) {}
-  /// Copy constructor.
+  /// Copy constructor. The new parser has a copy of \p other's backend and continues from the same point in the
+  /// input. Available only if the backend is held by value and is copy-constructible.
   /// \param other  The parser to be copied.
-  constexpr parser(parser const &other) = default;
+  constexpr parser(parser const& other) requires(!std::is_reference_v<Backend>) = default;
   /// Move constructor.
   /// \param other  The parser to be moved.
   constexpr parser(parser &&other) noexcept = default;
@@ -217,7 +219,9 @@ public:
     }
   }
 
-  /// Copy assignment.
+  /// Copy assignment. This parser receives a copy of \p other's backend and continues from the same point in the
+  /// input. Available only if the backend is held by value and is copy-assignable. If copying the backend throws,
+  /// this parser is unchanged.
   /// \param other  The parser to be copied.
   /// \returns *this.
   parser &operator=(parser const &other) = default;
@@ -341,8 +345,9 @@ private:
   /// \name Managing the parse stack
   ///@{
 
-  /// Pushes a new state onto the parse stack. If the stack is full, error::nesting_too_deep is
-  /// recorded and the current top of stack is popped.
+  /// Pushes a new state onto the parse stack. If doing so would exceed policies::max_stack_depth (the whitespace
+  /// matcher may use one extra entry reserved for it), error::nesting_too_deep is recorded and the current top of
+  /// stack is popped.
   ///
   /// \param next_state  The state to be pushed.
   /// \returns True if the state was pushed, false if the stack was full.
@@ -402,7 +407,14 @@ private:
   /// raised.
   void consume_eof();
 
+  /// The number of entries at the bottom of the parse stack which never count towards policies::max_stack_depth:
+  /// the matcher for the end of the input.
   static constexpr auto initial_stack_size = std::size_t{1};
+  /// An extra stack entry reserved for the whitespace matcher. Whitespace may be pushed on top of the matcher for
+  /// the most deeply nested value (or the root matcher which is about to be replaced by it). The whitespace matcher
+  /// never pushes another matcher so a single entry is always sufficient and whitespace never counts towards
+  /// policies::max_stack_depth.
+  static constexpr auto whitespace_stack_size = std::size_t{1};
 
   /// Initializes the parse stack ready to match a single top-level value.
   void init_stack() {
@@ -417,8 +429,16 @@ private:
     assert(stack_.size() == initial_stack_size + 1);
   }
 
+  /// The backend object which receives notifications from the parser.
+  ///
+  /// The defaulted copy and move assignment operators assign members in declaration order, and the
+  /// backend is the only member whose assignment might throw. Assigning it first means that the
+  /// parser is left unchanged if it does.
+  [[no_unique_address]] Backend backend_;
   /// The parse stack.
-  std::stack<details::state, arrayvec<details::state, policies::max_stack_depth + initial_stack_size>> stack_;
+  std::stack<details::state,
+             arrayvec<details::state, policies::max_stack_depth + initial_stack_size + whitespace_stack_size>>
+      stack_;
   /// Storage for the active matcher which carries state of its own (if any).
   details::variant<type_list::type_list<string_matcher, number_matcher, token_matcher>> storage_;
   /// The error (if any) raised by the parse.
@@ -428,8 +448,6 @@ private:
   [[no_unique_address]] coord<policies::pos_tracking> pos_;
   /// The row number of the most recent token consumed from the input.
   [[no_unique_address]] coord<policies::pos_tracking> matcher_pos_;
-  /// The backend object which receives notifications from the parser.
-  [[no_unique_address]] Backend backend_;
 };
 
 /// Deduction guide for copying or moving a parser.

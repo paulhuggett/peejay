@@ -60,6 +60,7 @@
 #ifndef PEEJAY_DETAILS_TYPE_LIST_HPP
 #define PEEJAY_DETAILS_TYPE_LIST_HPP
 
+#include <limits>
 #include <type_traits>
 #include <variant>
 
