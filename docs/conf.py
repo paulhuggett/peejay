@@ -31,13 +31,19 @@ breathe_projects = { project: './xml/' }
 breathe_default_project = project
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'xml']
+
+# Section labels are referenced as 'document/path:Section title'.
+autosectionlabel_prefix_document = True
+
+# The documentation is about C++: make it the default for code and cross-references.
+primary_domain = 'cpp'
+highlight_language = 'cpp'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
-html_static_path = ['_static']
 
 if os.environ.get('READTHEDOCS', None) == 'True':
      # Run doxygen to produce the XML consumed by Breathe. The Doxyfile's
