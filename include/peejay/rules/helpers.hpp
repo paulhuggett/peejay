@@ -133,7 +133,7 @@ public:
       return std::visit(
           [this, context]<typename T0>(T0& arg) {
             if constexpr (std::is_same_v<std::decay_t<T0>, std::monostate>) {
-              assert(false && "should never find a monostate entry");
+              assert(false && "should never find a monostate entry"); // LCOV_EXCL_LINE: should be unreachable
               return std::error_code{};
             } else if constexpr (type_list::has_type_v<user_pointers, std::decay_t<T0>>) {
               using user_rule_type = std::tuple_element_t<type_list::index_of_v<user_pointers, std::decay_t<T0>>,
