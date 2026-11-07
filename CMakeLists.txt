@@ -6,8 +6,8 @@
 #*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
 #*                                                   *
 #===----------------------------------------------------------------------===//
-# Copyright © 2025 Paul Bowen-Huggett
-#
+# Copyright © 2026 Paul Bowen-Huggett
+# 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
 # “Software”), to deal in the Software without restriction, including
@@ -15,10 +15,10 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-#
+# 
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-#
+# 
 # THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -26,7 +26,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
+# 
 # SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
 cmake_minimum_required(VERSION 3.22)
@@ -194,6 +194,12 @@ set(peejay_details
   "${include_dir}/peejay/details/type_list.hpp"
   "${include_dir}/peejay/details/variant.hpp"
 )
+set(peejay_rules
+  "${include_dir}/peejay/rules/errors.hpp"
+  "${include_dir}/peejay/rules/helpers.hpp"
+  "${include_dir}/peejay/rules/rule.hpp"
+  "${include_dir}/peejay/rules/terminals.hpp"
+)
 set(peejay_public
   "${include_dir}/peejay/concepts.hpp"
   "${include_dir}/peejay/error.hpp"
@@ -205,6 +211,7 @@ set(peejay_public
 
 add_library(peejay STATIC
   ${peejay_public}
+  ${peejay_rules}
   ${peejay_matchers}
   ${peejay_details}
   lib/peejay/dummy.cpp
@@ -212,6 +219,7 @@ add_library(peejay STATIC
 # The same name that find_package(peejay) provides, for clients that use add_subdirectory() or FetchContent.
 add_library(peejay::peejay ALIAS peejay)
 source_group(public FILES ${peejay_public})
+source_group(rules FILES ${peejay_rules})
 source_group(matchers FILES ${peejay_matchers})
 source_group(details FILES ${peejay_details})
 target_include_directories(peejay PUBLIC
