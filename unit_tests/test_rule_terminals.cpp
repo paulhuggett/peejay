@@ -62,7 +62,6 @@ TEST_F(ImportBool, True) {
 }
 // NOLINTNEXTLINE
 TEST_F(ImportBool, False) {
-  // auto v = true;
   parser.input(u8"false"sv);
   ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
   EXPECT_EQ(value, false);
