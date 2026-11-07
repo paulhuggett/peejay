@@ -128,7 +128,9 @@ protected:
   /// \tparam Args  The types of the arguments for the constructor of type T.
   /// \param args  The arguments to be passed to the constructor of the new instance of type T.
   /// \returns peejay::error::nesting_too_deep if there is insufficient space, otherwise success.
-  template <typename T, typename... Args> std::error_code emplace(Args&&... args);
+  template <typename T, typename... Args>
+    requires std::derived_from<T, rule<Policies>> && std::is_trivially_destructible_v<T>
+  std::error_code emplace(Args&&... args);
 
 private:
   /// \returns The rule at the top of the stack. The stack must not be empty.
@@ -345,16 +347,13 @@ private:
 
 template <policy Policies>
 template <typename T, typename... Args>
+  requires std::derived_from<T, rule<Policies>> && std::is_trivially_destructible_v<T>
 std::error_code context_base<Policies>::emplace(Args&&... args) {
-  static_assert(std::derived_from<T, rule<policies>>, "T must be derived from rule<>");
-  static_assert(std::is_trivially_destructible_v<T>, "rules are discarded without running their destructors");
-
   void* where = sp_;
-  auto space = static_cast<std::size_t>(end_ - sp_);
-  if (std::align(alignof(T), sizeof(T), where, space) == nullptr) {
+  if (auto space = static_cast<std::size_t>(end_ - sp_); std::align(alignof(T), sizeof(T), where, space) == nullptr) {
     return peejay::error::nesting_too_deep;
   }
-  T* const instance = ::new (where) T(std::forward<Args>(args)...);
+  auto* const instance = ::new (where) T(std::forward<Args>(args)...);
   rule<policies>* const base = instance;
   base->previous_ = top_;
   base->frame_ = sp_;
