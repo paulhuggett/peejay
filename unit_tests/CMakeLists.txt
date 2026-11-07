@@ -6,7 +6,7 @@
 #*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
 #*                                                   *
 #===----------------------------------------------------------------------===//
-# Copyright © 2025 Paul Bowen-Huggett
+# Copyright © 2026 Paul Bowen-Huggett
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -57,6 +57,9 @@ add_executable(pj2-unittests
   test_null_backend.cpp
   test_number.cpp
   test_pointer_based_iterator.cpp
+  test_rule_helpers.cpp
+  test_rule_non_terminals.cpp
+  test_rule_terminals.cpp
   test_string.cpp
   test_variant.cpp
 )
