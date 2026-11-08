@@ -47,8 +47,7 @@ struct multiport_address {
 };
 
 template <peejay::policy Policies>
-using multiport_rule =
-    peejay::rules::homogeneous_array_helper<Policies, std::vector<unsigned>, peejay::rules::uinteger_rule<Policies>>;
+using multiport_rule = peejay::rules::homogeneous_array_helper<Policies, std::vector<unsigned>>;
 
 template <peejay::policy Policies>
 class multiport_address_rule final : public peejay::rules::object_helper<Policies, 2, multiport_rule<Policies>> {

@@ -85,8 +85,7 @@ struct server {
 };
 
 template <peejay::policy Policies>
-using multiport_rule =
-    peejay::rules::homogeneous_array_helper<Policies, std::vector<unsigned>, peejay::rules::uinteger_rule<Policies>>;
+using multiport_rule = peejay::rules::homogeneous_array_helper<Policies, std::vector<unsigned>>;
 
 template <peejay::policy Policies>
 class server_rule final
@@ -259,7 +258,9 @@ private:
   int* count_;
   [[maybe_unused]] std::array<void*, 4> padding_{};
 };
-std::error_code small_rule::element(test_context_base* const context) { return push<large_rule>(this, context, count_); }
+std::error_code small_rule::element(test_context_base* const context) {
+  return push<large_rule>(this, context, count_);
+}
 static_assert(peejay::rules::context<test_policies, small_rule>::stack_bytes ==
               test_policies::max_stack_depth * sizeof(large_rule));
 
@@ -304,10 +305,27 @@ public:
 private:
   aligned_value* value_;
 };
-using aligned_array_rule = peejay::rules::homogeneous_array_helper<test_policies, std::vector<aligned_value>, aligned_rule>;
+using aligned_array_rule =
+    peejay::rules::homogeneous_array_helper<test_policies, std::vector<aligned_value>, aligned_rule>;
 using aligned_context = peejay::rules::context<test_policies, aligned_array_rule>;
-static_assert(aligned_context::stack_bytes == sizeof(aligned_array_rule) + sizeof(aligned_rule) + alignof(aligned_rule) -
-                                                  alignof(peejay::rules::rule<test_policies>));
+static_assert(aligned_context::stack_bytes == sizeof(aligned_array_rule) + sizeof(aligned_rule) +
+                                                  alignof(aligned_rule) - alignof(peejay::rules::rule<test_policies>));
+
+// A rule whose constructor accepts anything, so a context holding it is "constructible" from a context. The context's
+// forwarding constructor must not be used to copy or move a context.
+class greedy_rule final : public peejay::rules::rule<test_policies> {
+public:
+  using value_type = int;
+  template <typename T> explicit greedy_rule(T&&) noexcept {}
+  [[nodiscard]] char const* name() const noexcept override { return "greedy"; }
+};
+using greedy_context = peejay::rules::context<test_policies, greedy_rule>;
+static_assert(std::is_constructible_v<greedy_context, int*>);
+static_assert(!std::is_constructible_v<greedy_context, greedy_context&>);
+static_assert(!std::is_copy_constructible_v<greedy_context>);
+static_assert(!std::is_move_constructible_v<greedy_context>);
+static_assert(!std::is_copy_constructible_v<bool_context>);
+static_assert(!std::is_move_constructible_v<bool_context>);
 
 // A rule which uses the default implementation of each event except for those needed to reach the others.
 class defaults_rule final : public peejay::rules::rule<test_policies> {
@@ -393,6 +411,15 @@ TEST(RuleDefaults, Events) {
 }
 
 // NOLINTNEXTLINE
+TEST(RuleContext, GreedyRootConstructor) {
+  int unused = 0;
+  greedy_context context{&unused};
+  auto parser = context.make_parser();
+  parser.input(u8"1"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(peejay::rules::error::unexpected_number));
+}
+
+// NOLINTNEXTLINE
 TEST(RuleDefaults, BeginObject) {
   bool b = false;
   EXPECT_EQ(parse_with<peejay::rules::bool_rule<test_policies>>(u8"{}"sv, &b),
@@ -430,6 +457,10 @@ TEST(RuleTerminals, Names) {
   EXPECT_STREQ(bool_rule<test_policies>{&b}.name(), "bool");
   EXPECT_STREQ(integer_rule<test_policies>{&i}.name(), "integer");
   EXPECT_STREQ(uinteger_rule<test_policies>{&u}.name(), "unsigned-integer");
+  short sh = 0;
+  unsigned short ush = 0;
+  EXPECT_STREQ((integer_rule<test_policies, short>{&sh}.name()), "integer");
+  EXPECT_STREQ((integer_rule<test_policies, unsigned short>{&ush}.name()), "unsigned-integer");
   EXPECT_STREQ(float_rule<test_policies>{&f}.name(), "float");
   EXPECT_STREQ(string_rule<test_policies>{&s}.name(), "string");
 }

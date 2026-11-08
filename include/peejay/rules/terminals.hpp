@@ -40,6 +40,9 @@
 
 #include "peejay/rules/rule.hpp"
 
+// Standard library
+#include <utility>
+
 namespace peejay::rules {
 
 /// A rule which accepts a boolean value.
@@ -70,54 +73,33 @@ private:
   value_type* value_;
 };
 
-/// A rule which accepts an integer value.
+/// A rule which accepts an integer value and assigns it to an object of type \p T. A value which \p T cannot represent
+/// produces peejay::error::number_out_of_range.
+///
+/// The parser produces values of the policy's integer_type, so a type which is wider than integer_type can receive
+/// only those values that integer_type can represent.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies = default_policies> class integer_rule final : public rule<Policies> {
+/// \tparam T  The type of the value stored by this rule. Defaults to the policy's integer_type.
+template <policy Policies = default_policies, integer_target T> class integer_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
   /// The type of the value stored by this rule.
-  using value_type = Policies::integer_type;
+  using value_type = T;
 
   /// \param value  The location to which the value will be written.
   explicit constexpr integer_rule(value_type* const value) noexcept : value_{value} {}
   /// \returns The name of this rule.
-  [[nodiscard]] char const* name() const noexcept override { return "integer"; }
-  /// Stores \p value and pops this rule.
-  /// \param context  The parse context.
-  /// \param value  The integer value.
-  /// \returns Success.
-  std::error_code integer_value(context_base<Policies>* const context, value_type const value) override {
-    *value_ = value;
-    return this->pop(context);
+  [[nodiscard]] char const* name() const noexcept override {
+    return std::is_signed_v<value_type> ? "integer" : "unsigned-integer";
   }
-
-private:
-  /// The location to which the value will be written.
-  value_type* value_;
-};
-
-/// A rule which accepts a non-negative integer value.
-///
-/// \tparam Policies  The parser policies.
-template <policy Policies = default_policies> class uinteger_rule final : public rule<Policies> {
-public:
-  /// The parser policies.
-  using policies = Policies;
-  /// The type of the value stored by this rule.
-  using value_type = std::make_unsigned_t<typename Policies::integer_type>;
-
-  /// \param value  The location to which the value will be written.
-  explicit constexpr uinteger_rule(value_type* const value) noexcept : value_{value} {}
-  /// \returns The name of this rule.
-  [[nodiscard]] char const* name() const noexcept override { return "unsigned-integer"; }
   /// Stores \p value and pops this rule.
   /// \param context  The parse context.
   /// \param value  The integer value.
-  /// \returns peejay::error::number_out_of_range if \p value is negative, otherwise success.
+  /// \returns peejay::error::number_out_of_range if \p value cannot be represented by value_type, otherwise success.
   std::error_code integer_value(context_base<Policies>* const context, Policies::integer_type const value) override {
-    if (value < 0) {
+    if (!std::in_range<value_type>(value)) {
       return peejay::error::number_out_of_range;
     }
     *value_ = static_cast<value_type>(value);
@@ -129,7 +111,9 @@ private:
   value_type* value_;
 };
 
-/// A rule which accepts a floating-point value.
+/// A rule which accepts a number and stores it as a floating-point value. JSON does not distinguish between integers
+/// and floating-point numbers, so a number written without a fraction or exponent (which the parser reports as an
+/// integer) is also accepted and converted. A large integer may be rounded by that conversion.
 ///
 /// \tparam Policies  The parser policies.
 template <policy Policies = default_policies> class float_rule final : public rule<Policies> {
@@ -150,6 +134,18 @@ public:
   std::error_code float_value(context_base<Policies>* const context, value_type const value) override {
     *value_ = value;
     return this->pop(context);
+  }
+  /// Converts \p value to value_type and yields the resulting floating-point number.
+  /// \param context  The parse context.
+  /// \param value  The integer value.
+  /// \returns error::unexpected_number if floating-point support is disabled by the policies, otherwise success.
+  std::error_code integer_value([[maybe_unused]] context_base<Policies>* const context,
+                                [[maybe_unused]] Policies::integer_type const value) override {
+    if constexpr (!std::is_same_v<value_type, no_float_type>) {
+      return this->float_value(context, static_cast<value_type>(value));
+    } else {
+      return error::unexpected_number;
+    }
   }
 
 private:

@@ -71,7 +71,9 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 ///
 /// A subclass passes its properties to set_properties() from its constructor. Each property pairs an object key
 /// with a pointer to the location where the key's value will be stored. When the key is encountered, the matching
-/// rule is pushed to parse its value: one of the terminal rules for a built-in type, or one of \p UserRules.
+/// rule is pushed to parse its value: one of the terminal rules for a built-in type, or one of \p UserRules. The
+/// built-in types are bool, the policy's float_type, std::u8string, std::string, and the integer types listed by
+/// builtin_integers.
 ///
 /// Every property must be present in the object. A key which is not one of the properties produces
 /// error::unrecognized_property and an object which is missing a property produces error::incomplete_object.
@@ -85,9 +87,9 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 template <policy Policies, std::size_t Elements, user_rule<Policies>... UserRules>
 class object_helper : public rule<Policies> {
   /// Pointers to the types handled by the built-in terminal rules.
-  using builtin_pointers = type_list::type_list<bool*, typename Policies::integer_type*,
-                                                std::make_unsigned_t<typename Policies::integer_type>*,
-                                                typename Policies::float_type*, std::u8string*, std::string*>;
+  using builtin_pointers =
+      type_list::concat<type_list::type_list<bool*, typename Policies::float_type*, std::u8string*, std::string*>,
+                        type_list::transform<builtin_integers<Policies>, std::add_pointer_t>>;
   /// Pointers to the types handled by UserRules.
   using user_pointers = type_list::type_list<typename UserRules::value_type*...>;
 
@@ -133,7 +135,7 @@ public:
       return std::visit(
           [this, context]<typename T0>(T0& arg) {
             if constexpr (std::is_same_v<std::decay_t<T0>, std::monostate>) {
-              assert(false && "should never find a monostate entry"); // LCOV_EXCL_LINE: should be unreachable
+              assert(false && "should never find a monostate entry");  // LCOV_EXCL_LINE: should be unreachable
               return std::error_code{};
             } else if constexpr (type_list::has_type_v<user_pointers, std::decay_t<T0>>) {
               using user_rule_type = std::tuple_element_t<type_list::index_of_v<user_pointers, std::decay_t<T0>>,
@@ -219,10 +221,14 @@ concept emplace_back_container = requires(Container& c) {
 ///
 /// \tparam Policies  The parser policies.
 /// \tparam Container  The container to which an element is appended for each member of the array.
-/// \tparam Rule  The rule used to parse each array member.
+/// \tparam Rule  The rule used to parse each array member. Defaults to the terminal rule for the container's
+///   value_type (see type_to_terminal), so it may be omitted for containers of bool, integers, the policy's
+///   float_type, or std::u8string.
 /// \tparam MaxElements  The maximum number of elements allowed in the container or 0 for no limit. If not 0,
 ///   Container must also be a sized range.
-template <policy Policies, emplace_back_container Container, typename Rule, std::size_t MaxElements = 0U>
+template <policy Policies, emplace_back_container Container,
+          typename Rule = typename type_to_terminal<typename Container::value_type, Policies>::type,
+          std::size_t MaxElements = 0U>
   requires(MaxElements == 0 || std::ranges::sized_range<Container>)
 class homogeneous_array_helper final : public rule<Policies> {
 public:
