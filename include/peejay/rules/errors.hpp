@@ -57,6 +57,7 @@ enum class error : int {
   unrecognized_property,    ///< An object key did not match any of the properties expected by the rule.
   incomplete_object,        ///< An object ended before all of its required properties had been seen.
   too_many_array_elements,  ///< An array contained more elements than the rule's maximum.
+  unrecognized_enumerator,  ///< A string did not match any of the enumerators expected by the rule.
 };
 
 /// The error category for peejay::rules::error values.
@@ -82,6 +83,7 @@ public:
     case error::unrecognized_property: result = "unrecognized property"; break;
     case error::incomplete_object: result = "incomplete object"; break;
     case error::too_many_array_elements: result = "too many array elements"; break;
+    case error::unrecognized_enumerator: result = "unrecognized enumerator"; break;
     default: break;
     }
     return result;

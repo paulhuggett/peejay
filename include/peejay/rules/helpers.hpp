@@ -34,7 +34,8 @@
 ///
 /// peejay::rules::object_helper parses an object whose properties are stored in the members of a struct.
 /// peejay::rules::homogeneous_array_helper parses an array whose elements are all of the same type and appends them
-/// to a container.
+/// to a container. peejay::rules::enum_helper accepts one of a fixed set of strings and stores the value associated
+/// with it.
 #ifndef PEEJAY_RULES_HELPERS_HPP
 #define PEEJAY_RULES_HELPERS_HPP
 
@@ -42,10 +43,14 @@
 
 // Standard library
 #include <algorithm>
+#include <array>
 #include <bitset>
+#include <cassert>
 #include <concepts>
+#include <initializer_list>
 #include <ranges>
 #include <tuple>
+#include <utility>
 #include <variant>
 
 namespace peejay::rules {
@@ -201,6 +206,92 @@ private:
   std::array<property, Elements> required_;
   /// The properties which have been seen. The bits for unused entries are set.
   std::bitset<Elements> seen_;
+};
+
+/// \brief This concept is satisfied by a type to which enum_helper can assign a value: an enumeration or one of the
+///   integer types accepted by integer_rule.
+template <typename T>
+concept enum_target = (std::is_enum_v<T> && !std::is_const_v<T> && !std::is_volatile_v<T>) || integer_target<T>;
+
+/// \brief A base class for rules which accept one of a fixed set of strings and store the value associated with it.
+///
+/// A subclass passes its enumerators to set_enumerators() from its constructor. Each enumerator pairs a string with
+/// the value which is stored when that string is encountered. If the same string appears more than once, the first
+/// enumerator is used. A string which is not one of the enumerators produces error::unrecognized_enumerator.
+///
+/// The rule can be used directly or as one of object_helper's UserRules. For the latter, \p T should be an enumeration
+/// because object_helper already handles pointers to the integer types.
+///
+/// \tparam Policies  The parser policies.
+/// \tparam T  The type of the value stored by this rule.
+/// \tparam Elements  The maximum number of enumerators.
+template <policy Policies, enum_target T, std::size_t Elements> class enum_helper : public rule<Policies> {
+public:
+  /// The parser policies.
+  using policies = Policies;
+  /// The type of the value stored by this rule.
+  using value_type = T;
+  /// An enumerator: a string and the value which is stored when that string is encountered.
+  using enumerator = std::pair<std::u8string_view, value_type>;
+
+  /// \returns The name of this rule.
+  [[nodiscard]] constexpr char const* name() const noexcept override { return "enum"; }
+  /// Called when a string value has been parsed. If \p str matches one of the enumerators, stores the associated value
+  /// and pops this rule.
+  /// \param context  The parse context.
+  /// \param str  The string value.
+  /// \returns error::unrecognized_enumerator if \p str is not one of the enumerators, otherwise success.
+  std::error_code string_value(context_base<Policies>* const context, std::u8string_view const str) override {
+    auto const first = enumerators_.begin();
+    auto const last = first + size_;
+    auto const pos = std::find_if(first, last, [str](enumerator const& e) { return e.first == str; });
+    if (pos == last) {
+      return error::unrecognized_enumerator;
+    }
+    *value_ = pos->second;
+    return this->pop(context);
+  }
+
+protected:
+  /// \param value  The location to which the value will be written.
+  explicit constexpr enum_helper(value_type* const value) noexcept : value_{value} {}
+  /// Rules are not destroyed through this type: they are discarded without running their destructors.
+  ~enum_helper() noexcept = default;
+
+  /// Sets the enumerators which the rule accepts.
+  ///
+  /// \param first  The first of the enumerators.
+  /// \param last  The end of the enumerators. There must be no more than \p Elements of them.
+  template <std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+    requires std::is_same_v<std::iter_value_t<Iterator>, enumerator>
+  void set_enumerators(Iterator first, Sentinel last) {
+    auto const size = std::ranges::distance(first, last);
+    assert(size >= 0 && static_cast<std::size_t>(size) <= Elements);
+    std::ranges::copy(first, last, enumerators_.begin());
+    size_ = static_cast<std::size_t>(size);
+  }
+  /// Sets the enumerators which the rule accepts.
+  ///
+  /// \param enumerators  The enumerators. There must be no more than \p Elements of them.
+  void set_enumerators(std::initializer_list<enumerator> enumerators) {
+    this->set_enumerators(std::begin(enumerators), std::end(enumerators));
+  }
+  /// Sets the enumerators which the rule accepts.
+  ///
+  /// \param range  The enumerators. There must be no more than \p Elements of them.
+  template <std::ranges::forward_range Range>
+    requires std::is_same_v<std::ranges::range_value_t<Range>, enumerator>
+  void set_enumerators(Range const& range) {
+    this->set_enumerators(std::begin(range), std::end(range));
+  }
+
+private:
+  /// The location to which the value will be written.
+  value_type* value_;
+  /// The number of entries in enumerators_ that are in use.
+  std::size_t size_ = 0;
+  /// The enumerators. Only the first size_ entries are used.
+  std::array<enumerator, Elements> enumerators_{};
 };
 
 /// \brief This concept is satisfied by a container to which homogeneous_array_helper can append elements.

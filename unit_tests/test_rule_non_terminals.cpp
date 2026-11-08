@@ -443,6 +443,7 @@ TEST(RuleError, Messages) {
   EXPECT_EQ(make_error_code(error::unrecognized_property).message(), "unrecognized property");
   EXPECT_EQ(make_error_code(error::incomplete_object).message(), "incomplete object");
   EXPECT_EQ(make_error_code(error::too_many_array_elements).message(), "too many array elements");
+  EXPECT_EQ(make_error_code(error::unrecognized_enumerator).message(), "unrecognized enumerator");
   EXPECT_EQ(make_error_code(static_cast<error>(-1)).message(), "unknown error");
 }
 

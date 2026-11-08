@@ -33,6 +33,7 @@
 #include "peejay/rules/helpers.hpp"
 
 // Standard library
+#include <array>
 #include <deque>
 #include <list>
 #include <string>
@@ -161,6 +162,43 @@ static_assert(
     std::is_same_v<double_vector_rule::children, peejay::type_list::type_list<peejay::rules::float_rule<policies>>>);
 static_assert(
     std::is_same_v<string_vector_rule::children, peejay::type_list::type_list<peejay::rules::string_rule<policies>>>);
+
+enum class colour { red, green, blue };
+
+static_assert(peejay::rules::enum_target<colour>);
+static_assert(peejay::rules::enum_target<int>);
+static_assert(!peejay::rules::enum_target<bool>);
+static_assert(!peejay::rules::enum_target<colour const>);
+
+// Elements gives the capacity of the enum_helper so that we can test both full and partially used tables.
+template <std::size_t Elements>
+class colour_rule final : public peejay::rules::enum_helper<policies, colour, Elements> {
+public:
+  explicit colour_rule(colour* const c) : peejay::rules::enum_helper<policies, colour, Elements>{c} {
+    this->set_enumerators({{u8"red"sv, colour::red}, {u8"green"sv, colour::green}, {u8"blue"sv, colour::blue}});
+  }
+};
+
+// Integer values, a duplicate string, and an empty string. Uses the range overload of set_enumerators().
+class level_rule final : public peejay::rules::enum_helper<policies, int, 3> {
+public:
+  explicit level_rule(int* const v) : enum_helper{v} {
+    this->set_enumerators(std::array{enumerator{u8"low"sv, 1}, enumerator{u8"low"sv, 2}, enumerator{u8""sv, 10}});
+  }
+};
+
+struct paint {
+  std::string name;
+  colour shade = colour::red;
+};
+
+class paint_rule final : public peejay::rules::object_helper<policies, 2, colour_rule<3>> {
+public:
+  using value_type = paint;
+  explicit paint_rule(paint* const p) { this->set_properties({{u8"name"sv, {&p->name}}, {u8"shade"sv, {&p->shade}}}); }
+};
+
+using colours_rule = peejay::rules::homogeneous_array_helper<policies, std::vector<colour>, colour_rule<3>>;
 
 using points_rule = peejay::rules::homogeneous_array_helper<policies, std::vector<point>, point_rule<2>>;
 
@@ -403,4 +441,95 @@ TEST(HomogeneousArrayHelper, TooManyElements) {
   std::vector<uint_type> v;
   EXPECT_EQ(parse<max2_uint_vector_rule>(u8"[80,8080,443]"sv, &v), make_error_code(error::too_many_array_elements));
   EXPECT_EQ(v, (std::vector<uint_type>{80, 8080}));
+}
+
+//-MARK: enum_helper
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, Name) {
+  colour c = colour::red;
+  colour_rule<3> const rule{&c};
+  EXPECT_STREQ(rule.name(), "enum");
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, FirstEnumerator) {
+  colour c = colour::blue;
+  EXPECT_FALSE(parse<colour_rule<3>>(u8R"("red")"sv, &c));
+  EXPECT_EQ(c, colour::red);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, LastEnumerator) {
+  colour c = colour::red;
+  EXPECT_FALSE(parse<colour_rule<3>>(u8R"("blue")"sv, &c));
+  EXPECT_EQ(c, colour::blue);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, PartTable) {
+  colour c = colour::red;
+  EXPECT_FALSE(parse<colour_rule<5>>(u8R"("green")"sv, &c));
+  EXPECT_EQ(c, colour::green);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, Unrecognized) {
+  colour c = colour::green;
+  EXPECT_EQ(parse<colour_rule<3>>(u8R"("purple")"sv, &c), make_error_code(error::unrecognized_enumerator));
+  EXPECT_EQ(c, colour::green);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, EmptyStringDoesNotMatchUnusedEntry) {
+  colour c = colour::red;
+  EXPECT_EQ(parse<colour_rule<5>>(u8R"("")"sv, &c), make_error_code(error::unrecognized_enumerator));
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, CaseSensitive) {
+  colour c = colour::red;
+  EXPECT_EQ(parse<colour_rule<3>>(u8R"("Red")"sv, &c), make_error_code(error::unrecognized_enumerator));
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, NotAString) {
+  colour c = colour::red;
+  EXPECT_EQ(parse<colour_rule<3>>(u8"1"sv, &c), make_error_code(error::unexpected_number));
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, IntegerValue) {
+  int v = 0;
+  EXPECT_FALSE(parse<level_rule>(u8R"("low")"sv, &v));
+  EXPECT_EQ(v, 1) << "the first of two enumerators with the same string is used";
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, EmptyStringEnumerator) {
+  int v = 0;
+  EXPECT_FALSE(parse<level_rule>(u8R"("")"sv, &v));
+  EXPECT_EQ(v, 10);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, ObjectProperty) {
+  paint p;
+  EXPECT_FALSE(parse<paint_rule>(u8R"({"name":"sky","shade":"blue"})"sv, &p));
+  EXPECT_EQ(p.name, "sky");
+  EXPECT_EQ(p.shade, colour::blue);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, ObjectPropertyUnrecognized) {
+  paint p;
+  EXPECT_EQ(parse<paint_rule>(u8R"({"name":"sky","shade":"cyan"})"sv, &p),
+            make_error_code(error::unrecognized_enumerator));
+}
+
+// NOLINTNEXTLINE
+TEST(EnumHelper, ArrayElements) {
+  std::vector<colour> v;
+  EXPECT_FALSE(parse<colours_rule>(u8R"(["green","red","green"])"sv, &v));
+  EXPECT_EQ(v, (std::vector<colour>{colour::green, colour::red, colour::green}));
 }
