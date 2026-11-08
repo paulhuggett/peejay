@@ -1,10 +1,10 @@
-//===- include/peejay/rules/helpers.hpp -------------------*- mode: C++ -*-===//
-//*  _          _                      *
-//* | |__   ___| |_ __   ___ _ __ ___  *
-//* | '_ \ / _ \ | '_ \ / _ \ '__/ __| *
-//* | | | |  __/ | |_) |  __/ |  \__ \ *
-//* |_| |_|\___|_| .__/ \___|_|  |___/ *
-//*              |_|                   *
+//===- include/peejay/rules/non_terminal_rule.hpp ---------*- mode: C++ -*-===//
+//*                      _                      _             _  *
+//*  _ __   ___  _ __   | |_ ___ _ __ _ __ ___ (_)_ __   __ _| | *
+//* | '_ \ / _ \| '_ \  | __/ _ \ '__| '_ ` _ \| | '_ \ / _` | | *
+//* | | | | (_) | | | | | ||  __/ |  | | | | | | | | | | (_| | | *
+//* |_| |_|\___/|_| |_|  \__\___|_|  |_| |_| |_|_|_| |_|\__,_|_| *
+//*                                                              *
 //===----------------------------------------------------------------------===//
 // Copyright © 2026 Paul Bowen-Huggett
 //
@@ -29,15 +29,15 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-/// \file helpers.hpp
+/// \file non_terminal_rule.hpp
 /// \brief Provides base classes for rules which parse JSON objects and arrays.
 ///
-/// peejay::rules::object_helper parses an object whose properties are stored in the members of a struct.
-/// peejay::rules::homogeneous_array_helper parses an array whose elements are all of the same type and appends them
-/// to a container. peejay::rules::enum_helper accepts one of a fixed set of strings and stores the value associated
+/// peejay::rules::object_rule parses an object whose properties are stored in the members of a struct.
+/// peejay::rules::homogeneous_array_rule parses an array whose elements are all of the same type and appends them
+/// to a container. peejay::rules::enum_rule accepts one of a fixed set of strings and stores the value associated
 /// with it.
-#ifndef PEEJAY_RULES_HELPERS_HPP
-#define PEEJAY_RULES_HELPERS_HPP
+#ifndef PEEJAY_RULES_NON_TERMINAL_RULE_HPP
+#define PEEJAY_RULES_NON_TERMINAL_RULE_HPP
 
 #include "peejay/rules/terminals.hpp"
 
@@ -55,7 +55,7 @@
 
 namespace peejay::rules {
 
-/// \brief This concept is satisfied by a user-defined rule which object_helper can push to parse the value of a
+/// \brief This concept is satisfied by a user-defined rule which object_rule can push to parse the value of a
 ///   property.
 ///
 /// The rule must derive from rule<Policies>, have a member type `value_type`, and be constructible from a pointer to
@@ -90,7 +90,7 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 ///   must be complete types, so a rule cannot name itself here. A recursive grammar needs a rule derived directly from
 ///   rule<>.
 template <policy Policies, std::size_t Elements, user_rule<Policies>... UserRules>
-class object_helper : public rule<Policies> {
+class object_rule : public rule<Policies> {
   /// Pointers to the types handled by the built-in terminal rules.
   using builtin_pointers =
       type_list::concat<type_list::type_list<bool*, typename Policies::float_type*, std::u8string*, std::string*>,
@@ -166,7 +166,7 @@ public:
 
 protected:
   /// Rules are not destroyed through this type: they are discarded without running their destructors.
-  ~object_helper() noexcept = default;
+  ~object_rule() noexcept = default;
 
   /// Sets the properties which the object must contain.
   ///
@@ -208,7 +208,7 @@ private:
   std::bitset<Elements> seen_;
 };
 
-/// \brief This concept is satisfied by a type to which enum_helper can assign a value: an enumeration or one of the
+/// \brief This concept is satisfied by a type to which enum_rule can assign a value: an enumeration or one of the
 ///   integer types accepted by integer_rule.
 template <typename T>
 concept enum_target = (std::is_enum_v<T> && !std::is_const_v<T> && !std::is_volatile_v<T>) || integer_target<T>;
@@ -219,13 +219,13 @@ concept enum_target = (std::is_enum_v<T> && !std::is_const_v<T> && !std::is_vola
 /// the value which is stored when that string is encountered. If the same string appears more than once, the first
 /// enumerator is used. A string which is not one of the enumerators produces error::unrecognized_enumerator.
 ///
-/// The rule can be used directly or as one of object_helper's UserRules. For the latter, \p T should be an enumeration
-/// because object_helper already handles pointers to the integer types.
+/// The rule can be used directly or as one of object_rule's UserRules. For the latter, \p T should be an enumeration
+/// because object_rule already handles pointers to the integer types.
 ///
 /// \tparam Policies  The parser policies.
 /// \tparam T  The type of the value stored by this rule.
 /// \tparam Elements  The maximum number of enumerators.
-template <policy Policies, enum_target T, std::size_t Elements> class enum_helper : public rule<Policies> {
+template <policy Policies, enum_target T, std::size_t Elements> class enum_rule : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -254,9 +254,9 @@ public:
 
 protected:
   /// \param value  The location to which the value will be written.
-  explicit constexpr enum_helper(value_type* const value) noexcept : value_{value} {}
+  explicit constexpr enum_rule(value_type* const value) noexcept : value_{value} {}
   /// Rules are not destroyed through this type: they are discarded without running their destructors.
-  ~enum_helper() noexcept = default;
+  ~enum_rule() noexcept = default;
 
   /// Sets the enumerators which the rule accepts.
   ///
@@ -294,7 +294,7 @@ private:
   std::array<enumerator, Elements> enumerators_{};
 };
 
-/// \brief This concept is satisfied by a container to which homogeneous_array_helper can append elements.
+/// \brief This concept is satisfied by a container to which homogeneous_array_rule can append elements.
 ///
 /// The container must have a member type `value_type` and a member function `emplace_back()` which
 /// default-constructs a new element at the end of the container and returns a reference to it. std::vector<>,
@@ -308,7 +308,7 @@ concept emplace_back_container = requires(Container& c) {
 /// \brief A rule which parses a JSON array whose elements are all of the same type.
 ///
 /// An element is appended to the container for each member of the array and \p Rule is pushed to parse its value.
-/// The rule can be used directly or as one of object_helper's UserRules.
+/// The rule can be used directly or as one of object_rule's UserRules.
 ///
 /// \tparam Policies  The parser policies.
 /// \tparam Container  The container to which an element is appended for each member of the array.
@@ -321,7 +321,7 @@ template <policy Policies, emplace_back_container Container,
           typename Rule = typename type_to_terminal<typename Container::value_type, Policies>::type,
           std::size_t MaxElements = 0U>
   requires(MaxElements == 0 || std::ranges::sized_range<Container>)
-class homogeneous_array_helper final : public rule<Policies> {
+class homogeneous_array_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -331,7 +331,7 @@ public:
   using children = type_list::type_list<Rule>;
 
   /// \param container  The container to which the array's elements are appended.
-  explicit constexpr homogeneous_array_helper(Container* const container) noexcept : container_{container} {}
+  explicit constexpr homogeneous_array_rule(Container* const container) noexcept : container_{container} {}
   /// \returns The name of this rule.
   [[nodiscard]] constexpr char const* name() const noexcept override { return "homogeneous-array"; }
   /// Called at the start of the array.
@@ -365,4 +365,4 @@ private:
 
 }  // end namespace peejay::rules
 
-#endif  // PEEJAY_RULES_HELPERS_HPP
+#endif  // PEEJAY_RULES_NON_TERMINAL_RULE_HPP

@@ -196,7 +196,7 @@ set(peejay_details
 )
 set(peejay_rules
   "${include_dir}/peejay/rules/errors.hpp"
-  "${include_dir}/peejay/rules/helpers.hpp"
+  "${include_dir}/peejay/rules/non_terminal_rule.hpp"
   "${include_dir}/peejay/rules/rule.hpp"
   "${include_dir}/peejay/rules/terminals.hpp"
 )

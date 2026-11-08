@@ -113,7 +113,7 @@ template <policy Policies> struct integer_rule_for {
 
 }  // end namespace details
 
-/// The integer types to which integer_rule instances are made available to object_helper: the standard signed and
+/// The integer types to which integer_rule instances are made available to object_rule: the standard signed and
 /// unsigned integer types plus the policy's integer_type and its unsigned equivalent if those are not already present.
 ///
 /// \tparam Policies  The parser policies.
@@ -149,9 +149,13 @@ public:
 
   /// The stack refers to itself, so a context cannot be copied.
   context_base(context_base const&) = delete;
+  /// The stack refers to itself, so a context cannot be moved.
+  context_base(context_base&&) noexcept = delete;
   /// The stack refers to itself, so a context cannot be assigned.
   /// \returns *this.
   context_base& operator=(context_base const&) = delete;
+  /// The stack refers to itself, so a context cannot be moved.
+  context_base& operator=(context_base&&) noexcept = delete;
 
   /// Creates a parser whose events are passed to the rule at the top of this context's stack. The context must
   /// outlive the parser.
@@ -477,7 +481,7 @@ private:
   context_base<policies>* context_;
 };
 
-/// \brief This concept is satisfied by a user-defined rule which object_helper can push to parse the value of a
+/// \brief This concept is satisfied by a user-defined rule which object_rule can push to parse the value of a
 ///   property.
 ///
 /// The rule must derive from rule<Policies> and have a member type `value_type`.

@@ -57,7 +57,6 @@ add_executable(pj2-unittests
   test_null_backend.cpp
   test_number.cpp
   test_pointer_based_iterator.cpp
-  test_rule_helpers.cpp
   test_rule_non_terminals.cpp
   test_rule_terminals.cpp
   test_string.cpp

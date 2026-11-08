@@ -35,7 +35,7 @@
 #include <vector>
 
 #include "peejay/parser.hpp"
-#include "peejay/rules/helpers.hpp"
+#include "peejay/rules/non_terminal_rule.hpp"
 
 using namespace std::string_view_literals;
 
@@ -46,7 +46,7 @@ struct address {
   unsigned port = 0;
 };
 
-template <peejay::policy Policies> class address_rule final : public peejay::rules::object_helper<Policies, 3> {
+template <peejay::policy Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
 public:
   using policies = Policies;
   using value_type = address;
@@ -59,7 +59,7 @@ public:
 
 template <peejay::policy Policies>
 using address_array_rule =
-    peejay::rules::homogeneous_array_helper<Policies, std::vector<address>, address_rule<Policies>>;
+    peejay::rules::homogeneous_array_rule<Policies, std::vector<address>, address_rule<Policies>>;
 
 }  // end anonymous namespace
 

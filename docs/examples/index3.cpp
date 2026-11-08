@@ -35,7 +35,7 @@
 #include <vector>
 
 #include "peejay/parser.hpp"
-#include "peejay/rules/helpers.hpp"
+#include "peejay/rules/non_terminal_rule.hpp"
 
 using namespace std::string_view_literals;
 
@@ -47,10 +47,10 @@ struct multiport_address {
 };
 
 template <peejay::policy Policies>
-using multiport_rule = peejay::rules::homogeneous_array_helper<Policies, std::vector<unsigned>>;
+using multiport_rule = peejay::rules::homogeneous_array_rule<Policies, std::vector<unsigned>>;
 
 template <peejay::policy Policies>
-class multiport_address_rule final : public peejay::rules::object_helper<Policies, 2, multiport_rule<Policies>> {
+class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>> {
 public:
   using policies = Policies;
   using value_type = multiport_address;
