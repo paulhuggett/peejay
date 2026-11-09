@@ -121,7 +121,7 @@ TEST_F(ImportStdString, EmptyString) {
 }
 // NOLINTNEXTLINE
 TEST_F(ImportStdString, MultiByte) {
-  parser.input(u8R"("café")"sv).eof();
+  parser.input(u8"\"caf\u00E9\""sv).eof();
   ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
   EXPECT_EQ(value, "caf\xC3\xA9") << "the UTF-8 code units are stored unchanged";
 }
@@ -170,9 +170,9 @@ TEST_F(ImportArrayvecString, ReplacesContents) {
 // NOLINTNEXTLINE
 TEST_F(ImportArrayvecString, MultiByteFull) {
   // Each U+00E9 is two UTF-8 code units.
-  parser.input(u8R"("éé")"sv).eof();
+  parser.input(u8"\"\u00E9\u00E9\""sv).eof();
   ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
-  EXPECT_EQ(to_u8string(value), u8"éé");
+  EXPECT_EQ(to_u8string(value), u8"\u00E9\u00E9");
 }
 // NOLINTNEXTLINE
 TEST_F(ImportArrayvecString, TooLong) {
@@ -183,7 +183,7 @@ TEST_F(ImportArrayvecString, TooLong) {
 }
 // NOLINTNEXTLINE
 TEST_F(ImportArrayvecString, MultiByteTooLong) {
-  parser.input(u8R"("abéc")"sv).eof();
+  parser.input(u8"\"ab\u00E9c\""sv).eof();
   EXPECT_EQ(parser.last_error(), make_error_code(peejay::error::string_too_long));
   EXPECT_EQ(to_u8string(value), u8"");
 }
