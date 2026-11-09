@@ -113,6 +113,7 @@ concept policy = requires(Policy &&p) {
 ///   - `boolean_value(bool)`: a boolean value has been parsed.
 ///   - `null_value()`: a null value has been parsed.
 ///   - `begin_array()`/`end_array()`: the start and end of an array.
+///   - `element()` (optional): called before each array element.
 ///   - `begin_object()`/`end_object()`: the start and end of an object.
 ///   - `key(std::u8string_view)`: an object key has been parsed.
 ///
@@ -145,12 +146,19 @@ concept backend = requires(Backend &&be) {
   { be.boolean_value(bool{}) } -> std::convertible_to<std::error_code>;
   /// Called when a null value has been parsed.
   { be.null_value() } -> std::convertible_to<std::error_code>;
+
   /// Called to notify the start of an array. Subsequent event notifications are
   /// for members of this array until a matching call to end_array().
   { be.begin_array() } -> std::convertible_to<std::error_code>;
+  /// Optional. Called before each array element. If present, it must return a value which is convertible to
+  /// std::error_code.
+  requires !requires { be.element(); } || requires {
+    { be.element() } -> std::convertible_to<std::error_code>;
+  };
   /// Called to indicate that an array has been completely parsed. This will always
   /// follow an earlier call to begin_array().
   { be.end_array() } -> std::convertible_to<std::error_code>;
+
   /// Called to notify the start of an object. Subsequent event notifications
   /// are for members of this object until a matching call to end_object().
   { be.begin_object() } -> std::convertible_to<std::error_code>;
