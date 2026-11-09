@@ -153,15 +153,16 @@ private:
   value_type* value_;
 };
 
-/// A rule which accepts a string value.
+/// A rule which accepts a string value and assigns it to an object of type \p String.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies = default_policies> class string_rule final : public rule<Policies> {
+/// \tparam String  The type of the value stored by this rule: std::u8string (the default) or arrayvec<char8_t, Size>.
+template <policy Policies = default_policies, string_target String> class string_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
   /// The type of the value stored by this rule.
-  using value_type = std::u8string;
+  using value_type = String;
 
   /// \param value  The location to which the value will be written.
   explicit constexpr string_rule(value_type* const value) noexcept : value_{value} {}
@@ -170,9 +171,17 @@ public:
   /// Stores \p value and pops this rule.
   /// \param context  The parse context.
   /// \param value  The string value.
-  /// \returns Success.
+  /// \returns peejay::error::string_too_long if \p value does not fit in value_type (in which case the stored value
+  ///   is unchanged), otherwise success.
   std::error_code string_value(context_base<Policies>* const context, std::u8string_view const value) override {
-    *value_ = value;
+    if constexpr (std::same_as<value_type, std::u8string>) {
+      *value_ = value;
+    } else {
+      if (value.size() > value_->max_size()) {
+        return peejay::error::string_too_long;
+      }
+      value_->assign(value.begin(), value.end());
+    }
     return this->pop(context);
   }
 

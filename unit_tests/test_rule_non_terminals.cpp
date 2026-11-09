@@ -220,6 +220,31 @@ using colours_rule = peejay::rules::homogeneous_array_rule<policies, std::vector
 
 using points_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<point>, point_rule<2>>;
 
+// Strings with room for four UTF-8 code units.
+using short_string = peejay::arrayvec<char8_t, 4>;
+using short_string_rule = peejay::rules::string_rule<policies, short_string>;
+
+/// \returns A copy of the characters held by \p s.
+std::u8string to_u8string(short_string const& s) {
+  return {s.data(), s.size()};
+}
+
+// The element rule is chosen by type_to_terminal.
+using short_strings_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<short_string>>;
+static_assert(std::is_same_v<short_strings_rule::children, peejay::type_list::type_list<short_string_rule>>);
+
+struct label {
+  short_string code;
+  int id = 0;
+};
+
+// An arrayvec string property needs its string_rule to be one of the UserRules.
+class label_rule final : public peejay::rules::object_rule<policies, 2, short_string_rule> {
+public:
+  using value_type = label;
+  explicit label_rule(label* const l) { this->set_properties({{u8"code"sv, {&l->code}}, {u8"id"sv, {&l->id}}}); }
+};
+
 //-MARK: object_rule
 
 // NOLINTNEXTLINE
@@ -548,6 +573,39 @@ TEST(EnumRule, ArrayElements) {
   std::vector<colour> v;
   EXPECT_FALSE(parse<colours_rule>(u8R"(["green","red","green"])"sv, &v));
   EXPECT_EQ(v, (std::vector<colour>{colour::green, colour::red, colour::green}));
+}
+
+//-MARK: arrayvec strings
+
+// NOLINTNEXTLINE
+TEST(ArrayvecString, ArrayElements) {
+  std::vector<short_string> v;
+  EXPECT_FALSE(parse<short_strings_rule>(u8R"(["a","","abcd"])"sv, &v));
+  ASSERT_EQ(v.size(), 3U);
+  EXPECT_EQ(to_u8string(v[0]), u8"a");
+  EXPECT_EQ(to_u8string(v[1]), u8"");
+  EXPECT_EQ(to_u8string(v[2]), u8"abcd");
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayvecString, ArrayElementTooLong) {
+  std::vector<short_string> v;
+  EXPECT_EQ(parse<short_strings_rule>(u8R"(["a","abcde"])"sv, &v), make_error_code(peejay::error::string_too_long));
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayvecString, ObjectProperty) {
+  label l;
+  EXPECT_FALSE(parse<label_rule>(u8R"({"code":"en","id":7})"sv, &l));
+  EXPECT_EQ(to_u8string(l.code), u8"en");
+  EXPECT_EQ(l.id, 7);
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayvecString, ObjectPropertyTooLong) {
+  label l;
+  EXPECT_EQ(parse<label_rule>(u8R"({"code":"en-GB","id":7})"sv, &l), make_error_code(peejay::error::string_too_long));
+  EXPECT_EQ(to_u8string(l.code), u8"");
 }
 
 //-MARK: object_rule with user rules
@@ -934,6 +992,8 @@ TEST(RuleTerminals, Names) {
   EXPECT_STREQ((integer_rule<policies, unsigned short>{&ush}.name()), "unsigned-integer");
   EXPECT_STREQ(float_rule<policies>{&f}.name(), "float");
   EXPECT_STREQ(string_rule<policies>{&s}.name(), "string");
+  short_string av;
+  EXPECT_STREQ((string_rule<policies, short_string>{&av}.name()), "string");
 }
 
 }  // end anonymous namespace

@@ -68,6 +68,7 @@
 
 // local includes
 #include "peejay/concepts.hpp"
+#include "peejay/details/arrayvec.hpp"
 #include "peejay/json.hpp"
 #include "peejay/rules/errors.hpp"
 
@@ -82,12 +83,28 @@ concept integer_target = std::integral<T> && !std::is_const_v<T> && !std::is_vol
                          !std::same_as<T, char> && !std::same_as<T, wchar_t> && !std::same_as<T, char8_t> &&
                          !std::same_as<T, char16_t> && !std::same_as<T, char32_t>;
 
+namespace details {
+
+/// True if \p T is an arrayvec of char8_t.
+template <typename T> inline constexpr bool is_char8_arrayvec = false;
+/// True if \p T is an arrayvec of char8_t.
+template <std::size_t Size> inline constexpr bool is_char8_arrayvec<arrayvec<char8_t, Size>> = true;
+
+}  // end namespace details
+
+/// \brief The concept string_target<T> is satisfied if T is a type to which string_rule can assign a JSON string.
+///
+/// That is std::u8string or arrayvec<char8_t, Size>. The latter holds the string without dynamic allocation; a string
+/// which is longer than its capacity produces peejay::error::string_too_long.
+template <typename T>
+concept string_target = std::same_as<T, std::u8string> || details::is_char8_arrayvec<T>;
+
 template <policy Policies> class rule;
 template <policy Policies> class backend;
 template <policy Policies> class bool_rule;
 template <policy Policies, integer_target T = typename Policies::integer_type> class integer_rule;
 template <policy Policies> class float_rule;
-template <policy Policies> class string_rule;
+template <policy Policies, string_target String = std::u8string> class string_rule;
 
 /// A rule which accepts a non-negative integer value no larger than the unsigned equivalent of the policy's
 /// integer_type can hold.
@@ -223,6 +240,13 @@ template <policy Policies> struct type_to_terminal<bool, Policies> {
 template <policy Policies> struct type_to_terminal<std::u8string, Policies> {
   /// The terminal rule.
   using type = string_rule<Policies>;
+};
+/// Strings held in an arrayvec of char8_t are assigned by string_rule.
+/// \tparam Size  The capacity of the arrayvec.
+/// \tparam Policies  The parser policies.
+template <std::size_t Size, policy Policies> struct type_to_terminal<arrayvec<char8_t, Size>, Policies> {
+  /// The terminal rule.
+  using type = string_rule<Policies, arrayvec<char8_t, Size>>;
 };
 
 /// \brief The base class for rules which model the productions of a JSON grammar.

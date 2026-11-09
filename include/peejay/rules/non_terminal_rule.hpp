@@ -78,7 +78,8 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 /// with a pointer to the location where the key's value will be stored. When the key is encountered, the matching
 /// rule is pushed to parse its value: one of the terminal rules for a built-in type, or one of \p UserRules. The
 /// built-in types are bool, the policy's float_type, std::u8string, std::string, and the integer types listed by
-/// builtin_integers.
+/// builtin_integers. A string held in an arrayvec<char8_t, Size> needs its string_rule to be listed in \p UserRules,
+/// for example `string_rule<Policies, arrayvec<char8_t, 16>>`.
 ///
 /// Every property must be present in the object. A key which is not one of the properties produces
 /// error::unrecognized_property and an object which is missing a property produces error::incomplete_object.
@@ -314,7 +315,7 @@ concept emplace_back_container = requires(Container& c) {
 /// \tparam Container  The container to which an element is appended for each member of the array.
 /// \tparam Rule  The rule used to parse each array member. Defaults to the terminal rule for the container's
 ///   value_type (see type_to_terminal), so it may be omitted for containers of bool, integers, the policy's
-///   float_type, or std::u8string.
+///   float_type, std::u8string, or arrayvec<char8_t, Size>.
 /// \tparam MaxElements  The maximum number of elements allowed in the container or 0 for no limit. If not 0,
 ///   Container must also be a sized range.
 template <policy Policies, emplace_back_container Container,

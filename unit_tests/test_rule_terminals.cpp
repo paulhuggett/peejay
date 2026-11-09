@@ -110,6 +110,65 @@ TEST_F(ImportString, String) {
   EXPECT_EQ(value, u8"string");
 }
 
+static_assert(peejay::rules::string_target<std::u8string>);
+static_assert(peejay::rules::string_target<peejay::arrayvec<char8_t, 4>>);
+static_assert(!peejay::rules::string_target<std::string>);
+static_assert(!peejay::rules::string_target<peejay::arrayvec<char, 4>>);
+static_assert(!peejay::rules::string_target<peejay::arrayvec<char8_t, 4> const>);
+static_assert(std::is_same_v<peejay::rules::string_rule<peejay::default_policies>::value_type, std::u8string>);
+static_assert(
+    std::is_same_v<peejay::rules::type_to_terminal<peejay::arrayvec<char8_t, 4>, peejay::default_policies>::type,
+                   peejay::rules::string_rule<peejay::default_policies, peejay::arrayvec<char8_t, 4>>>);
+
+/// \returns A copy of the characters held by \p av.
+template <std::size_t Size> std::u8string to_u8string(peejay::arrayvec<char8_t, Size> const& av) {
+  return {av.data(), av.size()};
+}
+
+// A string with room for four UTF-8 code units.
+class ImportArrayvecString
+    : public testing::Test,
+      public TerminalTest<peejay::rules::string_rule<peejay::default_policies, peejay::arrayvec<char8_t, 4>>> {};
+// NOLINTNEXTLINE
+TEST_F(ImportArrayvecString, EmptyString) {
+  parser.input(u8R"("")"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
+  EXPECT_EQ(to_u8string(value), u8"");
+}
+// NOLINTNEXTLINE
+TEST_F(ImportArrayvecString, Full) {
+  parser.input(u8R"("abcd")"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
+  EXPECT_EQ(to_u8string(value), u8"abcd");
+}
+// NOLINTNEXTLINE
+TEST_F(ImportArrayvecString, ReplacesContents) {
+  value.assign({u8'x', u8'y', u8'z'});
+  parser.input(u8R"("ab")"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
+  EXPECT_EQ(to_u8string(value), u8"ab");
+}
+// NOLINTNEXTLINE
+TEST_F(ImportArrayvecString, MultiByteFull) {
+  // Each U+00E9 is two UTF-8 code units.
+  parser.input(u8R"("éé")"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
+  EXPECT_EQ(to_u8string(value), u8"éé");
+}
+// NOLINTNEXTLINE
+TEST_F(ImportArrayvecString, TooLong) {
+  value.assign({u8'x'});
+  parser.input(u8R"("abcde")"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(peejay::error::string_too_long));
+  EXPECT_EQ(to_u8string(value), u8"x");
+}
+// NOLINTNEXTLINE
+TEST_F(ImportArrayvecString, MultiByteTooLong) {
+  parser.input(u8R"("abéc")"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(peejay::error::string_too_long));
+  EXPECT_EQ(to_u8string(value), u8"");
+}
+
 //-MARK: float
 
 class ImportFloat : public testing::Test, public TerminalTest<peejay::rules::float_rule<peejay::default_policies>> {};
