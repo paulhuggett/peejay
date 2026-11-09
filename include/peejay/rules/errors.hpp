@@ -58,6 +58,7 @@ enum class error : int {
   incomplete_object,        ///< An object ended before all of its required properties had been seen.
   too_many_array_elements,  ///< An array contained more elements than the rule's maximum.
   unrecognized_enumerator,  ///< A string did not match any of the enumerators expected by the rule.
+  no_active_rule,           ///< An event was received after the context's parse had ended.
 };
 
 /// The error category for peejay::rules::error values.
@@ -84,6 +85,7 @@ public:
     case error::incomplete_object: result = "incomplete object"; break;
     case error::too_many_array_elements: result = "too many array elements"; break;
     case error::unrecognized_enumerator: result = "unrecognized enumerator"; break;
+    case error::no_active_rule: result = "no active rule"; break;
     default: break;
     }
     return result;

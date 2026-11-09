@@ -156,7 +156,8 @@ private:
 /// A rule which accepts a string value and assigns it to an object of type \p String.
 ///
 /// \tparam Policies  The parser policies.
-/// \tparam String  The type of the value stored by this rule: std::u8string (the default) or arrayvec<char8_t, Size>.
+/// \tparam String  The type of the value stored by this rule: std::u8string (the default), std::string, or
+///   arrayvec<char8_t, Size>.
 template <policy Policies = default_policies, string_target String> class string_rule final : public rule<Policies> {
 public:
   /// The parser policies.
@@ -176,6 +177,9 @@ public:
   std::error_code string_value(context_base<Policies>* const context, std::u8string_view const value) override {
     if constexpr (std::same_as<value_type, std::u8string>) {
       *value_ = value;
+    } else if constexpr (std::same_as<value_type, std::string>) {
+      // Reading the char8_t code units through char is permitted because char may alias any type.
+      value_->assign(reinterpret_cast<char const*>(value.data()), value.size());
     } else {
       if (value.size() > value_->max_size()) {
         return peejay::error::string_too_long;

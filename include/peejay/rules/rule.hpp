@@ -63,6 +63,7 @@
 #include <cstddef>
 #include <memory>
 #include <new>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -94,10 +95,11 @@ template <std::size_t Size> inline constexpr bool is_char8_arrayvec<arrayvec<cha
 
 /// \brief The concept string_target<T> is satisfied if T is a type to which string_rule can assign a JSON string.
 ///
-/// That is std::u8string or arrayvec<char8_t, Size>. The latter holds the string without dynamic allocation; a string
-/// which is longer than its capacity produces peejay::error::string_too_long.
+/// That is std::u8string, std::string (which receives the UTF-8 code units unchanged), or arrayvec<char8_t, Size>. The
+/// last of these holds the string without dynamic allocation; a string which is longer than its capacity produces
+/// peejay::error::string_too_long.
 template <typename T>
-concept string_target = std::same_as<T, std::u8string> || details::is_char8_arrayvec<T>;
+concept string_target = std::same_as<T, std::u8string> || std::same_as<T, std::string> || details::is_char8_arrayvec<T>;
 
 template <policy Policies> class rule;
 template <policy Policies> class backend;
@@ -146,7 +148,8 @@ using builtin_integers = details::add_unique<
 /// \tparam Policies  The parser policies.
 template <policy Policies>
 using builtin_rules = type_list::concat<
-    type_list::type_list<bool_rule<Policies>, float_rule<Policies>, string_rule<Policies>>,
+    type_list::type_list<bool_rule<Policies>, float_rule<Policies>, string_rule<Policies>,
+                         string_rule<Policies, std::string>>,
     type_list::transform<builtin_integers<Policies>, details::integer_rule_for<Policies>::template type>>;
 
 /// \brief The part of a context which does not depend on the rules that it holds: the stack of active rules. The rule
@@ -175,7 +178,8 @@ public:
   context_base& operator=(context_base&&) noexcept = delete;
 
   /// Creates a parser whose events are passed to the rule at the top of this context's stack. The context must
-  /// outlive the parser.
+  /// outlive the parser. A context parses a single document: once that parse has ended, further input to this or any
+  /// other parser made from the context produces error::no_active_rule.
   /// \returns The new parser.
   [[nodiscard]] auto make_parser() { return parser<backend<policies>>{backend<policies>{this}}; }
 
@@ -198,11 +202,10 @@ protected:
   std::error_code emplace(Args&&... args);
 
 private:
-  /// \returns The rule at the top of the stack. The stack must not be empty.
-  [[nodiscard]] constexpr rule<policies>* top() const noexcept {
-    assert(top_ != nullptr);
-    return top_;
-  }
+  /// \returns The rule at the top of the stack, or nullptr if the stack is empty.
+  [[nodiscard]] constexpr rule<policies>* top() const noexcept { return top_; }
+  /// Abandons and discards every rule on the stack, starting at the top, leaving it empty.
+  void unwind() noexcept;
 
   /// The rule at the top of the stack, or nullptr if the stack is empty.
   rule<policies>* top_ = nullptr;
@@ -241,6 +244,12 @@ template <policy Policies> struct type_to_terminal<std::u8string, Policies> {
   /// The terminal rule.
   using type = string_rule<Policies>;
 };
+/// Strings are assigned by string_rule.
+/// \tparam Policies  The parser policies.
+template <policy Policies> struct type_to_terminal<std::string, Policies> {
+  /// The terminal rule.
+  using type = string_rule<Policies, std::string>;
+};
 /// Strings held in an arrayvec of char8_t are assigned by string_rule.
 /// \tparam Size  The capacity of the arrayvec.
 /// \tparam Policies  The parser policies.
@@ -254,8 +263,9 @@ template <std::size_t Size, policy Policies> struct type_to_terminal<arrayvec<ch
 /// Each member function which handles a parser event returns an error by default. A subclass overrides the functions
 /// for the events that it accepts.
 ///
-/// A subclass which pushes other rules must list them in a public member type `children`. The rules listed by a
-/// subclass replace those of its base class.
+/// A subclass which pushes other rules must list them in a public member type `children`. A subclass which declares
+/// its own `children` hides those of its base class, so a base class which pushes rules should also make them known
+/// through base_children: object_rule does this.
 ///
 /// \tparam Policies  The parser policies.
 template <policy Policies> class rule {
@@ -366,6 +376,13 @@ public:
     return error::unexpected_end_object;
   }
 
+  /// Called at the end of the parse if this rule is still on the stack: the parse failed or the input ended before
+  /// the rule's production was complete. The rule is then discarded. This gives the rule an opportunity to remove a
+  /// partially constructed value. The default does nothing.
+  /// \param child_active  True if a rule pushed by this one was also still on the stack, so the value that it was
+  ///   parsing is incomplete.
+  virtual void abandon(bool const child_active) noexcept { (void)child_active; }
+
 protected:
   /// Rules are created by subclasses.
   rule() noexcept = default;
@@ -400,17 +417,6 @@ protected:
   template <typename Self, typename T>
   static std::error_code push_terminal(Self const* const self, context_base<policies>* const context, T* const value) {
     return push<typename type_to_terminal<T, policies>::type>(self, context, value);
-  }
-  /// Pushes a string_rule which stores the next value in \p value.
-  /// \tparam Self  The type of the rule which is performing the push. It is deduced from \p self.
-  /// \param self  The rule which is performing the push (that is, `this`).
-  /// \param context  The parse context.
-  /// \param value  The location to which the value will be written.
-  /// \returns peejay::error::nesting_too_deep if there is insufficient space, otherwise success.
-  template <typename Self>
-  static std::error_code push_terminal(Self const* const self, context_base<policies>* const context,
-                                       std::string* const value) {
-    return push_terminal(self, context, reinterpret_cast<std::u8string*>(value));
   }
 
   /// Removes this rule, which must be at the top of the parse stack, and returns "no-error". This member function is
@@ -455,52 +461,82 @@ std::error_code context_base<Policies>::emplace(Args&&... args) {
   return {};
 }
 
+template <policy Policies> void context_base<Policies>::unwind() noexcept {
+  for (auto* r = top_; r != nullptr; r = r->previous_) {
+    // Each rule other than the top one was the rule that pushed the one above it.
+    r->abandon(r != top_);
+    sp_ = r->frame_;
+  }
+  top_ = nullptr;
+}
+
 /// Implements the backend interface required by the JSON parser. Each member function
 /// forwards to the top-most element on the parse stack which will be an instance of a subclass of
 /// rule.
+///
+/// A context parses a single document. Once the parse has ended (parser::eof() calls result()), the stack is empty
+/// and any further event produces error::no_active_rule.
 ///
 /// \tparam Policies  The parser policies.
 template <policy Policies = default_policies> class backend {
 public:
   /// The parser policies.
   using policies = Policies;
-  /// \param context  The context whose parse stack receives the parser's events. The stack must not be empty.
+  /// \param context  The context whose parse stack receives the parser's events.
   explicit constexpr backend(context_base<policies>* const context) noexcept : context_{context} {}
 
-  /// Called at the end of the parse. The rules write their results to the objects that they were given, so there is
-  /// no result.
-  static constexpr void result() { /* There is no result! */ }
+  /// Called at the end of the parse. Any rules that remain on the stack are abandoned and the stack is emptied. The
+  /// rules write their results to the objects that they were given, so there is no result.
+  void result() noexcept { context_->unwind(); }
   /// \param v  The integer value.
   /// \returns The result of the top rule's integer_value().
-  std::error_code integer_value(policies::integer_type const v) { return context_->top()->integer_value(context_, v); }
+  std::error_code integer_value(policies::integer_type const v) { return this->forward(&rule_type::integer_value, v); }
   /// \param v  The floating-point value.
   /// \returns The result of the top rule's float_value().
-  std::error_code float_value(policies::float_type const v) { return context_->top()->float_value(context_, v); }
+  std::error_code float_value(policies::float_type const v) { return this->forward(&rule_type::float_value, v); }
   /// \param v  The string value.
   /// \returns The result of the top rule's string_value().
-  std::error_code string_value(std::u8string_view const v) { return context_->top()->string_value(context_, v); }
+  std::error_code string_value(std::u8string_view const v) { return this->forward(&rule_type::string_value, v); }
   /// \param v  The boolean value.
   /// \returns The result of the top rule's boolean_value().
-  std::error_code boolean_value(bool const v) { return context_->top()->boolean_value(context_, v); }
+  std::error_code boolean_value(bool const v) { return this->forward(&rule_type::boolean_value, v); }
   /// \returns The result of the top rule's null_value().
-  std::error_code null_value() { return context_->top()->null_value(context_); }
+  std::error_code null_value() { return this->forward(&rule_type::null_value); }
 
   /// \returns The result of the top rule's begin_array().
-  std::error_code begin_array() { return context_->top()->begin_array(context_); }
+  std::error_code begin_array() { return this->forward(&rule_type::begin_array); }
   /// \returns The result of the top rule's element().
-  std::error_code element() { return context_->top()->element(context_); }
+  std::error_code element() { return this->forward(&rule_type::element); }
   /// \returns The result of the top rule's end_array().
-  std::error_code end_array() { return context_->top()->end_array(context_); }
+  std::error_code end_array() { return this->forward(&rule_type::end_array); }
 
   /// \returns The result of the top rule's begin_object().
-  std::error_code begin_object() { return context_->top()->begin_object(context_); }
+  std::error_code begin_object() { return this->forward(&rule_type::begin_object); }
   /// \param k  The object key.
   /// \returns The result of the top rule's key().
-  std::error_code key(std::u8string_view const k) { return context_->top()->key(context_, k); }
+  std::error_code key(std::u8string_view const k) { return this->forward(&rule_type::key, k); }
   /// \returns The result of the top rule's end_object().
-  std::error_code end_object() { return context_->top()->end_object(context_); }
+  std::error_code end_object() { return this->forward(&rule_type::end_object); }
 
 private:
+  /// The rule base class.
+  using rule_type = rule<policies>;
+
+  /// Passes an event to the rule at the top of the stack.
+  /// \tparam Args  The types of the event's arguments.
+  /// \param handler  The rule's member function which handles the event.
+  /// \param args  The event's arguments.
+  /// \returns error::no_active_rule if the stack is empty, otherwise the result of \p handler.
+  template <typename... Args>
+  std::error_code forward(std::error_code (rule_type::* const handler)(context_base<policies>*, Args...),
+                          std::type_identity_t<Args>... args) {
+    rule_type* const top = context_->top();
+    if (top == nullptr) {
+      return error::no_active_rule;
+    }
+    return (top->*handler)(context_, args...);
+  }
+
   /// The context whose parse stack receives the parser's events.
   context_base<policies>* context_;
 };
@@ -511,6 +547,16 @@ private:
 /// The rule must derive from rule<Policies> and have a member type `value_type`.
 template <typename Rule, typename Policies>
 concept is_rule = std::derived_from<Rule, rule<Policies>> && requires { typename Rule::value_type; };
+
+/// The rules that a base class of \p Rule may push. They are added to `Rule::children` when the size of the stack is
+/// computed so that they are included even if \p Rule's own `children` hides those of the base class. A base class
+/// which pushes rules provides a specialization of this template for the classes derived from it.
+///
+/// \tparam Rule  The rule to be examined.
+template <typename Rule> struct base_children {
+  /// The rules pushed by the base classes of \p Rule: none, unless a specialization says otherwise.
+  using type = type_list::type_list<>;
+};
 
 namespace details {
 
@@ -533,7 +579,8 @@ struct stack_bound {
   }
 };
 
-/// Computes the stack space needed by a rule by walking the graph of rules formed by their `children` types.
+/// Computes the stack space needed by a rule by walking the graph of rules formed by their `children` types (and
+/// those given by base_children).
 ///
 /// \tparam Rule  The rule to be examined.
 /// \tparam Base  The base class of all of the rules. The stack is always aligned for this type.
@@ -550,7 +597,7 @@ template <typename Rule, typename Base, typename... Path> consteval stack_bound 
       return stack_bound{.recursive = children.recursive,
                          .longest_path = frame + children.longest_path,
                          .largest_frame = std::max(frame, children.largest_frame)};
-    }(std::type_identity<typename Rule::children>{});
+    }(std::type_identity<type_list::concat<typename Rule::children, typename base_children<Rule>::type>>{});
   }
 }
 

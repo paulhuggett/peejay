@@ -72,6 +72,7 @@ template <typename Rule, typename T> std::error_code parse(std::u8string_view co
 static_assert(peejay::rules::emplace_back_container<std::vector<int>>);
 static_assert(peejay::rules::emplace_back_container<std::deque<int>>);
 static_assert(peejay::rules::emplace_back_container<std::list<int>>);
+static_assert(peejay::rules::emplace_back_container<peejay::arrayvec<int, 2>>);
 static_assert(!peejay::rules::emplace_back_container<std::vector<bool>>, "emplace_back() returns a proxy");
 static_assert(!peejay::rules::emplace_back_container<std::array<int, 2>>, "no emplace_back()");
 static_assert(!peejay::rules::emplace_back_container<std::set<int>>, "no emplace_back()");
@@ -175,6 +176,9 @@ using max2_uint_vector_rule = uint_array_rule<std::vector<uint_type>, 2>;
 using short_vector_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<short>>;
 using double_vector_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<double>>;
 using string_vector_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<std::u8string>>;
+using std_string_vector_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<std::string>>;
+static_assert(std::is_same_v<std_string_vector_rule::children,
+                             peejay::type_list::type_list<peejay::rules::string_rule<policies, std::string>>>);
 static_assert(std::is_same_v<short_vector_rule::children,
                              peejay::type_list::type_list<peejay::rules::integer_rule<policies, short>>>);
 static_assert(
@@ -452,9 +456,56 @@ TEST(HomogeneousArrayRule, ShortOutOfRange) {
 }
 
 // NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, StdStrings) {
+  std::vector<std::string> v;
+  EXPECT_FALSE(parse<std_string_vector_rule>(u8R"(["a","bc"])"sv, &v));
+  EXPECT_EQ(v, (std::vector<std::string>{"a", "bc"}));
+}
+
+// NOLINTNEXTLINE
 TEST(HomogeneousArrayRule, ElementError) {
   std::vector<uint_type> v;
   EXPECT_EQ(parse<uint_vector_rule>(u8"[1,-1]"sv, &v), make_error_code(peejay::error::number_out_of_range));
+  EXPECT_EQ(v, (std::vector<uint_type>{1})) << "the failed element is removed";
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, ReplacesContents) {
+  std::vector<uint_type> v{9};
+  EXPECT_FALSE(parse<uint_vector_rule>(u8"[1,2]"sv, &v));
+  EXPECT_EQ(v, (std::vector<uint_type>{1, 2}));
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, EmptyReplacesContents) {
+  std::vector<uint_type> v{9};
+  EXPECT_FALSE(parse<uint_vector_rule>(u8"[]"sv, &v));
+  EXPECT_TRUE(v.empty());
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, MaxElementsIgnoresExistingContents) {
+  std::vector<uint_type> v{7, 7};
+  EXPECT_FALSE(parse<max2_uint_vector_rule>(u8"[1,2]"sv, &v));
+  EXPECT_EQ(v, (std::vector<uint_type>{1, 2}));
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, IncompleteObjectElementRemoved) {
+  std::vector<point> v;
+  EXPECT_EQ(parse<points_rule>(u8R"([{"x":1,"y":2},{"x":3}])"sv, &v), make_error_code(error::incomplete_object));
+  ASSERT_EQ(v.size(), 1U);
+  EXPECT_EQ(v[0].x, 1);
+  EXPECT_EQ(v[0].y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, TruncatedInputElementRemoved) {
+  std::vector<point> v;
+  EXPECT_TRUE(parse<points_rule>(u8R"([{"x":1,"y":2},{"x":)"sv, &v));
+  ASSERT_EQ(v.size(), 1U);
+  EXPECT_EQ(v[0].x, 1);
+  EXPECT_EQ(v[0].y, 2);
 }
 
 // NOLINTNEXTLINE
@@ -876,6 +927,49 @@ public:
   std::error_code begin_object(test_context_base* const) override { return {}; }
 };
 
+// A subclass of object_rule whose own (empty) children hides those of object_rule. The terminals pushed by
+// object_rule must still be included in the size of the stack.
+class hiding_rule final : public peejay::rules::object_rule<policies, 1> {
+public:
+  using value_type = point;
+  using children = peejay::type_list::type_list<>;
+  explicit hiding_rule(point* const pt) { this->set_properties({{u8"x"sv, {&pt->x}}}); }
+};
+static_assert(sizeof(peejay::rules::integer_rule<policies>) == sizeof(peejay::rules::string_rule<policies>),
+              "the terminal rules all have the same size");
+static_assert(peejay::rules::context<policies, hiding_rule>::stack_bytes ==
+              sizeof(hiding_rule) + sizeof(peejay::rules::integer_rule<policies>));
+
+// A rule which never pops. Each of the first six array elements gets a new instance of this rule, so the stack fills
+// without deep nesting. The seventh element is parsed by an array rule which then has no room for its element rule.
+struct filler_state {
+  int pushes = 0;
+  std::vector<uint_type> ints;
+};
+class filler_rule final : public peejay::rules::rule<policies> {
+public:
+  using value_type = filler_state;
+  using children = peejay::type_list::type_list<filler_rule, uint_vector_rule>;
+  explicit filler_rule(filler_state* const state) noexcept : state_{state} {}
+  [[nodiscard]] char const* name() const noexcept override { return "filler"; }
+  std::error_code begin_array(test_context_base* const) override { return {}; }
+  std::error_code element(test_context_base* const context) override {
+    if (state_->pushes == 6) {
+      return push<uint_vector_rule>(this, context, &state_->ints);
+    }
+    ++state_->pushes;
+    return push<filler_rule>(this, context, state_);
+  }
+  std::error_code integer_value(test_context_base* const, policies::integer_type const) override { return {}; }
+
+private:
+  filler_state* state_;
+};
+static_assert(sizeof(filler_rule) == sizeof(uint_vector_rule) && sizeof(filler_rule) == sizeof(uint_rule),
+              "the stack holds exactly max_stack_depth (8) of these rules");
+static_assert(peejay::rules::context<policies, filler_rule>::stack_bytes ==
+              policies::max_stack_depth * sizeof(filler_rule));
+
 // NOLINTNEXTLINE
 TEST(RuleContext, RecursiveRule) {
   tree t;
@@ -926,6 +1020,47 @@ TEST(RuleContext, StrictlyAlignedRule) {
 }
 
 // NOLINTNEXTLINE
+TEST(RuleContext, HiddenBaseChildren) {
+  point pt;
+  EXPECT_FALSE(parse<hiding_rule>(u8R"({"x":1})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContext, ArrayElementPushFails) {
+  filler_state state;
+  EXPECT_EQ(parse<filler_rule>(u8"[0,0,0,0,0,0,[1]]"sv, &state), make_error_code(peejay::error::nesting_too_deep));
+  EXPECT_EQ(state.pushes, 6);
+  EXPECT_TRUE(state.ints.empty()) << "the element whose rule could not be pushed is removed";
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContext, SecondDocument) {
+  bool b = false;
+  bool_context context{&b};
+  auto parser = context.make_parser();
+  parser.input(u8"true"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  parser.input(u8"false"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(error::no_active_rule));
+  EXPECT_TRUE(b);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContext, SecondParserAfterError) {
+  bool b = false;
+  bool_context context{&b};
+  auto parser1 = context.make_parser();
+  parser1.input(u8"1"sv).eof();
+  EXPECT_EQ(parser1.last_error(), make_error_code(error::unexpected_number));
+  // The failed parse emptied the stack, so the bool_rule is not reused.
+  auto parser2 = context.make_parser();
+  parser2.input(u8"true"sv).eof();
+  EXPECT_EQ(parser2.last_error(), make_error_code(error::no_active_rule));
+  EXPECT_FALSE(b);
+}
+
+// NOLINTNEXTLINE
 TEST(RuleDefaults, Events) {
   int unused = 0;
   EXPECT_EQ(parse<defaults_rule>(u8"null"sv, &unused), make_error_code(error::unexpected_null));
@@ -972,6 +1107,7 @@ TEST(RuleError, Messages) {
   EXPECT_EQ(make_error_code(error::incomplete_object).message(), "incomplete object");
   EXPECT_EQ(make_error_code(error::too_many_array_elements).message(), "too many array elements");
   EXPECT_EQ(make_error_code(error::unrecognized_enumerator).message(), "unrecognized enumerator");
+  EXPECT_EQ(make_error_code(error::no_active_rule).message(), "no active rule");
   EXPECT_EQ(make_error_code(static_cast<error>(-1)).message(), "unknown error");
 }
 

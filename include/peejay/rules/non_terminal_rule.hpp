@@ -209,6 +209,26 @@ private:
   std::bitset<Elements> seen_;
 };
 
+namespace details {
+
+/// Declared but not defined: used only to find the object_rule from which a type is derived.
+/// \returns A pointer to the object_rule base class of the argument.
+template <policy Policies, std::size_t Elements, typename... UserRules>
+object_rule<Policies, Elements, UserRules...> const* object_rule_base(
+    object_rule<Policies, Elements, UserRules...> const*);
+
+}  // end namespace details
+
+/// The rules pushed by object_rule are included in the stack size of a subclass even if its `children` hides those
+/// of object_rule.
+/// \tparam Rule  A rule derived from object_rule.
+template <typename Rule>
+  requires requires(Rule const* r) { details::object_rule_base(r); }
+struct base_children<Rule> {
+  /// The rules that object_rule may push.
+  using type = std::remove_pointer_t<decltype(details::object_rule_base(std::declval<Rule const*>()))>::children;
+};
+
 /// \brief This concept is satisfied by a type to which enum_rule can assign a value: an enumeration or one of the
 ///   integer types accepted by integer_rule.
 template <typename T>
@@ -297,25 +317,29 @@ private:
 
 /// \brief This concept is satisfied by a container to which homogeneous_array_rule can append elements.
 ///
-/// The container must have a member type `value_type` and a member function `emplace_back()` which
-/// default-constructs a new element at the end of the container and returns a reference to it. std::vector<>,
-/// std::deque<>, and std::list<> all satisfy this concept.
+/// The container must have a member type `value_type`, a member function `emplace_back()` which default-constructs a
+/// new element at the end of the container and returns a reference to it, and member functions `clear()` and
+/// `pop_back()`. std::vector<>, std::deque<>, std::list<>, and arrayvec<> all satisfy this concept.
 template <typename Container>
 concept emplace_back_container = requires(Container& c) {
   typename Container::value_type;
   { c.emplace_back() } -> std::same_as<typename Container::value_type&>;
+  c.clear();
+  c.pop_back();
 };
 
 /// \brief A rule which parses a JSON array whose elements are all of the same type.
 ///
-/// An element is appended to the container for each member of the array and \p Rule is pushed to parse its value.
+/// The container's existing contents are replaced: it is cleared at the start of the array, then an element is
+/// appended for each member of the array and \p Rule is pushed to parse its value. If the parse fails, the container
+/// holds the elements which were completed before the failure.
 /// The rule can be used directly or as one of object_rule's UserRules.
 ///
 /// \tparam Policies  The parser policies.
 /// \tparam Container  The container to which an element is appended for each member of the array.
 /// \tparam Rule  The rule used to parse each array member. Defaults to the terminal rule for the container's
 ///   value_type (see type_to_terminal), so it may be omitted for containers of bool, integers, the policy's
-///   float_type, std::u8string, or arrayvec<char8_t, Size>.
+///   float_type, std::u8string, std::string, or arrayvec<char8_t, Size>.
 /// \tparam MaxElements  The maximum number of elements allowed in the container or 0 for no limit. If not 0,
 ///   Container must also be a sized range.
 template <policy Policies, emplace_back_container Container,
@@ -335,24 +359,37 @@ public:
   explicit constexpr homogeneous_array_rule(Container* const container) noexcept : container_{container} {}
   /// \returns The name of this rule.
   [[nodiscard]] constexpr char const* name() const noexcept override { return "homogeneous-array"; }
-  /// Called at the start of the array.
+  /// Called at the start of the array. Removes any existing contents of the container.
   /// \param context  The parse context.
   /// \returns Success.
   std::error_code begin_array(context_base<Policies>* const context) override {
     (void)context;
+    container_->clear();
     return {};
   }
   /// Called before each member of the array. Appends an element for that member.
   /// \param context  The parse context.
   /// \returns error::too_many_array_elements if the container is already full, peejay::error::nesting_too_deep if
-  ///   there is no space for the rule, otherwise success.
+  ///   there is no space for the rule (in which case the element is removed), otherwise success.
   std::error_code element(context_base<Policies>* const context) override {
     if constexpr (MaxElements != 0U) {
       if (container_->size() >= MaxElements) {
         return error::too_many_array_elements;
       }
     }
-    return this->template push<Rule>(this, context, &container_->emplace_back());
+    auto const erc = this->template push<Rule>(this, context, &container_->emplace_back());
+    if (erc) {
+      container_->pop_back();
+    }
+    return erc;
+  }
+  /// Called if the parse ends before the array is complete. Removes the element whose value was being parsed, if any,
+  /// so that the container holds only complete elements.
+  /// \param child_active  True if the rule parsing the last element was still on the stack.
+  void abandon(bool const child_active) noexcept override {
+    if (child_active) {
+      container_->pop_back();
+    }
   }
   /// Called at the end of the array. Pops this rule.
   /// \param context  The parse context.

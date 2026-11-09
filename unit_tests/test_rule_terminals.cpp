@@ -110,9 +110,28 @@ TEST_F(ImportString, String) {
   EXPECT_EQ(value, u8"string");
 }
 
+class ImportStdString : public testing::Test,
+                        public TerminalTest<peejay::rules::string_rule<peejay::default_policies, std::string>> {};
+// NOLINTNEXTLINE
+TEST_F(ImportStdString, EmptyString) {
+  value = "x";
+  parser.input(u8R"("")"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
+  EXPECT_EQ(value, "");
+}
+// NOLINTNEXTLINE
+TEST_F(ImportStdString, MultiByte) {
+  parser.input(u8R"("café")"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "JSON error was: " << parser.last_error().message();
+  EXPECT_EQ(value, "caf\xC3\xA9") << "the UTF-8 code units are stored unchanged";
+}
+
+static_assert(std::is_same_v<peejay::rules::type_to_terminal<std::string, peejay::default_policies>::type,
+                             peejay::rules::string_rule<peejay::default_policies, std::string>>);
 static_assert(peejay::rules::string_target<std::u8string>);
 static_assert(peejay::rules::string_target<peejay::arrayvec<char8_t, 4>>);
-static_assert(!peejay::rules::string_target<std::string>);
+static_assert(peejay::rules::string_target<std::string>);
+static_assert(!peejay::rules::string_target<std::wstring>);
 static_assert(!peejay::rules::string_target<peejay::arrayvec<char, 4>>);
 static_assert(!peejay::rules::string_target<peejay::arrayvec<char8_t, 4> const>);
 static_assert(std::is_same_v<peejay::rules::string_rule<peejay::default_policies>::value_type, std::u8string>);
@@ -222,7 +241,8 @@ static_assert(std::is_same_v<peejay::rules::type_to_terminal<unsigned char, defa
 static_assert(std::is_same_v<peejay::rules::type_to_terminal<bool, default_policies>::type,
                              peejay::rules::bool_rule<default_policies>>);
 // The policy's integer_type (int) is a standard integer type so it is not repeated.
-static_assert(peejay::type_list::index_of_v<peejay::rules::builtin_integers<default_policies>, unsigned long long> == 9);
+static_assert(peejay::type_list::index_of_v<peejay::rules::builtin_integers<default_policies>, unsigned long long> ==
+              9);
 
 template <typename T> using int_rule = peejay::rules::integer_rule<default_policies, T>;
 auto const out_of_range = make_error_code(peejay::error::number_out_of_range);
