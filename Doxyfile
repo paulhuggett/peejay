@@ -1042,6 +1042,7 @@ INPUT                  = include \
                          include/peejay \
                          include/peejay/details \
                          include/peejay/matchers \
+                         include/peejay/rules \
                          lib/peejay
 
 # This tag can be used to specify the character encoding of the source files

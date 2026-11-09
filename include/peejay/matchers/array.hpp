@@ -64,7 +64,7 @@ public:
     switch (parser.stack_.top()) {
     case state::array_start:
       if (parser.set_error_and_pop(parser.backend().begin_array())) {
-        return true;  // must return immediately. 'this' has been destroyed.
+        return true;  // must return immediately.
       }
       parser.set_state(state::array_first_object);
       if (whitespace(parser, code_unit)) {
@@ -77,6 +77,12 @@ public:
       }
       [[fallthrough]];
     case state::array_object:
+      // element() is an optional backend member function.
+      if constexpr (requires { parser.backend().element(); }) {
+        if (parser.set_error_and_pop(parser.backend().element())) {
+          return true;  // must return immediately.
+        }
+      }
       parser.set_state(state::array_comma);
       parser.push_root_matcher();
       return false;
