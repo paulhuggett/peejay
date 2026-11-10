@@ -97,7 +97,7 @@ void show(std::u8string_view const input) {
     return;
   }
   std::cout << m.label << " at (" << m.position.x << ", " << m.position.y << ") layer "
-            << (m.layer ? std::to_string(*m.layer) : "none") << '\n';
+            << (m.layer.has_value() ? std::to_string(*m.layer) : "none") << '\n';
 }
 
 }  // end anonymous namespace
