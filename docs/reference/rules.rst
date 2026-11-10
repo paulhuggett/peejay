@@ -410,14 +410,12 @@ Behaviour:
 * The container is cleared at the start of the array, so the array replaces its previous
   contents.
 * For each member, an element is appended and ``Rule`` is pushed to parse its value.
+* If the container has ``size()`` and ``max_size()`` member functions, a member that
+  would make ``size()`` larger than ``max_size()`` fails with
+  ``error::too_many_array_elements``. An ``arrayvec``\ 's ``max_size()`` is its capacity,
+  so the rule never overruns it, whatever ``MaxElements`` is.
 * If the parse fails, the container holds the members that were complete before the
   failure. The element that was being parsed is removed.
-
-.. warning::
-
-   ``arrayvec::emplace_back()`` does not check that there is room. When ``Container`` is
-   an ``arrayvec``, always set ``MaxElements`` to no more than its capacity. Otherwise a
-   long array overruns it.
 
 ``enum_rule``
 -------------

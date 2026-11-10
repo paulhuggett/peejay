@@ -168,7 +168,8 @@ is registered with ``std::is_error_code_enum``.
    * - ``incomplete_object``
      - An object ended without one of the ``object_rule``\ 's properties.
    * - ``too_many_array_elements``
-     - An array has more members than the ``homogeneous_array_rule``\ 's ``MaxElements``.
+     - An array has more members than the ``homogeneous_array_rule``\ 's ``MaxElements``,
+       or than its container can hold, such as an ``arrayvec`` that is full.
    * - ``unrecognized_enumerator``
      - A string is not one of the ``enum_rule``\ 's enumerators.
    * - ``no_active_rule``

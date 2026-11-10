@@ -35,11 +35,10 @@ the arrayvec.
 Arrays
 ------
 
-A ``homogeneous_array_rule`` can append to an arrayvec. Always set its ``MaxElements``
-argument to no more than the arrayvec's capacity. The rule then rejects a longer array
-with ``too many array elements`` before the arrayvec is full. Without the limit, a long
-array would overrun the arrayvec, because ``arrayvec::emplace_back()`` does not check that
-there is room.
+A ``homogeneous_array_rule`` can append to an arrayvec. An array with more members than
+the arrayvec can hold fails with ``too many array elements``, and the arrayvec keeps the
+members that fit. You don't need to set the rule's ``MaxElements`` argument as well,
+unless you want a limit lower than the arrayvec's capacity.
 
 The size of a context
 ---------------------

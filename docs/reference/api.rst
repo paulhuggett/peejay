@@ -125,6 +125,8 @@ Rules
 
 .. doxygenconcept:: peejay::rules::emplace_back_container
 
+.. doxygenconcept:: peejay::rules::max_size_container
+
 .. doxygenconcept:: peejay::rules::is_rule
 
 .. doxygenconcept:: peejay::rules::user_rule

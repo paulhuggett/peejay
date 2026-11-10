@@ -44,7 +44,8 @@ The template arguments
 
 ``MaxElements``
    The largest number of members, or 0 (the default) for no limit. A longer array fails
-   with ``too many array elements``. To give a limit, you must also give ``Rule``.
+   with ``too many array elements``. An array also fails with this error if it has more members
+   than the container can hold, so you don't need ``MaxElements`` to protect an ``arrayvec``.
 
 The array rule can be the root of a context, as here, or the rule for a property of an
 :cpp:class:`object_rule <peejay::rules::object_rule>`. For a property, list the array rule
