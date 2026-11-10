@@ -171,6 +171,13 @@ using uint_vector_rule = uint_array_rule<std::vector<uint_type>>;
 using uint_deque_rule = uint_array_rule<std::deque<uint_type>>;
 using uint_list_rule = uint_array_rule<std::list<uint_type>>;
 using max2_uint_vector_rule = uint_array_rule<std::vector<uint_type>, 2>;
+using uint_arrayvec = peejay::arrayvec<uint_type, 2>;
+using uint_arrayvec_rule = uint_array_rule<uint_arrayvec>;
+// MaxElements is larger than the arrayvec's capacity.
+using max3_uint_arrayvec_rule = uint_array_rule<uint_arrayvec, 3>;
+static_assert(peejay::rules::max_size_container<uint_arrayvec>);
+static_assert(peejay::rules::max_size_container<std::vector<uint_type>>);
+static_assert(!peejay::rules::max_size_container<std::vector<uint_type> const*>);
 
 // The element rules are chosen by type_to_terminal.
 using short_vector_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<short>>;
@@ -533,6 +540,27 @@ TEST(HomogeneousArrayRule, TooManyElements) {
   std::vector<uint_type> v;
   EXPECT_EQ(parse<max2_uint_vector_rule>(u8"[80,8080,443]"sv, &v), make_error_code(error::too_many_array_elements));
   EXPECT_EQ(v, (std::vector<uint_type>{80, 8080}));
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, ArrayvecFull) {
+  uint_arrayvec v;
+  EXPECT_FALSE(parse<uint_arrayvec_rule>(u8"[80,8080]"sv, &v));
+  EXPECT_EQ(v, (uint_arrayvec{80, 8080}));
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, ArrayvecTooManyElements) {
+  uint_arrayvec v;
+  EXPECT_EQ(parse<uint_arrayvec_rule>(u8"[80,8080,443]"sv, &v), make_error_code(error::too_many_array_elements));
+  EXPECT_EQ(v, (uint_arrayvec{80, 8080}));
+}
+
+// NOLINTNEXTLINE
+TEST(HomogeneousArrayRule, ArrayvecSmallerThanMaxElements) {
+  uint_arrayvec v;
+  EXPECT_EQ(parse<max3_uint_arrayvec_rule>(u8"[80,8080,443]"sv, &v), make_error_code(error::too_many_array_elements));
+  EXPECT_EQ(v, (uint_arrayvec{80, 8080}));
 }
 
 //-MARK: enum_rule
