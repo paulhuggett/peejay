@@ -328,11 +328,24 @@ concept emplace_back_container = requires(Container& c) {
   c.pop_back();
 };
 
+/// \brief This concept is satisfied by a container which reports its size and the largest number of elements that
+///   it can hold.
+///
+/// homogeneous_array_rule uses max_size() to avoid adding an element to a full container, such as an arrayvec<>
+/// whose capacity has been reached.
+template <typename Container>
+concept max_size_container = requires(Container const& c) {
+  { c.size() } -> std::convertible_to<std::size_t>;
+  { c.max_size() } -> std::convertible_to<std::size_t>;
+};
+
 /// \brief A rule which parses a JSON array whose elements are all of the same type.
 ///
 /// The container's existing contents are replaced: it is cleared at the start of the array, then an element is
 /// appended for each member of the array and \p Rule is pushed to parse its value. If the parse fails, the container
 /// holds the elements which were completed before the failure.
+/// An array with more members than the container can hold (as given by its max_size() member function, if it has one)
+/// is rejected with error::too_many_array_elements, so a fixed-capacity container such as arrayvec<> is never overrun.
 /// The rule can be used directly or as one of object_rule's UserRules.
 ///
 /// \tparam Policies  The parser policies.
@@ -369,11 +382,17 @@ public:
   }
   /// Called before each member of the array. Appends an element for that member.
   /// \param context  The parse context.
-  /// \returns error::too_many_array_elements if the container is already full, peejay::error::nesting_too_deep if
+  /// \returns error::too_many_array_elements if the container already holds MaxElements elements or as many as its
+  ///   max_size(), peejay::error::nesting_too_deep if
   ///   there is no space for the rule (in which case the element is removed), otherwise success.
   std::error_code element(context_base<Policies>* const context) override {
     if constexpr (MaxElements != 0U) {
       if (container_->size() >= MaxElements) {
+        return error::too_many_array_elements;
+      }
+    }
+    if constexpr (max_size_container<Container>) {
+      if (container_->size() >= container_->max_size()) {
         return error::too_many_array_elements;
       }
     }
