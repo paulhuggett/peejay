@@ -14,6 +14,19 @@ parser and the context, which holds the stack of rules, are ordinary local varia
    :language: cpp
    :start-after: SPDX-License-Identifier: MIT
 
+If you don't know the shape of a document in advance, the DOM backend builds a tree of
+its values instead:
+
+.. literalinclude:: examples/home_dom.cpp
+   :language: cpp
+   :start-after: SPDX-License-Identifier: MIT
+
+.. note::
+
+   The parser itself still doesn't allocate, but the DOM does: it stores its strings,
+   arrays, and objects in dynamically allocated memory. To read a document without
+   allocating, use the rules, as in the first example.
+
 How this documentation is organized
 -----------------------------------
 
