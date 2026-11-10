@@ -65,3 +65,79 @@ DOM backend
 
 .. doxygenclass:: peejay::dom::dom_error_category
    :members:
+
+Rules
+-----
+
+.. doxygenclass:: peejay::rules::context
+   :members:
+
+.. doxygenclass:: peejay::rules::context_base
+   :members:
+
+.. doxygenclass:: peejay::rules::backend
+   :members:
+
+.. doxygenclass:: peejay::rules::rule
+   :members:
+   :protected-members:
+
+.. doxygenstruct:: peejay::rules::base_children
+   :members:
+
+.. doxygenclass:: peejay::rules::bool_rule
+   :members:
+
+.. doxygenclass:: peejay::rules::integer_rule
+   :members:
+
+.. doxygentypedef:: peejay::rules::uinteger_rule
+
+.. doxygenclass:: peejay::rules::float_rule
+   :members:
+
+.. doxygenclass:: peejay::rules::string_rule
+   :members:
+
+.. doxygenstruct:: peejay::rules::type_to_terminal
+   :members:
+
+.. doxygenclass:: peejay::rules::object_rule
+   :members:
+   :protected-members:
+
+.. doxygenclass:: peejay::rules::homogeneous_array_rule
+   :members:
+
+.. doxygenclass:: peejay::rules::enum_rule
+   :members:
+   :protected-members:
+
+.. doxygentypedef:: peejay::rules::builtin_integers
+
+.. doxygentypedef:: peejay::rules::builtin_rules
+
+.. doxygenconcept:: peejay::rules::integer_target
+
+.. doxygenconcept:: peejay::rules::string_target
+
+.. doxygenconcept:: peejay::rules::enum_target
+
+.. doxygenconcept:: peejay::rules::emplace_back_container
+
+.. doxygenconcept:: peejay::rules::is_rule
+
+.. doxygenconcept:: peejay::rules::user_rule
+
+.. doxygenenum:: peejay::rules::error
+
+.. doxygenclass:: peejay::rules::error_category
+   :members:
+
+Containers
+----------
+
+.. doxygenclass:: peejay::arrayvec
+
+The members of ``arrayvec`` follow those of ``std::vector``. See
+:ref:`rules-arrayvec`.

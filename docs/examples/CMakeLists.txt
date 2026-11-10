@@ -12,10 +12,18 @@ set(peejay_doc_examples
   howto_reference
   howto_stop_early
   howto_utf8
+  howto_rules_array
+  howto_rules_custom
+  howto_rules_enum
+  howto_rules_fixed
   howto_walk_dom
+  index1
+  index2
+  index3
   tutorial_1_validate
   tutorial_2_dom
   tutorial_3_backend
+  tutorial_5_rules
 )
 foreach(example ${peejay_doc_examples})
   add_executable(${example} ${example}.cpp)

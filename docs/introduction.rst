@@ -36,6 +36,9 @@ backends, and you can write your own:
   (a *document object model*, or DOM) that you can examine after the parse.
 * :ref:`peejay::null <reference/backends:the null backend>` ignores everything. Use it
   to check that a document is valid JSON.
+* The :doc:`rules <reference/rules>` sub-library reads a document straight into your own
+  types. You describe the shape you expect, such as an object with certain properties or
+  an array of numbers, and each value is stored in your variables as it is parsed.
 * A backend you write can do whatever your program needs: fill in your own data
   structures, check the document against a schema, or transform it as it streams past.
 
@@ -58,6 +61,13 @@ Backends
    A backend is any type that satisfies the :cpp:concept:`peejay::backend` concept: it
    has one member function for each kind of event, and a ``result()`` function. Each
    event function returns a ``std::error_code``. Returning an error stops the parse.
+
+Rules
+   A **rule** parses one JSON value into one of your variables. peejay provides rules
+   for the built-in types, for objects with a fixed set of properties, for arrays, and for
+   strings that name enumerators, and you can write your own. A **context** holds the
+   rules that are active during a parse and makes the parser that feeds them. See
+   :ref:`tutorial:read values into your own types`.
 
 Policies
    A **policy** is a type that sets the parser's compile-time options: the longest
@@ -102,7 +112,7 @@ peejay is a good fit when:
 
 * the input arrives incrementally, or is too large to hold in memory;
 * you want to convert JSON straight into your own types without building an
-  intermediate tree;
+  intermediate tree, and reject documents that don't have the shape you expect;
 * you need hard limits on the memory and stack that a parse can use;
 * your code is built without exceptions.
 
@@ -134,6 +144,7 @@ the reference.
   internal buffer. They are valid only until the function returns, so copy them if
   you need to keep them.
 * An error is permanent. Once a parser has reported an error, it ignores all further
-  input. Use a new parser for the next document.
+  input. Use a new parser for the next document. A rules context parses only one
+  document, whether or not it succeeds.
 * A document holds exactly one top-level value. Anything after it other than
   whitespace is an error.

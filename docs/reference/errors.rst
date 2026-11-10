@@ -100,6 +100,8 @@ backend's own category, not the category of ``peejay::error``. To check which ki
 error you have, compare it with the enumeration values you expect, or compare
 ``err.category()`` with the backend's category object.
 
+The rules have their own errors: see :ref:`reference/errors:rules errors`.
+
 The DOM backend's errors are values of ``peejay::dom::dom_error``, in category
 ``peejay::dom::dom_error_category`` (``"PJ JSON DOM"``):
 
@@ -115,3 +117,68 @@ The DOM backend's errors are values of ``peejay::dom::dom_error``, in category
      - An array has more than ``max_array_size`` members.
    * - ``too_many_object_members``
      - An object has more than ``max_object_size`` members.
+
+Rules errors
+------------
+
+.. code-block:: cpp
+
+   #include "peejay/rules/errors.hpp"   // Also included by the other rules headers.
+
+   namespace peejay::rules {
+     enum class error : int;
+     class error_category;
+     std::error_code make_error_code(error e) noexcept;
+   }
+
+The :doc:`rules <rules>` report their own errors as values of ``peejay::rules::error``,
+in a category whose ``name()`` is ``"peejay rule"``. Like ``peejay::error``, the enumeration
+is registered with ``std::is_error_code_enum``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Value
+     - Meaning
+   * - ``none``
+     - No error. This value is never reported.
+   * - ``unexpected_null``
+     - A ``null`` value reached a rule that does not accept one.
+   * - ``unexpected_boolean``
+     - ``true`` or ``false`` reached a rule that does not accept a boolean.
+   * - ``unexpected_number``
+     - A number reached a rule that does not accept one. Also reported by
+       ``integer_rule`` for a number that the parser passes as floating point, such as
+       ``1.5``, ``1e2``, or an integer too large for the policy's ``integer_type``.
+   * - ``unexpected_string``
+     - A string reached a rule that does not accept one.
+   * - ``unexpected_array``
+     - An array reached a rule that does not accept one.
+   * - ``unexpected_end_array``
+     - The end of an array reached a rule that was not parsing an array.
+   * - ``unexpected_object``
+     - An object reached a rule that does not accept one.
+   * - ``unexpected_object_key``
+     - An object key reached a rule that was not parsing an object.
+   * - ``unexpected_end_object``
+     - The end of an object reached a rule that was not parsing an object.
+   * - ``unrecognized_property``
+     - An object has a key that is not one of the ``object_rule``\ 's properties.
+   * - ``incomplete_object``
+     - An object ended without one of the ``object_rule``\ 's properties.
+   * - ``too_many_array_elements``
+     - An array has more members than the ``homogeneous_array_rule``\ 's ``MaxElements``.
+   * - ``unrecognized_enumerator``
+     - A string is not one of the ``enum_rule``\ 's enumerators.
+   * - ``no_active_rule``
+     - Input reached a context whose parse had already ended. A context parses only one
+       document.
+
+The rules also report three of the parser's errors:
+
+* ``peejay::error::number_out_of_range``: an ``integer_rule`` received an integer that its
+  type can't represent, such as ``256`` for ``std::uint8_t`` or ``-1`` for an unsigned type.
+* ``peejay::error::string_too_long``: a ``string_rule`` received a string longer than the
+  capacity of its ``arrayvec``.
+* ``peejay::error::nesting_too_deep``: there was no room on the context's stack for a rule.

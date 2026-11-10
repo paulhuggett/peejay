@@ -4,7 +4,9 @@ Backends
 A backend receives the parser's events. Any type that satisfies the
 :cpp:concept:`peejay::backend` concept can be a backend. peejay provides two:
 :ref:`the null backend <reference/backends:the null backend>` and
-:ref:`the DOM backend <reference/backends:the dom backend>`.
+:ref:`the DOM backend <reference/backends:the dom backend>`. The
+:doc:`rules <rules>` sub-library provides a third, which passes each event to a stack of
+rules that store the values in your own types.
 
 The ``backend`` concept
 -----------------------
@@ -40,6 +42,8 @@ A type ``B`` satisfies ``backend`` when, for an object ``be`` of type ``B``:
      - Convertible to ``std::error_code``.
    * - ``be.begin_array()``, ``be.end_array()``
      - Convertible to ``std::error_code``.
+   * - ``be.element()``
+     - Optional. If present, convertible to ``std::error_code``.
    * - ``be.begin_object()``, ``be.end_object()``
      - Convertible to ``std::error_code``.
    * - ``be.key(std::u8string_view{})``
@@ -69,7 +73,8 @@ For each JSON value, the parser calls the backend as follows:
    * - ``null``
      - ``null_value()``
    * - array
-     - ``begin_array()``, then the calls for each member in order, then ``end_array()``.
+     - ``begin_array()``, then for each member in order, ``element()`` (if the backend
+       has it) followed by the calls for the member, then ``end_array()``.
    * - object
      - ``begin_object()``, then ``key(k)`` followed by the calls for its value for each
        member in order, then ``end_object()``.
@@ -79,6 +84,10 @@ of the input. A string or keyword is reported once its last character has been r
 A number is reported once the character after it has been read, because until then
 it might continue. If the number is the last thing in the input, it is reported by
 ``eof()``.
+
+``element()`` lets a backend prepare for each member of an array, for example by
+appending an element to a container that the member's value will fill. It is not called
+for an empty array. A backend that doesn't need it can leave it out.
 
 Each ``begin_array()`` is matched by one ``end_array()``, and each ``begin_object()`` by
 one ``end_object()``, unless the parse stops because of an error.

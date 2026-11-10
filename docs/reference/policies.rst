@@ -83,7 +83,7 @@ of 8:
 * ``[[[[[[[[1]]]]]]]]`` is rejected, because the number 1 is at depth 9.
 
 Input that nests too deeply causes :cpp:enumerator:`peejay::error::nesting_too_deep`.
-The parser's stack holds one entry for each level, plus one more for its own use, so
+The parser's stack holds one entry for each level, plus two more for its own use, so
 its size depends only on this value. The DOM backend also keeps a stack of
 ``max_stack_depth`` elements.
 

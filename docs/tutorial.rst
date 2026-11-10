@@ -1,15 +1,16 @@
 Tutorial
 ========
 
-This tutorial builds four small programs. Each one introduces one more part of peejay:
+This tutorial builds five small programs. Each one introduces one more part of peejay:
 
 #. :ref:`tutorial:check that a document is valid`, using the ``null`` backend.
 #. :ref:`tutorial:read values from a document`, using the DOM backend.
 #. :ref:`tutorial:write your own backend`.
 #. :ref:`tutorial:parse input that arrives in pieces`.
+#. :ref:`tutorial:read values into your own types`, using rules.
 
 You need a C++20 compiler and CMake 3.22 or later. The tutorial takes about
-twenty minutes. The complete source of every program is in the ``docs/examples``
+half an hour. The complete source of every program is in the ``docs/examples``
 directory of the peejay repository.
 
 Set up a project
@@ -161,6 +162,9 @@ A backend must have:
   Return an empty error code to continue the parse.
 * A ``result()`` member function. ``eof()`` returns whatever ``result()`` returns.
 
+A backend may also have an ``element()`` function, which the parser calls before each
+member of an array. ``stats_backend`` doesn't need it, so it leaves it out.
+
 The parser checks all of this at compile time with the :cpp:concept:`peejay::backend`
 concept. If you leave out a function or give it the wrong signature, the compiler
 names the requirement that is not met.
@@ -199,6 +203,66 @@ policy, the parser counts lines, and ``pos().line`` gives the line of the most r
 token: the token that caused the error. :doc:`howto/report-errors` describes this
 in more detail.
 
+Read values into your own types
+-------------------------------
+
+The second program built a DOM and then searched it for the values it needed. If you
+know the shape of the document in advance, you can instead describe that shape with
+**rules**, and peejay stores each value straight into your own variables as it is
+parsed. Nothing is allocated except by your own types, and a document that doesn't have
+the expected shape is rejected.
+
+This program reads the same configuration as the second program into a ``config``
+struct:
+
+.. literalinclude:: examples/tutorial_5_rules.cpp
+   :language: cpp
+   :start-after: SPDX-License-Identifier: MIT
+
+Output:
+
+.. code-block:: text
+
+   name: web
+   port: 8080
+   debug: false
+   host: alpha
+   host: beta
+   error: incomplete object
+   error: number out of range
+   error: unexpected string
+   error: unrecognized property
+
+Here is how it works.
+
+``hosts_rule``
+   :cpp:class:`homogeneous_array_rule <peejay::rules::homogeneous_array_rule>` parses an
+   array into a container, appending one element for each member. Because the elements
+   are strings, peejay knows which rule parses each one, so you don't need to name it.
+
+``config_rule``
+   :cpp:class:`object_rule <peejay::rules::object_rule>` parses an object with a fixed set
+   of properties. Its template arguments are the policy, the number of properties, and the
+   rules for any properties whose types are not built in: here, the array of hosts. The
+   constructor passes ``set_properties()`` a list of pairs, each of an object key and a
+   pointer to the variable that receives its value. The type of each pointer tells
+   ``object_rule`` how to parse the value, so ``&c->port`` is parsed as an integer that
+   must fit in a ``std::uint16_t``.
+
+   Every rule must also define ``name()``, and a rule used for a whole document must define
+   ``value_type``: the type of the object it fills in.
+
+``peejay::rules::context<policies, config_rule> ctx{&c}``
+   A context holds the rules that are active during a parse. Its first rule is
+   ``config_rule``, constructed from the arguments to the context's constructor: here, a
+   pointer to ``c``. ``ctx.make_parser()`` makes a parser that sends the parser's events to
+   those rules. The context must outlive the parser, and it parses only one document.
+
+When the parse succeeds, ``c`` holds the document. The four documents at the end of the
+program show what happens otherwise. Each property must be present; a number must fit in
+its variable; a value must have the expected type; and a key must be one of the
+properties. On the first problem, the parse stops with an error.
+
 Next steps
 ----------
 
@@ -206,3 +270,5 @@ Next steps
 * Read :doc:`reference/backends` for the exact order in which a backend's functions are
   called.
 * Read :doc:`reference/policies` before you choose limits for production use.
+* Read :doc:`reference/rules` for everything that rules can do, and
+  :doc:`howto/write-a-rule` to write your own.

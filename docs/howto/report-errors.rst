@@ -16,7 +16,7 @@ Output:
 
    good.json: OK
    comma.json:2: error: expected token
-   deep.json:1: error: objects are too deeply nested
+   deep.json:1: error: arrays or objects are too deeply nested
      (the input exceeded one of the parser's policy limits)
 
 Details

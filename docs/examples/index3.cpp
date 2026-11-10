@@ -29,8 +29,10 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <iterator>
 #include <string_view>
 #include <vector>
 

@@ -43,7 +43,10 @@ Construction
 ``explicit parser(Backend&& backend)``
    Moves ``backend`` into the parser.
 
-Parsers can be copied and moved.
+A parser can be moved. It can be copied only if it holds its backend by value and the
+backend can be copied. A copy continues from the same point in the input. A parser that
+holds a reference to its backend can be move-constructed, but it can't be copied or
+assigned. The DOM backend can't be copied, so neither can a parser that holds one.
 
 Deduction guides let you write ``peejay::parser p{my_backend{}};``.
 
