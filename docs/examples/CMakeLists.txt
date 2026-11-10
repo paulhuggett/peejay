@@ -6,6 +6,7 @@
 # each of them as a test so that the documentation stays correct.
 
 set(peejay_doc_examples
+  home
   howto_char_input
   howto_errors
   howto_policies

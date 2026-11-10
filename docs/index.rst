@@ -7,15 +7,12 @@ object you supply as it recognizes each value. It can build a tree of values for
 read a document straight into your own types. The parser never allocates memory and
 never throws exceptions, and every limit it enforces is fixed at compile time.
 
-.. code-block:: cpp
+This program reads a small document into a struct. Nothing in it allocates memory: the
+parser and the context, which holds the stack of rules, are ordinary local variables.
 
-   #include "peejay/dom.hpp"
-
-   peejay::parser<peejay::dom::dom<>> p;
-   auto root = p.input(u8R"({"name": "web", "port": 8080})"sv).eof();
-   if (!p.has_error()) {
-     int port = root->get_object_element<int>(u8"port")->get();  // 8080
-   }
+.. literalinclude:: examples/home.cpp
+   :language: cpp
+   :start-after: SPDX-License-Identifier: MIT
 
 How this documentation is organized
 -----------------------------------
