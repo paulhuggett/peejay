@@ -11,7 +11,8 @@
 namespace {
 
 // Returns true if json is both well-formed UTF-8 and valid JSON.
-bool check(std::u8string_view const json) {
+template <typename Range>
+bool check(Range const &json) {
   peejay::parser<peejay::null<>> p;
   // A UTF-8 to UTF-8 transcoder checks that its input is well formed. We don't need its output.
   icubaby::t8_8 utf8;
@@ -42,7 +43,7 @@ bool check(std::u8string_view const json) {
 
 int main() {
   using namespace std::string_view_literals;
-  bool ok = check(u8"[\"café\"]"sv);  // OK
-  ok = !check(u8"[\"caf\xFF\"]"sv) && ok;  // ill-formed UTF-8
+  bool ok = check(u8"[\"caf\u00E9\"]"sv);  // OK
+  ok = !check(std::array{u8'c', u8'a', u8'f', static_cast<char8_t>(0xFF)}) && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
