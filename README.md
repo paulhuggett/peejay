@@ -10,6 +10,9 @@ JSON Parser for C++
 | Dynamic Analysis | [![KLEE Tests](https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml/badge.svg)](https://github.com/paulhuggett/peejay/actions/workflows/klee.yaml) [![CodeCov](https://codecov.io/github/paulhuggett/peejay/graph/badge.svg?token=BSNN6OFIJU)](https://codecov.io/github/paulhuggett/peejay) [![Fuzz Tests](https://github.com/paulhuggett/peejay/actions/workflows/fuzztest.yaml/badge.svg)](https://github.com/paulhuggett/peejay/actions/workflows/fuzztest.yaml) |
 | [OpenSSF](https://openssf.org) | [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8006/badge)](https://www.bestpractices.dev/projects/8006) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/paulhuggett/peejay/badge)](https://securityscorecards.dev/viewer/?uri=github.com/paulhuggett/peejay) |
 
+[![REUSE status](https://api.reuse.software/badge/github.com/paulhuggett/midi2.0lib)](https://api.reuse.software/info/github.com/paulhuggett/midi2.0lib)
+
+
 ## Introduction
 
 Peejay (PJ, from the English pronunciation of **P**arse **J**SON) is a header-only C++ library that provides a state-machine-driven JSON parser with the following characteristics:
