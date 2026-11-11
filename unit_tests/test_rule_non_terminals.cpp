@@ -47,6 +47,7 @@
 #include <iostream>
 #include <list>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -1086,6 +1087,114 @@ TEST(RuleContext, SecondParserAfterError) {
   parser2.input(u8"true"sv).eof();
   EXPECT_EQ(parser2.last_error(), make_error_code(error::no_active_rule));
   EXPECT_FALSE(b);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContext, ResetWithSameContext) {
+  bool b = false;
+  bool_context context{&b};
+  auto parser = context.make_parser();
+  parser.input(u8"true"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  // Resetting the parser does not reset the context.
+  parser.reset(&context).input(u8"false"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(error::no_active_rule));
+  EXPECT_TRUE(b);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContext, ResetWithNewContext) {
+  bool b1 = false;
+  bool_context context1{&b1};
+  auto parser = context1.make_parser();
+  parser.input(u8"1"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(error::unexpected_number));
+  bool b2 = false;
+  bool_context context2{&b2};
+  parser.reset(&context2).input(u8"true"sv).eof();
+  EXPECT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  EXPECT_FALSE(b1);
+  EXPECT_TRUE(b2);
+}
+
+// A root rule whose constructor throws if asked to.
+class throwing_root_rule final : public peejay::rules::rule<policies> {
+public:
+  using value_type = bool;
+  explicit throwing_root_rule(bool const fail) {
+    if (fail) {
+      throw std::runtime_error{"rule construction failed"};
+    }
+  }
+  [[nodiscard]] char const* name() const noexcept override { return "throwing"; }
+};
+
+using uint_vector_context = peejay::rules::context<policies, uint_vector_rule>;
+
+// NOLINTNEXTLINE
+TEST(RuleContextReset, AfterDocument) {
+  bool b1 = false;
+  bool_context context{&b1};
+  auto parser = context.make_parser();
+  parser.input(u8"true"sv).eof();
+  ASSERT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  bool b2 = true;
+  context.reset(&b2);
+  parser.reset(&context).input(u8"false"sv).eof();
+  EXPECT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  EXPECT_TRUE(b1);
+  EXPECT_FALSE(b2);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContextReset, AfterError) {
+  bool b = false;
+  bool_context context{&b};
+  auto parser = context.make_parser();
+  parser.input(u8"1"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(error::unexpected_number));
+  context.reset(&b);
+  parser.reset(&context).input(u8"true"sv).eof();
+  EXPECT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  EXPECT_TRUE(b);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContextReset, MidDocumentAbandonsRules) {
+  std::vector<uint_type> v1;
+  uint_vector_context context{&v1};
+  auto parser = context.make_parser();
+  // The rule for the second element is active: the parser has not yet seen the end of the number.
+  parser.input(u8"[1,2"sv);
+  ASSERT_EQ(v1, (std::vector<uint_type>{1, 0}));
+  std::vector<uint_type> v2;
+  context.reset(&v2);
+  // The partial element was removed when the array rule was abandoned.
+  EXPECT_EQ(v1, (std::vector<uint_type>{1}));
+  parser.reset(&context).input(u8"[3]"sv).eof();
+  EXPECT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  EXPECT_EQ(v2, (std::vector<uint_type>{3}));
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContextReset, NewParser) {
+  bool b = false;
+  bool_context context{&b};
+  context.make_parser().input(u8"false"sv).eof();
+  auto parser = context.reset(&b).make_parser();
+  parser.input(u8"true"sv).eof();
+  EXPECT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  EXPECT_TRUE(b);
+}
+
+// NOLINTNEXTLINE
+TEST(RuleContextReset, RootConstructorThrows) {
+  peejay::rules::context<policies, throwing_root_rule> context{false};
+  EXPECT_THROW(context.reset(true), std::runtime_error);
+  // The stack is empty, as it is after a parse has ended.
+  auto parser = context.make_parser();
+  parser.input(u8"true"sv).eof();
+  EXPECT_EQ(parser.last_error(), make_error_code(error::no_active_rule));
 }
 
 // NOLINTNEXTLINE

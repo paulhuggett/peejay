@@ -256,7 +256,8 @@ Here is how it works.
    A context holds the rules that are active during a parse. Its first rule is
    ``config_rule``, constructed from the arguments to the context's constructor: here, a
    pointer to ``c``. ``ctx.make_parser()`` makes a parser that sends the parser's events to
-   those rules. The context must outlive the parser, and it parses only one document.
+   those rules. The context must outlive the parser, and it parses only one document
+   unless you reset it.
 
 When the parse succeeds, ``c`` holds the document. The four documents at the end of the
 program show what happens otherwise. Each property must be present; a number must fit in

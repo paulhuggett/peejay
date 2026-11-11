@@ -80,7 +80,42 @@ Input
       ``eof()`` does not clear a recorded error. A parser that has failed stays
       failed. Calling ``input()`` again after a *successful* parse starts a new
       document. The backend is not reset, and the line count continues from where the
-      previous document ended.
+      previous document ended. To start completely afresh, call ``reset()``.
+
+Starting again
+^^^^^^^^^^^^^^
+
+``template <typename... Args> parser& reset(Args&&... args)``
+   *Requires:* ``Backend`` is not a reference type, ``std::constructible_from<Backend,
+   Args...>`` is true, and ``Backend`` can be move-assigned.
+
+   Puts the parser back into the state of a newly constructed one. Any document that
+   was part-way through is discarded, the recorded error is cleared, and the line count
+   returns to 1. The backend is replaced by ``Backend(std::forward<Args>(args)...)``, so
+   ``reset()`` with no arguments gives a default-constructed backend.
+
+   The new backend is constructed before anything else changes. If its constructor
+   throws, the parser is unchanged.
+
+   *Returns:* ``*this``, so that calls can be chained, as in
+   ``p.reset().input(text).eof()``.
+
+``parser& reset()``
+   *Requires:* ``Backend`` is a reference type.
+
+   Puts the parser back into the state of a newly constructed one, as above, but keeps
+   the backend. The parser still refers to the same object, and that object is not
+   changed. If the backend needs to start again too, reset it yourself.
+
+   *Returns:* ``*this``.
+
+.. note::
+
+   A parser made by a rules context's ``make_parser()`` holds a backend that refers to
+   the context. Resetting the parser doesn't reset the context: after a parse has ended,
+   ``p.reset(&ctx)`` alone gives a parser that reports ``no active rule``. To parse
+   another document, reset the context as well, as in ``ctx.reset(&value)`` followed by
+   ``p.reset(&ctx)``, or pass a new context to ``p.reset()``. See :ref:`rules-context`.
 
 Errors
 ^^^^^^
