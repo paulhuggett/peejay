@@ -143,8 +143,9 @@ the reference.
 * The strings passed to ``key()`` and ``string_value()`` point into the parser's
   internal buffer. They are valid only until the function returns, so copy them if
   you need to keep them.
-* An error is permanent. Once a parser has reported an error, it ignores all further
-  input. Use a new parser for the next document. A rules context parses only one
-  document, whether or not it succeeds.
+* An error lasts until you reset the parser. Once a parser has reported an error, it
+  ignores all further input. Call ``reset()``, or use a new parser, for the next
+  document. A rules context likewise parses only one document, whether or not it
+  succeeds, until you call its ``reset()``.
 * A document holds exactly one top-level value. Anything after it other than
   whitespace is an error.

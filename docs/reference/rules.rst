@@ -75,6 +75,8 @@ for the object ``{"port": 80}``, the parse goes like this:
 A rule writes each value as soon as it is parsed. There is no separate result: after
 ``eof()``, the objects you supplied hold the document.
 
+.. _rules-context:
+
 ``context``
 -----------
 
@@ -104,11 +106,37 @@ A rule writes each value as soon as it is parsed. There is no separate result: a
    rule at the top of this context's stack. The parser refers to the context, so the
    context must outlive it.
 
+``template <typename... Args> context& reset(Args&&... args)``
+   *Requires:* ``std::constructible_from<Root, Args...>`` is true.
+
+   Puts the context back into the state of a newly constructed one, so that it can parse
+   another document. Any rules still on the stack are abandoned (see
+   :ref:`reference/rules:when a parse fails`) and discarded. Then a new ``Root`` is
+   constructed on the stack from ``args``, as the constructor does. You can pass a
+   pointer to a different object to receive the next document.
+
+   A parser made from the context before the reset is still in its old state. Reset it
+   too, with ``p.reset(&ctx)``, or make a new parser with ``make_parser()``.
+
+   If ``Root``\ 's constructor throws, the stack is left empty, as it is after a parse
+   has ended.
+
+   *Returns:* ``*this``.
+
 A context parses a single document. When ``eof()`` ends the parse, any rules that are
 still on the stack are abandoned (see :ref:`reference/rules:when a parse fails`) and the
 stack is left empty. After that, any input to this context's parser, or to another
-parser made from the same context, fails with ``error::no_active_rule``. Use a new context
-for each document.
+parser made from the same context, fails with ``error::no_active_rule``. To parse another
+document, call ``reset()``, or use a new context.
+
+.. code-block:: cpp
+
+   peejay::rules::context<policies, config_rule> ctx{&first};
+   auto p = ctx.make_parser();
+   p.input(document1).eof();
+
+   ctx.reset(&second);
+   p.reset(&ctx).input(document2).eof();
 
 A context holds its stack inside itself, so it never allocates memory. It cannot be
 copied or moved.

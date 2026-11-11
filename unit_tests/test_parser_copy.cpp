@@ -54,6 +54,10 @@ class recorder {
 public:
   using policies = peejay::default_policies;
 
+  recorder() = default;
+  // The recorded events are appended to prefix.
+  explicit recorder(std::string prefix) : out_{std::move(prefix)} {}
+
   [[maybe_unused, nodiscard]] std::string result() const { return out_; }
 
   [[maybe_unused]] std::error_code string_value(std::u8string_view const& sv) { return this->append("s:"sv, sv); }
@@ -98,6 +102,17 @@ public:
     return *this; // LCOV_EXCL_LINE
   }
   bool fail = false;
+};
+
+// A backend whose constructor throws if asked to.
+class throwing_ctor_recorder : public recorder {
+public:
+  throwing_ctor_recorder() = default;
+  explicit throwing_ctor_recorder(bool const fail) {
+    if (fail) {
+      throw std::runtime_error{"backend construction failed"};
+    }
+  }
 };
 
 static_assert(std::is_copy_constructible_v<parser<recorder>>);
@@ -261,3 +276,100 @@ TEST(ParserMove, MovedFromAssignmentInput) {
 }
 
 }  // end anonymous namespace
+
+template <typename Parser, typename... Args>
+concept can_reset = requires(Parser& p, Args&&... args) { p.reset(std::forward<Args>(args)...); };
+
+static_assert(can_reset<parser<recorder>>);
+static_assert(can_reset<parser<recorder>, std::string>);
+static_assert(!can_reset<parser<recorder>, int>);
+static_assert(can_reset<parser<recorder&>>);
+static_assert(!can_reset<parser<recorder&>, std::string>);
+
+TEST(ParserReset, NewParser) {
+  parser<recorder> p;
+  p.reset();
+  EXPECT_EQ(p.input(u8"[1]"sv).eof(), "[ i:1 ] ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, MidString) {
+  parser<recorder> p;
+  p.input(u8"[\n\"ab"sv);
+  p.reset();
+  EXPECT_FALSE(p.has_error());
+  EXPECT_EQ(p.input_pos().line, 1U);
+  EXPECT_EQ(p.pos().line, 1U);
+  EXPECT_EQ(p.input(u8"true"sv).eof(), "b:true ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, MidNumber) {
+  parser<recorder> p;
+  p.input(u8"[12"sv);
+  p.reset();
+  EXPECT_EQ(p.input(u8"null"sv).eof(), "null ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, MidToken) {
+  parser<recorder> p;
+  p.input(u8"[tr"sv);
+  p.reset();
+  EXPECT_EQ(p.input(u8"3"sv).eof(), "i:3 ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, AfterError) {
+  parser<recorder> p;
+  p.input(u8"]"sv);
+  ASSERT_EQ(p.last_error(), make_error_code(peejay::error::expected_token));
+  p.reset();
+  EXPECT_FALSE(p.has_error());
+  EXPECT_EQ(p.input(u8"null"sv).eof(), "null ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, AfterEof) {
+  parser<recorder> p;
+  EXPECT_EQ(p.input(u8"[1]\n"sv).eof(), "[ i:1 ] ");
+  p.reset();
+  EXPECT_EQ(p.input_pos().line, 1U);
+  EXPECT_EQ(p.input(u8"2"sv).eof(), "i:2 ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, ForwardsArguments) {
+  parser<recorder> p;
+  p.input(u8"[1"sv);
+  p.reset(std::string{"x "});
+  EXPECT_EQ(p.input(u8"2"sv).eof(), "x i:2 ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, Chained) {
+  parser<recorder> p;
+  p.input(u8"[1"sv);
+  EXPECT_EQ(p.reset().input(u8"2"sv).eof(), "i:2 ");
+}
+
+TEST(ParserReset, BackendConstructorThrows) {
+  parser<throwing_ctor_recorder> p;
+  p.input(u8"[12"sv);
+  EXPECT_THROW(p.reset(true), std::runtime_error);
+  // p must be unchanged: still part-way through its number.
+  p.input(u8"3]"sv);
+  EXPECT_EQ(p.eof(), "[ i:123 ] ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, ReferenceBackend) {
+  recorder r;
+  parser<recorder&> p{r};
+  p.input(u8"[\"ab"sv);
+  p.reset();
+  // The parser state is reset but the backend is not: it keeps the event that it received before the reset.
+  EXPECT_EQ(p.input(u8"1"sv).eof(), "[ i:1 ");
+  EXPECT_FALSE(p.has_error());
+  EXPECT_EQ(&p.backend(), &r);
+}

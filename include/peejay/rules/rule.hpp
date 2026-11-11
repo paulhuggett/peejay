@@ -179,7 +179,7 @@ public:
 
   /// Creates a parser whose events are passed to the rule at the top of this context's stack. The context must
   /// outlive the parser. A context parses a single document: once that parse has ended, further input to this or any
-  /// other parser made from the context produces error::no_active_rule.
+  /// other parser made from the context produces error::no_active_rule until the context is reset.
   /// \returns The new parser.
   [[nodiscard]] auto make_parser() { return parser<backend<policies>>{backend<policies>{this}}; }
 
@@ -200,12 +200,12 @@ protected:
   template <typename T, typename... Args>
     requires std::derived_from<T, rule<Policies>> && std::is_trivially_destructible_v<T>
   std::error_code emplace(Args&&... args);
+  /// Abandons and discards every rule on the stack, starting at the top, leaving it empty.
+  void unwind() noexcept;
 
 private:
   /// \returns The rule at the top of the stack, or nullptr if the stack is empty.
   [[nodiscard]] constexpr rule<policies>* top() const noexcept { return top_; }
-  /// Abandons and discards every rule on the stack, starting at the top, leaving it empty.
-  void unwind() noexcept;
 
   /// The rule at the top of the stack, or nullptr if the stack is empty.
   rule<policies>* top_ = nullptr;
@@ -650,6 +650,26 @@ public:
   explicit context(Args&&... args) : context_base<Policies>{this->buffer.data(), this->buffer.data() + stack_bytes} {
     [[maybe_unused]] auto const erc = this->template emplace<Root>(std::forward<Args>(args)...);
     assert(!erc && "the stack always has space for the root rule");
+  }
+
+  /// Restores the context to the state of a newly constructed one, so that it can parse another document. Any rules
+  /// on the stack are abandoned (see rule::abandon()) and discarded, then a new instance of \p Root is placed on the
+  /// stack. A parser made from the context before the reset should be reset as well (see parser::reset()), or
+  /// replaced by a new one from make_parser().
+  ///
+  /// If the constructor of \p Root throws, the stack is left empty: the context then behaves as one whose parse has
+  /// ended.
+  ///
+  /// \tparam Args  The types of the arguments for the constructor of \p Root.
+  /// \param args  The arguments to be passed to the constructor of \p Root.
+  /// \returns *this.
+  template <typename... Args>
+    requires std::constructible_from<Root, Args...>
+  context& reset(Args&&... args) {
+    this->unwind();
+    [[maybe_unused]] auto const erc = this->template emplace<Root>(std::forward<Args>(args)...);
+    assert(!erc && "the stack always has space for the root rule");
+    return *this;
   }
 };
 

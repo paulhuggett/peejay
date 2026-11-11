@@ -31,8 +31,8 @@ Details
   :cpp:struct:`peejay::coord` with no ``line`` member, so code that reads the line
   does not compile.
 * The parser reports only the first error. After an error, it ignores all further
-  input and ``eof()`` does not clear the error, so use a new parser for the next
-  document.
+  input and ``eof()`` does not clear the error. Call ``reset()``, or use a new parser,
+  for the next document.
 * Errors raised by the parser compare equal to values of the
   :cpp:enum:`peejay::error` enumeration. An error returned by a backend keeps its
   own category: for example, the DOM backend's

@@ -37,6 +37,7 @@
 #include <cassert>
 #include <cmath>
 #include <compare>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <ostream>
@@ -45,6 +46,7 @@
 #include <string>
 #include <system_error>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <version>
 
@@ -256,11 +258,46 @@ public:
 
   /// Informs the parser that the complete input stream has been passed by calls
   /// to parser<>::input(). Brings the parser to the completed state to ensure that
-  /// complete objects have been consumed. The parser is then reset so that it
-  /// may be used to parse a further input stream.
+  /// complete objects have been consumed. The parse stack is then reinitialized so
+  /// that further calls to input() begin a new document. The error, the input
+  /// position, and the backend are not reset: use reset() to do that.
   ///
   /// \returns The result of calling the backend object's result() member.
   decltype(auto) eof();
+
+  ///@{
+  /// Restores the parser to the state of a newly constructed one: any partial parse is discarded, the error is
+  /// cleared, the input position returns to the start, and the backend is replaced by a new one constructed from
+  /// \p args. The new backend is constructed before anything else is changed, so if its constructor throws, the
+  /// parser is unchanged.
+  ///
+  /// Available only if the backend is held by value.
+  ///
+  /// \tparam Args  The types of the arguments forwarded to the backend's constructor.
+  /// \param args  Arguments forwarded to the backend's constructor.
+  /// \returns *this.
+  template <typename... Args>
+    requires(!std::is_reference_v<Backend> && std::constructible_from<Backend, Args...> &&
+             std::is_move_assignable_v<Backend>)
+  parser& reset(Args&&... args) {
+    backend_ = Backend(std::forward<Args>(args)...);
+    this->reset_state();
+    return *this;
+  }
+  /// Restores the parser to the state of a newly constructed one: any partial parse is discarded, the error is
+  /// cleared, and the input position returns to the start. The parser continues to refer to the same backend, which
+  /// is not changed.
+  ///
+  /// Available only if the parser refers to its backend.
+  ///
+  /// \returns *this.
+  parser& reset()
+    requires(std::is_reference_v<Backend>)
+  {
+    this->reset_state();
+    return *this;
+  }
+  ///@}
 
   ///@{
 
@@ -415,6 +452,17 @@ private:
   /// never pushes another matcher so a single entry is always sufficient and whitespace never counts towards
   /// policies::max_stack_depth.
   static constexpr auto whitespace_stack_size = std::size_t{1};
+
+  /// Returns everything except the backend to the state of a newly constructed parser.
+  void reset_state() {
+    while (!stack_.empty()) {
+      this->pop();
+    }
+    error_ = std::error_code{};
+    pos_ = coord<policies::pos_tracking>{};
+    matcher_pos_ = coord<policies::pos_tracking>{};
+    this->init_stack();
+  }
 
   /// Initializes the parse stack ready to match a single top-level value.
   void init_stack() {

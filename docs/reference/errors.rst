@@ -174,7 +174,7 @@ is registered with ``std::is_error_code_enum``.
      - A string is not one of the ``enum_rule``\ 's enumerators.
    * - ``no_active_rule``
      - Input reached a context whose parse had already ended. A context parses only one
-       document.
+       document until it is reset.
 
 The rules also report three of the parser's errors:
 
