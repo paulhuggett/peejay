@@ -70,10 +70,12 @@ protected:
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param begin  The start of the (uninitialized) array data.
   /// \param size  On exit, the number of elements constructed.
+  /// \param capacity  The maximum number of elements that the container can hold. The range must not hold more
+  ///   elements than this.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
   template <std::integral SizeType, std::input_iterator InputIterator>
-  static void init(pbi begin, SizeType *size, InputIterator first,
+  static void init(pbi begin, SizeType* size, std::size_t capacity, InputIterator first,
                    InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>);
 
   /// Constructs \p count elements of the container. If an exception is thrown, any elements that have been
@@ -178,12 +180,14 @@ protected:
   /// \tparam InputIterator  A type which satisfies std::input_iterator<>.
   /// \param begin  The start of the array data.
   /// \param size  On entry, the original size of the container. On exit, the new container size.
+  /// \param capacity  The maximum number of elements that the container can hold. The container must have room
+  ///   for every element of the range.
   /// \param pos  Iterator before which the new element will be constructed.
   /// \param first  The start of the range from which to copy the elements.
   /// \param last  The end of the range from which to copy the elements.
   /// \returns An iterator referring to the first inserted element, or \p pos if \p first == \p last.
   template <std::integral SizeType, std::input_iterator InputIterator>
-  static pbi insert(pbi begin, SizeType *size, pbi pos, InputIterator first, InputIterator last);
+  static pbi insert(pbi begin, SizeType* size, std::size_t capacity, pbi pos, InputIterator first, InputIterator last);
 
   /// Inserts \p count copies of \p value before \p pos.
   ///
@@ -217,11 +221,12 @@ protected:
 // ~~~~
 template <typename T>
 template <std::integral SizeType, std::input_iterator InputIterator>
-void avbase<T>::init(pbi begin, SizeType *const size, InputIterator first,
+void avbase<T>::init(pbi begin, SizeType* const size, [[maybe_unused]] std::size_t const capacity, InputIterator first,
                      InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>) {
   *size = 0;
   auto out = begin;
-  auto const construct = [size, &out](auto const &t) {
+  auto const construct = [=, &out](auto const& t) {
+    assert(static_cast<std::size_t>(*size) < capacity && "Range has more elements than the container can hold");
     std::construct_at(std::to_address(out), t);
     ++(*size);
     ++out;
@@ -464,11 +469,13 @@ auto avbase<T>::insert(pbi begin, SizeType *const size, pbi pos,
 
 template <typename T>
 template <std::integral SizeType, std::input_iterator InputIterator>
-auto avbase<T>::insert(pbi const begin, SizeType *const size, pbi pos, InputIterator first, InputIterator last) -> pbi {
+auto avbase<T>::insert(pbi const begin, SizeType* const size, [[maybe_unused]] std::size_t const capacity, pbi pos,
+                       InputIterator first, InputIterator last) -> pbi {
   assert(pos >= begin && pos <= begin + *size && "pos must lie within the allocated array");
   pbi end = begin + *size;
   if (pos == end) {
-    std::for_each(first, last, [&end, size](auto const &v) {
+    std::for_each(first, last, [=, &end](auto const& v) {
+      assert(static_cast<std::size_t>(*size) < capacity && "Insert will overflow");
       std::construct_at(std::to_address(end), v);
       ++(*size);
       ++end;
@@ -479,6 +486,8 @@ auto avbase<T>::insert(pbi const begin, SizeType *const size, pbi pos, InputIter
   if constexpr (std::forward_iterator<InputIterator>) {
     // A forward iterator can be used with multi-pass algorithms such as this...
     auto const n = std::distance(first, last);
+    assert(n >= 0 && static_cast<std::size_t>(n) <= capacity - static_cast<std::size_t>(*size) &&
+           "Insert will overflow");
     // If all the new objects land on existing, initialized, elements we don't
     // need to worry about leaving the container in an invalid state if a ctor
     // throws.
@@ -500,6 +509,7 @@ auto avbase<T>::insert(pbi const begin, SizeType *const size, pbi pos, InputIter
   // A single-pass fallback algorithm for input iterators.
   auto r = pos;
   while (first != last) {
+    assert(static_cast<std::size_t>(*size) < capacity && "Insert will overflow");
     avbase::insert(begin, size, pos, SizeType{1}, *first);
     ++first;
     ++pos;
@@ -1149,7 +1159,7 @@ template <std::input_iterator InputIterator>
 arrayvec<T, Size>::arrayvec(InputIterator first,
                             InputIterator last) noexcept(std::is_nothrow_constructible_v<T, decltype(*first)>) {
   this->flood();
-  details::avbase<T>::init(this->begin(), &size_, first, last);
+  details::avbase<T>::init(this->begin(), &size_, Size, first, last);
 }
 
 template <typename T, std::size_t Size> arrayvec<T, Size>::arrayvec(size_type count) {
@@ -1342,7 +1352,7 @@ template <typename T, std::size_t Size>
 template <std::input_iterator InputIterator>
 auto arrayvec<T, Size>::insert(const_iterator pos, InputIterator first, InputIterator last) -> iterator {
   assert(pos >= this->begin() && pos <= this->end() && "Insert position is invalid");
-  return details::avbase<T>::insert(this->begin(), &size_, this->to_non_const_iterator(pos), first, last);
+  return details::avbase<T>::insert(this->begin(), &size_, Size, this->to_non_const_iterator(pos), first, last);
 }
 
 // emplace

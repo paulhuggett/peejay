@@ -32,7 +32,10 @@
 #include "peejay/details/arrayvec.hpp"
 
 // standard library
+#include <array>
 #include <forward_list>
+#include <initializer_list>
+#include <iterator>
 #include <memory>
 #include <numeric>
 #include <stdexcept>
@@ -1242,5 +1245,36 @@ TEST(ArrayVec, RangeReverse) {
   EXPECT_THAT(av, ElementsAre(3, 2, 1));
 }
 #endif
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, CtorRangeFillsCapacity) {
+  std::array const src{1, 2, 3};
+  arrayvec<int, 3> const v(src.begin(), src.end());
+  EXPECT_THAT(v, ElementsAre(1, 2, 3));
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, InsertRangeAtEndFillsCapacity) {
+  arrayvec<int, 4> v{1, 2};
+  std::array const src{3, 4};
+  v.insert(v.end(), src.begin(), src.end());
+  EXPECT_THAT(v, ElementsAre(1, 2, 3, 4));
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, InsertForwardRangeFillsCapacity) {
+  arrayvec<int, 4> v{1, 2};
+  std::forward_list const src{3, 4};
+  v.insert(v.begin() + 1, src.begin(), src.end());
+  EXPECT_THAT(v, ElementsAre(1, 3, 4, 2));
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, InsertInputRangeFillsCapacity) {
+  arrayvec<int, 4> v{1, 2};
+  std::array extra{3, 4};
+  v.insert(v.begin() + 1, std::begin(extra), std::end(extra));
+  EXPECT_THAT(v, ElementsAre(1, 3, 4, 2));
+}
 
 }  // end anonymous namespace
