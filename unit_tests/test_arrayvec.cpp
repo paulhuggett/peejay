@@ -33,8 +33,11 @@
 
 // standard library
 #include <forward_list>
+#include <memory>
 #include <numeric>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 #if __cpp_lib_ranges
 #include <ranges>
@@ -392,6 +395,55 @@ TEST(ArrayVec, PushBack) {
   a.push_back(4);
   EXPECT_THAT(a, ElementsAre(1, 2, 3, 4));
 }
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, TryPushBackCopy) {
+  arrayvec<int, 2> a;
+  int const one = 1;
+  int const two = 2;
+  int const three = 3;
+  EXPECT_EQ(a.try_push_back(one), a.data());
+  EXPECT_EQ(a.try_push_back(two), a.data() + 1);
+  EXPECT_EQ(a.try_push_back(three), nullptr);
+  EXPECT_THAT(a, ElementsAre(1, 2));
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, TryPushBackMove) {
+  arrayvec<std::unique_ptr<int>, 1> a;
+  auto one = std::make_unique<int>(1);
+  EXPECT_EQ(a.try_push_back(std::move(one)), a.data());
+  EXPECT_EQ(one, nullptr);  // NOLINT(bugprone-use-after-move)
+  ASSERT_EQ(a.size(), 1U);
+  EXPECT_EQ(*a[0], 1);
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, TryPushBackMoveWhenFull) {
+  arrayvec<std::unique_ptr<int>, 1> a;
+  a.push_back(std::make_unique<int>(1));
+  auto two = std::make_unique<int>(2);
+  EXPECT_EQ(a.try_push_back(std::move(two)), nullptr);
+  // The container was full, so 'two' must not have been moved from.
+  ASSERT_NE(two, nullptr);  // NOLINT(bugprone-use-after-move)
+  EXPECT_EQ(*two, 2);
+  ASSERT_EQ(a.size(), 1U);
+  EXPECT_EQ(*a[0], 1);
+}
+
+// NOLINTNEXTLINE
+TEST(ArrayVec, TryEmplaceBack) {
+  arrayvec<std::pair<int, int>, 2> a;
+  EXPECT_EQ(a.try_emplace_back(1, 2), a.data());
+  EXPECT_EQ(a.try_emplace_back(3, 4), a.data() + 1);
+  EXPECT_EQ(a.try_emplace_back(5, 6), nullptr);
+  EXPECT_THAT(a, ElementsAre(std::pair{1, 2}, std::pair{3, 4}));
+}
+
+static_assert(noexcept(std::declval<arrayvec<int, 2>&>().try_push_back(1)));
+static_assert(noexcept(std::declval<arrayvec<int, 2>&>().try_emplace_back(1)));
+static_assert(!noexcept(std::declval<arrayvec<std::string, 2>&>().try_push_back(std::declval<std::string const&>())));
+static_assert(!noexcept(std::declval<arrayvec<std::string, 2>&>().try_emplace_back("a")));
 
 namespace {
 
@@ -1165,6 +1217,20 @@ TEST(ArrayVec, InsertPosCountValueEx) {
   EXPECT_THROW(v.insert(v.begin(), 2, member{27}), member::exception);
   EXPECT_THAT(v, ElementsAre(27, 27, 23));
   EXPECT_EQ(member::instances, 3U);
+}
+
+// Verify the strong exception guarantee provided by arrayvec::try_emplace_back().
+// NOLINTNEXTLINE
+TEST(ArrayVec, TryEmplaceBackEx) {
+  member::instances = 0;
+  member::operations = 0;
+  member::throw_number = 1;
+  arrayvec<member, 4> v;
+  v.emplace_back(23);
+  // NOLINTNEXTLINE
+  EXPECT_THROW(v.try_emplace_back(27), member::exception);
+  EXPECT_THAT(v, ElementsAre(23));
+  EXPECT_EQ(member::instances, 1U);
 }
 
 #if __cpp_lib_ranges
