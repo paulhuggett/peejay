@@ -40,7 +40,7 @@ import subprocess
 project = 'peejay'
 copyright = '2026, Paul Bowen-Huggett'
 author = 'Paul Bowen-Huggett'
-version = '0.1'
+version = '2.0'
 release = version
 
 # -- General configuration ---------------------------------------------------
