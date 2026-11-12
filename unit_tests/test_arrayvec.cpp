@@ -1182,7 +1182,7 @@ TEST(ArrayVec, RangeReverse) {
 
 // NOLINTNEXTLINE
 TEST(ArrayVec, CtorRangeFillsCapacity) {
-  std::array<int, 3> const src{{1, 2, 3}};
+  std::array const src{1, 2, 3};
   arrayvec<int, 3> const v(src.begin(), src.end());
   EXPECT_THAT(v, ElementsAre(1, 2, 3));
 }
@@ -1190,7 +1190,7 @@ TEST(ArrayVec, CtorRangeFillsCapacity) {
 // NOLINTNEXTLINE
 TEST(ArrayVec, InsertRangeAtEndFillsCapacity) {
   arrayvec<int, 4> v{1, 2};
-  std::array<int, 2> const src{{3, 4}};
+  std::array const src{3, 4};
   v.insert(v.end(), src.begin(), src.end());
   EXPECT_THAT(v, ElementsAre(1, 2, 3, 4));
 }
@@ -1198,7 +1198,7 @@ TEST(ArrayVec, InsertRangeAtEndFillsCapacity) {
 // NOLINTNEXTLINE
 TEST(ArrayVec, InsertForwardRangeFillsCapacity) {
   arrayvec<int, 4> v{1, 2};
-  std::forward_list<int> const src{3, 4};
+  std::forward_list const src{3, 4};
   v.insert(v.begin() + 1, src.begin(), src.end());
   EXPECT_THAT(v, ElementsAre(1, 3, 4, 2));
 }
