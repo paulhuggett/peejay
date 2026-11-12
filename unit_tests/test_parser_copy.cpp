@@ -373,3 +373,65 @@ TEST(ParserReset, ReferenceBackend) {
   EXPECT_FALSE(p.has_error());
   EXPECT_EQ(&p.backend(), &r);
 }
+
+static_assert(std::is_constructible_v<parser<recorder>, std::string>);
+static_assert(std::is_constructible_v<parser<recorder>, recorder const&>);
+static_assert(!std::is_constructible_v<parser<recorder>, int>);
+static_assert(!std::is_constructible_v<parser<recorder&>, std::string>);
+static_assert(!std::is_convertible_v<std::string, parser<recorder>>);
+static_assert(can_reset<parser<recorder>, recorder&>);
+static_assert(can_reset<parser<recorder>, recorder const&>);
+static_assert(can_reset<parser<recorder>, recorder>);
+static_assert(!can_reset<parser<recorder&>, recorder&>);
+
+TEST(ParserConstruct, ForwardsArguments) {
+  parser<recorder> p{std::string{"x "}};
+  EXPECT_EQ(p.input(u8"1"sv).eof(), "x i:1 ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserConstruct, ConstBackend) {
+  recorder const r{std::string{"y "}};
+  parser<recorder> p{r};
+  EXPECT_EQ(p.input(u8"1"sv).eof(), "y i:1 ");
+  EXPECT_EQ(r.result(), "y ");
+}
+
+TEST(ParserReset, LvalueBackend) {
+  parser<recorder> p;
+  p.input(u8"[1"sv);
+  recorder r{std::string{"a "}};
+  p.reset(r);
+  EXPECT_EQ(p.input(u8"2"sv).eof(), "a i:2 ");
+  EXPECT_FALSE(p.has_error());
+  EXPECT_EQ(r.result(), "a ");
+}
+
+TEST(ParserReset, ConstLvalueBackend) {
+  parser<recorder> p;
+  p.input(u8"[1"sv);
+  recorder const r{std::string{"c "}};
+  p.reset(r);
+  EXPECT_EQ(p.input(u8"2"sv).eof(), "c i:2 ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, RvalueBackend) {
+  parser<recorder> p;
+  p.input(u8"[1"sv);
+  p.reset(recorder{std::string{"b "}});
+  EXPECT_EQ(p.input(u8"2"sv).eof(), "b i:2 ");
+  EXPECT_FALSE(p.has_error());
+}
+
+TEST(ParserReset, BackendCopyThrows) {
+  parser<throwing_recorder> p;
+  p.input(u8"[12"sv);
+  throwing_recorder bad;
+  bad.fail = true;
+  EXPECT_THROW(p.reset(bad), std::runtime_error);
+  // p must be unchanged: still part-way through its number.
+  p.input(u8"3]"sv);
+  EXPECT_EQ(p.eof(), "[ i:123 ] ");
+  EXPECT_FALSE(p.has_error());
+}

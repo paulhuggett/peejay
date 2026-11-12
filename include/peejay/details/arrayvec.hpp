@@ -974,6 +974,39 @@ public:
   /// \returns  A reference to the new element.
   template <typename... Args> reference emplace_back(Args &&...args);
 
+  /// \brief Appends a new element to the end of the container if there is room for it.
+  ///
+  /// If the container is full, this function has no effect and the arguments are not used. Otherwise, the
+  /// arguments \p args... are forwarded to the constructor of the new element as
+  /// `std::forward<Args>(args)...`.
+  ///
+  /// If an exception is thrown, this function has no effect (strong exception guarantee).
+  ///
+  /// \param args  Arguments to forward to the constructor of the element.
+  /// \returns  A pointer to the new element, or nullptr if the container was full.
+  template <typename... Args>
+  pointer try_emplace_back(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>);
+  /// \brief Adds a copy of \p value to the end of the container if there is room for it.
+  ///
+  /// If the container is full, this function has no effect. If an exception is thrown, this function has no
+  /// effect (strong exception guarantee).
+  ///
+  /// \param value  The value of the element to append.
+  /// \returns  A pointer to the new element, or nullptr if the container was full.
+  pointer try_push_back(const_reference value) noexcept(std::is_nothrow_copy_constructible_v<T>) {
+    return this->try_emplace_back(value);
+  }
+  /// \brief Moves \p value into a new element at the end of the container if there is room for it.
+  ///
+  /// If the container is full, this function has no effect and \p value is not moved from. If an exception is
+  /// thrown, this function has no effect (strong exception guarantee).
+  ///
+  /// \param value  The value of the element to append.
+  /// \returns  A pointer to the new element, or nullptr if the container was full.
+  pointer try_push_back(T&& value) noexcept(std::is_nothrow_move_constructible_v<T>) {
+    return this->try_emplace_back(std::move(value));
+  }
+
   /// \brief Replaces the contents with \p count copies of value \p value.
   ///
   /// \param count The new size of the container.
@@ -1236,6 +1269,20 @@ auto arrayvec<T, Size>::emplace_back(Args &&...args) -> reference {
   std::construct_at(std::to_address(pos), std::forward<Args>(args)...);
   ++size_;
   return *pos;
+}
+
+// try emplace back
+// ~~~~~~~~~~~~~~~~
+template <typename T, std::size_t Size>
+template <typename... Args>
+auto arrayvec<T, Size>::try_emplace_back(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+    -> pointer {
+  if (this->size() >= this->max_size()) {
+    return nullptr;
+  }
+  auto* const result = std::construct_at(std::to_address(this->end()), std::forward<Args>(args)...);
+  ++size_;
+  return result;
 }
 
 // assign
