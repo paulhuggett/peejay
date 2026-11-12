@@ -43,6 +43,15 @@ Construction
 ``explicit parser(Backend&& backend)``
    Moves ``backend`` into the parser.
 
+``template <typename... Args> explicit parser(Args&&... args)``
+   *Requires:* ``Backend`` is not a reference type, ``args`` is not empty, and
+   ``std::constructible_from<Backend, Args...>`` is true.
+
+   Constructs the backend from ``std::forward<Args>(args)...``. For example, a parser
+   for a rules context can be written ``parser<rules::backend<policies>> p{&ctx};``.
+   A single argument that is a parser, or a non-const ``Backend``, selects one of the
+   constructors above instead.
+
 A parser can be moved. It can be copied only if it holds its backend by value and the
 backend can be copied. A copy continues from the same point in the input. A parser that
 holds a reference to its backend can be move-constructed, but it can't be copied or
@@ -92,13 +101,25 @@ Starting again
    Puts the parser back into the state of a newly constructed one. Any document that
    was part-way through is discarded, the recorded error is cleared, and the line count
    returns to 1. The backend is replaced by ``Backend(std::forward<Args>(args)...)``, so
-   ``reset()`` with no arguments gives a default-constructed backend.
+   ``reset()`` with no arguments gives a default-constructed backend. A single argument
+   that is a ``Backend`` selects one of the overloads below instead.
 
    The new backend is constructed before anything else changes. If its constructor
    throws, the parser is unchanged.
 
    *Returns:* ``*this``, so that calls can be chained, as in
    ``p.reset().input(text).eof()``.
+
+``parser& reset(Backend const& backend)``, ``parser& reset(Backend&& backend)``
+   *Requires:* ``Backend`` is not a reference type, and can be copy-assigned (for the
+   first) or move-assigned (for the second).
+
+   As ``reset(args...)``, but the backend is assigned a copy of ``backend``, or has
+   ``backend`` moved into it. The assignment happens before anything else changes. If it
+   throws, the rest of the parser is unchanged, and the backend is in whatever state its
+   assignment operator leaves it.
+
+   *Returns:* ``*this``.
 
 ``parser& reset()``
    *Requires:* ``Backend`` is a reference type.

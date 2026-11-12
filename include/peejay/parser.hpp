@@ -124,7 +124,15 @@ template <backend Backend> struct group_to_matcher<group::whitespace, Backend> {
 /// A helper type for convenient use of group_to_matcher<Group, Backend>::type.
 template <group Group, backend Backend> using group_to_matcher_t = group_to_matcher<Group, Backend>::type;
 
+/// True if \p Args is a single type which is the same as \p T.
+/// \tparam T  The type to compare with.
+/// \tparam Args  The types to be examined.
+template <typename T, typename... Args> inline constexpr bool is_single_v = false;
+/// The specialization for a single type, which is true if it is the same as T.
+template <typename T, typename Arg> inline constexpr bool is_single_v<T, Arg> = std::is_same_v<T, Arg>;
+
 }  // end namespace details
+
 
 /// \brief A position within the input text.
 ///
@@ -213,6 +221,21 @@ public:
   /// Constructs a parser from the given backend.
   /// \param backend  The backend to be moved into the parser.
   explicit parser(std::remove_reference_t<Backend> &&backend) : backend_{std::move(backend)} { this->init_stack(); }
+  /// Constructs a parser whose backend is constructed from the given arguments. Available only if the backend is held
+  /// by value.
+  ///
+  /// This constructor does not accept a single argument which is a parser or a non-const backend: those select the
+  /// copy, move, or backend constructors instead.
+  ///
+  /// \tparam Args  The types of the arguments forwarded to the backend's constructor.
+  /// \param args  Arguments forwarded to the backend's constructor.
+  template <typename... Args>
+    requires(!std::is_reference_v<Backend> && sizeof...(Args) > 0 &&
+             !details::is_single_v<parser, std::remove_cvref_t<Args>...> && !details::is_single_v<Backend&, Args...> &&
+             !details::is_single_v<Backend, Args...> && std::constructible_from<Backend, Args...>)
+  explicit parser(Args&&... args) : backend_(std::forward<Args>(args)...) {
+    this->init_stack();
+  }
   /// Destructor.
   ~parser() noexcept {
     // Pop any states that may remain on the stack.
@@ -271,16 +294,47 @@ public:
   /// \p args. The new backend is constructed before anything else is changed, so if its constructor throws, the
   /// parser is unchanged.
   ///
-  /// Available only if the backend is held by value.
+  /// Available only if the backend is held by value. A single argument which is a backend selects the
+  /// reset(Backend const&) or reset(Backend&&) overload instead.
   ///
   /// \tparam Args  The types of the arguments forwarded to the backend's constructor.
   /// \param args  Arguments forwarded to the backend's constructor.
   /// \returns *this.
   template <typename... Args>
-    requires(!std::is_reference_v<Backend> && std::constructible_from<Backend, Args...> &&
-             std::is_move_assignable_v<Backend>)
+    requires(!std::is_reference_v<Backend> && !details::is_single_v<Backend, std::remove_cvref_t<Args>...> &&
+             std::constructible_from<Backend, Args...> && std::is_move_assignable_v<Backend>)
   parser& reset(Args&&... args) {
     backend_ = Backend(std::forward<Args>(args)...);
+    this->reset_state();
+    return *this;
+  }
+  /// Restores the parser to the state of a newly constructed one, as reset(Args&&...), with a copy of \p backend as
+  /// its backend. The backend is assigned before anything else is changed, so if the assignment throws, the rest of
+  /// the parser is unchanged.
+  ///
+  /// Available only if the backend is held by value and is copy-assignable.
+  ///
+  /// \param backend  The backend to be copied.
+  /// \returns *this.
+  parser& reset(std::remove_reference_t<Backend> const& backend)
+    requires(!std::is_reference_v<Backend> && std::is_copy_assignable_v<Backend>)
+  {
+    backend_ = backend;
+    this->reset_state();
+    return *this;
+  }
+  /// Restores the parser to the state of a newly constructed one, as reset(Args&&...), with \p backend moved into
+  /// it as its backend. The backend is assigned before anything else is changed, so if the assignment throws, the
+  /// rest of the parser is unchanged.
+  ///
+  /// Available only if the backend is held by value and is move-assignable.
+  ///
+  /// \param backend  The backend to be moved into the parser.
+  /// \returns *this.
+  parser& reset(std::remove_reference_t<Backend>&& backend)
+    requires(!std::is_reference_v<Backend> && std::is_move_assignable_v<Backend>)
+  {
+    backend_ = std::move(backend);
     this->reset_state();
     return *this;
   }

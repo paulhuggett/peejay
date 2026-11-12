@@ -1198,6 +1198,17 @@ TEST(RuleContextReset, RootConstructorThrows) {
 }
 
 // NOLINTNEXTLINE
+TEST(RuleContext, ParserConstructedFromContext) {
+  bool b = false;
+  bool_context context{&b};
+  // The parser's constructor forwards the context pointer to the backend's constructor.
+  peejay::parser<peejay::rules::backend<policies>> parser{&context};
+  parser.input(u8"true"sv).eof();
+  EXPECT_FALSE(parser.has_error()) << "Real error was: " << parser.last_error().message();
+  EXPECT_TRUE(b);
+}
+
+// NOLINTNEXTLINE
 TEST(RuleDefaults, Events) {
   int unused = 0;
   EXPECT_EQ(parse<defaults_rule>(u8"null"sv, &unused), make_error_code(error::unexpected_null));
