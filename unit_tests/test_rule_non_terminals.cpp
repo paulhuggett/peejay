@@ -102,6 +102,56 @@ public:
   explicit empty_rule(int*) { this->set_properties(std::array<inherited::property, 0>{}); }
 };
 
+// The same as point_rule, but passes the properties to object_rule's initializer-list constructor.
+template <std::size_t Elements>
+class point_list_ctor_rule final : public peejay::rules::object_rule<policies, Elements> {
+  using inherited = peejay::rules::object_rule<policies, Elements>;
+
+public:
+  using value_type = point;
+
+  explicit point_list_ctor_rule(point* const pt) : inherited{{u8"x"sv, {&pt->x}}, {u8"y"sv, {&pt->y}}} {}
+};
+
+// The same as point_rule, but passes the properties to object_rule's range constructor.
+template <std::size_t Elements>
+class point_range_ctor_rule final : public peejay::rules::object_rule<policies, Elements> {
+  using inherited = peejay::rules::object_rule<policies, Elements>;
+  using property = typename inherited::property;
+
+public:
+  using value_type = point;
+
+  explicit point_range_ctor_rule(point* const pt)
+      : inherited(std::array{property{u8"x"sv, {&pt->x}}, property{u8"y"sv, {&pt->y}}}) {}
+};
+
+// The same as point_rule, but passes the properties to object_rule's iterator and sentinel constructor.
+template <std::size_t Elements>
+class point_iterator_ctor_rule final : public peejay::rules::object_rule<policies, Elements> {
+  using inherited = peejay::rules::object_rule<policies, Elements>;
+  using property = typename inherited::property;
+  using properties = std::array<property, 2>;
+
+  explicit point_iterator_ctor_rule(properties const& props) : inherited(props.begin(), props.end()) {}
+
+public:
+  using value_type = point;
+
+  explicit point_iterator_ctor_rule(point* const pt)
+      : point_iterator_ctor_rule(properties{{{u8"x"sv, {&pt->x}}, {u8"y"sv, {&pt->y}}}}) {}
+};
+
+// An object with no properties, passed to object_rule's range constructor.
+class empty_ctor_rule final : public peejay::rules::object_rule<policies, 2> {
+  using inherited = peejay::rules::object_rule<policies, 2>;
+
+public:
+  using value_type = int;
+
+  explicit empty_ctor_rule(int*) : inherited(std::array<inherited::property, 0>{}) {}
+};
+
 // An object with a property for each of the built-in types.
 struct builtins {
   bool b = false;
@@ -217,6 +267,41 @@ public:
   }
 };
 
+// The same as colour_rule, but passes the enumerators to enum_rule's initializer-list constructor.
+template <std::size_t Elements>
+class colour_list_ctor_rule final : public peejay::rules::enum_rule<policies, colour, Elements> {
+  using inherited = peejay::rules::enum_rule<policies, colour, Elements>;
+
+public:
+  explicit colour_list_ctor_rule(colour* const c)
+      : inherited{c, {{u8"red"sv, colour::red}, {u8"green"sv, colour::green}, {u8"blue"sv, colour::blue}}} {}
+};
+
+// The same as level_rule, but passes the enumerators to enum_rule's range constructor.
+class level_range_ctor_rule final : public peejay::rules::enum_rule<policies, int, 3> {
+public:
+  explicit level_range_ctor_rule(int* const v)
+      : enum_rule(v, std::array{enumerator{u8"low"sv, 1}, enumerator{u8"low"sv, 2}, enumerator{u8""sv, 10}}) {}
+};
+
+// The same as colour_rule, but passes the enumerators to enum_rule's iterator and sentinel constructor.
+class colour_iterator_ctor_rule final : public peejay::rules::enum_rule<policies, colour, 3> {
+  using enumerators = std::array<enumerator, 3>;
+
+  colour_iterator_ctor_rule(colour* const c, enumerators const& e) : enum_rule(c, e.begin(), e.end()) {}
+
+public:
+  explicit colour_iterator_ctor_rule(colour* const c)
+      : colour_iterator_ctor_rule(
+            c, enumerators{{{u8"red"sv, colour::red}, {u8"green"sv, colour::green}, {u8"blue"sv, colour::blue}}}) {}
+};
+
+// No enumerators at all, passed to enum_rule's range constructor.
+class no_colour_ctor_rule final : public peejay::rules::enum_rule<policies, colour, 2> {
+public:
+  explicit no_colour_ctor_rule(colour* const c) : enum_rule(c, std::array<enumerator, 0>{}) {}
+};
+
 struct paint {
   std::string name;
   colour shade = colour::red;
@@ -320,6 +405,69 @@ TEST(ObjectRule, UnrecognizedProperty) {
 TEST(ObjectRule, EmptyKeyDoesNotMatchUnusedEntry) {
   point pt;
   EXPECT_EQ(parse<point_rule<4>>(u8R"({"":3})"sv, &pt), make_error_code(error::unrecognized_property));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, InitializerList) {
+  point pt;
+  EXPECT_FALSE(parse<point_list_ctor_rule<2>>(u8R"({"x":1,"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, InitializerListPartTable) {
+  point pt;
+  EXPECT_FALSE(parse<point_list_ctor_rule<4>>(u8R"({"x":1,"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, InitializerListMissingProperty) {
+  point pt;
+  EXPECT_EQ(parse<point_list_ctor_rule<4>>(u8R"({"x":1})"sv, &pt), make_error_code(error::incomplete_object));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, Range) {
+  point pt;
+  EXPECT_FALSE(parse<point_range_ctor_rule<4>>(u8R"({"x":1,"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, RangeMissingProperty) {
+  point pt;
+  EXPECT_EQ(parse<point_range_ctor_rule<2>>(u8R"({"y":2})"sv, &pt), make_error_code(error::incomplete_object));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, IteratorAndSentinel) {
+  point pt;
+  EXPECT_FALSE(parse<point_iterator_ctor_rule<2>>(u8R"({"x":1,"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, IteratorAndSentinelUnrecognizedProperty) {
+  point pt;
+  EXPECT_EQ(parse<point_iterator_ctor_rule<4>>(u8R"({"x":1,"z":3})"sv, &pt),
+            make_error_code(error::unrecognized_property));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, EmptyRange) {
+  int unused = 0;
+  EXPECT_FALSE(parse<empty_ctor_rule>(u8"{}"sv, &unused));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleCtor, EmptyRangeUnrecognizedProperty) {
+  int unused = 0;
+  EXPECT_EQ(parse<empty_ctor_rule>(u8R"({"x":1})"sv, &unused), make_error_code(error::unrecognized_property));
 }
 
 // NOLINTNEXTLINE
@@ -631,6 +779,62 @@ TEST(EnumRule, EmptyStringEnumerator) {
   int v = 0;
   EXPECT_FALSE(parse<level_rule>(u8R"("")"sv, &v));
   EXPECT_EQ(v, 10);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, InitializerList) {
+  colour c = colour::red;
+  EXPECT_FALSE(parse<colour_list_ctor_rule<3>>(u8R"("blue")"sv, &c));
+  EXPECT_EQ(c, colour::blue);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, InitializerListPartTable) {
+  colour c = colour::red;
+  EXPECT_FALSE(parse<colour_list_ctor_rule<5>>(u8R"("green")"sv, &c));
+  EXPECT_EQ(c, colour::green);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, InitializerListUnrecognized) {
+  colour c = colour::green;
+  EXPECT_EQ(parse<colour_list_ctor_rule<5>>(u8R"("")"sv, &c), make_error_code(error::unrecognized_enumerator));
+  EXPECT_EQ(c, colour::green);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, Range) {
+  int v = 0;
+  EXPECT_FALSE(parse<level_range_ctor_rule>(u8R"("low")"sv, &v));
+  EXPECT_EQ(v, 1);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, RangeEmptyStringEnumerator) {
+  int v = 0;
+  EXPECT_FALSE(parse<level_range_ctor_rule>(u8R"("")"sv, &v));
+  EXPECT_EQ(v, 10);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, IteratorAndSentinel) {
+  colour c = colour::red;
+  EXPECT_FALSE(parse<colour_iterator_ctor_rule>(u8R"("green")"sv, &c));
+  EXPECT_EQ(c, colour::green);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, IteratorAndSentinelUnrecognized) {
+  colour c = colour::red;
+  EXPECT_EQ(parse<colour_iterator_ctor_rule>(u8R"("purple")"sv, &c), make_error_code(error::unrecognized_enumerator));
+  EXPECT_EQ(c, colour::red);
+}
+
+// NOLINTNEXTLINE
+TEST(EnumRuleCtor, EmptyRange) {
+  colour c = colour::blue;
+  EXPECT_EQ(parse<no_colour_ctor_rule>(u8R"("red")"sv, &c), make_error_code(error::unrecognized_enumerator));
+  EXPECT_EQ(c, colour::blue);
 }
 
 // NOLINTNEXTLINE

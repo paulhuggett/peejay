@@ -16,14 +16,14 @@ enum class level { debug, info, warning, error };
 // Accepts one of four strings and stores the matching level.
 class level_rule final : public peejay::rules::enum_rule<policies, level, 4> {
 public:
-  explicit level_rule(level* const v) : enum_rule{v} {
-    this->set_enumerators({
-        {u8"debug"sv, level::debug},
-        {u8"info"sv, level::info},
-        {u8"warning"sv, level::warning},
-        {u8"error"sv, level::error},
-    });
-  }
+  explicit level_rule(level* const v)
+      : enum_rule{v,
+                  {
+                      {u8"debug"sv, level::debug},
+                      {u8"info"sv, level::info},
+                      {u8"warning"sv, level::warning},
+                      {u8"error"sv, level::error},
+                  }} {}
   [[nodiscard]] char const* name() const noexcept override { return "level"; }
 };
 
@@ -37,9 +37,7 @@ class logger_rule final : public peejay::rules::object_rule<policies, 2, level_r
 public:
   using value_type = logger;
 
-  explicit logger_rule(logger* const l) {
-    this->set_properties({{u8"name"sv, &l->name}, {u8"level"sv, &l->threshold}});
-  }
+  explicit logger_rule(logger* const l) : object_rule{{u8"name"sv, &l->name}, {u8"level"sv, &l->threshold}} {}
   [[nodiscard]] char const* name() const noexcept override { return "logger"; }
 };
 

@@ -343,7 +343,7 @@ length of every string.
 ``type_to_terminal``
 ^^^^^^^^^^^^^^^^^^^^
 
-``template <typename T, policy P> struct type_to_terminal``
+``template <typename T, policies P> struct type_to_terminal``
    Maps a value type to the terminal rule that stores it. Its member ``type`` is
    ``bool_rule<P>`` for ``bool``, ``integer_rule<P, T>`` for an integer type,
    ``float_rule<P>`` for ``P::float_type``, and ``string_rule<P, T>`` for each string type.
@@ -359,8 +359,20 @@ length of every string.
    class object_rule : public rule<Policies>;
 
 A base class for rules that parse a JSON object with a fixed set of properties, such as
-a struct. Derive from it, define ``value_type`` and ``name()``, and call
-``set_properties()`` from the constructor.
+a struct. Derive from it, define ``value_type`` and ``name()``, and pass the properties
+to ``object_rule``'s constructor:
+
+.. code-block:: cpp
+
+   class point_rule final : public object_rule<policies, 2> {
+   public:
+     using value_type = point;
+     explicit point_rule(point* const pt) : object_rule{{u8"x"sv, &pt->x}, {u8"y"sv, &pt->y}} {}
+     [[nodiscard]] char const* name() const noexcept override { return "point"; }
+   };
+
+When the derived class is a template, name the base class in full, as in
+``object_rule<Policies, 2>{...}``.
 
 ``Elements``
    The largest number of properties.
@@ -373,11 +385,17 @@ a struct. Derive from it, define ``value_type`` and ``name()``, and call
 ``using property = std::pair<std::u8string_view, /* variant of pointers */>``
    A property: an object key and a pointer to the variable that receives its value.
 
+``explicit object_rule(std::initializer_list<property>)``
+   Constructs the rule with the given properties. Also available for an iterator and
+   sentinel, and (``explicit``) for a range. Each is the same as default-constructing the
+   rule and then calling ``set_properties()`` with the same arguments. These constructors
+   and the default constructor are ``protected``.
+
 ``void set_properties(std::initializer_list<property>)``
-   Sets the properties. Also available for an iterator and sentinel, and for a range.
-   There must be at most ``Elements`` of them. The keys are stored as
-   ``std::u8string_view``, so the strings must outlive the rule. String literals are the
-   usual choice.
+   Sets the properties, replacing any that were set before. Also available for an iterator
+   and sentinel, and for a range. There must be at most ``Elements`` of them. The keys are
+   stored as ``std::u8string_view``, so the strings must outlive the rule. String literals
+   are the usual choice.
 
 The pointer in each property chooses the rule that parses its value:
 
@@ -454,8 +472,17 @@ Behaviour:
    class enum_rule : public rule<Policies>;
 
 A base class for rules that accept one of a fixed set of strings and store a value that
-corresponds to it. Derive from it, define ``name()``, and call ``set_enumerators()`` from
-the constructor. The constructor of ``enum_rule`` takes a ``T*`` and is protected.
+corresponds to it. Derive from it, define ``name()``, and pass ``enum_rule``'s constructor
+a ``T*`` and the enumerators:
+
+.. code-block:: cpp
+
+   class colour_rule final : public enum_rule<policies, colour, 3> {
+   public:
+     explicit colour_rule(colour* const c)
+         : enum_rule{c, {{u8"red"sv, colour::red}, {u8"green"sv, colour::green}, {u8"blue"sv, colour::blue}}} {}
+     [[nodiscard]] char const* name() const noexcept override { return "colour"; }
+   };
 
 ``T``
    The ``value_type``: an enumeration, or one of the integer types that ``integer_rule``
@@ -468,8 +495,15 @@ the constructor. The constructor of ``enum_rule`` takes a ``T*`` and is protecte
 ``using enumerator = std::pair<std::u8string_view, T>``
    A string and the value it stands for.
 
+``enum_rule(T* value, std::initializer_list<enumerator>)``
+   Constructs the rule, which stores its result in ``*value``, with the given enumerators.
+   Also available with an iterator and sentinel, or a range, in place of the list. Each is
+   the same as constructing the rule from ``value`` alone and then calling
+   ``set_enumerators()`` with the remaining arguments. All of the constructors are
+   ``protected``.
+
 ``void set_enumerators(std::initializer_list<enumerator>)``
-   Sets the enumerators. Also available for an iterator and sentinel, and for a range.
+   Sets the enumerators, replacing any that were set before. Also available for an iterator and sentinel, and for a range.
    There must be at most ``Elements`` of them, and the strings must outlive the rule.
 
 A string that matches none of the enumerators fails with

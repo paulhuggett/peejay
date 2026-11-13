@@ -74,8 +74,8 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 
 /// \brief A base class for rules which parse a JSON object with a fixed set of properties.
 ///
-/// A subclass passes its properties to set_properties() from its constructor. Each property pairs an object key
-/// with a pointer to the location where the key's value will be stored. When the key is encountered, the matching
+/// A subclass passes its properties to object_rule's constructor, or to set_properties(). Each property pairs an object
+/// key with a pointer to the location where the key's value will be stored. When the key is encountered, the matching
 /// rule is pushed to parse its value: one of the terminal rules for a built-in type, or one of \p UserRules. The
 /// built-in types are bool, the policy's float_type, std::u8string, std::string, and the integer types listed by
 /// builtin_integers. A string held in an arrayvec<char8_t, Size> needs its string_rule to be listed in \p UserRules,
@@ -166,6 +166,32 @@ public:
   }
 
 protected:
+  /// Constructs a rule with no properties. A subclass must call set_properties() before the rule is used unless
+  /// \p Elements is 0.
+  object_rule() = default;
+  /// Constructs a rule which requires the properties [\p first_required, \p last_required). Equivalent to
+  /// calling set_properties(first_required, last_required).
+  ///
+  /// \param first_required  The first of the properties.
+  /// \param last_required  The end of the properties. There must be no more than \p Elements of them.
+  template <std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+    requires std::is_same_v<std::iter_value_t<Iterator>, property>
+  object_rule(Iterator first_required, Sentinel last_required) {
+    this->set_properties(first_required, last_required);
+  }
+  /// Constructs a rule which requires \p properties. Equivalent to calling set_properties(properties).
+  ///
+  /// \param properties  The properties. There must be no more than \p Elements of them.
+  explicit object_rule(std::initializer_list<property> properties) { this->set_properties(properties); }
+  /// Constructs a rule which requires the properties in \p range. Equivalent to calling set_properties(range).
+  ///
+  /// \param range  The properties. There must be no more than \p Elements of them.
+  template <std::ranges::forward_range RequiredRange>
+    requires std::is_same_v<std::ranges::range_value_t<RequiredRange>, property>
+  explicit object_rule(RequiredRange const& range) {
+    this->set_properties(range);
+  }
+
   /// Rules are not destroyed through this type: they are discarded without running their destructors.
   ~object_rule() noexcept = default;
 
@@ -236,9 +262,10 @@ concept enum_target = (std::is_enum_v<T> && !std::is_const_v<T> && !std::is_vola
 
 /// \brief A base class for rules which accept one of a fixed set of strings and store the value associated with it.
 ///
-/// A subclass passes its enumerators to set_enumerators() from its constructor. Each enumerator pairs a string with
-/// the value which is stored when that string is encountered. If the same string appears more than once, the first
-/// enumerator is used. A string which is not one of the enumerators produces error::unrecognized_enumerator.
+/// A subclass passes its enumerators to enum_rule's constructor, or to set_enumerators(). Each enumerator pairs a
+/// string with the value which is stored when that string is encountered. If the same string appears more than once,
+/// the first enumerator is used. A string which is not one of the enumerators produces
+/// error::unrecognized_enumerator.
 ///
 /// The rule can be used directly or as one of object_rule's UserRules. For the latter, \p T should be an enumeration
 /// because object_rule already handles pointers to the integer types.
@@ -276,6 +303,35 @@ public:
 protected:
   /// \param value  The location to which the value will be written.
   explicit constexpr enum_rule(value_type* const value) noexcept : value_{value} {}
+  /// Constructs a rule which accepts the enumerators [\p first, \p last). Equivalent to constructing the rule from
+  /// \p value then calling set_enumerators(first, last).
+  ///
+  /// \param value  The location to which the value will be written.
+  /// \param first  The first of the enumerators.
+  /// \param last  The end of the enumerators. There must be no more than \p Elements of them.
+  template <std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+    requires std::is_same_v<std::iter_value_t<Iterator>, enumerator>
+  enum_rule(value_type* const value, Iterator first, Sentinel last) : value_{value} {
+    this->set_enumerators(first, last);
+  }
+  /// Constructs a rule which accepts \p enumerators. Equivalent to constructing the rule from \p value then calling
+  /// set_enumerators(enumerators).
+  ///
+  /// \param value  The location to which the value will be written.
+  /// \param enumerators  The enumerators. There must be no more than \p Elements of them.
+  enum_rule(value_type* const value, std::initializer_list<enumerator> enumerators) : value_{value} {
+    this->set_enumerators(enumerators);
+  }
+  /// Constructs a rule which accepts the enumerators in \p range. Equivalent to constructing the rule from \p value
+  /// then calling set_enumerators(range).
+  ///
+  /// \param value  The location to which the value will be written.
+  /// \param range  The enumerators. There must be no more than \p Elements of them.
+  template <std::ranges::forward_range Range>
+    requires std::is_same_v<std::ranges::range_value_t<Range>, enumerator>
+  enum_rule(value_type* const value, Range const& range) : value_{value} {
+    this->set_enumerators(range);
+  }
   /// Rules are not destroyed through this type: they are discarded without running their destructors.
   ~enum_rule() noexcept = default;
 

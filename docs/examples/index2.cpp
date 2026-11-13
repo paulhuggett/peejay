@@ -51,9 +51,8 @@ public:
   using policies = Policies;
   using value_type = address;
 
-  explicit address_rule(address* const addr) {
-    this->set_properties({{u8"name"sv, &addr->name}, {u8"port"sv, &addr->port}});
-  }
+  explicit address_rule(address* const addr)
+      : peejay::rules::object_rule<Policies, 3>{{u8"name"sv, &addr->name}, {u8"port"sv, &addr->port}} {}
   [[nodiscard]] constexpr char const* name() const noexcept override { return "address"; }
 };
 

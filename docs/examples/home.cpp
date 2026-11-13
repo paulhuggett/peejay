@@ -17,7 +17,7 @@ struct point {
 class point_rule final : public peejay::rules::object_rule<policies, 2> {
 public:
   using value_type = point;
-  explicit point_rule(point* const pt) { this->set_properties({{u8"x"sv, &pt->x}, {u8"y"sv, &pt->y}}); }
+  explicit point_rule(point* const pt) : object_rule{{u8"x"sv, &pt->x}, {u8"y"sv, &pt->y}} {}
 };
 
 int main() {

@@ -4,7 +4,7 @@ Read a string as an enumeration
 Many JSON documents use a string to choose one of a few options, such as
 ``"level": "warning"``. :cpp:class:`peejay::rules::enum_rule` matches such a string
 against a list and stores the value that goes with it. Derive a rule from it and pass
-the list to ``set_enumerators()`` in the constructor:
+the list to ``enum_rule``'s constructor, after the pointer to the value:
 
 .. literalinclude:: ../examples/howto_rules_enum.cpp
    :language: cpp

@@ -23,7 +23,7 @@ class address_rule final : public peejay::rules::object_rule<policies, 2> {
 public:
   using value_type = address;
 
-  explicit address_rule(address* const a) { this->set_properties({{u8"name"sv, &a->name}, {u8"port"sv, &a->port}}); }
+  explicit address_rule(address* const a) : object_rule{{u8"name"sv, &a->name}, {u8"port"sv, &a->port}} {}
   [[nodiscard]] char const* name() const noexcept override { return "address"; }
 };
 

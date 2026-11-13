@@ -81,9 +81,8 @@ class marker_rule final : public peejay::rules::object_rule<policies, 3, point_r
 public:
   using value_type = marker;
 
-  explicit marker_rule(marker* const m) {
-    this->set_properties({{u8"label"sv, &m->label}, {u8"position"sv, &m->position}, {u8"layer"sv, &m->layer}});
-  }
+  explicit marker_rule(marker* const m)
+      : object_rule{{u8"label"sv, &m->label}, {u8"position"sv, &m->position}, {u8"layer"sv, &m->layer}} {}
   [[nodiscard]] char const* name() const noexcept override { return "marker"; }
 };
 

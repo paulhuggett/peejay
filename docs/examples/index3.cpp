@@ -57,9 +57,9 @@ public:
   using policies = Policies;
   using value_type = multiport_address;
 
-  explicit multiport_address_rule(multiport_address* const addr) {
-    this->set_properties({{u8"name"sv, &addr->name}, {u8"ports"sv, &addr->ports}});
-  }
+  explicit multiport_address_rule(multiport_address* const addr)
+      : peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>>{{u8"name"sv, &addr->name},
+                                                                          {u8"ports"sv, &addr->ports}} {}
   [[nodiscard]] constexpr char const* name() const noexcept override { return "multiport-address"; }
 };
 

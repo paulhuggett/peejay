@@ -31,7 +31,7 @@ class sensor_rule final : public peejay::rules::object_rule<policies, 2, id_rule
 public:
   using value_type = sensor;
 
-  explicit sensor_rule(sensor* const s) { this->set_properties({{u8"id"sv, &s->id}, {u8"values"sv, &s->values}}); }
+  explicit sensor_rule(sensor* const s) : object_rule{{u8"id"sv, &s->id}, {u8"values"sv, &s->values}} {}
   [[nodiscard]] char const* name() const noexcept override { return "sensor"; }
 };
 
