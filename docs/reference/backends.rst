@@ -2,11 +2,13 @@ Backends
 ========
 
 A backend receives the parser's events. Any type that satisfies the
-:cpp:concept:`peejay::backend` concept can be a backend. peejay provides two:
-:ref:`the null backend <reference/backends:the null backend>` and
-:ref:`the DOM backend <reference/backends:the dom backend>`. The
-:doc:`rules <rules>` sub-library provides a third, which passes each event to a stack of
-rules that store the values in your own types.
+:cpp:concept:`peejay::backend` concept can be a backend. peejay provides three:
+
+* :ref:`The null backend <reference/backends:the null backend>` ignores every event.
+* :ref:`The DOM backend <reference/backends:the dom backend>` builds a tree that you
+  examine after the parse.
+* :ref:`The rules backend <reference/backends:the rules backend>` passes each event to a
+  stack of rules that store the values in your own types.
 
 The ``backend`` concept
 -----------------------
@@ -237,3 +239,46 @@ Behaviour
 * Object members are not kept in document order.
 * The DOM allocates memory with ``std::vector``, ``std::unordered_map``, and
   ``std::u8string``, so it can throw ``std::bad_alloc``.
+
+The rules backend
+-----------------
+
+.. code-block:: cpp
+
+   #include "peejay/rules/rule.hpp"   // Also included by "peejay/rules/non_terminal_rule.hpp".
+
+   namespace peejay::rules {
+     template <policies Policies = default_policies> class backend;
+   }
+
+``rules::backend`` reads a document straight into your own variables. It doesn't hold
+any rules itself. It refers to a :ref:`context <rules-context>`, which holds a
+stack of rules, and passes each event to the rule at the top of that stack. If the stack
+is empty, the event fails with ``error::no_active_rule``.
+
+You don't normally construct a ``rules::backend`` or name its type. A context's
+``make_parser()`` returns a ``peejay::parser<rules::backend<Policies>>`` that refers to
+the context:
+
+.. code-block:: cpp
+
+   peejay::rules::context<policies, config_rule> ctx{&c};
+   auto p = ctx.make_parser();
+   p.input(document).eof();
+
+* Its ``result()`` returns ``void``. The rules store each value as it is parsed, so after
+  ``eof()``, the variables that you gave the rules hold the document. If the parse fails,
+  they may hold part of it.
+* ``result()`` also empties the context's stack. A context parses one document, so call
+  the context's ``reset()`` before you parse another.
+* The backend holds only a pointer to the context. It can be copied, and the context must
+  outlive it.
+* The backend allocates no memory. The context holds its rules in a fixed-size buffer, so
+  only your own types, such as ``std::string`` or ``std::vector``, allocate.
+* Like the parser's own errors, the rules' errors are ``std::error_code`` values that stop
+  the parse. They belong to ``peejay::rules::error``: see
+  :ref:`reference/errors:rules errors`.
+
+See :doc:`rules` for the context, the rules that peejay provides, and how to write your
+own, and :ref:`the tutorial <tutorial:read values into your own types>` for an
+introduction.
