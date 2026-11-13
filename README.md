@@ -18,10 +18,11 @@ JSON Parser for C++
 Peejay (PJ, from the English pronunciation of **P**arse **J**SON) is a header-only C++ library that provides a state-machine-driven JSON parser with the following characteristics:
 
 - C++20 or later language standard requirement
-- Single-character parsing: feed content to the parser a byte or entire document at a time
+- A push parser: feed the parser a byte, an entire document, or anything in between
 - The parser front-end has fixed and predictable overhead: it does not allocate memory and does not throw or catch exceptions
-- Template-based backend system allowing DOM construction, validation-only parsing, or custom output formats
+- A template-based backend system allowing validation-only parsing, rules-based grammar, DOM construction, or custom output formats
 - Policy-driven configuration for customisation
+- Excellent efficiency: a useful implementation using default policies can be as little as ~6.3K (x86_64) or ~5.1K (ARM v7 Thumb-2)
 
 ## Example
 
