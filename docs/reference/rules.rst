@@ -9,22 +9,22 @@ Rules
    #include "peejay/rules/errors.hpp"              // error, error_category
 
    namespace peejay::rules {
-     template <policy Policies, is_rule<Policies> Root> class context;
-     template <policy Policies> class context_base;
-     template <policy Policies> class backend;
-     template <policy Policies> class rule;
+     template <policies Policies, is_rule<Policies> Root> class context;
+     template <policies Policies> class context_base;
+     template <policies Policies> class backend;
+     template <policies Policies> class rule;
 
-     template <policy Policies> class bool_rule;
-     template <policy Policies, integer_target T = Policies::integer_type> class integer_rule;
-     template <policy Policies> using uinteger_rule = /* see below */;
-     template <policy Policies> class float_rule;
-     template <policy Policies, string_target String = std::u8string> class string_rule;
+     template <policies Policies> class bool_rule;
+     template <policies Policies, integer_target T = Policies::integer_type> class integer_rule;
+     template <policies Policies> using uinteger_rule = /* see below */;
+     template <policies Policies> class float_rule;
+     template <policies Policies, string_target String = std::u8string> class string_rule;
 
-     template <policy Policies, std::size_t Elements, user_rule<Policies>... UserRules> class object_rule;
-     template <policy Policies, emplace_back_container Container, typename Rule = /* see below */,
+     template <policies Policies, std::size_t Elements, user_rule<Policies>... UserRules> class object_rule;
+     template <policies Policies, emplace_back_container Container, typename Rule = /* see below */,
                std::size_t MaxElements = 0>
      class homogeneous_array_rule;
-     template <policy Policies, enum_target T, std::size_t Elements> class enum_rule;
+     template <policies Policies, enum_target T, std::size_t Elements> class enum_rule;
 
      enum class error : int;
    }
@@ -82,7 +82,7 @@ A rule writes each value as soon as it is parsed. There is no separate result: a
 
 .. code-block:: cpp
 
-   template <policy Policies, is_rule<Policies> Root>
+   template <policies Policies, is_rule<Policies> Root>
    class context final : public context_base<Policies>;
 
 ``Policies``
@@ -158,7 +158,7 @@ empty. Its ``result()`` returns ``void``.
 
 .. code-block:: cpp
 
-   template <policy Policies> class rule;
+   template <policies Policies> class rule;
 
 The base class of every rule. To write a rule, derive from ``rule<Policies>``, override
 the functions for the events that your rule accepts, and override ``name()``.
@@ -355,7 +355,7 @@ length of every string.
 
 .. code-block:: cpp
 
-   template <policy Policies, std::size_t Elements, user_rule<Policies>... UserRules>
+   template <policies Policies, std::size_t Elements, user_rule<Policies>... UserRules>
    class object_rule : public rule<Policies>;
 
 A base class for rules that parse a JSON object with a fixed set of properties, such as
@@ -407,7 +407,7 @@ Behaviour:
 
 .. code-block:: cpp
 
-   template <policy Policies, emplace_back_container Container,
+   template <policies Policies, emplace_back_container Container,
              typename Rule = type_to_terminal<typename Container::value_type, Policies>::type,
              std::size_t MaxElements = 0>
      requires(MaxElements == 0 || std::ranges::sized_range<Container>)
@@ -450,7 +450,7 @@ Behaviour:
 
 .. code-block:: cpp
 
-   template <policy Policies, enum_target T, std::size_t Elements>
+   template <policies Policies, enum_target T, std::size_t Elements>
    class enum_rule : public rule<Policies>;
 
 A base class for rules that accept one of a fixed set of strings and store a value that

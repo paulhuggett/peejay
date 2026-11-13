@@ -136,7 +136,7 @@ template <typename T, typename Arg> inline constexpr bool is_single_v<T, Arg> = 
 
 /// \brief A position within the input text.
 ///
-/// This primary template is used when position tracking is disabled (see policy::pos_tracking) and has no members.
+/// This primary template is used when position tracking is disabled (see policies::pos_tracking) and has no members.
 ///
 /// \tparam Enabled  True if position tracking is enabled.
 template <bool Enabled> struct coord {};
@@ -166,7 +166,7 @@ template <> struct coord<true> {
   unsigned line = 1U;
 };
 
-/// \brief The default parser policies. These satisfy the peejay::policy concept.
+/// \brief The default parser policies. These satisfy the peejay::policies concept.
 struct default_policies {
   /// The maximum length of strings that will be permitted before
   /// a string_too_long is raised.

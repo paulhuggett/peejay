@@ -335,7 +335,7 @@ TEST_F(JsonArray, EndFails) {
 }
 
 // A mock backend which also provides the optional element() member function.
-template <peejay::policy Policies> class mock_element_callbacks : public mock_json_callbacks<Policies> {
+template <peejay::policies Policies> class mock_element_callbacks : public mock_json_callbacks<Policies> {
 public:
   // NOLINTNEXTLINE
   MOCK_METHOD(std::error_code, element, ());

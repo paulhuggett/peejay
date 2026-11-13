@@ -46,7 +46,7 @@ struct address {
   unsigned port = 0;
 };
 
-template <peejay::policy Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
+template <peejay::policies Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
 public:
   using policies = Policies;
   using value_type = address;
@@ -57,7 +57,7 @@ public:
   [[nodiscard]] constexpr char const* name() const noexcept override { return "address"; }
 };
 
-template <peejay::policy Policies>
+template <peejay::policies Policies>
 using address_array_rule =
     peejay::rules::homogeneous_array_rule<Policies, std::vector<address>, address_rule<Policies>>;
 

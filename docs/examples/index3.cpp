@@ -48,10 +48,10 @@ struct multiport_address {
   std::vector<unsigned> ports;
 };
 
-template <peejay::policy Policies>
+template <peejay::policies Policies>
 using multiport_rule = peejay::rules::homogeneous_array_rule<Policies, std::vector<unsigned>>;
 
-template <peejay::policy Policies>
+template <peejay::policies Policies>
 class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>> {
 public:
   using policies = Policies;

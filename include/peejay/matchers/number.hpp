@@ -236,15 +236,15 @@ constexpr std::size_t get_work_limbs(std::int64_t underflow_decimal, int max_dig
   auto const bits = std::max(negative_bits > positive_bits ? negative_bits : positive_bits, floor_bits);
   return static_cast<std::size_t>((bits + 64 + 31) / 32);
 }
-/// \tparam Policy  The parser policies.
-/// \returns The value of Policy::max_significant_digits if the policy provides it, otherwise 0 (meaning that the
+/// \tparam Policies  The parser policies.
+/// \returns The value of Policies::max_significant_digits if the policy provides it, otherwise 0 (meaning that the
 ///   default number of digits is retained).
-template <policy Policy>
+template <policies Policies>
 static constexpr int get_requested_digits() {
-  if constexpr (requires { Policy::max_significant_digits; }) {
-    static_assert(Policy::max_significant_digits <= std::numeric_limits<std::uint16_t>::max(),
+  if constexpr (requires { Policies::max_significant_digits; }) {
+    static_assert(Policies::max_significant_digits <= std::numeric_limits<std::uint16_t>::max(),
                   "policies::max_significant_digits is too large");
-    return static_cast<int>(Policy::max_significant_digits);
+    return static_cast<int>(Policies::max_significant_digits);
   } else {
     return 0;
   }

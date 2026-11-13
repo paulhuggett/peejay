@@ -45,8 +45,8 @@ namespace peejay {
 
 /// A PJ JSON parser backend which simply discards all of its input.
 ///
-/// \tparam Policies  A type satisfying the policy concept which configures the parser.
-template <policy Policies = default_policies> class null {
+/// \tparam Policies  A type satisfying the policies concept which configures the parser.
+template <policies Policies = default_policies> class null {
 public:
   /// The parser policies used with this backend.
   using policies = std::remove_reference_t<Policies>;

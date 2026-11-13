@@ -90,7 +90,7 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 ///   these rules. The value_types must be distinct from each other and from the built-in property types. These rules
 ///   must be complete types, so a rule cannot name itself here. A recursive grammar needs a rule derived directly from
 ///   rule<>.
-template <policy Policies, std::size_t Elements, user_rule<Policies>... UserRules>
+template <policies Policies, std::size_t Elements, user_rule<Policies>... UserRules>
 class object_rule : public rule<Policies> {
   /// Pointers to the types handled by the built-in terminal rules.
   using builtin_pointers =
@@ -213,7 +213,7 @@ namespace details {
 
 /// Declared but not defined: used only to find the object_rule from which a type is derived.
 /// \returns A pointer to the object_rule base class of the argument.
-template <policy Policies, std::size_t Elements, typename... UserRules>
+template <policies Policies, std::size_t Elements, typename... UserRules>
 object_rule<Policies, Elements, UserRules...> const* object_rule_base(
     object_rule<Policies, Elements, UserRules...> const*);
 
@@ -246,7 +246,7 @@ concept enum_target = (std::is_enum_v<T> && !std::is_const_v<T> && !std::is_vola
 /// \tparam Policies  The parser policies.
 /// \tparam T  The type of the value stored by this rule.
 /// \tparam Elements  The maximum number of enumerators.
-template <policy Policies, enum_target T, std::size_t Elements> class enum_rule : public rule<Policies> {
+template <policies Policies, enum_target T, std::size_t Elements> class enum_rule : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -355,7 +355,7 @@ concept max_size_container = requires(Container const& c) {
 ///   float_type, std::u8string, std::string, or arrayvec<char8_t, Size>.
 /// \tparam MaxElements  The maximum number of elements allowed in the container or 0 for no limit. If not 0,
 ///   Container must also be a sized range.
-template <policy Policies, emplace_back_container Container,
+template <policies Policies, emplace_back_container Container,
           typename Rule = typename type_to_terminal<typename Container::value_type, Policies>::type,
           std::size_t MaxElements = 0U>
   requires(MaxElements == 0 || std::ranges::sized_range<Container>)

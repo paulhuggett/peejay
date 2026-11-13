@@ -154,7 +154,7 @@ Output:
 
 A backend must have:
 
-* A nested type named ``policies`` that satisfies the :cpp:concept:`peejay::policy`
+* A nested type named ``policies`` that satisfies the :cpp:concept:`peejay::policies`
   concept. The parser uses it for its own configuration.
 * One member function for each kind of event: ``string_value``, ``integer_value``,
   ``float_value``, ``boolean_value``, ``null_value``, ``begin_array``, ``end_array``,
