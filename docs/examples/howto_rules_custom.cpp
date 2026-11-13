@@ -77,7 +77,7 @@ struct marker {
   std::optional<int> layer;
 };
 
-class marker_rule final : public peejay::rules::object_rule<policies, 3, point_rule, optional_int_rule> {
+class marker_rule final : public peejay::rules::object_rule<policies, 3, 0, point_rule, optional_int_rule> {
 public:
   using value_type = marker;
 

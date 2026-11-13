@@ -32,8 +32,8 @@ struct logger {
   level threshold = level::info;
 };
 
-// The rule for a property of type level is listed after the number of properties.
-class logger_rule final : public peejay::rules::object_rule<policies, 2, level_rule> {
+// The rule for a property of type level is listed after the numbers of required and optional properties.
+class logger_rule final : public peejay::rules::object_rule<policies, 2, 0, level_rule> {
 public:
   using value_type = logger;
 

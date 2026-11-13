@@ -27,7 +27,7 @@ using id_rule = peejay::rules::string_rule<policies, sensor_id>;
 using readings_rule =
     peejay::rules::homogeneous_array_rule<policies, readings, peejay::rules::integer_rule<policies, std::int16_t>, 4>;
 
-class sensor_rule final : public peejay::rules::object_rule<policies, 2, id_rule, readings_rule> {
+class sensor_rule final : public peejay::rules::object_rule<policies, 2, 0, id_rule, readings_rule> {
 public:
   using value_type = sensor;
 

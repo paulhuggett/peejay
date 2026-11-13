@@ -242,8 +242,9 @@ Here is how it works.
 
 ``config_rule``
    :cpp:class:`object_rule <peejay::rules::object_rule>` parses an object with a fixed set
-   of properties. Its template arguments are the policy, the number of properties, and the
-   rules for any properties whose types are not built in: here, the array of hosts. The
+   of properties. Its template arguments are the policy, the number of required
+   properties, the number of optional properties (none here), and the rules for any
+   properties whose types are not built in: here, the array of hosts. The
    constructor passes ``object_rule``'s constructor a list of pairs, each of an object key
    and a pointer to the variable that receives its value. The type of each pointer tells
    ``object_rule`` how to parse the value, so ``&c->port`` is parsed as an integer that
@@ -263,6 +264,10 @@ When the parse succeeds, ``c`` holds the document. The four documents at the end
 program show what happens otherwise. Each property must be present; a number must fit in
 its variable; a value must have the expected type; and a key must be one of the
 properties. On the first problem, the parse stops with an error.
+
+All four of ``config``\ 's properties are required. An ``object_rule`` can also have
+optional properties, which the object may leave out: :doc:`howto/read-optional-properties`
+shows how.
 
 Next steps
 ----------

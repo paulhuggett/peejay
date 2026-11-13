@@ -18,6 +18,7 @@ set(peejay_doc_examples
   howto_rules_custom
   howto_rules_enum
   howto_rules_fixed
+  howto_rules_optional
   howto_walk_dom
   index1
   index2
