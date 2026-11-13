@@ -695,7 +695,7 @@ struct address {
   unsigned port = 0;
 };
 
-template <peejay::policy Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
+template <peejay::policies Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
 public:
   using policies = Policies;
   using value_type = address;
@@ -711,10 +711,10 @@ struct server {
   std::vector<unsigned> ports;
 };
 
-template <peejay::policy Policies>
+template <peejay::policies Policies>
 using multiport_rule = peejay::rules::homogeneous_array_rule<Policies, std::vector<unsigned>>;
 
-template <peejay::policy Policies>
+template <peejay::policies Policies>
 class server_rule final
     : public peejay::rules::object_rule<Policies, 3, address_rule<Policies>, multiport_rule<Policies>> {
   using inherited = peejay::rules::object_rule<Policies, 3, address_rule<Policies>, multiport_rule<Policies>>;
@@ -738,7 +738,7 @@ struct multiport_address {
   std::vector<unsigned> ports;
 };
 
-template <peejay::policy Policies>
+template <peejay::policies Policies>
 class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>> {
   using inherited = peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>>;
 

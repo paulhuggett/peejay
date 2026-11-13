@@ -98,7 +98,7 @@ template <typename T> static constexpr inline bool is_unique_pointer_v = is_uniq
 /// integer, floating-point number (if enabled), string, array, or object.
 ///
 /// \tparam PJPolicies  The parser policies. These supply the integer and floating-point types.
-template <policy PJPolicies> class element {
+template <policies PJPolicies> class element {
 public:
   /// The type used to represent a JSON null.
   using null = peejay::dom::null;
@@ -373,7 +373,7 @@ struct default_dom_policies {
 ///
 /// \tparam PJPolicies  The parser policies.
 /// \tparam DOMPolicies  The DOM policies which limit the size of arrays and objects.
-template <policy PJPolicies = default_policies, dom_policies DOMPolicies = default_dom_policies> class dom {
+template <policies PJPolicies = default_policies, dom_policies DOMPolicies = default_dom_policies> class dom {
 public:
   /// The parser policies used with this backend.
   using policies = std::remove_reference_t<PJPolicies>;
@@ -536,7 +536,7 @@ public:
 //*                  *
 // result
 // ~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies>
+template <policies PJPolicies, dom_policies DOMPolicies>
 std::optional<element<PJPolicies>> dom<PJPolicies, DOMPolicies>::result() noexcept {
   if (stack_.empty()) {
     return {std::nullopt};
@@ -553,7 +553,7 @@ std::optional<element<PJPolicies>> dom<PJPolicies, DOMPolicies>::result() noexce
 
 // float value
 // ~~~~~~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies>
+template <policies PJPolicies, dom_policies DOMPolicies>
 std::error_code dom<PJPolicies, DOMPolicies>::float_value(float_type v) {
   if constexpr (std::same_as<float_type, no_float_type>) {
     // Floating point support is disabled so do nothing (the function will never be called anyway).
@@ -565,13 +565,13 @@ std::error_code dom<PJPolicies, DOMPolicies>::float_value(float_type v) {
 
 // begin array
 // ~~~~~~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_array() {
+template <policies PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_array() {
   stack_.emplace(element::template make<array>());
   return {};
 }
 // end array
 // ~~~~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_array() {
+template <policies PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_array() {
   assert(!stack_.empty() && stack_.top().template holds<array>() &&
          "The element on top of the stack must be of type array.");
   return this->end_composite();
@@ -579,21 +579,21 @@ template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPol
 
 // begin object
 // ~~~~~~~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_object() {
+template <policies PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::begin_object() {
   assert(stack_.size() < PJPolicies::max_stack_depth && "The DOM stack has overflowed");
   stack_.emplace(element::template make<object>());
   return {};
 }
 // key
 // ~~~
-template <policy PJPolicies, dom_policies DOMPolicies>
+template <policies PJPolicies, dom_policies DOMPolicies>
 std::error_code dom<PJPolicies, DOMPolicies>::key(std::u8string_view const& s) {
   key_.emplace(s);
   return {};
 }
 // end object
 // ~~~~~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_object() {
+template <policies PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_object() {
   assert(!stack_.empty() && stack_.top().template holds<object>() &&
          "The element on top of the stack must be of type object.");
   return this->end_composite();
@@ -601,13 +601,13 @@ template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPol
 
 // record
 // ~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies>
+template <policies PJPolicies, dom_policies DOMPolicies>
 template <typename MemberType, typename... Args>
 std::error_code dom<PJPolicies, DOMPolicies>::record(Args &&...args) {
   return this->record(element::template make<MemberType>(std::forward<Args>(args)...));
 }
 
-template <policy PJPolicies, dom_policies DOMPolicies>
+template <policies PJPolicies, dom_policies DOMPolicies>
 std::error_code dom<PJPolicies, DOMPolicies>::record(element &&el) {
   if (stack_.empty()) {
     assert(stack_.size() < PJPolicies::max_stack_depth && "The DOM stack has overflowed");
@@ -636,7 +636,7 @@ std::error_code dom<PJPolicies, DOMPolicies>::record(element &&el) {
 
 // end composite
 // ~~~~~~~~~~~~~
-template <policy PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_composite() {
+template <policies PJPolicies, dom_policies DOMPolicies> std::error_code dom<PJPolicies, DOMPolicies>::end_composite() {
   if (stack_.size() < 2) {
     return {};
   }

@@ -101,18 +101,18 @@ template <std::size_t Size> inline constexpr bool is_char8_arrayvec<arrayvec<cha
 template <typename T>
 concept string_target = std::same_as<T, std::u8string> || std::same_as<T, std::string> || details::is_char8_arrayvec<T>;
 
-template <policy Policies> class rule;
-template <policy Policies> class backend;
-template <policy Policies> class bool_rule;
-template <policy Policies, integer_target T = typename Policies::integer_type> class integer_rule;
-template <policy Policies> class float_rule;
-template <policy Policies, string_target String = std::u8string> class string_rule;
+template <policies Policies> class rule;
+template <policies Policies> class backend;
+template <policies Policies> class bool_rule;
+template <policies Policies, integer_target T = typename Policies::integer_type> class integer_rule;
+template <policies Policies> class float_rule;
+template <policies Policies, string_target String = std::u8string> class string_rule;
 
 /// A rule which accepts a non-negative integer value no larger than the unsigned equivalent of the policy's
 /// integer_type can hold.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies = default_policies>
+template <policies Policies = default_policies>
 using uinteger_rule = integer_rule<Policies, std::make_unsigned_t<typename Policies::integer_type>>;
 
 namespace details {
@@ -124,7 +124,7 @@ using add_unique =
 
 /// Provides an alias template which maps an integer type to the integer_rule which assigns it.
 /// \tparam Policies  The parser policies.
-template <policy Policies> struct integer_rule_for {
+template <policies Policies> struct integer_rule_for {
   /// The integer_rule which assigns values of type \p T.
   /// \tparam T  The integer type.
   template <typename T> using type = integer_rule<Policies, T>;
@@ -136,7 +136,7 @@ template <policy Policies> struct integer_rule_for {
 /// unsigned integer types plus the policy's integer_type and its unsigned equivalent if those are not already present.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies>
+template <policies Policies>
 using builtin_integers = details::add_unique<
     details::add_unique<type_list::type_list<signed char, short, int, long, long long, unsigned char, unsigned short,
                                              unsigned, unsigned long, unsigned long long>,
@@ -146,7 +146,7 @@ using builtin_integers = details::add_unique<
 /// The rules which handle the terminals of the grammar.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies>
+template <policies Policies>
 using builtin_rules = type_list::concat<
     type_list::type_list<bool_rule<Policies>, float_rule<Policies>, string_rule<Policies>,
                          string_rule<Policies, std::string>>,
@@ -159,7 +159,7 @@ using builtin_rules = type_list::concat<
 /// used. Instances are created by deriving from this class: see peejay::rules::context.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies> class context_base {
+template <policies Policies> class context_base {
   friend class rule<Policies>;
   friend class backend<Policies>;
 
@@ -218,42 +218,42 @@ private:
 /// Maps a value type to the terminal rule which assigns it. The member `type` is absent if there is no such rule.
 /// \tparam T  The type of the value.
 /// \tparam Policies  The parser policies.
-template <typename T, policy Policies> struct type_to_terminal {};
+template <typename T, policies Policies> struct type_to_terminal {};
 /// Integers are assigned by integer_rule.
 /// \tparam T  The type of the value.
 /// \tparam Policies  The parser policies.
-template <integer_target T, policy Policies> struct type_to_terminal<T, Policies> {
+template <integer_target T, policies Policies> struct type_to_terminal<T, Policies> {
   /// The terminal rule.
   using type = integer_rule<Policies, T>;
 };
 /// Floating-point values are assigned by float_rule.
 /// \tparam Policies  The parser policies.
-template <policy Policies> struct type_to_terminal<typename Policies::float_type, Policies> {
+template <policies Policies> struct type_to_terminal<typename Policies::float_type, Policies> {
   /// The terminal rule.
   using type = float_rule<Policies>;
 };
 /// Booleans are assigned by bool_rule.
 /// \tparam Policies  The parser policies.
-template <policy Policies> struct type_to_terminal<bool, Policies> {
+template <policies Policies> struct type_to_terminal<bool, Policies> {
   /// The terminal rule.
   using type = bool_rule<Policies>;
 };
 /// Strings are assigned by string_rule.
 /// \tparam Policies  The parser policies.
-template <policy Policies> struct type_to_terminal<std::u8string, Policies> {
+template <policies Policies> struct type_to_terminal<std::u8string, Policies> {
   /// The terminal rule.
   using type = string_rule<Policies>;
 };
 /// Strings are assigned by string_rule.
 /// \tparam Policies  The parser policies.
-template <policy Policies> struct type_to_terminal<std::string, Policies> {
+template <policies Policies> struct type_to_terminal<std::string, Policies> {
   /// The terminal rule.
   using type = string_rule<Policies, std::string>;
 };
 /// Strings held in an arrayvec of char8_t are assigned by string_rule.
 /// \tparam Size  The capacity of the arrayvec.
 /// \tparam Policies  The parser policies.
-template <std::size_t Size, policy Policies> struct type_to_terminal<arrayvec<char8_t, Size>, Policies> {
+template <std::size_t Size, policies Policies> struct type_to_terminal<arrayvec<char8_t, Size>, Policies> {
   /// The terminal rule.
   using type = string_rule<Policies, arrayvec<char8_t, Size>>;
 };
@@ -268,7 +268,7 @@ template <std::size_t Size, policy Policies> struct type_to_terminal<arrayvec<ch
 /// through base_children: object_rule does this.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies> class rule {
+template <policies Policies> class rule {
   friend class context_base<Policies>;
 
 public:
@@ -444,7 +444,7 @@ private:
   std::byte* frame_ = nullptr;
 };
 
-template <policy Policies>
+template <policies Policies>
 template <typename T, typename... Args>
   requires std::derived_from<T, rule<Policies>> && std::is_trivially_destructible_v<T>
 std::error_code context_base<Policies>::emplace(Args&&... args) {
@@ -461,7 +461,7 @@ std::error_code context_base<Policies>::emplace(Args&&... args) {
   return {};
 }
 
-template <policy Policies> void context_base<Policies>::unwind() noexcept {
+template <policies Policies> void context_base<Policies>::unwind() noexcept {
   for (auto* r = top_; r != nullptr; r = r->previous_) {
     // Each rule other than the top one was the rule that pushed the one above it.
     r->abandon(r != top_);
@@ -478,7 +478,7 @@ template <policy Policies> void context_base<Policies>::unwind() noexcept {
 /// and any further event produces error::no_active_rule.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies = default_policies> class backend {
+template <policies Policies = default_policies> class backend {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -606,7 +606,7 @@ template <typename Rule, typename Base, typename... Path> consteval stack_bound 
 ///
 /// \tparam Policies  The parser policies.
 /// \tparam Root  The rule which parses the top-level value.
-template <policy Policies, typename Root>
+template <policies Policies, typename Root>
 inline constexpr std::size_t stack_bytes_v = [] {
   constexpr stack_bound bound = analyze_rule<Root, rule<Policies>>();
   return bound.recursive ? Policies::max_stack_depth * bound.largest_frame : bound.longest_path;
@@ -630,7 +630,7 @@ template <std::size_t Size, std::size_t Alignment> struct stack_storage {
 /// \tparam Policies  The parser policies.
 /// \tparam Root  The rule which parses the top-level value. It and the rules that can be reached through their
 ///   `children` member types determine the size of the context.
-template <policy Policies, is_rule<Policies> Root>
+template <policies Policies, is_rule<Policies> Root>
 class context final : private details::stack_storage<details::stack_bytes_v<Policies, Root>, alignof(rule<Policies>)>,
                       public context_base<Policies> {
 public:

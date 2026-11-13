@@ -26,7 +26,7 @@ A type ``B`` satisfies ``backend`` when, for an object ``be`` of type ``B``:
    * - Expression
      - Requirement
    * - ``typename B::policies``
-     - A type that satisfies :cpp:concept:`peejay::policy`. See :doc:`policies`.
+     - A type that satisfies :cpp:concept:`peejay::policies`. See :doc:`policies`.
    * - ``be.result()``
      - Valid. The return type is not constrained.
    * - ``be.string_value(std::u8string_view{})``
@@ -125,7 +125,7 @@ The null backend
    #include "peejay/null.hpp"
 
    namespace peejay {
-     template <policy Policies = default_policies> class null;
+     template <policies Policies = default_policies> class null;
    }
 
 ``peejay::null`` accepts every event and ignores it. Its ``result()`` returns
@@ -141,11 +141,11 @@ The DOM backend
    #include "peejay/dom.hpp"
 
    namespace peejay::dom {
-     template <policy PJPolicies = default_policies,
+     template <policies PJPolicies = default_policies,
                dom_policies DOMPolicies = default_dom_policies>
      class dom;
 
-     template <policy PJPolicies> class element;
+     template <policies PJPolicies> class element;
      struct null;
      struct default_dom_policies;
      enum class dom_error;

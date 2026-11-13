@@ -4,16 +4,16 @@ Policies
 A policy is a type that configures the parser at compile time. The parser uses the
 policy named by its backend's nested ``policies`` type.
 
-The ``policy`` concept
-----------------------
+The ``policies`` concept
+------------------------
 
 .. code-block:: cpp
 
    #include "peejay/concepts.hpp"   // Also included by "peejay/json.hpp".
 
-   template <typename Policy> concept policy = /* see below */;
+   template <typename Policies> concept policies = /* see below */;
 
-A type ``P`` satisfies ``policy`` when it has the following members. The values are
+A type ``P`` satisfies ``policies`` when it has the following members. The values are
 normally ``static constexpr`` data members.
 
 .. list-table::

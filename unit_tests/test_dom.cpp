@@ -119,7 +119,7 @@ template <typename T>
 }
 
 
-template <peejay::policy Policies = peejay::default_policies>
+template <peejay::policies Policies = peejay::default_policies>
 std::optional<element<Policies>> parse(std::u8string_view const& s) {
   auto p = make_parser(dom<Policies>{});
   return input(p, s).eof();

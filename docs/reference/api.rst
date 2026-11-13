@@ -24,7 +24,7 @@ Concepts and policies
 
 .. doxygenconcept:: peejay::backend
 
-.. doxygenconcept:: peejay::policy
+.. doxygenconcept:: peejay::policies
 
 .. doxygenstruct:: peejay::default_policies
    :members:

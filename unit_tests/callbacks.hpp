@@ -45,7 +45,7 @@ template <typename Parser> Parser &input(Parser &parser, std::u8string_view cons
   return parser.input(str);
 }
 
-template <peejay::policy Policies> class json_callbacks_base {
+template <peejay::policies Policies> class json_callbacks_base {
 public:
   using integer_type = Policies::integer_type;
   using float_type = Policies::float_type;
@@ -76,7 +76,7 @@ public:
   virtual std::error_code end_object() = 0;
 };
 
-template <peejay::policy Policies> class mock_json_callbacks : public json_callbacks_base<Policies> {
+template <peejay::policies Policies> class mock_json_callbacks : public json_callbacks_base<Policies> {
 public:
   using integer_type = json_callbacks_base<Policies>::integer_type;
   using float_type = json_callbacks_base<Policies>::float_type;

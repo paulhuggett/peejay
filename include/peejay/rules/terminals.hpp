@@ -48,7 +48,7 @@ namespace peejay::rules {
 /// A rule which accepts a boolean value.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies = peejay::default_policies> class bool_rule final : public rule<Policies> {
+template <policies Policies = peejay::default_policies> class bool_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -81,7 +81,7 @@ private:
 ///
 /// \tparam Policies  The parser policies.
 /// \tparam T  The type of the value stored by this rule. Defaults to the policy's integer_type.
-template <policy Policies = default_policies, integer_target T> class integer_rule final : public rule<Policies> {
+template <policies Policies = default_policies, integer_target T> class integer_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -116,7 +116,7 @@ private:
 /// integer) is also accepted and converted. A large integer may be rounded by that conversion.
 ///
 /// \tparam Policies  The parser policies.
-template <policy Policies = default_policies> class float_rule final : public rule<Policies> {
+template <policies Policies = default_policies> class float_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;
@@ -158,7 +158,7 @@ private:
 /// \tparam Policies  The parser policies.
 /// \tparam String  The type of the value stored by this rule: std::u8string (the default), std::string, or
 ///   arrayvec<char8_t, Size>.
-template <policy Policies = default_policies, string_target String> class string_rule final : public rule<Policies> {
+template <policies Policies = default_policies, string_target String> class string_rule final : public rule<Policies> {
 public:
   /// The parser policies.
   using policies = Policies;

@@ -45,7 +45,7 @@ struct address {
   unsigned port = 0;
 };
 
-template <peejay::policy Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
+template <peejay::policies Policies> class address_rule final : public peejay::rules::object_rule<Policies, 3> {
 public:
   using policies = Policies;
   using value_type = address;
