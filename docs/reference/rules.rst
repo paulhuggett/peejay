@@ -20,7 +20,9 @@ Rules
      template <policies Policies> class float_rule;
      template <policies Policies, string_target String = std::u8string> class string_rule;
 
-     template <policies Policies, std::size_t Elements, user_rule<Policies>... UserRules> class object_rule;
+     template <policies Policies, std::size_t RequiredElements, std::size_t OptionalElements = 0,
+               user_rule<Policies>... UserRules>
+     class object_rule;
      template <policies Policies, emplace_back_container Container, typename Rule = /* see below */,
                std::size_t MaxElements = 0>
      class homogeneous_array_rule;
@@ -355,12 +357,14 @@ length of every string.
 
 .. code-block:: cpp
 
-   template <policies Policies, std::size_t Elements, user_rule<Policies>... UserRules>
+   template <policies Policies, std::size_t RequiredElements, std::size_t OptionalElements = 0,
+             user_rule<Policies>... UserRules>
    class object_rule : public rule<Policies>;
 
 A base class for rules that parse a JSON object with a fixed set of properties, such as
-a struct. Derive from it, define ``value_type`` and ``name()``, and pass the properties
-to ``object_rule``'s constructor:
+a struct. Each property is either required, so it must be present, or optional, so it
+may be left out. Derive from it, define ``value_type`` and ``name()``, and pass the
+properties to ``object_rule``'s constructor. Here, both properties are required:
 
 .. code-block:: cpp
 
@@ -374,8 +378,12 @@ to ``object_rule``'s constructor:
 When the derived class is a template, name the base class in full, as in
 ``object_rule<Policies, 2>{...}``.
 
-``Elements``
-   The largest number of properties.
+``RequiredElements``
+   The largest number of required properties.
+
+``OptionalElements``
+   The largest number of optional properties. It defaults to 0, but must be given
+   explicitly when there are ``UserRules``, as in ``object_rule<Policies, 2, 0, id_rule>``.
 
 ``UserRules``
    The rules for properties of types that are not built in. A property may point to the
@@ -386,16 +394,41 @@ When the derived class is a template, name the base class in full, as in
    A property: an object key and a pointer to the variable that receives its value.
 
 ``explicit object_rule(std::initializer_list<property>)``
-   Constructs the rule with the given properties. Also available for an iterator and
-   sentinel, and (``explicit``) for a range. Each is the same as default-constructing the
-   rule and then calling ``set_properties()`` with the same arguments. These constructors
-   and the default constructor are ``protected``.
+   Constructs the rule with the given required properties. Also available for an iterator
+   and sentinel, and (``explicit``) for a range. Each is the same as default-constructing
+   the rule and then calling ``set_properties()`` with the same arguments. These
+   constructors and the default constructor are ``protected``.
+
+``object_rule(std::initializer_list<property> required, std::initializer_list<property> optional)``
+   Constructs the rule with required and optional properties. Also available for two
+   iterator and sentinel pairs, and for two ranges. As above, each is the same as calling
+   ``set_properties()`` with the same arguments, and each is ``protected``. For example,
+   to require ``x`` and accept ``y`` in a rule derived from ``object_rule<policies, 1, 1>``:
+
+   .. code-block:: cpp
+
+      explicit point_rule(point* const pt) : object_rule{{{u8"x"sv, &pt->x}}, {{u8"y"sv, &pt->y}}} {}
+
+   Note the extra braces: each list is enclosed in its own pair. Without them, the
+   properties are passed to the single-list constructor and are all required.
+   :doc:`../howto/read-optional-properties` has a complete example.
 
 ``void set_properties(std::initializer_list<property>)``
-   Sets the properties, replacing any that were set before. Also available for an iterator
-   and sentinel, and for a range. There must be at most ``Elements`` of them. The keys are
-   stored as ``std::u8string_view``, so the strings must outlive the rule. String literals
-   are the usual choice.
+   Sets the required properties, replacing any that were set before and removing any
+   optional properties. Also available for an iterator and sentinel, and for a range.
+   There must be at most ``RequiredElements`` of them. The keys are stored as
+   ``std::u8string_view``, so the strings must outlive the rule. String literals are the
+   usual choice.
+
+``void set_properties(std::initializer_list<property> required, std::initializer_list<property> optional)``
+   Sets the required and the optional properties, replacing any that were set before.
+   Also available for two iterator and sentinel pairs, and for two ranges. There may be
+   at most ``RequiredElements`` required and ``OptionalElements`` optional properties.
+
+An object must contain every required property and may contain any of the optional ones.
+A key that is neither produces ``unrecognized_property``; a missing required property
+produces ``incomplete_object``. The variable for an optional property that is absent is
+left unchanged, so give it its default value first.
 
 The pointer in each property chooses the rule that parses its value:
 

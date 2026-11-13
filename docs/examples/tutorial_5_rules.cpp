@@ -26,7 +26,7 @@ struct config {
 using hosts_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<std::string>>;
 
 // Parses an object with exactly the four properties of a config.
-class config_rule final : public peejay::rules::object_rule<policies, 4, hosts_rule> {
+class config_rule final : public peejay::rules::object_rule<policies, 4, 0, hosts_rule> {
 public:
   using value_type = config;
 

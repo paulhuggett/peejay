@@ -52,14 +52,14 @@ template <peejay::policies Policies>
 using multiport_rule = peejay::rules::homogeneous_array_rule<Policies, std::vector<unsigned>>;
 
 template <peejay::policies Policies>
-class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>> {
+class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, 0, multiport_rule<Policies>> {
 public:
   using policies = Policies;
   using value_type = multiport_address;
 
   explicit multiport_address_rule(multiport_address* const addr)
-      : peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>>{{u8"name"sv, &addr->name},
-                                                                          {u8"ports"sv, &addr->ports}} {}
+      : peejay::rules::object_rule<Policies, 2, 0, multiport_rule<Policies>>{{u8"name"sv, &addr->name},
+                                                                             {u8"ports"sv, &addr->ports}} {}
   [[nodiscard]] constexpr char const* name() const noexcept override { return "multiport-address"; }
 };
 

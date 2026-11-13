@@ -89,7 +89,7 @@ template <std::size_t Elements> class point_rule final : public peejay::rules::o
 public:
   using value_type = point;
 
-  explicit point_rule(point* const pt) { this->set_properties({{u8"x"sv, {&pt->x}}, {u8"y"sv, {&pt->y}}}); }
+  explicit point_rule(point* const pt) { this->set_properties({{u8"x"sv, {&pt->x}}, {u8"y"sv, {&pt->y}}}, {}); }
 };
 
 // An object with no properties at all.
@@ -99,7 +99,7 @@ class empty_rule final : public peejay::rules::object_rule<policies, 2> {
 public:
   using value_type = int;
 
-  explicit empty_rule(int*) { this->set_properties(std::array<inherited::property, 0>{}); }
+  explicit empty_rule(int*) {}
 };
 
 // The same as point_rule, but passes the properties to object_rule's initializer-list constructor.
@@ -152,6 +152,61 @@ public:
   explicit empty_ctor_rule(int*) : inherited(std::array<inherited::property, 0>{}) {}
 };
 
+// Requires "x" and accepts an optional "y", passed to object_rule's two initializer-list constructor.
+template <std::size_t RequiredElements, std::size_t OptionalElements>
+class point_optional_list_ctor_rule final
+    : public peejay::rules::object_rule<policies, RequiredElements, OptionalElements> {
+  using inherited = peejay::rules::object_rule<policies, RequiredElements, OptionalElements>;
+
+public:
+  using value_type = point;
+
+  explicit point_optional_list_ctor_rule(point* const pt) : inherited{{{u8"x"sv, {&pt->x}}}, {{u8"y"sv, {&pt->y}}}} {}
+};
+
+// Requires "x" and accepts an optional "y", passed to object_rule's two-range constructor.
+template <std::size_t RequiredElements, std::size_t OptionalElements>
+class point_optional_range_ctor_rule final
+    : public peejay::rules::object_rule<policies, RequiredElements, OptionalElements> {
+  using inherited = peejay::rules::object_rule<policies, RequiredElements, OptionalElements>;
+  using property = typename inherited::property;
+
+public:
+  using value_type = point;
+
+  explicit point_optional_range_ctor_rule(point* const pt)
+      : inherited(std::array{property{u8"x"sv, {&pt->x}}}, std::array{property{u8"y"sv, {&pt->y}}}) {}
+};
+
+// Requires "x" and accepts an optional "y", passed to object_rule's constructor which takes two iterator and sentinel
+// pairs.
+template <std::size_t RequiredElements, std::size_t OptionalElements>
+class point_optional_iterator_ctor_rule final
+    : public peejay::rules::object_rule<policies, RequiredElements, OptionalElements> {
+  using inherited = peejay::rules::object_rule<policies, RequiredElements, OptionalElements>;
+  using property = typename inherited::property;
+  using properties = std::array<property, 1>;
+
+  point_optional_iterator_ctor_rule(properties const& required, properties const& optional)
+      : inherited(required.begin(), required.end(), optional.begin(), optional.end()) {}
+
+public:
+  using value_type = point;
+
+  explicit point_optional_iterator_ctor_rule(point* const pt)
+      : point_optional_iterator_ctor_rule(properties{{{u8"x"sv, {&pt->x}}}}, properties{{{u8"y"sv, {&pt->y}}}}) {}
+};
+
+// Every property is optional: no required properties, passed to object_rule's two initializer-list constructor.
+class all_optional_ctor_rule final : public peejay::rules::object_rule<policies, 0, 2> {
+  using inherited = peejay::rules::object_rule<policies, 0, 2>;
+
+public:
+  using value_type = point;
+
+  explicit all_optional_ctor_rule(point* const pt) : inherited{{}, {{u8"x"sv, {&pt->x}}, {u8"y"sv, {&pt->y}}}} {}
+};
+
 // An object with a property for each of the built-in types.
 struct builtins {
   bool b = false;
@@ -167,14 +222,16 @@ public:
   using value_type = builtins;
 
   explicit builtins_rule(builtins* const v) {
-    this->set_properties({
-        {u8"b"sv, {&v->b}},
-        {u8"i"sv, {&v->i}},
-        {u8"u"sv, {&v->u}},
-        {u8"f"sv, {&v->f}},
-        {u8"u8s"sv, {&v->u8s}},
-        {u8"s"sv, {&v->s}},
-    });
+    this->set_properties(
+        {
+            {u8"b"sv, {&v->b}},
+            {u8"i"sv, {&v->i}},
+            {u8"u"sv, {&v->u}},
+            {u8"f"sv, {&v->f}},
+            {u8"u8s"sv, {&v->u8s}},
+            {u8"s"sv, {&v->s}},
+        },
+        {});
   }
 };
 
@@ -197,18 +254,20 @@ public:
   using value_type = integers;
 
   explicit integers_rule(integers* const v) {
-    this->set_properties({
-        {u8"sc"sv, {&v->sc}},
-        {u8"s"sv, {&v->s}},
-        {u8"i"sv, {&v->i}},
-        {u8"l"sv, {&v->l}},
-        {u8"ll"sv, {&v->ll}},
-        {u8"uc"sv, {&v->uc}},
-        {u8"us"sv, {&v->us}},
-        {u8"u"sv, {&v->u}},
-        {u8"ul"sv, {&v->ul}},
-        {u8"ull"sv, {&v->ull}},
-    });
+    this->set_properties(
+        {
+            {u8"sc"sv, {&v->sc}},
+            {u8"s"sv, {&v->s}},
+            {u8"i"sv, {&v->i}},
+            {u8"l"sv, {&v->l}},
+            {u8"ll"sv, {&v->ll}},
+            {u8"uc"sv, {&v->uc}},
+            {u8"us"sv, {&v->us}},
+            {u8"u"sv, {&v->u}},
+            {u8"ul"sv, {&v->ul}},
+            {u8"ull"sv, {&v->ull}},
+        },
+        {});
   }
 };
 
@@ -307,10 +366,12 @@ struct paint {
   colour shade = colour::red;
 };
 
-class paint_rule final : public peejay::rules::object_rule<policies, 2, colour_rule<3>> {
+class paint_rule final : public peejay::rules::object_rule<policies, 2, 0, colour_rule<3>> {
 public:
   using value_type = paint;
-  explicit paint_rule(paint* const p) { this->set_properties({{u8"name"sv, {&p->name}}, {u8"shade"sv, {&p->shade}}}); }
+  explicit paint_rule(paint* const p) {
+    this->set_properties({{u8"name"sv, {&p->name}}, {u8"shade"sv, {&p->shade}}}, {});
+  }
 };
 
 using colours_rule = peejay::rules::homogeneous_array_rule<policies, std::vector<colour>, colour_rule<3>>;
@@ -336,10 +397,10 @@ struct label {
 };
 
 // An arrayvec string property needs its string_rule to be one of the UserRules.
-class label_rule final : public peejay::rules::object_rule<policies, 2, short_string_rule> {
+class label_rule final : public peejay::rules::object_rule<policies, 2, 0, short_string_rule> {
 public:
   using value_type = label;
-  explicit label_rule(label* const l) { this->set_properties({{u8"code"sv, {&l->code}}, {u8"id"sv, {&l->id}}}); }
+  explicit label_rule(label* const l) { this->set_properties({{u8"code"sv, {&l->code}}, {u8"id"sv, {&l->id}}}, {}); }
 };
 
 //-MARK: object_rule
@@ -471,6 +532,93 @@ TEST(ObjectRuleCtor, EmptyRangeUnrecognizedProperty) {
 }
 
 // NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, InitializerListOptionalPresent) {
+  point pt;
+  using rule = point_optional_list_ctor_rule<1, 1>;
+  EXPECT_FALSE(parse<rule>(u8R"({"x":1,"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, InitializerListOptionalAbsent) {
+  point pt;
+  pt.y = 7;
+  using rule = point_optional_list_ctor_rule<1, 1>;
+  EXPECT_FALSE(parse<rule>(u8R"({"x":1})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 7);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, InitializerListRequiredMissing) {
+  point pt;
+  using rule = point_optional_list_ctor_rule<4, 1>;
+  EXPECT_EQ(parse<rule>(u8R"({"y":2})"sv, &pt), make_error_code(error::incomplete_object));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, InitializerListEmptyKeyDoesNotMatchUnusedEntry) {
+  point pt;
+  using rule = point_optional_list_ctor_rule<1, 4>;
+  EXPECT_EQ(parse<rule>(u8R"({"x":1,"":3})"sv, &pt), make_error_code(error::unrecognized_property));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, RangeOptionalPresent) {
+  point pt;
+  using rule = point_optional_range_ctor_rule<4, 4>;
+  EXPECT_FALSE(parse<rule>(u8R"({"y":2,"x":1})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, RangeOptionalAbsent) {
+  point pt;
+  pt.y = 7;
+  using rule = point_optional_range_ctor_rule<1, 1>;
+  EXPECT_FALSE(parse<rule>(u8R"({"x":1})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 7);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, IteratorAndSentinelOptionalPresent) {
+  point pt;
+  using rule = point_optional_iterator_ctor_rule<1, 1>;
+  EXPECT_FALSE(parse<rule>(u8R"({"x":1,"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 1);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, IteratorAndSentinelUnrecognizedProperty) {
+  point pt;
+  using rule = point_optional_iterator_ctor_rule<1, 1>;
+  EXPECT_EQ(parse<rule>(u8R"({"x":1,"z":3})"sv, &pt), make_error_code(error::unrecognized_property));
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, AllOptionalEmptyObject) {
+  point pt;
+  pt.x = 5;
+  pt.y = 7;
+  EXPECT_FALSE(parse<all_optional_ctor_rule>(u8"{}"sv, &pt));
+  EXPECT_EQ(pt.x, 5);
+  EXPECT_EQ(pt.y, 7);
+}
+
+// NOLINTNEXTLINE
+TEST(ObjectRuleOptionalCtor, AllOptionalOneProperty) {
+  point pt;
+  pt.x = 5;
+  EXPECT_FALSE(parse<all_optional_ctor_rule>(u8R"({"y":2})"sv, &pt));
+  EXPECT_EQ(pt.x, 5);
+  EXPECT_EQ(pt.y, 2);
+}
+
+// NOLINTNEXTLINE
 TEST(ObjectRule, WrongValueType) {
   point pt;
   EXPECT_EQ(parse<point_rule<2>>(u8R"({"x":"one"})"sv, &pt), make_error_code(error::unexpected_string));
@@ -485,7 +633,8 @@ TEST(ObjectRule, NotAnObject) {
 // NOLINTNEXTLINE
 TEST(ObjectRule, NoProperties) {
   int unused = 0;
-  EXPECT_FALSE(parse<empty_rule>(u8"{}"sv, &unused));
+  std::error_code const erc = parse<empty_rule>(u8"{}"sv, &unused);
+  EXPECT_FALSE(erc);
 }
 
 // NOLINTNEXTLINE
@@ -904,7 +1053,7 @@ public:
   using policies = Policies;
   using value_type = address;
   explicit address_rule(address* const addr) {
-    this->set_properties({{u8"name"sv, {&addr->name}}, {u8"port"sv, {&addr->port}}});
+    this->set_properties({{u8"name"sv, {&addr->name}}, {u8"port"sv, {&addr->port}}}, {});
   }
   [[nodiscard]] constexpr char const* name() const noexcept override { return "address"; }
 };
@@ -920,19 +1069,21 @@ using multiport_rule = peejay::rules::homogeneous_array_rule<Policies, std::vect
 
 template <peejay::policies Policies>
 class server_rule final
-    : public peejay::rules::object_rule<Policies, 3, address_rule<Policies>, multiport_rule<Policies>> {
-  using inherited = peejay::rules::object_rule<Policies, 3, address_rule<Policies>, multiport_rule<Policies>>;
+    : public peejay::rules::object_rule<Policies, 3, 0, address_rule<Policies>, multiport_rule<Policies>> {
+  using inherited = peejay::rules::object_rule<Policies, 3, 0, address_rule<Policies>, multiport_rule<Policies>>;
 
 public:
   using policies = Policies;
   using value_type = server;
 
   explicit server_rule(server* const s) {
-    this->set_properties({
-        {u8"host"sv, &s->host},
-        {u8"address"sv, &s->addr},
-        {u8"ports"sv, &s->ports},
-    });
+    this->set_properties(
+        {
+            {u8"host"sv, &s->host},
+            {u8"address"sv, &s->addr},
+            {u8"ports"sv, &s->ports},
+        },
+        {});
   }
   [[nodiscard]] constexpr char const* name() const noexcept override { return "server"; }
 };
@@ -943,8 +1094,8 @@ struct multiport_address {
 };
 
 template <peejay::policies Policies>
-class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>> {
-  using inherited = peejay::rules::object_rule<Policies, 2, multiport_rule<Policies>>;
+class multiport_address_rule final : public peejay::rules::object_rule<Policies, 2, 0, multiport_rule<Policies>> {
+  using inherited = peejay::rules::object_rule<Policies, 2, 0, multiport_rule<Policies>>;
 
 public:
   using policies = Policies;
@@ -952,10 +1103,12 @@ public:
 
   explicit multiport_address_rule(multiport_address* const addr) {
     using property = inherited::property;
-    this->set_properties(std::array{
-        property{u8"name"sv, {&addr->name}},
-        property{u8"ports"sv, {&addr->ports}},
-    });
+    this->set_properties(
+        std::array{
+            property{u8"name"sv, {&addr->name}},
+            property{u8"ports"sv, {&addr->ports}},
+        },
+        std::array<property, 0>{});
   }
   [[nodiscard]] constexpr char const* name() const noexcept override { return "multiport-address"; }
 };
@@ -1166,7 +1319,7 @@ class hiding_rule final : public peejay::rules::object_rule<policies, 1> {
 public:
   using value_type = point;
   using children = peejay::type_list::type_list<>;
-  explicit hiding_rule(point* const pt) { this->set_properties({{u8"x"sv, {&pt->x}}}); }
+  explicit hiding_rule(point* const pt) { this->set_properties({{u8"x"sv, {&pt->x}}}, {}); }
 };
 static_assert(sizeof(peejay::rules::integer_rule<policies>) == sizeof(peejay::rules::string_rule<policies>),
               "the terminal rules all have the same size");

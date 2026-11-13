@@ -15,6 +15,7 @@ Each guide solves one specific problem. They assume you have worked through the
    stop-the-parse-early
    parse-char-strings
    validate-utf8
+   read-optional-properties
    read-arrays
    read-enumerations
    read-without-allocating

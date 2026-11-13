@@ -81,16 +81,24 @@ inline constexpr std::size_t count_v = (std::size_t{std::is_same_v<T, Ts>} + ...
 /// builtin_integers. A string held in an arrayvec<char8_t, Size> needs its string_rule to be listed in \p UserRules,
 /// for example `string_rule<Policies, arrayvec<char8_t, 16>>`.
 ///
-/// Every property must be present in the object. A key which is not one of the properties produces
-/// error::unrecognized_property and an object which is missing a property produces error::incomplete_object.
+/// Every required property must be present in the object; an optional property may be absent. A key which is not one
+/// of the properties produces error::unrecognized_property and an object which is missing a required property
+/// produces error::incomplete_object.
+///
+/// If necessary, the fields of the final object can be validated by overriding the end_object() member function in
+/// the subclass. This override may check the fields and return an error if the check fails otherwise call the
+/// base class implementation.
 ///
 /// \tparam Policies  The parser policies.
-/// \tparam Elements  The maximum number of properties.
+/// \tparam RequiredElements  The maximum number of required properties.
+/// \tparam OptionalElements  The maximum number of optional properties. Must be given explicitly if there are
+///   \p UserRules.
 /// \tparam UserRules  Additional rules for property values. A property may hold a pointer to the value_type of any of
 ///   these rules. The value_types must be distinct from each other and from the built-in property types. These rules
 ///   must be complete types, so a rule cannot name itself here. A recursive grammar needs a rule derived directly from
 ///   rule<>.
-template <policies Policies, std::size_t Elements, user_rule<Policies>... UserRules>
+template <policies Policies, std::size_t RequiredElements, std::size_t OptionalElements = 0,
+          user_rule<Policies>... UserRules>
 class object_rule : public rule<Policies> {
   /// Pointers to the types handled by the built-in terminal rules.
   using builtin_pointers =
@@ -136,22 +144,25 @@ public:
     auto const pred = [&k](property const& entry) {
       return !std::holds_alternative<std::monostate>(entry.second) && entry.first == k;
     };
+    auto v = [this, context]<typename T0>(T0& arg) {
+      if constexpr (std::is_same_v<std::decay_t<T0>, std::monostate>) {
+        assert(false && "should never find a monostate entry");  // LCOV_EXCL_LINE: should be unreachable
+        return std::error_code{};
+      } else if constexpr (type_list::has_type_v<user_pointers, std::decay_t<T0>>) {
+        using user_rule_type =
+            std::tuple_element_t<type_list::index_of_v<user_pointers, std::decay_t<T0>>, std::tuple<UserRules...>>;
+        return this->template push<user_rule_type>(this, context, arg);
+      } else {
+        return this->push_terminal(this, context, arg);
+      }
+    };
+
     if (auto const pos = std::ranges::find_if(required_, pred); pos != std::ranges::end(required_)) {
       seen_.set(static_cast<std::size_t>(std::distance(std::ranges::begin(required_), pos)));
-      return std::visit(
-          [this, context]<typename T0>(T0& arg) {
-            if constexpr (std::is_same_v<std::decay_t<T0>, std::monostate>) {
-              assert(false && "should never find a monostate entry");  // LCOV_EXCL_LINE: should be unreachable
-              return std::error_code{};
-            } else if constexpr (type_list::has_type_v<user_pointers, std::decay_t<T0>>) {
-              using user_rule_type = std::tuple_element_t<type_list::index_of_v<user_pointers, std::decay_t<T0>>,
-                                                          std::tuple<UserRules...>>;
-              return this->template push<user_rule_type>(this, context, arg);
-            } else {
-              return this->push_terminal(this, context, arg);
-            }
-          },
-          pos->second);
+      return std::visit(v, pos->second);
+    }
+    if (auto const pos = std::ranges::find_if(optional_, pred); pos != std::ranges::end(optional_)) {
+      return std::visit(v, pos->second);
     }
     return peejay::rules::error::unrecognized_property;
   }
@@ -167,81 +178,171 @@ public:
 
 protected:
   /// Constructs a rule with no properties. A subclass must call set_properties() before the rule is used unless
-  /// \p Elements is 0.
-  object_rule() = default;
-  /// Constructs a rule which requires the properties [\p first_required, \p last_required). Equivalent to
-  /// calling set_properties(first_required, last_required).
+  /// \p RequiredElements is 0.
+  object_rule() : seen_{~0ULL} {}
+
+  /// Constructs a rule which requires the properties [\p first_required, \p last_required) and has no optional
+  /// properties. Equivalent to calling set_properties(first_required, last_required).
   ///
-  /// \param first_required  The first of the properties.
-  /// \param last_required  The end of the properties. There must be no more than \p Elements of them.
+  /// \param first_required  The first of the required properties.
+  /// \param last_required  The end of the required properties. There must be no more than \p RequiredElements of them.
   template <std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
     requires std::is_same_v<std::iter_value_t<Iterator>, property>
   object_rule(Iterator first_required, Sentinel last_required) {
     this->set_properties(first_required, last_required);
   }
-  /// Constructs a rule which requires \p properties. Equivalent to calling set_properties(properties).
+  /// Constructs a rule which requires \p properties and has no optional properties. Equivalent to calling
+  /// set_properties(properties).
   ///
-  /// \param properties  The properties. There must be no more than \p Elements of them.
-  explicit object_rule(std::initializer_list<property> properties) { this->set_properties(properties); }
-  /// Constructs a rule which requires the properties in \p range. Equivalent to calling set_properties(range).
+  /// \param properties  The required properties. There must be no more than \p RequiredElements of them.
+  object_rule(std::initializer_list<property> properties) { this->set_properties(properties); }
+  /// Constructs a rule which requires the properties in \p range and has no optional properties. Equivalent to
+  /// calling set_properties(range).
   ///
-  /// \param range  The properties. There must be no more than \p Elements of them.
+  /// \param range  The required properties. There must be no more than \p RequiredElements of them.
   template <std::ranges::forward_range RequiredRange>
     requires std::is_same_v<std::ranges::range_value_t<RequiredRange>, property>
   explicit object_rule(RequiredRange const& range) {
     this->set_properties(range);
   }
+  /// Constructs a rule which requires the properties [\p first_required, \p last_required) and also accepts the
+  /// optional properties [\p first_optional, \p last_optional). Equivalent to calling set_properties() with the same
+  /// arguments.
+  ///
+  /// \param first_required  The first of the required properties.
+  /// \param last_required  The end of the required properties. There must be no more than \p RequiredElements of them.
+  /// \param first_optional  The first of the optional properties.
+  /// \param last_optional  The end of the optional properties. There must be no more than \p OptionalElements of them.
+  template <std::forward_iterator RequiredIterator, std::sentinel_for<RequiredIterator> RequiredSentinel,
+            std::forward_iterator OptionalIterator, std::sentinel_for<OptionalIterator> OptionalSentinel>
+    requires std::is_same_v<std::iter_value_t<RequiredIterator>, property> &&
+             std::is_same_v<std::iter_value_t<OptionalIterator>, property>
+  object_rule(RequiredIterator first_required, RequiredSentinel last_required, OptionalIterator first_optional,
+              OptionalSentinel last_optional) {
+    this->set_properties(first_required, last_required, first_optional, last_optional);
+  }
+  /// Constructs a rule which requires \p required_properties and also accepts \p optional_properties. Equivalent to
+  /// calling set_properties(required_properties, optional_properties).
+  ///
+  /// \param required_properties  The required properties. There must be no more than \p RequiredElements of them.
+  /// \param optional_properties  The optional properties. There must be no more than \p OptionalElements of them.
+  object_rule(std::initializer_list<property> required_properties,
+              std::initializer_list<property> optional_properties) {
+    this->set_properties(required_properties, optional_properties);
+  }
+  /// Constructs a rule which requires the properties in \p required_range and also accepts those in
+  /// \p optional_range. Equivalent to calling set_properties(required_range, optional_range).
+  ///
+  /// \param required_range  The required properties. There must be no more than \p RequiredElements of them.
+  /// \param optional_range  The optional properties. There must be no more than \p OptionalElements of them.
+  template <std::ranges::forward_range RequiredRange, std::ranges::forward_range OptionalRange>
+    requires std::is_same_v<std::ranges::range_value_t<RequiredRange>, property> &&
+             std::is_same_v<std::ranges::range_value_t<OptionalRange>, property>
+  object_rule(RequiredRange const& required_range, OptionalRange const& optional_range) {
+    this->set_properties(required_range, optional_range);
+  }
 
   /// Rules are not destroyed through this type: they are discarded without running their destructors.
   ~object_rule() noexcept = default;
 
-  /// Sets the properties which the object must contain.
+  /// Sets the properties which the object must contain and the properties which it may contain, replacing any that
+  /// were set before.
   ///
-  /// \param first_required  The first of the properties.
-  /// \param last_required  The end of the properties. There must be no more than \p Elements of them.
-  template <std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
-    requires std::is_same_v<std::iter_value_t<Iterator>, property>
-  void set_properties(Iterator first_required, Sentinel last_required) {
+  /// \param first_required  The first of the required properties.
+  /// \param last_required  The end of the required properties. There must be no more than \p RequiredElements of them.
+  /// \param first_optional  The first of the optional properties.
+  /// \param last_optional  The end of the optional properties. There must be no more than \p OptionalElements of them.
+  template <std::forward_iterator RequiredIterator, std::sentinel_for<RequiredIterator> RequiredSentinel,
+            std::forward_iterator OptionalIterator, std::sentinel_for<OptionalIterator> OptionalSentinel>
+    requires std::is_same_v<std::iter_value_t<RequiredIterator>, property> &&
+             std::is_same_v<std::iter_value_t<OptionalIterator>, property>
+  void set_properties(RequiredIterator first_required, RequiredSentinel last_required, OptionalIterator first_optional,
+                      OptionalSentinel last_optional) {
+    [[maybe_unused]] auto const n_optional = std::ranges::distance(first_optional, last_optional);
+    assert(n_optional >= 0 && n_optional <= std::ssize(optional_) && "overflow of the optional members");
+
     seen_.reset();
     auto n_required = std::ranges::distance(first_required, last_required);
-    assert(n_required >= 0 && n_required <= std::ssize(required_));
+    assert(n_required >= 0 && n_required <= std::ssize(required_) && "overflow of the required members");
     // Mark the unused entries as seen so that seen_.all() is true once every property has been found.
     auto const last = std::ssize(seen_);
     for (; n_required < last; ++n_required) {
       seen_.set(static_cast<std::size_t>(n_required));
     }
-    auto pos = std::ranges::copy(first_required, last_required, required_.begin()).out;
-    std::fill(pos, required_.end(), property{});
+    std::fill(std::ranges::copy(first_required, last_required, required_.begin()).out, required_.end(), property{});
+    std::fill(std::ranges::copy(first_optional, last_optional, optional_.begin()).out, optional_.end(), property{});
   }
-  /// Sets the properties which the object must contain.
+
+  /// Sets the properties which the object must contain, replacing any that were set before. The object has no
+  /// optional properties.
   ///
-  /// \param properties  The properties. There must be no more than \p Elements of them.
-  void set_properties(std::initializer_list<property> properties) {
-    this->set_properties(std::begin(properties), std::end(properties));
+  /// \param first_required  The first of the required properties.
+  /// \param last_required  The end of the required properties. There must be no more than \p RequiredElements of them.
+  template <std::forward_iterator RequiredIterator, std::sentinel_for<RequiredIterator> RequiredSentinel>
+    requires std::is_same_v<std::iter_value_t<RequiredIterator>, property>
+  void set_properties(RequiredIterator first_required, RequiredSentinel last_required) {
+    std::array<property, 0> optional_properties;
+    this->set_properties(first_required, last_required, std::begin(optional_properties), std::end(optional_properties));
   }
-  /// Sets the properties which the object must contain.
+
+  /// Sets the properties which the object must contain and the properties which it may contain, replacing any that
+  /// were set before.
   ///
-  /// \param range  The properties. There must be no more than \p Elements of them.
+  /// \param required_properties  The required properties. There must be no more than \p RequiredElements of them.
+  /// \param optional_properties  The optional properties. There must be no more than \p OptionalElements of them.
+  void set_properties(std::initializer_list<property> required_properties,
+                      std::initializer_list<property> optional_properties) {
+    this->set_properties(std::begin(required_properties), std::end(required_properties),
+                         std::begin(optional_properties), std::end(optional_properties));
+  }
+  /// Sets the properties which the object must contain, replacing any that were set before. The object has no
+  /// optional properties.
+  ///
+  /// \param required_properties  The required properties. There must be no more than \p RequiredElements of them.
+  void set_properties(std::initializer_list<property> required_properties) {
+    std::array<property, 0> optional_properties;
+    this->set_properties(std::begin(required_properties), std::end(required_properties),
+                         std::begin(optional_properties), std::end(optional_properties));
+  }
+  /// Sets the properties which the object must contain and the properties which it may contain, replacing any that
+  /// were set before.
+  ///
+  /// \param required_range  The required properties. There must be no more than \p RequiredElements of them.
+  /// \param optional_range  The optional properties. There must be no more than \p OptionalElements of them.
+  template <std::ranges::forward_range RequiredRange, std::ranges::forward_range OptionalRange>
+    requires std::is_same_v<std::ranges::range_value_t<RequiredRange>, property> &&
+             std::is_same_v<std::ranges::range_value_t<OptionalRange>, property>
+  void set_properties(RequiredRange const& required_range, OptionalRange const& optional_range) {
+    this->set_properties(std::begin(required_range), std::end(required_range), std::begin(optional_range),
+                         std::end(optional_range));
+  }
+  /// Sets the properties which the object must contain, replacing any that were set before. The object has no
+  /// optional properties.
+  ///
+  /// \param required_range  The required properties. There must be no more than \p RequiredElements of them.
   template <std::ranges::forward_range RequiredRange>
     requires std::is_same_v<std::ranges::range_value_t<RequiredRange>, property>
-  void set_properties(RequiredRange const& range) {
-    this->set_properties(std::begin(range), std::end(range));
+  void set_properties(RequiredRange const& required_range) {
+    std::array<property, 0> optional_properties;
+    this->set_properties(required_range, optional_properties);
   }
 
 private:
-  /// The properties. Unused entries hold std::monostate.
-  std::array<property, Elements> required_;
+  /// The required properties. Unused entries hold std::monostate.
+  std::array<property, RequiredElements> required_;
+  /// The optional properties. Unused entries hold std::monostate.
+  std::array<property, OptionalElements> optional_;
   /// The properties which have been seen. The bits for unused entries are set.
-  std::bitset<Elements> seen_;
+  std::bitset<RequiredElements> seen_;
 };
 
 namespace details {
 
 /// Declared but not defined: used only to find the object_rule from which a type is derived.
 /// \returns A pointer to the object_rule base class of the argument.
-template <policies Policies, std::size_t Elements, typename... UserRules>
-object_rule<Policies, Elements, UserRules...> const* object_rule_base(
-    object_rule<Policies, Elements, UserRules...> const*);
+template <policies Policies, std::size_t RequiredElements, std::size_t OptionalElements, typename... UserRules>
+object_rule<Policies, RequiredElements, OptionalElements, UserRules...> const* object_rule_base(
+    object_rule<Policies, RequiredElements, OptionalElements, UserRules...> const*);
 
 }  // end namespace details
 
