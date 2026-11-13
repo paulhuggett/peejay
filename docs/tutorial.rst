@@ -244,8 +244,8 @@ Here is how it works.
    :cpp:class:`object_rule <peejay::rules::object_rule>` parses an object with a fixed set
    of properties. Its template arguments are the policy, the number of properties, and the
    rules for any properties whose types are not built in: here, the array of hosts. The
-   constructor passes ``set_properties()`` a list of pairs, each of an object key and a
-   pointer to the variable that receives its value. The type of each pointer tells
+   constructor passes ``object_rule``'s constructor a list of pairs, each of an object key
+   and a pointer to the variable that receives its value. The type of each pointer tells
    ``object_rule`` how to parse the value, so ``&c->port`` is parsed as an integer that
    must fit in a ``std::uint16_t``.
 

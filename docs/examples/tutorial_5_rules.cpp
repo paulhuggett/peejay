@@ -30,14 +30,13 @@ class config_rule final : public peejay::rules::object_rule<policies, 4, hosts_r
 public:
   using value_type = config;
 
-  explicit config_rule(config* const c) {
-    this->set_properties({
-        {u8"name"sv, &c->name},
-        {u8"port"sv, &c->port},
-        {u8"debug"sv, &c->debug},
-        {u8"hosts"sv, &c->hosts},
-    });
-  }
+  explicit config_rule(config* const c)
+      : object_rule{
+            {u8"name"sv, &c->name},
+            {u8"port"sv, &c->port},
+            {u8"debug"sv, &c->debug},
+            {u8"hosts"sv, &c->hosts},
+        } {}
   [[nodiscard]] char const* name() const noexcept override { return "config"; }
 };
 
