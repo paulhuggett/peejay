@@ -41,10 +41,15 @@ include(GNUInstallDirs)
 
 option(WERROR "Compiler warnings are errors")
 option(PEEJAY_COVERAGE "Generate Source-based Coverage")
-option(PEEJAY_FUZZTEST "Enable fuzztest")
+option(PEEJAY_UNITTEST "Enable unit tests" Yes)
+option(PEEJAY_FUZZTEST "Enable fuzztest (requires PEEJAY_UNITTEST to be enabled)" No)
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
 option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
 option(PEEJAY_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer (GCC/Clang only)" No)
+
+if(NOT PEEJAY_UNITTEST)
+  set(ICUBABY_UNIT_TESTS No CACHE BOOL "Disable icubaby unit tests")
+endif()
 
 FetchContent_Declare(
   googletest
@@ -235,47 +240,48 @@ FetchContent_MakeAvailable(icubaby)
 target_link_libraries(peejay PUBLIC icubaby)
 setup_peejay_target(peejay)
 
-enable_testing()
-set(google_test_targets gtest gmock gmock_main gtest_main)
-if (PEEJAY_FUZZTEST)
-  set (FUZZTEST_FUZZING_MODE On)
-  set (FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
-  message ("Building fuzztest at tag " ${FUZZTEST_REPO_BRANCH})
-  FetchContent_Declare (
-    fuzztest
-    GIT_REPOSITORY https://github.com/google/fuzztest.git
-    GIT_TAG ${FUZZTEST_REPO_BRANCH}
-  )
+if(PEEJAY_UNITTEST)
+  enable_testing()
+  set(google_test_targets gtest gmock gmock_main gtest_main)
+  if(PEEJAY_FUZZTEST)
+    set(FUZZTEST_FUZZING_MODE On)
+    set(FUZZTEST_REPO_BRANCH "1635d42" CACHE STRING "FuzzTest repository branch.")
+    message("Building fuzztest at tag " ${FUZZTEST_REPO_BRANCH})
+    FetchContent_Declare(
+      fuzztest
+      GIT_REPOSITORY https://github.com/google/fuzztest.git
+      GIT_TAG ${FUZZTEST_REPO_BRANCH}
+    )
 
-  FetchContent_MakeAvailable (fuzztest)
-  fuzztest_setup_fuzzing_flags ()
+    FetchContent_MakeAvailable(fuzztest)
+    fuzztest_setup_fuzzing_flags()
 
-  foreach (target ${google_test_targets})
-    target_compile_features (${target} PUBLIC cxx_std_20)
-  endforeach()
-else()
-  # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
-  # Windows.
-  set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
-  # We don't want to install either gtest or gmock.
-  set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
-  set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-  FetchContent_MakeAvailable(googletest)
-  include(GoogleTest)
-
-  # Adjust some compilation options for the googletest targets
-  foreach(target ${google_test_targets})
-    target_compile_features(${target} PUBLIC cxx_std_20)
-    foreach(flag "-Wno-implicit-int-float-conversion")
-      flag_if_available(${flag} new_flag)
-      list(APPEND gclang_options ${new_flag})
+    foreach(target ${google_test_targets})
+      target_compile_features(${target} PUBLIC cxx_std_20)
     endforeach()
-    target_compile_definitions(${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
-    target_compile_options(${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
-    target_link_options   (${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
-  endforeach()
-endif (PEEJAY_FUZZTEST)
+  else()
+    # Tell gtest to link against the "Multi-threaded Debug DLL runtime library" on
+    # Windows.
+    set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
+    # We don't want to install either gtest or gmock.
+    set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
+    set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
+    FetchContent_MakeAvailable(googletest)
+    include(GoogleTest)
 
+    # Adjust some compilation options for the googletest targets
+    foreach(target ${google_test_targets})
+      target_compile_features(${target} PUBLIC cxx_std_20)
+      foreach(flag "-Wno-implicit-int-float-conversion")
+        flag_if_available(${flag} new_flag)
+        list(APPEND gclang_options ${new_flag})
+      endforeach()
+      target_compile_definitions(${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
+      target_compile_options(${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
+      target_link_options   (${target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${gclang_options}>)
+    endforeach()
+  endif(PEEJAY_FUZZTEST)
+endif(PEEJAY_UNITTEST)
 
 add_subdirectory(unit_tests)
 add_subdirectory(klee)
@@ -335,7 +341,7 @@ target_link_libraries(pj2-dump PRIVATE peejay)
 add_test(NAME pj2-dump COMMAND sh -c "echo [1] | $<TARGET_FILE:pj2-dump>")
 add_test(NAME "pj2-dump (missing file)" COMMAND sh -c "! $<TARGET_FILE:pj2-dump> DOES_NOT_EXIST")
 
-if (TARGET gtest)
+if (TARGET gtest AND PEEJAY_UNITTEST)
   set (prelink_target pj2-dump)
   set (test_target pj2-unittests)
   set (out_xml "${CMAKE_BINARY_DIR}/${test_target}.xml")

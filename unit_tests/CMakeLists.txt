@@ -32,61 +32,63 @@
 
 include(CheckCXXSourceCompiles)
 
-check_cxx_source_compiles("int main() { __int128 v; }" PEEJAY_HAVE_INT128)
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/config.hpp"
-)
+if(PEEJAY_UNITTEST)
+  check_cxx_source_compiles("int main() { __int128 v; }" PEEJAY_HAVE_INT128)
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/config.hpp"
+  )
 
-add_executable(pj2-unittests
-  "${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/config.hpp"
-  backtrace.cpp
-  callbacks.hpp
-  test_array.cpp
-  test_arrayvec.cpp
-  test_big_uint.cpp
-  test_boolean.cpp
-  test_coord.cpp
-  test_dom.cpp
-  test_json.cpp
-  test_nesting.cpp
-  test_object.cpp
-  test_parser_copy.cpp
-  test_null.cpp
-  test_null_backend.cpp
-  test_number.cpp
-  test_pointer_based_iterator.cpp
-  test_rule_non_terminals.cpp
-  test_rule_terminals.cpp
-  test_string.cpp
-  test_variant.cpp
-)
-setup_peejay_target(pj2-unittests)
+  add_executable(pj2-unittests
+    "${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/config.hpp"
+    backtrace.cpp
+    callbacks.hpp
+    test_array.cpp
+    test_arrayvec.cpp
+    test_big_uint.cpp
+    test_boolean.cpp
+    test_coord.cpp
+    test_dom.cpp
+    test_json.cpp
+    test_nesting.cpp
+    test_object.cpp
+    test_parser_copy.cpp
+    test_null.cpp
+    test_null_backend.cpp
+    test_number.cpp
+    test_pointer_based_iterator.cpp
+    test_rule_non_terminals.cpp
+    test_rule_terminals.cpp
+    test_string.cpp
+    test_variant.cpp
+  )
+  setup_peejay_target(pj2-unittests)
 
-set(clang_options
-  -Wno-global-constructors
-  -Wno-used-but-marked-unused
-  -Wno-unused-function
-)
-set(gcc_options -Wno-pedantic)
-set(msvc_options -wd4702) # unreachable code.
+  set(clang_options
+    -Wno-global-constructors
+    -Wno-used-but-marked-unused
+    -Wno-unused-function
+  )
+  set(gcc_options -Wno-pedantic)
+  set(msvc_options -wd4702) # unreachable code.
 
-target_compile_options(pj2-unittests
-  PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
-    $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
-    $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
-)
-target_include_directories(pj2-unittests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(pj2-unittests PUBLIC peejay)
+  target_compile_options(pj2-unittests
+    PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
+      $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
+      $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
+  )
+  target_include_directories(pj2-unittests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+  target_link_libraries(pj2-unittests PUBLIC peejay)
 
-if(PEEJAY_FUZZTEST)
-  target_link_libraries(pj2-unittests PUBLIC gtest gmock)
-  link_fuzztest(pj2-unittests)
-else()
-  target_sources(pj2-unittests PUBLIC harness.cpp)
-  target_link_libraries(pj2-unittests PUBLIC gmock_main)
-endif(PEEJAY_FUZZTEST)
+  if(PEEJAY_FUZZTEST)
+    target_link_libraries(pj2-unittests PUBLIC gtest gmock)
+    link_fuzztest(pj2-unittests)
+  else()
+    target_sources(pj2-unittests PUBLIC harness.cpp)
+    target_link_libraries(pj2-unittests PUBLIC gmock_main)
+  endif(PEEJAY_FUZZTEST)
 
-add_test(NAME pj2-unittests COMMAND pj2-unittests)
+  add_test(NAME pj2-unittests COMMAND pj2-unittests)
+endif(PEEJAY_UNITTEST)
