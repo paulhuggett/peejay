@@ -17,7 +17,8 @@ configured:
    project(my_app LANGUAGES CXX)
 
    include(FetchContent)
-   set(PEEJAY_UNITTEST No)   # Don't build peejay's own unit tests.
+   set(PEEJAY_UNITTEST No)     # Don't build peejay's own unit tests,
+   set(PEEJAY_SYSTEMTEST No)   # or its system tests.
    FetchContent_Declare(
      peejay
      GIT_REPOSITORY https://github.com/paulhuggett/peejay.git
@@ -31,8 +32,9 @@ configured:
 
 The ``peejay::peejay`` target carries the include paths for both libraries.
 
-Setting ``PEEJAY_UNITTEST`` to ``No`` before ``FetchContent_MakeAvailable()`` stops
-peejay from downloading Google Test and building its unit tests as part of your project.
+Setting ``PEEJAY_UNITTEST`` and ``PEEJAY_SYSTEMTEST`` to ``No`` before
+``FetchContent_MakeAvailable()`` stops peejay from downloading the required
+dependencies and building its tests as part of your project.
 :ref:`howto/add-to-project:cmake options` lists the other settings.
 
 With a Git submodule
@@ -47,7 +49,8 @@ include it with ``add_subdirectory()``:
 
 .. code-block:: cmake
 
-   set(PEEJAY_UNITTEST No)   # Don't build peejay's own unit tests.
+   set(PEEJAY_UNITTEST No)     # Don't build peejay's own unit tests,
+   set(PEEJAY_SYSTEMTEST No)   # or its system tests.
    add_subdirectory(third_party/peejay)
    target_link_libraries(my_app PRIVATE peejay::peejay)
 
@@ -63,7 +66,7 @@ of the peejay repository, build the library and install it, along with icubaby:
 
 .. code-block:: console
 
-   $ cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D PEEJAY_UNITTEST=No
+   $ cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D PEEJAY_UNITTEST=No -D PEEJAY_SYSTEMTEST=No
    $ cmake --build build --target peejay
    $ cmake --install build --prefix /opt/peejay
 
@@ -101,6 +104,12 @@ peejay's own build, as in ``cmake -S . -B build -D PEEJAY_UNITTEST=No``, or with
        ``ctest``, which runs the unit tests and the documentation's example programs.
        Set it to ``No`` when you only want the library: then neither peejay's nor
        icubaby's unit tests are built.
+   * - ``PEEJAY_SYSTEMTEST``
+     - ``Yes``
+     - Downloads `JSONTestSuite <https://github.com/nst/JSONTestSuite>`_ and adds the
+       ``pj2-check`` target, which runs peejay over its parsing tests. The target needs
+       Python 3, and the build directory must be inside peejay's source tree. Set it to
+       ``No`` when you only want the library.
    * - ``PEEJAY_FUZZTEST``
      - ``No``
      - Builds the fuzz tests, and downloads `FuzzTest <https://github.com/google/fuzztest>`_

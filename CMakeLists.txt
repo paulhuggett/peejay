@@ -42,6 +42,7 @@ include(GNUInstallDirs)
 option(PEEJAY_WERROR "Compiler warnings are errors")
 option(PEEJAY_COVERAGE "Generate Source-based Coverage")
 option(PEEJAY_UNITTEST "Enable unit tests" Yes)
+option(PEEJAY_SYSTEMTEST "Enable the peejay system tests" Yes)
 option(PEEJAY_FUZZTEST "Enable fuzztest (requires PEEJAY_UNITTEST to be enabled)" No)
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
 option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
@@ -357,14 +358,15 @@ if (TARGET gtest AND PEEJAY_UNITTEST)
   add_dependencies(pj2-dump ${test_target})
 endif ()
 
-
-FetchContent_MakeAvailable(jsontestsuite)
-find_package(Python3 COMPONENTS Interpreter)
-if(Python3_FOUND)
-  add_custom_target(pj2-check
-    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_jsontestsuite.py"
-      "$<TARGET_FILE:pj2-dump>" "${jsontestsuite_SOURCE_DIR}/test_parsing"
-    DEPENDS pj2-dump
-    VERBATIM
-  )
+if(PEEJAY_SYSTEMTEST)
+  FetchContent_MakeAvailable(jsontestsuite)
+  find_package(Python3 COMPONENTS Interpreter)
+  if(Python3_FOUND)
+    add_custom_target(pj2-check
+      "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_jsontestsuite.py"
+        "$<TARGET_FILE:pj2-dump>" "${jsontestsuite_SOURCE_DIR}/test_parsing"
+      DEPENDS pj2-dump
+      VERBATIM
+    )
+  endif()
 endif()
