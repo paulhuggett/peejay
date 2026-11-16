@@ -47,6 +47,7 @@ option(PEEJAY_FUZZTEST "Enable fuzztest (requires PEEJAY_UNITTEST to be enabled)
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
 option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
 option(PEEJAY_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer (GCC/Clang only)" No)
+option(PEEJAY_DOC_EXAMPLES "Enable build of the documentation example code" Yes)
 
 if(NOT PEEJAY_UNITTEST)
   set(ICUBABY_UNIT_TESTS No CACHE BOOL "Disable icubaby unit tests")
@@ -286,7 +287,9 @@ endif(PEEJAY_UNITTEST)
 
 add_subdirectory(unit_tests)
 add_subdirectory(klee)
-add_subdirectory(docs/examples)
+if(PEEJAY_DOC_EXAMPLES)
+  add_subdirectory(docs/examples)
+endif(PEEJAY_DOC_EXAMPLES)
 
 install(
   TARGETS peejay
