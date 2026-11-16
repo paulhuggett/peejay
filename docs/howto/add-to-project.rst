@@ -17,6 +17,8 @@ configured:
    project(my_app LANGUAGES CXX)
 
    include(FetchContent)
+   set(PEEJAY_UNITTEST No)     # Don't build peejay's own unit tests,
+   set(PEEJAY_SYSTEMTEST No)   # or its system tests.
    FetchContent_Declare(
      peejay
      GIT_REPOSITORY https://github.com/paulhuggett/peejay.git
@@ -30,6 +32,11 @@ configured:
 
 The ``peejay::peejay`` target carries the include paths for both libraries.
 
+Setting ``PEEJAY_UNITTEST`` and ``PEEJAY_SYSTEMTEST`` to ``No`` before
+``FetchContent_MakeAvailable()`` stops peejay from downloading the required
+dependencies and building its tests as part of your project.
+:ref:`howto/add-to-project:cmake options` lists the other settings.
+
 With a Git submodule
 --------------------
 
@@ -42,6 +49,8 @@ include it with ``add_subdirectory()``:
 
 .. code-block:: cmake
 
+   set(PEEJAY_UNITTEST No)     # Don't build peejay's own unit tests,
+   set(PEEJAY_SYSTEMTEST No)   # or its system tests.
    add_subdirectory(third_party/peejay)
    target_link_libraries(my_app PRIVATE peejay::peejay)
 
@@ -57,7 +66,7 @@ of the peejay repository, build the library and install it, along with icubaby:
 
 .. code-block:: console
 
-   $ cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
+   $ cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D PEEJAY_UNITTEST=No -D PEEJAY_SYSTEMTEST=No
    $ cmake --build build --target peejay
    $ cmake --install build --prefix /opt/peejay
 
@@ -74,6 +83,63 @@ it is when you configure your project, for example with
 
 The package accepts a request for any 2.x version. Linking to ``peejay::peejay``
 also brings in icubaby's installed headers.
+
+CMake options
+-------------
+
+peejay's ``CMakeLists.txt`` has these options. Set them with ``-D`` when you configure
+peejay's own build, as in ``cmake -S . -B build -D PEEJAY_UNITTEST=No``, or with
+``set()`` before ``FetchContent_MakeAvailable()`` or ``add_subdirectory()``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 12 58
+
+   * - Option
+     - Default
+     - Effect
+   * - ``PEEJAY_UNITTEST``
+     - ``Yes``
+     - Builds the unit tests, and downloads Google Test to do so. Also enables
+       ``ctest``, which runs the unit tests and the documentation's example programs.
+       Set it to ``No`` when you only want the library: then neither peejay's nor
+       icubaby's unit tests are built.
+   * - ``PEEJAY_SYSTEMTEST``
+     - ``Yes``
+     - Downloads `JSONTestSuite <https://github.com/nst/JSONTestSuite>`_ and adds the
+       ``pj2-check`` target, which runs peejay over its parsing tests. The target needs
+       Python 3, and the build directory must be inside peejay's source tree. Set it to
+       ``No`` when you only want the library.
+   * - ``PEEJAY_FUZZTEST``
+     - ``No``
+     - Builds the fuzz tests, and downloads `FuzzTest <https://github.com/google/fuzztest>`_
+       to do so. Requires ``PEEJAY_UNITTEST``.
+   * - ``PEEJAY_WERROR``
+     - ``No``
+     - Treats compiler warnings as errors in peejay's own targets.
+   * - ``PEEJAY_SANITIZE``
+     - ``No``
+     - Builds peejay's own targets with AddressSanitizer and UndefinedBehaviorSanitizer.
+       GCC and Clang only.
+   * - ``PEEJAY_COVERAGE``
+     - ``No``
+     - Builds peejay's own targets with code coverage instrumentation. GCC and Clang
+       only.
+   * - ``PEEJAY_MPROTECT_VARIANT``
+     - ``No``
+     - Defines ``PEEJAY_MPROTECT_VARIANT=1`` for ``peejay::peejay`` and everything that
+       links to it. In builds without ``NDEBUG`` on Linux, macOS, and Windows, the
+       parser's internal state is then kept in memory pages that are protected while
+       they are unused, so a stray access crashes at once. It is a debugging aid and
+       makes the parser slower.
+   * - ``PEEJAY_KLEE_DUMMY``
+     - ``No``
+     - Compiles the `KLEE <https://klee-se.org>`_ test sources against a stand-in for
+       KLEE's header, to check that they build. When KLEE itself is found, the real KLEE
+       targets are built instead, and this option has no effect.
+
+Only ``PEEJAY_MPROTECT_VARIANT`` changes how your own code is compiled. The others
+affect only peejay's own targets.
 
 Without CMake
 -------------
