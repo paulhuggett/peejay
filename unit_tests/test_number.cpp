@@ -450,12 +450,6 @@ TEST_F(Number, TooManyDigitsAwayFromAHalfwayPoint) {
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
-TEST(NumberGrammar, IsDoneMatchesEverything) {
-  // is_done marks the end of each grammar table and is normally compared rather than called.
-  EXPECT_TRUE(peejay::details::number_grammar::is_done(u8'0'));
-  EXPECT_TRUE(peejay::details::number_grammar::is_done(u8'x'));
-}
-
 struct policy_common : public peejay::default_policies {
   static constexpr auto max_length = std::size_t{20};
   static constexpr auto max_stack_depth = std::size_t{6};
@@ -742,11 +736,11 @@ bool input_is_reasonable(std::u8string const& input) {
   auto end = std::end(input);
   auto st = peejay::details::state::number_start;
   for (; it != end; ++it) {
-    auto const var = peejay::details::number_grammar::transition(st, *it);
-    if (std::holds_alternative<std::error_code>(var)) {
+    auto const code = peejay::details::number_grammar::next(st, *it);
+    if (!peejay::details::number_grammar::is_state(code)) {
       break;
     }
-    st = std::get<peejay::details::state>(var);
+    st = static_cast<peejay::details::state>(code);
   }
   return it == end && peejay::details::number_grammar::complete(st);
 }
@@ -826,11 +820,15 @@ TEST(NumberFuzz, Match3) {
 TEST(NumberFuzz, Match4) {
   FloatMatchesStrToD<double>(u8"200000003150199999999999999999999999991000100000000000000000000000000000000000000000000100000000100000000200000010000010000000000000000000000000000000100000000000000000000020100000000000000000001000000000000000010100010000000000000000000000000000000000000000000000000000000100000000000000010000001000000010000010000000000000000000100E-314");
 }
+TEST(NumberFuzz, Match5) {
+  auto input = u8" "s;
+  input.at(0) = static_cast<char8_t>(0x85);
+  FloatMatchesStrToD<double>(input);
+}
 #if defined(PEEJAY_FUZZTEST) && PEEJAY_FUZZTEST
 constexpr auto FloatMatchesDouble = FloatMatchesStrToD<double>;
 FUZZ_TEST(NumberFuzz, FloatMatchesDouble);
 constexpr auto FloatMatchesFloat = (FloatMatchesStrToD<float>);
 FUZZ_TEST(NumberFuzz, FloatMatchesFloat);
 #endif
-
 }  // end of anonymous namespace
