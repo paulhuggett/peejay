@@ -154,8 +154,7 @@ constexpr std::uint8_t next(state const s, char8_t const c) noexcept {
     if (is_minus (c)) { return to_underlying(number_minus     ); }
     if (is_zero  (c)) { return to_underlying(number_zero      ); }
     if (is_digit9(c)) { return to_underlying(number_int_digits); }
-    assert(false && "number_start with unexpected character");    // LCOV_EXCL_LINE
-    unreachable(); // LCOV_EXCL_LINE
+    return error_value(error::unrecognized_token); // LCOV_EXCL_LINE
   default: unreachable();  // LCOV_EXCL_LINE: s is always one of the number states.
   }
 }
