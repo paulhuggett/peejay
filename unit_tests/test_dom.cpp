@@ -454,7 +454,19 @@ TEST(DomError, What) {
   EXPECT_GT(make_error_code(peejay::dom::dom_error::none).message().length(), 0);
   EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_array_members).message().length(), 0);
   EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_object_members).message().length(), 0);
-  EXPECT_GT(make_error_code(peejay::dom::dom_error::too_many_object_members).message().length(), 0);
+}
+// NOLINTNEXTLINE
+TEST(DomError, Message) {
+#if PEEJAY_MINIMAL_ERROR_MESSAGES
+  EXPECT_EQ(make_error_code(peejay::dom::dom_error::none).message(), "0");
+  EXPECT_EQ(make_error_code(peejay::dom::dom_error::too_many_object_members).message(), "2");
+  EXPECT_EQ(peejay::dom::dom_error_category{}.message(-1), "-1");
+#else
+  EXPECT_EQ(make_error_code(peejay::dom::dom_error::none).message(), "none");
+  EXPECT_EQ(make_error_code(peejay::dom::dom_error::too_many_object_members).message(),
+            "Too many object members for DOM");
+  EXPECT_EQ(peejay::dom::dom_error_category{}.message(-1), "unknown PJ DOM error code");
+#endif
 }
 
 }  // end anonymous namespace

@@ -140,13 +140,19 @@ peejay's own build, as in ``cmake -S . -B build -D PEEJAY_UNITTEST=No``, or with
        parser's internal state is then kept in memory pages that are protected while
        they are unused, so a stray access crashes at once. It is a debugging aid and
        makes the parser slower.
+   * - ``PEEJAY_MINIMAL_ERROR_MESSAGES``
+     - ``No``
+     - Defines ``PEEJAY_MINIMAL_ERROR_MESSAGES=1`` for ``peejay::peejay`` and everything
+       that links to it. The ``message()`` of each peejay error is then just the error's
+       number, such as ``"12"``, and the description strings are left out of your program.
+       See :ref:`reference/errors:minimal error messages`.
    * - ``PEEJAY_KLEE_DUMMY``
      - ``No``
      - Compiles the `KLEE <https://klee-se.org>`_ test sources against a stand-in for
        KLEE's header, to check that they build. When KLEE itself is found, the real KLEE
        targets are built instead, and this option has no effect.
 
-Only ``PEEJAY_MPROTECT_VARIANT`` changes how your own code is compiled. The others
+Only ``PEEJAY_MPROTECT_VARIANT`` and ``PEEJAY_MINIMAL_ERROR_MESSAGES`` change how your own code is compiled. The others
 affect only peejay's own targets.
 
 Without CMake

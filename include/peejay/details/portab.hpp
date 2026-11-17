@@ -39,6 +39,13 @@
 #include <utility>
 #include <version>
 
+#ifndef PEEJAY_MINIMAL_ERROR_MESSAGES
+/// If non-zero, the message() member of each of peejay's error categories returns only the error's numeric value
+/// (for example "3") instead of a description. This removes the description strings from the program. The macro
+/// must have the same value in every translation unit of a program.
+#define PEEJAY_MINIMAL_ERROR_MESSAGES 0
+#endif
+
 #ifdef __clang__
 /// Emits the pragma \p x when compiling with clang; expands to nothing otherwise.
 #define PEEJAY_CLANG_PRAGMA(x) _Pragma(x)

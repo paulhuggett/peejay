@@ -46,6 +46,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "peejay/details/portab.hpp"
 #include "peejay/details/type_list.hpp"
 #include "peejay/parser.hpp"
 
@@ -507,8 +508,12 @@ public:
   ///
   /// \param err  An error number which should be one of the values in the
   ///   peejay::dom::dom_error enumeration.
-  /// \returns  The message that corresponds to the error \p err.
+  /// \returns  The message that corresponds to the error \p err. If PEEJAY_MINIMAL_ERROR_MESSAGES is non-zero, the
+  ///   decimal value of \p err.
   [[nodiscard]] std::string message(int const err) const override {
+#if PEEJAY_MINIMAL_ERROR_MESSAGES
+    return std::to_string(err);
+#else
     switch (static_cast<dom_error>(err)) {
     case dom_error::none: return "none";
     case dom_error::too_many_array_members: return "Too many array members for DOM";
@@ -516,6 +521,7 @@ public:
     default: break;
     }
     return "unknown PJ DOM error code";
+#endif  // PEEJAY_MINIMAL_ERROR_MESSAGES
   }
 };
 

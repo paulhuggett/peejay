@@ -40,6 +40,8 @@
 #include <system_error>
 #include <type_traits>
 
+#include "peejay/details/portab.hpp"
+
 namespace peejay {
 
 /// The errors that may be reported by the PJ JSON parser.
@@ -94,8 +96,12 @@ public:
   ///
   /// \param err  An error number which should be one of the values in the
   ///   peejay::error enumeration.
-  /// \returns  The message that corresponds to the error \p err.
+  /// \returns  The message that corresponds to the error \p err. If PEEJAY_MINIMAL_ERROR_MESSAGES is non-zero, the
+  ///   decimal value of \p err.
   [[nodiscard]] std::string message(int const err) const override {
+#if PEEJAY_MINIMAL_ERROR_MESSAGES
+    return std::to_string(err);
+#else
     switch (static_cast<error>(err)) {
     case error::none: return "none";
     case error::bad_unicode_code_point: return "bad UNICODE code point";
@@ -116,6 +122,7 @@ public:
     default: break;
     }
     return "unknown PJ error code";
+#endif  // PEEJAY_MINIMAL_ERROR_MESSAGES
   }
 };
 
