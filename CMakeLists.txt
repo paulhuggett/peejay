@@ -218,12 +218,14 @@ set(peejay_public
   "${include_dir}/peejay/parser.hpp"
 )
 
-add_library(peejay STATIC
+# peejay is header-only so it is an INTERFACE library: nothing is compiled for it. The headers are listed as
+# sources so that IDEs show them. The compiler warnings in setup_peejay_target() are applied to the headers by
+# each of the targets that include them.
+add_library(peejay INTERFACE
   ${peejay_public}
   ${peejay_rules}
   ${peejay_matchers}
   ${peejay_details}
-  lib/peejay/dummy.cpp
 )
 # The same name that find_package(peejay) provides, for clients that use add_subdirectory() or FetchContent.
 add_library(peejay::peejay ALIAS peejay)
@@ -231,9 +233,15 @@ source_group(public FILES ${peejay_public})
 source_group(rules FILES ${peejay_rules})
 source_group(matchers FILES ${peejay_matchers})
 source_group(details FILES ${peejay_details})
-target_include_directories(peejay PUBLIC
+target_include_directories(peejay INTERFACE
   $<BUILD_INTERFACE:${include_dir}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_compile_features(peejay INTERFACE cxx_std_20)
+target_compile_definitions(peejay
+  INTERFACE
+  $<$<BOOL:${PEEJAY_FUZZTEST}>:PEEJAY_FUZZTEST=1>
+  $<$<BOOL:${PEEJAY_MPROTECT_VARIANT}>:PEEJAY_MPROTECT_VARIANT=1>
 )
 if(PEEJAY_FUZZTEST)
   # If we're fuzz testing, stop icubaby from dragging in Google Test.
@@ -241,8 +249,7 @@ if(PEEJAY_FUZZTEST)
   set(ICUBABY_UNIT_TESTS No CACHE BOOL "Disable icubaby unit tests")
 endif()
 FetchContent_MakeAvailable(icubaby)
-target_link_libraries(peejay PUBLIC icubaby)
-setup_peejay_target(peejay)
+target_link_libraries(peejay INTERFACE icubaby)
 
 if(PEEJAY_UNITTEST)
   enable_testing()
@@ -296,9 +303,6 @@ endif(PEEJAY_DOC_EXAMPLES)
 install(
   TARGETS peejay
   EXPORT peejay
-  ARCHIVE
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    COMPONENT peejay
 )
 install(
   DIRECTORY "${include_dir}/peejay"
@@ -334,8 +338,6 @@ install(
   DESTINATION "${peejay_config_dir}"
   COMPONENT peejay
 )
-
-add_dependencies (install-peejay peejay)
 
 
 #
