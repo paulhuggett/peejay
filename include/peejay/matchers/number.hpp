@@ -73,7 +73,7 @@ constexpr auto number_parser_fast_path_available = true;
 constexpr auto number_parser_fast_path_available = false;
 #endif
 
-/// The state transition tables for the number grammar.
+/// The state transitions of the number grammar.
 namespace number_grammar {
 
 /// \param c  A UTF-8 code unit.
@@ -97,95 +97,73 @@ constexpr bool is_exp(char8_t const c) noexcept { return c == 'e' || c == 'E'; }
 /// \param c  A UTF-8 code unit.
 /// \returns True if \p c is a plus or minus sign.
 constexpr bool is_sign(char8_t const c) noexcept { return c == '+' || c == '-'; }
-/// Marks the final entry of a transition table: matches any code unit.
-/// \param c  A UTF-8 code unit (ignored).
-/// \returns True.
-constexpr bool is_done(char8_t const c [[maybe_unused]]) noexcept { return true; }
 
-/// A predicate which determines whether a code unit matches one entry of a transition table.
-using is_terminal_fn = bool (*)(char8_t);
-/// \brief An entry in a transition table.
-///
-/// An entry is either a predicate and the state to move to if the predicate matches, or (as the final entry of a
-/// table) the error to be reported if no other entry matched. error::none indicates that the code unit ends the
-/// number.
-class term {
-public:
-  /// Constructs a transition entry.
-  /// \param g  The predicate which a code unit must satisfy.
-  /// \param s  The state to move to if \p g is satisfied.
-  constexpr explicit term(is_terminal_fn const g, state const s) : g_{g}, value_{to_underlying(s)} {}
-  /// Constructs the final entry of a transition table.
-  /// \param err  The error to be reported if no other entry matched, or error::none if the number is complete.
-  constexpr explicit term(error const err) : g_{is_done}, value_{to_underlying(err)} {}
-  /// \returns The entry's predicate.
-  [[nodiscard]] constexpr is_terminal_fn get_terminal() const noexcept { return g_; }
-  /// \returns The state to move to. Valid only if the entry is not the final entry of its table.
-  constexpr explicit operator state() const { return static_cast<state>(value_); }
-  /// \returns The error to be reported. Valid only for the final entry of a table.
-  constexpr explicit operator error() const { return static_cast<error>(value_); }
+// The result of next() is a single byte which holds either a state or an error. This works because every error
+// value is smaller than every number state. error::string_too_long is the last enumerator of peejay::error.
+static_assert(to_underlying(error::string_too_long) < to_underlying(state::number_start),
+              "error values and number states must not overlap");
 
-private:
-  /// The predicate which a code unit must satisfy.
-  is_terminal_fn g_;
-  /// The state or error associated with this entry.
-  std::common_type_t<std::underlying_type_t<state>, std::underlying_type_t<peejay::error>> value_;
-};
-
-/// \name Transition tables
-/// One table for each of the number states. Each table is searched in order for the first entry whose predicate
-/// matches the code unit.
-///@{
-/// Transitions from state::number_start.
-constexpr std::array number_start = {term{is_minus, state::number_minus}, term{is_zero, state::number_zero}, term{is_digit9, state::number_int_digits}, term{error::none}};
-/// Transitions from state::number_minus.
-constexpr std::array number_minus = {term{is_zero, state::number_zero}, term{is_digit9, state::number_int_digits}, term{error::expected_digits}};
-/// Transitions from state::number_zero.
-constexpr std::array number_zero = {term{is_dot, state::number_dot}, term{is_exp, state::number_exp_mark}, term{error::none}};
-/// Transitions from state::number_int_digits.
-constexpr std::array number_int_digits = {term{is_digit, state::number_int_digits}, term{is_dot, state::number_dot}, term{is_exp, state::number_exp_mark}, term{error::none}};
-/// Transitions from state::number_dot.
-constexpr std::array number_dot = {term{is_digit, state::number_frac_digits}, term{error::unrecognized_token}};
-/// Transitions from state::number_frac_digits.
-constexpr std::array number_frac_digits = {term{is_digit, state::number_frac_digits}, term{is_exp, state::number_exp_mark}, term{error::none}};
-/// Transitions from state::number_exp_mark.
-constexpr std::array number_exp_mark = {term{is_sign, state::number_exp_sign}, term{is_digit, state::number_exp_digits}, term{error::unrecognized_token}};
-/// Transitions from state::number_exp_sign.
-constexpr std::array number_exp_sign = {term{is_digit, state::number_exp_digits}, term{error::unrecognized_token}};
-/// Transitions from state::number_exp_digits.
-constexpr std::array number_exp_digits = {term{is_digit, state::number_exp_digits}, term{error::none}};
-///@}
-
-/// The transition tables, indexed by the offset of the current state from state::number_start.
-constexpr std::array grammar{
-    number_start.data(),      number_minus.data(),    number_zero.data(),
-    number_int_digits.data(), number_dot.data(),      number_frac_digits.data(),
-    number_exp_mark.data(),   number_exp_sign.data(), number_exp_digits.data(),
-};
-
-/// Computes the result of consuming a code unit in a given state of the number grammar.
+/// Decides on the next state for the number grammar.
 ///
 /// \param s  The current state. Must be one of the number states.
 /// \param c  The UTF-8 code unit to be consumed.
-/// \returns The next state if \p c continues the number. Otherwise an error code: an empty (success) code if \p c
-///   ends the number, or the error to be reported.
-// Not constexpr: std::error_code is not a literal type, so a C++20 compiler that predates P2448 rejects a constexpr
-// function returning this variant.
-inline std::variant<std::error_code, state> transition(state const s, char8_t const c) noexcept {
-  using state_ut = std::underlying_type_t<state>;
-  assert(static_cast<state_ut>(s) >= static_cast<state_ut>(state::number_start));
-  auto const index = static_cast<std::size_t>(static_cast<state_ut>(s) - static_cast<state_ut>(state::number_start));
-  assert(index < grammar.size());
-
-  for (auto const* p = grammar[index];; ++p) {
-    auto* const handler = p->get_terminal();
-    if (handler == &is_done) {
-      return error{*p};
-    }
-    if (handler(c)) {
-      return state{*p};
-    }
+/// \returns If \p c continues the number, the underlying value of the next state. Otherwise the underlying value
+///   of an error: error::none if \p c ends the number, or the error to be reported. Use is_state() to tell the two
+///   apart.
+// clang-format off
+constexpr std::uint8_t next(state const s, char8_t const c) noexcept {
+  auto const error_value = [](error const erc) constexpr {
+    auto const result = to_underlying(erc);
+    assert(result >= 0 && static_cast<unsigned>(result) < std::numeric_limits<std::uint8_t>::max());
+    return static_cast<std::uint8_t>(result);
+  };
+  auto const isd = is_digit(c);
+  using enum state;
+  switch (s) {
+  case number_start:
+    if (is_minus (c)) { return to_underlying(number_minus     ); }
+    if (is_zero  (c)) { return to_underlying(number_zero      ); }
+    if (is_digit9(c)) { return to_underlying(number_int_digits); }
+    assert(false); return error_value(error::none);
+  case number_minus:
+    if (is_zero  (c)) { return to_underlying(number_zero      ); }
+    if (is_digit9(c)) { return to_underlying(number_int_digits); }
+    return error_value(error::expected_digits);
+  case number_zero:
+    if (is_dot(c)) { return to_underlying(number_dot     ); }
+    if (is_exp(c)) { return to_underlying(number_exp_mark); }
+    return error_value(error::none);
+  case number_int_digits:
+    if (isd      ) { return to_underlying(number_int_digits); }
+    if (is_dot(c)) { return to_underlying(number_dot       ); }
+    if (is_exp(c)) { return to_underlying(number_exp_mark  ); }
+    return error_value(error::none);
+  case number_dot:
+    if (isd) { return to_underlying(number_frac_digits       ); }
+    return error_value(error::unrecognized_token);
+  case number_frac_digits:
+    if (isd      ) { return to_underlying(number_frac_digits); }
+    if (is_exp(c)) { return to_underlying(number_exp_mark   ); }
+    return error_value(error::none);
+  case number_exp_mark:
+    if (isd       ) { return to_underlying(number_exp_digits); }
+    if (is_sign(c)) { return to_underlying(number_exp_sign  ); }
+    return error_value(error::unrecognized_token);
+  case number_exp_sign:
+    if (isd) { return to_underlying(number_exp_digits     ); }
+    return error_value(error::unrecognized_token);
+  case number_exp_digits:
+    if (isd) { return to_underlying(number_exp_digits); }
+    return error_value(error::none);
+  default: unreachable();  // LCOV_EXCL_LINE: s is always one of the number states.
   }
+}
+// clang-format on
+
+/// \param code  A value returned by next().
+/// \returns True if \p code is a state, false if it is an error (error::none if the number ended).
+constexpr bool is_state(std::uint8_t const code) noexcept {
+  return code >= to_underlying(state::number_start);
 }
 
 /// \param st  The current state of the number grammar.
@@ -473,16 +451,17 @@ public:
   /// \param c  The next UTF-8 code unit of the input.
   /// \returns true if \p c was consumed as part of the number, false if it ended the number or was an error.
   bool consume(parser_type& parser, char8_t const c) noexcept {
-    auto const next = number_grammar::transition(parser.get_state(), c);
-    if (auto const* const err = std::get_if<std::error_code>(&next)) {
-      if (!*err) {
+    auto const code = number_grammar::next(parser.get_state(), c);
+    if (!number_grammar::is_state(code)) {
+      if (auto const err = static_cast<error>(code); err == error::none) {
         this->post_result(parser);
       } else {
-        parser.set_error_and_pop(*err);
+        parser.set_error_and_pop(err);
       }
       return false;
     }
-    switch (std::get<state>(next)) {
+    auto const next = static_cast<state>(code);
+    switch (next) {
     case state::number_minus: negative_ = true; break;
     case state::number_zero:
     case state::number_int_digits: this->add_digit(c - '0', false); break;
@@ -495,9 +474,9 @@ public:
         exp_ = (exp_ * 10) + (c - '0');
       }
       break;
-    default: break;  // LCOV_EXCL_LINE: transition() only returns the number states handled above.
+    default: break;  // LCOV_EXCL_LINE: next() only returns the number states handled above.
     }
-    parser.set_state(std::get<state>(next));
+    parser.set_state(next);
     return true;
   }
 

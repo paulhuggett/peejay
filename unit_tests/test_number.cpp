@@ -450,12 +450,6 @@ TEST_F(Number, TooManyDigitsAwayFromAHalfwayPoint) {
   EXPECT_FALSE(p.has_error()) << "Real error was: " << p.last_error().message();
 }
 
-TEST(NumberGrammar, IsDoneMatchesEverything) {
-  // is_done marks the end of each grammar table and is normally compared rather than called.
-  EXPECT_TRUE(peejay::details::number_grammar::is_done(u8'0'));
-  EXPECT_TRUE(peejay::details::number_grammar::is_done(u8'x'));
-}
-
 struct policy_common : public peejay::default_policies {
   static constexpr auto max_length = std::size_t{20};
   static constexpr auto max_stack_depth = std::size_t{6};
@@ -742,11 +736,11 @@ bool input_is_reasonable(std::u8string const& input) {
   auto end = std::end(input);
   auto st = peejay::details::state::number_start;
   for (; it != end; ++it) {
-    auto const var = peejay::details::number_grammar::transition(st, *it);
-    if (std::holds_alternative<std::error_code>(var)) {
+    auto const code = peejay::details::number_grammar::next(st, *it);
+    if (!peejay::details::number_grammar::is_state(code)) {
       break;
     }
-    st = std::get<peejay::details::state>(var);
+    st = static_cast<peejay::details::state>(code);
   }
   return it == end && peejay::details::number_grammar::complete(st);
 }
