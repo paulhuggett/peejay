@@ -34,18 +34,13 @@
 #ifndef PEEJAY_MATCHERS_STRING_HPP
 #define PEEJAY_MATCHERS_STRING_HPP
 
-#include <cassert>
-#include <cstdint>
-#include <string_view>
-
-// icubaby
-#include "icubaby/icubaby.hpp"
+#include <system_error>
+#include <type_traits>
 
 // Local includes
 #include "peejay/concepts.hpp"
-#include "peejay/details/arrayvec.hpp"
-#include "peejay/details/cbii.hpp"
 #include "peejay/details/portab.hpp"
+#include "peejay/details/string_accumulator.hpp"
 #include "peejay/error.hpp"
 
 #ifndef PEEJAY_DETAILS_PARSER_HPP
@@ -59,6 +54,10 @@ namespace peejay::details {
 
 /// Matches a string. The opening quote has already been consumed when the matcher is pushed. Once the closing quote
 /// is consumed, the string is passed to the backend's key() or string_value() member function.
+///
+/// The characters of the string are accumulated, and its escape sequences decoded, by string_accumulator. That
+/// class depends only on the policies' max_length, so parsers whose backends have the same policies share its code.
+/// This class is the thin layer which connects it to the parser and the backend.
 ///
 /// \tparam Backend  The parser backend type.
 template <backend Backend> class string_matcher {
@@ -83,152 +82,39 @@ public:
   void eof(parser_type &parser);
 
 private:
-  /// Process a single "normal" (i.e. not part of an escape or hex sequence)
-  /// character.
-  ///
-  /// \param parser  The parent parser instance.
-  /// \param code_unit  A UTF-8 code unit for the character being processed.
-  /// \returns True (the code unit is always consumed).
-  bool normal(parser_type& parser, char8_t code_unit);
+  /// The type of the object which accumulates the string.
+  using accumulator = string_accumulator<policies::max_length>;
 
-  /// Processes the character following a backslash in a string.
-  /// \param parser  The owning parser instance.
-  /// \param code_unit  A UTF-8 code unit for the character being processed.
-  void escape(parser_type& parser, char8_t code_unit);
-
-  /// Processes one of the hex digits of a \\uXXXX escape sequence for a string.
-  /// \param parser  The owning parser instance.
-  /// \param code_unit  A UTF-8 code unit for the character being processed.
-  void hex(parser_type& parser, char8_t code_unit);
   /// True if this string is an object's property name, false otherwise.
   bool is_key_;
-  /// UTF-16 to UTF-8 converter.
-  icubaby::t16_8 utf_16_to_8_;
-  /// Used to accumulate the code unit value from the four hex digits. After
-  /// the four digits have been consumed, this UTF-16 code unit is
-  /// converted to UTF-8 and added to the output.
-  uint_least16_t hex_ = 0U;
-  /// The accumulated string contents.
-  arrayvec<char8_t, policies::max_length> str_;
+  /// The string seen so far.
+  accumulator acc_;
 };
-
-// normal
-// ~~~~~~
-template <backend Backend> bool string_matcher<Backend>::normal(parser_type& parser, char8_t const code_unit) {
-  if (code_unit == '\\') {
-    parser.set_state(state::string_escape);
-    return true;
-  }
-  // Check whether:
-  // a) We processed part of a Unicode UTF-16 code point (in which case the rest needs to be expressed using the '\u'
-  //   escape).
-  // b) Control characters U+0000 through U+001F MUST be escaped.
-  if (utf_16_to_8_.partial() || code_unit <= 0x1F) {
-    return parser.set_error_and_pop(error::bad_unicode_code_point);
-  }
-  // The end of the string?
-  if (code_unit == '"') {
-    auto &backend = parser.backend();
-    auto const result = std::u8string_view{str_.data(), str_.size()};
-    parser.set_error(is_key_ ? backend.key(result) : backend.string_value(result));
-    parser.pop();  // unconditionally pop this matcher.
-    return true;
-  }
-
-  // Remember this code unit.
-  if (str_.size() == str_.capacity()) {
-    parser.set_error_and_pop(error::string_too_long);
-  } else {
-    str_.push_back(code_unit);
-  }
-  return true;
-}
-
-// escape
-// ~~~~~~
-template <backend Backend> void string_matcher<Backend>::escape(parser_type& parser, char8_t code_unit) {
-  switch (code_unit) {
-  case '"':
-  case '/':
-  case '\\':
-    // code points are appended as-is.
-    break;
-  case 'b': code_unit = '\b'; break;
-  case 'f': code_unit = '\f'; break;
-  case 'n': code_unit = '\n'; break;
-  case 'r': code_unit = '\r'; break;
-  case 't': code_unit = '\t'; break;
-  case 'u':
-    hex_ = 0;
-    parser.set_state(state::string_hex1);
-    return;
-  default: parser.set_error_and_pop(error::invalid_escape_char); return;
-  }
-  // We're adding this code point to the output string and returning to the "normal" state.
-  if (str_.size() == str_.capacity()) {
-    parser.set_error_and_pop(error::string_too_long);
-    return;
-  }
-  str_.push_back(code_unit);
-  parser.set_state(state::string_normal_char);
-}
-
-template <backend Backend> void string_matcher<Backend>::hex(parser_type& parser, char8_t const code_unit) {
-  auto &state = parser.stack_.top();
-  assert(to_underlying(state) >= to_underlying(state::string_hex1) &&
-         to_underlying(state) <= to_underlying(state::string_hex4) && "We must be in one of the hex states");
-  assert((state != state::string_hex1 || hex_ == 0) && "hex_ must be zero in the hex1 state");
-  auto offset = std::uint_least16_t{0};
-  if (code_unit >= '0' && code_unit <= '9') {
-    offset = static_cast<std::uint_least16_t>('0');
-  } else if (code_unit >= 'a' && code_unit <= 'f') {
-    offset = static_cast<std::uint_least16_t>('a' - 10U);
-  } else if (code_unit >= 'A' && code_unit <= 'F') {
-    offset = static_cast<std::uint_least16_t>('A' - 10U);
-  } else {
-    parser.set_error_and_pop(error::invalid_hex_char);
-    return;
-  }
-  hex_ = static_cast<std::uint_least16_t>((16U * hex_) + static_cast<std::uint_least16_t>(code_unit) - offset);
-  if (state < state::string_hex4) {
-    // More hex characters to go.
-    state = static_cast<enum state>(to_underlying(state) + 1);
-    return;
-  }
-  // Convert the UTF-16 code unit to UTF-8.
-  bool overflow = false;
-  utf_16_to_8_(hex_, checked_back_insert_iterator<decltype(str_), char8_t>(&str_, &overflow));
-  if (!utf_16_to_8_.well_formed()) {
-    parser.set_error_and_pop(error::bad_unicode_code_point);
-    return;
-  }
-  if (overflow) {
-    parser.set_error_and_pop(error::string_too_long);
-    return;
-  }
-  state = state::string_normal_char;
-}
 
 // consume
 // ~~~~~~~
-template <backend Backend> bool string_matcher<Backend>::consume(parser_type& parser, char8_t const code_unit) {
-  bool match = true;
-  switch (parser.stack_.top()) {
-  case state::string_start:
-    str_.clear();
-    parser.set_state(state::string_normal_char);
-    [[fallthrough]];
-  case state::string_normal_char: match = this->normal(parser, code_unit); break;
-  case state::string_escape: this->escape(parser, code_unit); break;
-
-  case state::string_hex1:
-  case state::string_hex2:
-  case state::string_hex3:
-  case state::string_hex4: this->hex(parser, code_unit); break;
-
-  default: unreachable(); break;
+template <backend Backend>
+PEEJAY_ALWAYS_INLINE bool string_matcher<Backend>::consume(parser_type& parser, char8_t const code_unit) {
+  auto const current = parser.get_state();
+  // Most characters are ordinary ones in the body of the string: handle those without a call.
+  if (current == state::string_normal_char && acc_.append_plain(code_unit)) {
+    return true;
   }
-  return match;
+  auto const code = acc_.consume(current, code_unit);
+  if (accumulator::is_state(code)) {
+    // Every character which leaves the state unchanged was handled by the fast path above.
+    parser.set_state(static_cast<state>(code));
+    return true;
+  }
+  if (auto const err = static_cast<error>(code); err != error::none) {
+    return parser.set_error_and_pop(err);
+  }
+  // The closing quote: pass the string to the backend.
+  auto &backend = parser.backend();
+  auto const result = acc_.str();
+  parser.set_error(is_key_ ? backend.key(result) : backend.string_value(result));
+  parser.pop();  // unconditionally pop this matcher.
+  return true;
 }
 
 // eof

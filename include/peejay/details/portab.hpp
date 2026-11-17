@@ -30,7 +30,7 @@
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 /// \file portab.hpp
-/// \brief Portability helpers: compiler-specific pragmas, unreachable(), and to_underlying().
+/// \brief Portability helpers: compiler-specific pragmas, PEEJAY_ALWAYS_INLINE, unreachable(), and to_underlying().
 #ifndef PEEJAY_DETAILS_PORTAB_HPP
 #define PEEJAY_DETAILS_PORTAB_HPP
 
@@ -56,6 +56,17 @@
 /// Disables clang's -Wglobal-constructors warning.
 #define PEEJAY_CLANG_DIAG_NO_GLOBAL_CONSTRUCTORS \
   PEEJAY_CLANG_PRAGMA("clang diagnostic ignored \"-Wglobal-constructors\"")
+
+#if defined(__GNUC__)  // GCC, Clang, and compatible compilers
+/// Declares an inline function which the compiler should inline wherever it is called.
+#define PEEJAY_ALWAYS_INLINE inline __attribute__((always_inline))
+#elif defined(_MSC_VER)
+/// Declares an inline function which the compiler should inline wherever it is called.
+#define PEEJAY_ALWAYS_INLINE __forceinline
+#else
+/// Declares an inline function which the compiler should inline wherever it is called.
+#define PEEJAY_ALWAYS_INLINE inline
+#endif
 
 namespace peejay {
 
