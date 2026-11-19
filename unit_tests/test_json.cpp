@@ -238,5 +238,15 @@ INSTANTIATE_TEST_SUITE_P(BadKeyword, BadKeyword,
 TEST(ErrorCategory, None) {
   EXPECT_NE(peejay::error_category{}.name(), nullptr);
   EXPECT_GT(peejay::error_category{}.message(-1).length(), 0);
+}
+TEST(ErrorCategory, Message) {
+#if PEEJAY_MINIMAL_ERROR_MESSAGES
+  EXPECT_EQ(make_error_code(peejay::error::none).message(), "0");
+  EXPECT_EQ(make_error_code(peejay::error::string_too_long).message(), "15");
+  EXPECT_EQ(peejay::error_category{}.message(-1), "-1");
+#else
   EXPECT_EQ(make_error_code(peejay::error::none).message(), "none");
+  EXPECT_EQ(make_error_code(peejay::error::string_too_long).message(), "string too long");
+  EXPECT_EQ(peejay::error_category{}.message(-1), "unknown PJ error code");
+#endif
 }

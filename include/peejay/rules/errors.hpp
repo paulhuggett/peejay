@@ -37,7 +37,10 @@
 #ifndef PEEJAY_RULES_ERRORS_HPP
 #define PEEJAY_RULES_ERRORS_HPP
 
+#include <string>
 #include <system_error>
+
+#include "peejay/details/portab.hpp"
 
 namespace peejay::rules {
 
@@ -67,8 +70,12 @@ public:
   /// \returns The name of this error category.
   char const* name() const noexcept override { return "peejay rule"; }
   /// \param err  An error value. This should be one of the peejay::rules::error enumerators.
-  /// \returns A description of the error \p err.
+  /// \returns A description of the error \p err. If PEEJAY_MINIMAL_ERROR_MESSAGES is non-zero, the decimal value of
+  ///   \p err.
   std::string message(int const err) const override {
+#if PEEJAY_MINIMAL_ERROR_MESSAGES
+    return std::to_string(err);
+#else
     auto const* result = "unknown error";
     switch (static_cast<error>(err)) {
     case error::none: result = "none"; break;
@@ -89,6 +96,7 @@ public:
     default: break;
     }
     return result;
+#endif  // PEEJAY_MINIMAL_ERROR_MESSAGES
   }
 };
 

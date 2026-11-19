@@ -1598,6 +1598,11 @@ TEST(RuleDefaults, BeginObject) {
 // NOLINTNEXTLINE
 TEST(RuleError, Messages) {
   EXPECT_STREQ(make_error_code(error::none).category().name(), "peejay rule");
+#if PEEJAY_MINIMAL_ERROR_MESSAGES
+  EXPECT_EQ(make_error_code(error::none).message(), "0");
+  EXPECT_EQ(make_error_code(error::no_active_rule).message(), "14");
+  EXPECT_EQ(make_error_code(static_cast<error>(-1)).message(), "-1");
+#else
   EXPECT_EQ(make_error_code(error::none).message(), "none");
   EXPECT_EQ(make_error_code(error::unexpected_null).message(), "unexpected null");
   EXPECT_EQ(make_error_code(error::unexpected_boolean).message(), "unexpected boolean");
@@ -1614,6 +1619,7 @@ TEST(RuleError, Messages) {
   EXPECT_EQ(make_error_code(error::unrecognized_enumerator).message(), "unrecognized enumerator");
   EXPECT_EQ(make_error_code(error::no_active_rule).message(), "no active rule");
   EXPECT_EQ(make_error_code(static_cast<error>(-1)).message(), "unknown error");
+#endif
 }
 
 // NOLINTNEXTLINE

@@ -118,6 +118,20 @@ The DOM backend's errors are values of ``peejay::dom::dom_error``, in category
    * - ``too_many_object_members``
      - An object has more than ``max_object_size`` members.
 
+Minimal error messages
+----------------------
+
+Each error's ``message()`` normally returns a short English description, such as
+``"number out of range"``. If you define the macro ``PEEJAY_MINIMAL_ERROR_MESSAGES`` to a
+non-zero value, ``message()`` returns only the error's number instead, such as ``"12"``,
+and none of the descriptions are compiled into your program. This applies to all three of
+peejay's error categories: the parser's, the DOM's, and the rules'. Error values,
+comparisons, and category names are unchanged.
+
+Define the macro before including any peejay header, and give it the same value in every
+source file of your program. The CMake option ``PEEJAY_MINIMAL_ERROR_MESSAGES`` does this for
+you (see :ref:`howto/add-to-project:cmake options`).
+
 Rules errors
 ------------
 

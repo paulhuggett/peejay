@@ -45,6 +45,7 @@ option(PEEJAY_UNITTEST "Enable unit tests" Yes)
 option(PEEJAY_SYSTEMTEST "Enable the peejay system tests" Yes)
 option(PEEJAY_FUZZTEST "Enable fuzztest (requires PEEJAY_UNITTEST to be enabled)" No)
 option(PEEJAY_MPROTECT_VARIANT "Enable mprotect variant" No)
+option(PEEJAY_MINIMAL_ERROR_MESSAGES "Error messages are just the error number" No)
 option(PEEJAY_KLEE_DUMMY "Add dummy targets to test compile the KLEE sources" No)
 option(PEEJAY_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer (GCC/Clang only)" No)
 option(PEEJAY_DOC_EXAMPLES "Enable build of the documentation example code" Yes)
@@ -151,6 +152,7 @@ function (setup_peejay_target target)
     PUBLIC
     $<$<BOOL:${PEEJAY_FUZZTEST}>:PEEJAY_FUZZTEST=1>
     $<$<BOOL:${PEEJAY_MPROTECT_VARIANT}>:PEEJAY_MPROTECT_VARIANT=1>
+    $<$<BOOL:${PEEJAY_MINIMAL_ERROR_MESSAGES}>:PEEJAY_MINIMAL_ERROR_MESSAGES=1>
   )
 
   target_compile_features(${target} PUBLIC cxx_std_20)
@@ -242,6 +244,7 @@ target_compile_definitions(peejay
   INTERFACE
   $<$<BOOL:${PEEJAY_FUZZTEST}>:PEEJAY_FUZZTEST=1>
   $<$<BOOL:${PEEJAY_MPROTECT_VARIANT}>:PEEJAY_MPROTECT_VARIANT=1>
+  $<$<BOOL:${PEEJAY_MINIMAL_ERROR_MESSAGES}>:PEEJAY_MINIMAL_ERROR_MESSAGES=1>
 )
 if(PEEJAY_FUZZTEST)
   # If we're fuzz testing, stop icubaby from dragging in Google Test.

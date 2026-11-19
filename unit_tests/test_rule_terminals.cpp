@@ -93,7 +93,7 @@ TEST_F(ImportUInt, Positive) {
 TEST_F(ImportUInt, Negative) {
   parser.input(u8"-1234"sv).eof();
   EXPECT_TRUE(parser.has_error());
-  EXPECT_EQ(parser.last_error().message(), "number out of range")
+  EXPECT_EQ(parser.last_error(), peejay::error::number_out_of_range)
       << "JSON error was: " << parser.last_error().message();
 }
 
