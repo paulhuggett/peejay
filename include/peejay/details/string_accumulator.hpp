@@ -225,13 +225,16 @@ std::uint8_t string_accumulator<MaxLength>::hex(state const current, char8_t con
     return static_cast<std::uint8_t>(to_underlying(current) + 1);
   }
   // Convert the UTF-16 code unit to UTF-8.
-  std::array<char8_t, 4> buffer{};
+  // A single code unit can produce more than one code point. For example, a high surrogate followed by U+FFFF
+  // produces U+FFFD REPLACEMENT CHARACTER followed by U+FFFF.
+  std::array<char8_t, icubaby::max_output_bytes<char16_t, icubaby::char8>> buffer{};
   auto const* const end = utf_16_to_8_(hex_, buffer.data());
   if (!utf_16_to_8_.well_formed()) {
     return result(error::bad_unicode_code_point);
   }
   auto const length = static_cast<std::size_t>(end - buffer.data());
-  if (str_.capacity() - str_.size() < length) {
+  // size_type may be narrower than int, so convert the difference before comparing it with the (unsigned) length.
+  if (static_cast<std::size_t>(str_.capacity() - str_.size()) < length) {
     return result(error::string_too_long);
   }
   for (auto const* p = buffer.data(); p != end; ++p) {

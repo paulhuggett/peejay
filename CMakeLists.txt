@@ -61,7 +61,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   icubaby
   GIT_REPOSITORY https://github.com/paulhuggett/icubaby.git
-  GIT_TAG v1.4
+  GIT_TAG v1.5
 )
 FetchContent_Declare(
   jsontestsuite
