@@ -27,7 +27,7 @@ Create an empty directory with this ``CMakeLists.txt``:
    FetchContent_Declare(
      peejay
      GIT_REPOSITORY https://github.com/paulhuggett/peejay.git
-     GIT_TAG main
+     GIT_TAG v2.1
    )
    FetchContent_MakeAvailable(peejay)
 
