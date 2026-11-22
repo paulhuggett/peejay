@@ -114,51 +114,59 @@ TEST(WriterBackend, StringAscii) {
   EXPECT_EQ(write(u8R"("")"), R"("")");
   EXPECT_EQ(write(u8R"("hello world")"), R"("hello world")");
   // DEL (U+007F) is the last ASCII character and need not be escaped.
-  EXPECT_EQ(write(u8R"("~\u007F")"), "\"~\x7F\"");
+  EXPECT_EQ(write(u8"\"~\\u007F\""), "\"~\x7F\"");
 }
 
 TEST(WriterBackend, StringShortEscapes) {
   // The solidus need not be escaped.
-  EXPECT_EQ(write(u8R"("\"\\\/\b\f\n\r\t")"), R"("\"\\/\b\f\n\r\t")");
+  EXPECT_EQ(write(u8"\"\\\"\\\\\\/\\b\\f\\n\\r\\t\""), "\"\\\"\\\\/\\b\\f\\n\\r\\t\"");
 }
 
 TEST(WriterBackend, StringControlCharacters) {
-  EXPECT_EQ(write(u8R"("\u0000")"), R"("\u0000")");
-  EXPECT_EQ(write(u8R"("\u001F")"), R"("\u001f")");
-  EXPECT_EQ(write(u8R"("\u0020")"), R"(" ")");
+  EXPECT_EQ(write(u8"\"\\u0000\""), "\"\\u0000\"");
+  EXPECT_EQ(write(u8"\"\\u001F\""), "\"\\u001f\"");
+  EXPECT_EQ(write(u8"\"\\u0020\""), "\" \"");
 }
 
 TEST(WriterBackend, StringNonAscii) {
-  EXPECT_EQ(write(u8"\"\u0080\""), R"("\u0080")");
-  EXPECT_EQ(write(u8"\"caf\u00E9\""), R"("caf\u00e9")");
-  EXPECT_EQ(write(u8"\"\u20AC1\""), R"("\u20ac1")");
-  EXPECT_EQ(write(u8"\"\uFFFF\""), R"("\uffff")");
+  // The input strings hold UTF-8 encoded characters rather than JSON escapes.
+  EXPECT_EQ(write(u8"\"\u0080\""), "\"\\u0080\"");
+  EXPECT_EQ(write(u8"\"caf\u00E9\""), "\"caf\\u00e9\"");
+  EXPECT_EQ(write(u8"\"\u20AC1\""), "\"\\u20ac1\"");
+  EXPECT_EQ(write(u8"\"\uFFFF\""), "\"\\uffff\"");
 }
 
 TEST(WriterBackend, StringSurrogatePairs) {
-  EXPECT_EQ(write(u8"\"\U00010000\""), R"("\ud800\udc00")");
-  EXPECT_EQ(write(u8"\"\U0001F600\""), R"("\ud83d\ude00")");
-  EXPECT_EQ(write(u8"\"\U0010FFFF\""), R"("\udbff\udfff")");
-  EXPECT_EQ(write(u8R"("\uD83D\uDE00")"), R"("\ud83d\ude00")");
+  EXPECT_EQ(write(u8"\"\U00010000\""), "\"\\ud800\\udc00\"");
+  EXPECT_EQ(write(u8"\"\U0001F600\""), "\"\\ud83d\\ude00\"");
+  EXPECT_EQ(write(u8"\"\U0010FFFF\""), "\"\\udbff\\udfff\"");
+  // A surrogate pair written as JSON escapes.
+  EXPECT_EQ(write(u8"\"\\uD83D\\uDE00\""), "\"\\ud83d\\ude00\"");
 }
 
 TEST(WriterBackend, StringIllFormedUtf8) {
+  // 0xFF never appears in UTF-8.
+  constexpr std::array<char8_t, 2> ill_formed{u8'a', char8_t{0xFF}};
   std::string out;
   peejay::writer w{std::back_inserter(out)};
-  EXPECT_EQ(w.string_value(u8"a\xFF"sv), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(out, R"("a\ufffd")");
+  EXPECT_EQ(w.string_value(std::u8string_view{ill_formed.data(), ill_formed.size()}),
+            make_error_code(error::bad_unicode_code_point));
+  EXPECT_EQ(out, "\"a\\ufffd\"");
 }
 
 TEST(WriterBackend, Key) {
-  EXPECT_EQ(write(u8"{\"k\u00E9\\\"y\":1}"), R"({"k\u00e9\"y":1})");
+  EXPECT_EQ(write(u8"{\"k\u00E9\\\"y\":1}"), "{\"k\\u00e9\\\"y\":1}");
 }
 
 TEST(WriterBackend, KeyTruncatedUtf8) {
+  // 0xC3 starts a two-byte sequence.
+  constexpr std::array<char8_t, 1> truncated{char8_t{0xC3}};
   std::string out;
   peejay::writer w{std::back_inserter(out)};
   EXPECT_FALSE(w.begin_object());
-  EXPECT_EQ(w.key(u8"\xC3"sv), make_error_code(error::bad_unicode_code_point));
-  EXPECT_EQ(out, R"({"\ufffd":)");
+  EXPECT_EQ(w.key(std::u8string_view{truncated.data(), truncated.size()}),
+            make_error_code(error::bad_unicode_code_point));
+  EXPECT_EQ(out, "{\"\\ufffd\":");
 }
 
 TEST(WriterBackend, CompactEmptyContainers) {
