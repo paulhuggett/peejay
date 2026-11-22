@@ -57,6 +57,9 @@ struct policy : public peejay::default_policies {
 
 /// A simple backend which prints tokens as they arrive. The resulting output should
 /// look somewhat like the input, but is not legal JSON!
+///
+/// This is kept deliberately as an example of how small a backend can be. To write
+/// legal JSON instead, use peejay::writer from "peejay/writer.hpp".
 class print_tokens {
 public:
   using policies = policy;
