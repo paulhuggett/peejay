@@ -136,9 +136,11 @@ Things to know
 A few behaviours are worth knowing before you start. Each is covered in more detail in
 the reference.
 
-* The input must be UTF-8, supplied as ``char8_t``. peejay checks the parts of the
+* ``input()`` takes UTF-8, supplied as ``char8_t``. peejay checks the parts of the
   input it interprets, such as escapes, control characters, and surrogates, but it
-  does not check that every multi-byte sequence in a string is well-formed. See
+  does not check that every multi-byte sequence in a string is well-formed. To have
+  the encoding checked, or to parse UTF-16, UTF-32, or raw bytes, pass an icubaby
+  transcoder to ``input()`` and ``eof()`` along with the text. See
   :doc:`howto/validate-utf8`.
 * The strings passed to ``key()`` and ``string_value()`` point into the parser's
   internal buffer. They are valid only until the function returns, so copy them if
