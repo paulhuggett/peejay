@@ -30,7 +30,7 @@
 # SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
 cmake_minimum_required(VERSION 3.22)
-project (peejay VERSION 2.0 LANGUAGES CXX)
+project (peejay VERSION 2.1 LANGUAGES CXX)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0140 NEW)
 
