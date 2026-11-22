@@ -34,6 +34,7 @@
 #ifndef PEEJAY_DETAILS_PARSER_HPP
 #define PEEJAY_DETAILS_PARSER_HPP
 
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <compare>
@@ -53,6 +54,9 @@
 #if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
 #include <format>
 #endif
+
+// icubaby
+#include "icubaby/icubaby.hpp"
 
 // peejay local includes
 #include "peejay/concepts.hpp"
@@ -280,6 +284,52 @@ public:
     return *this;
   }
 
+  /// Parses a chunk of input in any of the encodings that icubaby can convert to UTF-8. Each code unit in \p range is
+  /// passed to \p transcoder and the UTF-8 that it produces is parsed as if by input(Range const&). Like that
+  /// overload, this function may be called repeatedly: pass the same transcoder to each call so that a multi-byte
+  /// sequence may be split between chunks. If the parser is in an error state, the input is ignored.
+  ///
+  /// An ill-formed sequence in \p range causes \p transcoder's well_formed() member to become false. If
+  /// \p stop_on_ill_formed is true, the parser then records error::ill_formed_input and the rest of \p range is
+  /// ignored; the output produced by the code unit that revealed the error is discarded. If \p stop_on_ill_formed is
+  /// false, the transcoder replaces each ill-formed sequence with U+FFFD REPLACEMENT CHARACTER and parsing continues.
+  ///
+  /// The transcoder's well_formed() remains false once it has seen ill-formed input, so a later call with
+  /// \p stop_on_ill_formed set to true stops at its first code unit. Once all the input has been supplied, call
+  /// eof(Transcoder&, bool) to detect a sequence left incomplete at the end of the input.
+  ///
+  /// \tparam Transcoder  An icubaby transcoder type whose output type is char8_t.
+  /// \tparam Range  An input range that yields the transcoder's input type.
+  /// \param transcoder  The transcoder that converts the code units of \p range to UTF-8.
+  /// \param range  The range of code units, in the transcoder's source encoding, to be processed.
+  /// \param stop_on_ill_formed  If true, an ill-formed sequence in \p range stops the parse with an error. If false,
+  ///   it is replaced by U+FFFD and parsing continues.
+  /// \returns *this
+  template <typename Transcoder, std::ranges::input_range Range>
+    requires(icubaby::is_transcoder<Transcoder> && std::is_same_v<typename Transcoder::output_type, char8_t> &&
+             std::is_same_v<std::ranges::range_value_t<Range>, typename Transcoder::input_type>)
+  parser& input(Transcoder& transcoder, Range const& range, bool const stop_on_ill_formed = false) {
+    if (error_) {
+      return *this;
+    }
+    using input_type = Transcoder::input_type;
+    std::array<char8_t, icubaby::max_output_bytes<input_type, char8_t>> buffer{};
+    for (input_type const cu : range) {
+      auto const* const end = transcoder(cu, buffer.data());
+      if (stop_on_ill_formed && !transcoder.well_formed()) {
+        this->set_error_and_pop(error::ill_formed_input);
+        break;
+      }
+      for (auto const* it = buffer.data(); it != end && !error_; ++it) {
+        this->consume_code_unit(*it);
+      }
+      if (error_) {
+        break;
+      }
+    }
+    return *this;
+  }
+
   /// Informs the parser that the complete input stream has been passed by calls
   /// to parser<>::input(). Brings the parser to the completed state to ensure that
   /// complete objects have been consumed. The parse stack is then reinitialized so
@@ -288,6 +338,41 @@ public:
   ///
   /// \returns The result of calling the backend object's result() member.
   decltype(auto) eof();
+
+  /// Informs the parser that the complete input stream has been passed by calls to input(Transcoder&, Range const&,
+  /// bool). This calls \p transcoder's end_cp() to detect a sequence left incomplete at the end of the input and then
+  /// behaves as eof().
+  ///
+  /// If the input ended part-way through a sequence, the transcoder's well_formed() member becomes false. If
+  /// \p stop_on_ill_formed is true, the parser then records error::ill_formed_input. If \p stop_on_ill_formed is
+  /// false, the U+FFFD REPLACEMENT CHARACTER that the transcoder produces is parsed.
+  ///
+  /// As with input(Transcoder&, Range const&, bool), well_formed() remains false once the transcoder has seen
+  /// ill-formed input, so if \p stop_on_ill_formed is true and the transcoder has seen ill-formed input at any point,
+  /// the error is recorded. end_cp() is called even if the parser is already in an error state, so that the
+  /// transcoder is always ready for another document.
+  ///
+  /// \tparam Transcoder  An icubaby transcoder type whose output type is char8_t.
+  /// \param transcoder  The transcoder that was passed to input().
+  /// \param stop_on_ill_formed  If true, an incomplete sequence at the end of the input stops the parse with an
+  ///   error. If false, it is replaced by U+FFFD and parsing continues.
+  /// \returns The result of calling the backend object's result() member.
+  template <typename Transcoder>
+    requires(icubaby::is_transcoder<Transcoder> && std::is_same_v<typename Transcoder::output_type, char8_t>)
+  decltype(auto) eof(Transcoder& transcoder, bool const stop_on_ill_formed = false) {
+    std::array<char8_t, icubaby::max_output_bytes<typename Transcoder::input_type, char8_t>> buffer{};
+    auto const* const end = transcoder.end_cp(buffer.data());
+    if (!error_) {
+      if (stop_on_ill_formed && !transcoder.well_formed()) {
+        this->set_error_and_pop(error::ill_formed_input);
+      } else {
+        for (auto const* it = buffer.data(); it != end && !error_; ++it) {
+          this->consume_code_unit(*it);
+        }
+      }
+    }
+    return this->eof();
+  }
 
   ///@{
   /// Restores the parser to the state of a newly constructed one: any partial parse is discarded, the error is

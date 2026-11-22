@@ -79,6 +79,9 @@ enum class error : int {
   unrecognized_token,
   /// A string exceeded the policy's max_length.
   string_too_long,
+  /// The input was not well formed in its encoding. Reported only by the parser<>::input() and parser<>::eof()
+  /// overloads that take an icubaby transcoder.
+  ill_formed_input,
 };
 
 // ******************
@@ -120,6 +123,7 @@ public:
     case error::unrecognized_token: return "unrecognized token";
     case error::nesting_too_deep: return "arrays or objects are too deeply nested";
     case error::string_too_long: return "string too long";
+    case error::ill_formed_input: return "ill-formed input";
     default: break;
     }
     return "unknown PJ error code";
