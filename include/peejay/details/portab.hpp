@@ -68,6 +68,20 @@
 #define PEEJAY_ALWAYS_INLINE inline
 #endif
 
+#if defined(_MSC_VER)
+#define PEEJAY_NOINLINE [[msvc::noinline]]
+#elif defined(__clang__)
+#if defined(__clang_major__) && __clang_major__ >= 15
+#define PEEJAY_NOINLINE [[clang::noinline]]
+#else
+#define PEEJAY_NOINLINE __attribute__((noinline))
+#endif  // __clang_major__
+#elif defined(__GNUC__)
+#define PEEJAY_NOINLINE [[gnu::noinline]]
+#else
+#define PEEJAY_NOINLINE
+#endif
+
 namespace peejay {
 
 // unreachable

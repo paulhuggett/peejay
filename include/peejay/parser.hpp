@@ -422,7 +422,7 @@ private:
   /// \returns True if \p err represented an error condition, false otherwise.
   /// Records an error from peejay's own error enumeration and, if it is an error, pops the top-most matcher. Kept
   /// out of line so that each of the many call sites is no more than a call.
-  [[gnu::noinline]] bool set_error_and_pop(error const err) noexcept {
+  PEEJAY_NOINLINE bool set_error_and_pop(error const err) noexcept {
     return this->set_error_and_pop(std::error_code{err});
   }
   bool set_error_and_pop(std::error_code const &err) noexcept {
