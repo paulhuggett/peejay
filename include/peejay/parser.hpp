@@ -59,6 +59,7 @@
 #include "peejay/details/arrayvec.hpp"
 #include "peejay/details/states.hpp"
 #include "peejay/details/variant.hpp"
+#include "peejay/error.hpp"
 
 namespace peejay {
 
@@ -413,6 +414,14 @@ private:
     assert(!error_ || err);
     error_ = err;
     return this->has_error();
+  }
+  /// Records an error from peejay's own error enumeration and, if it is an error, pops the top-most matcher. Kept
+  /// out of line so that each of the many call sites is no more than a call.
+  ///
+  /// \param err  The peejay error to be stored in the parser.
+  /// \returns True if \p err represented an error condition, false otherwise.
+  PEEJAY_NOINLINE bool set_error_and_pop(error const err) noexcept {
+    return this->set_error_and_pop(std::error_code{err});
   }
   /// Records an error for this parse (see set_error()) and, if \p err represents
   /// an error, pops the top-most matcher from the parse stack.

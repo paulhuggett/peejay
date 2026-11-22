@@ -170,12 +170,11 @@ private:
     if constexpr (std::is_same_v<float_type, no_float_type>) {
       parser.set_error_and_pop(error::number_out_of_range);
     } else {
-      auto const tf = acc_.template to_floating<float_type>();
-      if (auto const* const f = std::get_if<float_type>(&tf)) {
+      if (auto const f = acc_.template to_floating<float_type>()) {
         parser.set_error(parser.backend().float_value(*f));
         parser.pop();
       } else {
-        parser.set_error_and_pop(std::get<std::error_code>(tf));
+        parser.set_error_and_pop(error::number_out_of_range);
       }
     }
   }
