@@ -415,16 +415,19 @@ private:
     error_ = err;
     return this->has_error();
   }
+  /// Records an error from peejay's own error enumeration and, if it is an error, pops the top-most matcher. Kept
+  /// out of line so that each of the many call sites is no more than a call.
+  ///
+  /// \param err  The peejay error to be stored in the parser.
+  /// \returns True if \p err represented an error condition, false otherwise.
+  PEEJAY_NOINLINE bool set_error_and_pop(error const err) noexcept {
+    return this->set_error_and_pop(std::error_code{err});
+  }
   /// Records an error for this parse (see set_error()) and, if \p err represents
   /// an error, pops the top-most matcher from the parse stack.
   ///
   /// \param err  The json error code to be stored in the parser.
   /// \returns True if \p err represented an error condition, false otherwise.
-  /// Records an error from peejay's own error enumeration and, if it is an error, pops the top-most matcher. Kept
-  /// out of line so that each of the many call sites is no more than a call.
-  PEEJAY_NOINLINE bool set_error_and_pop(error const err) noexcept {
-    return this->set_error_and_pop(std::error_code{err});
-  }
   bool set_error_and_pop(std::error_code const &err) noexcept {
     bool const res = this->set_error(err);
     if (res) {
