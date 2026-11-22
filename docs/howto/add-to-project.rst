@@ -184,6 +184,8 @@ Include only the header that provides what you use. Each one includes the parser
      - The :cpp:class:`peejay::null` backend, for validation.
    * - ``peejay/dom.hpp``
      - The :cpp:class:`peejay::dom::dom` backend and :cpp:class:`peejay::dom::element`.
+   * - ``peejay/writer.hpp``
+     - The :cpp:class:`peejay::writer` backend, which writes JSON text.
    * - ``peejay/rules/non_terminal_rule.hpp``
      - All of the :doc:`rules <../reference/rules>`: the context, the rule base class, the
        terminal rules, ``object_rule``, ``homogeneous_array_rule``, and ``enum_rule``.

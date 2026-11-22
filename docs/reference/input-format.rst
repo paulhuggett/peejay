@@ -36,7 +36,7 @@ Strings
 * ``\uXXXX`` escapes are decoded as UTF-16 and converted to UTF-8. A character outside
   the Basic Multilingual Plane must be written as a surrogate pair, such as
   ``😀``. An unpaired surrogate is an error.
-* Unescaped control characters (U+0000 to U+001F) are errors.
+* Unescaped control characters (U+0000 to U+001F) are errors.k
 * The backend receives the decoded string, which may contain U+0000.
 * Object keys follow the same rules as string values.
 * The length of each decoded string is limited by ``max_length``.

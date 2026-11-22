@@ -2,13 +2,15 @@ Backends
 ========
 
 A backend receives the parser's events. Any type that satisfies the
-:cpp:concept:`peejay::backend` concept can be a backend. peejay provides three:
+:cpp:concept:`peejay::backend` concept can be a backend. peejay provides four:
 
 * :ref:`The null backend <reference/backends:the null backend>` ignores every event.
 * :ref:`The DOM backend <reference/backends:the dom backend>` builds a tree that you
   examine after the parse.
 * :ref:`The rules backend <reference/backends:the rules backend>` passes each event to a
   stack of rules that store the values in your own types.
+* :ref:`The writer backend <reference/backends:the writer backend>` writes each event as
+  JSON text.
 
 The ``backend`` concept
 -----------------------
@@ -282,3 +284,88 @@ the context:
 See :doc:`rules` for the context, the rules that peejay provides, and how to write your
 own, and :ref:`the tutorial <tutorial:read values into your own types>` for an
 introduction.
+
+The writer backend
+------------------
+
+.. code-block:: cpp
+
+   #include "peejay/writer.hpp"
+
+   namespace peejay {
+     template <std::output_iterator<char> OutputIterator, policies Policies = default_policies>
+     class writer;
+
+     template <policies Policies = default_policies, std::output_iterator<char> OutputIterator>
+     writer<OutputIterator, Policies> make_writer(OutputIterator out, std::size_t indent = 0);
+   }
+
+``writer`` writes the values that it receives to an output iterator as JSON text. Its
+``result()`` returns the output iterator, one past the last character written. Use it
+to reformat a document, or call its functions yourself to produce JSON.
+
+.. code-block:: cpp
+
+   std::string out;
+   auto p = peejay::make_parser(peejay::writer{std::back_inserter(out), 2});
+   p.input(u8R"({"name":"caf\u00e9","sizes":[1,2]})"sv).eof();
+   // out is:
+   // {
+   //   "name": "caf\u00e9",
+   //   "sizes": [
+   //     1,
+   //     2
+   //   ]
+   // }
+
+The constructor's second argument, ``indent``, chooses the layout:
+
+``0`` (the default)
+   Compact. No whitespace is written at all: ``{"name":"caf\u00e9","sizes":[1,2]}``.
+
+Greater than ``0``
+   Pretty-printed. Each member of an array or object is written on its own line,
+   indented by ``indent`` spaces for each level of nesting, and each key is followed by
+   ``": "``. Empty arrays and objects are written as ``[]`` and ``{}``.
+
+Neither layout writes a newline after the top-level value.
+
+Use :cpp:func:`peejay::make_writer` to give your own policies without naming the
+iterator type: ``peejay::make_writer<my_policies>(std::back_inserter(out))``.
+
+Behaviour
+^^^^^^^^^
+
+* The output is always ASCII. In strings and keys, every character that isn't ASCII is
+  written as a ``\uXXXX`` escape with lowercase hexadecimal digits. Characters outside
+  the Basic Multilingual Plane are written as a UTF-16 surrogate pair, so U+1F600 is
+  written as ``\ud83d\ude00``.
+* ``"`` and ``\`` are escaped as ``\"`` and ``\\``. Control characters are written as
+  ``\b``, ``\f``, ``\n``, ``\r``, or ``\t`` where JSON has a short escape, and as
+  ``\u00XX`` otherwise. ``/`` and DEL (U+007F) are not escaped.
+* Integers are written in decimal. Floating-point values are written in the shortest
+  form that converts back to the same value. A whole number may have neither a decimal
+  point nor an exponent: ``1.0`` is written as ``1``, so if the output is parsed again
+  it is passed to ``integer_value()``.
+* Object members are written in the order received, including duplicate keys.
+* ``writer`` allocates no memory. It needs no buffer for the document, only a bit for
+  each level of nesting allowed by the policy's ``max_stack_depth``.
+
+Errors
+^^^^^^
+
+* ``string_value()`` and ``key()`` return
+  :cpp:enumerator:`peejay::error::bad_unicode_code_point` if the string is not
+  well-formed UTF-8. Each ill-formed sequence is written as ``\ufffd``, so the output is
+  still valid JSON. The parser passes the bytes of a string to the backend without
+  checking them, so this can happen when the parser drives the writer unless you
+  :doc:`validate the input <../howto/validate-utf8>`.
+* ``float_value()`` returns :cpp:enumerator:`peejay::error::number_out_of_range` for an
+  infinity or NaN, which JSON can't represent, and writes nothing.
+* ``begin_array()`` and ``begin_object()`` return
+  :cpp:enumerator:`peejay::error::nesting_too_deep` if more than ``max_stack_depth``
+  arrays and objects would be open, and write nothing.
+
+The parser never causes the last two: it doesn't produce infinities or NaNs, and it
+reports ``nesting_too_deep`` itself before it calls the backend. They guard calls that
+you make yourself.

@@ -217,6 +217,7 @@ set(peejay_public
   "${include_dir}/peejay/null.hpp"
   "${include_dir}/peejay/dom.hpp"
   "${include_dir}/peejay/parser.hpp"
+  "${include_dir}/peejay/writer.hpp"
 )
 
 # peejay is header-only so it is an INTERFACE library: nothing is compiled for it. The headers are listed as
