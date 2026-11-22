@@ -710,7 +710,7 @@ public:
   /// \returns The correctly rounded value, carrying the sign of the input (so "-0" yields negative zero), or
   ///   error::number_out_of_range if the value overflows or too many digits were dropped to determine the correct
   ///   rounding.
-  template <parser_float Float> [[nodiscard]] std::variant<std::error_code, Float> to_floating() const noexcept;
+  template <parser_float Float> [[nodiscard]] std::optional<Float> to_floating() const noexcept;
 
 private:
   /// The type used to count the significant digits held.
@@ -907,7 +907,7 @@ Float number_accumulator<MaxDigits>::fast_path(std::int64_t const e10) const noe
 
 template <int MaxDigits>
 template <parser_float Float>
-std::variant<std::error_code, Float> number_accumulator<MaxDigits>::to_floating() const noexcept {
+std::optional<Float> number_accumulator<MaxDigits>::to_floating() const noexcept {
   using converter = float_converter<Float, MaxDigits>;
   using tail_bias = converter::tail_bias;
 
@@ -919,7 +919,7 @@ std::variant<std::error_code, Float> number_accumulator<MaxDigits>::to_floating(
   std::int64_t const e10 = scale_ + (exp_negative_ ? -exp_ : exp_);
   std::int64_t const magnitude = e10 + digit_count_;  // value is in [10^(m-1), 10^m)
   if (magnitude > converter::overflow_decimal) {
-    return make_error_code(error::number_out_of_range);  // certainly overflows
+    return std::nullopt;  // certainly overflows
   }
   if (magnitude < -converter::underflow_decimal) {
     return sign * Float{0};  // certainly below half the smallest subnormal
@@ -936,10 +936,10 @@ std::variant<std::error_code, Float> number_accumulator<MaxDigits>::to_floating(
   // from just above W and just below W+1: both must round to the same value.
   // (W+1 may itself be an exact halfway point; the value is strictly below it.)
   if (sticky_ && converter::convert(mant_ + 1U, e10, tail_bias::below) != low) {
-    return make_error_code(error::number_out_of_range);
+    return std::nullopt;
   }
   if (!low.has_value()) {
-    return make_error_code(error::number_out_of_range);
+    return std::nullopt;
   }
   return sign * low.value();
 }

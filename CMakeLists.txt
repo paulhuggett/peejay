@@ -61,7 +61,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   icubaby
   GIT_REPOSITORY https://github.com/paulhuggett/icubaby.git
-  GIT_TAG HEAD
+  GIT_TAG v1.4
 )
 FetchContent_Declare(
   jsontestsuite
@@ -192,7 +192,6 @@ set(peejay_matchers
 set(peejay_details
   "${include_dir}/peejay/details/arrayvec.hpp"
   "${include_dir}/peejay/details/big_uint.hpp"
-  "${include_dir}/peejay/details/cbii.hpp"
   "${include_dir}/peejay/details/number_accumulator.hpp"
   "${include_dir}/peejay/details/parser_impl.hpp"
   "${include_dir}/peejay/details/pointer_based_iterator.hpp"

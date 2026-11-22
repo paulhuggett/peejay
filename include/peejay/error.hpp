@@ -85,6 +85,7 @@ enum class error : int {
 /// The error category object for PJ errors.
 class error_category final : public std::error_category {
 public:
+  constexpr error_category() noexcept = default;
   /// Returns a pointer to a C string naming the error category.
   ///
   /// \returns The string "PJ JSON Parser".
@@ -119,6 +120,15 @@ public:
   }
 };
 
+namespace details {
+/// The single instance of the peejay error category. It is constant-initialized, so using it needs no guard
+/// variable, and (where supported) it is never destroyed, so it needs no exit-time destructor either.
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(clang::no_destroy)
+[[clang::no_destroy]]
+#endif
+inline constinit error_category const error_category_instance;
+}  // end namespace details
+
 // make error code
 // ~~~~~~~~~~~~~~~
 /// Converts a peejay::error value to a std::error_code.
@@ -126,8 +136,7 @@ public:
 /// \param e  The peejay::error value to be converted.
 /// \returns  A std::error_code which encapsulates the error \p e.
 [[nodiscard]] inline std::error_code make_error_code(error const e) noexcept {
-  static error_category const cat;
-  return {static_cast<int>(e), cat};
+  return {static_cast<int>(e), details::error_category_instance};
 }
 
 }  // end namespace peejay

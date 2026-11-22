@@ -39,6 +39,7 @@
 #ifndef PEEJAY_DETAILS_STRING_ACCUMULATOR_HPP
 #define PEEJAY_DETAILS_STRING_ACCUMULATOR_HPP
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -50,7 +51,6 @@
 
 // Local includes
 #include "peejay/details/arrayvec.hpp"
-#include "peejay/details/cbii.hpp"
 #include "peejay/details/portab.hpp"
 #include "peejay/details/states.hpp"
 #include "peejay/error.hpp"
@@ -225,13 +225,17 @@ std::uint8_t string_accumulator<MaxLength>::hex(state const current, char8_t con
     return static_cast<std::uint8_t>(to_underlying(current) + 1);
   }
   // Convert the UTF-16 code unit to UTF-8.
-  bool overflow = false;
-  utf_16_to_8_(hex_, checked_back_insert_iterator<decltype(str_), char8_t>(&str_, &overflow));
+  std::array<char8_t, 4> buffer{};
+  auto const* const end = utf_16_to_8_(hex_, buffer.data());
   if (!utf_16_to_8_.well_formed()) {
     return result(error::bad_unicode_code_point);
   }
-  if (overflow) {
+  auto const length = static_cast<std::size_t>(end - buffer.data());
+  if (str_.capacity() - str_.size() < length) {
     return result(error::string_too_long);
+  }
+  for (auto const* p = buffer.data(); p != end; ++p) {
+    str_.push_back(*p);
   }
   return result(state::string_normal_char);
 }
