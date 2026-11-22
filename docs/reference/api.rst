@@ -45,6 +45,14 @@ Null backend
 .. doxygenclass:: peejay::null
    :members:
 
+Writer backend
+--------------
+
+.. doxygenclass:: peejay::writer
+   :members:
+
+.. doxygenfunction:: peejay::make_writer
+
 DOM backend
 -----------
 

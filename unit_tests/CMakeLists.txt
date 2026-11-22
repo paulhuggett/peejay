@@ -62,6 +62,7 @@ if(PEEJAY_UNITTEST)
     test_rule_terminals.cpp
     test_string.cpp
     test_variant.cpp
+    test_writer_backend.cpp
   )
   setup_peejay_target(pj2-unittests)
 
