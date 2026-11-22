@@ -90,6 +90,13 @@ Each example is a complete input that causes the error.
    * - ``string_too_long``
      - A string is longer than ``max_length``.
      - A 65-byte string with the default policy
+   * - ``ill_formed_input``
+     - ``input(transcoder, range, stop_on_ill_formed)`` or ``eof(transcoder,
+       stop_on_ill_formed)`` was asked to stop on ill-formed input, and the transcoder
+       found a sequence that is not well formed in the source encoding, or input that
+       ends part-way through a character. Never reported by the overloads that don't
+       take a transcoder.
+     - The bytes ``"caf`` 0xFF ``"`` passed through ``icubaby::t8_8``
 
 Errors from backends
 --------------------

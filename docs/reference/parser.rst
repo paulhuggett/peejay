@@ -74,6 +74,40 @@ Input
 
    *Returns:* ``*this``, so that calls can be chained.
 
+``template <typename Transcoder, std::ranges::input_range Range> parser& input(Transcoder& transcoder, Range const& range, bool stop_on_ill_formed = false)``
+   *Requires:* ``Transcoder`` is an `icubaby <https://github.com/paulhuggett/icubaby>`_
+   transcoder whose ``output_type`` is ``char8_t``, such as ``icubaby::t8_8``,
+   ``icubaby::t16_8``, ``icubaby::t32_8``, or ``icubaby::tx_8``.
+   ``std::ranges::range_value_t<Range>`` is the transcoder's ``input_type``.
+
+   Passes each code unit in ``range`` to ``transcoder``, and parses the UTF-8 that it
+   produces as ``input(range)`` does. Use this to parse UTF-16 or UTF-32 text, or to check
+   that UTF-8 text is well formed. Pass the same transcoder to every call for a
+   document, so that a character can be split between calls.
+
+   When ``range`` holds a sequence that is not well formed, the transcoder's
+   ``well_formed()`` becomes ``false``. What happens next depends on
+   ``stop_on_ill_formed``:
+
+   * ``true``: the parser records ``peejay::error::ill_formed_input`` and ignores the
+     rest of ``range``. None of the output from the code unit that revealed the problem
+     reaches the parser.
+   * ``false``: the transcoder replaces the sequence with U+FFFD REPLACEMENT CHARACTER
+     and parsing continues. The replacement character is valid only inside a string,
+     so anywhere else the parser reports a JSON error such as ``expected_token``.
+
+   A transcoder's ``well_formed()`` stays ``false`` once it has seen ill-formed input.
+   So if an earlier call was made with ``stop_on_ill_formed`` set to ``false``, a later
+   call with it set to ``true`` stops at its first code unit.
+
+   If the parser has already recorded an error, this overload does nothing.
+
+   *Returns:* ``*this``, so that calls can be chained.
+
+   This overload can't tell when the input has ended, so it can't detect a
+   character left incomplete at the end. Finish with ``eof(transcoder,
+   stop_on_ill_formed)``, described below, rather than ``eof()``.
+
 ``decltype(auto) eof()``
    Tells the parser that the input is complete. The parser finishes the token it is
    reading, if any, and checks that the input held exactly one complete value. If
@@ -90,6 +124,29 @@ Input
       failed. Calling ``input()`` again after a *successful* parse starts a new
       document. The backend is not reset, and the line count continues from where the
       previous document ended. To start completely afresh, call ``reset()``.
+
+``template <typename Transcoder> decltype(auto) eof(Transcoder& transcoder, bool stop_on_ill_formed = false)``
+   *Requires:* ``Transcoder`` is an icubaby transcoder whose ``output_type`` is
+   ``char8_t``.
+
+   Use this in place of ``eof()`` after ``input(transcoder, range, stop_on_ill_formed)``,
+   passing the same transcoder. It calls the transcoder's ``end_cp()``, which detects input that ends
+   part-way through a character, and then does everything that ``eof()`` does.
+
+   If the input ends part-way through a character, the transcoder's ``well_formed()``
+   becomes ``false``. If ``stop_on_ill_formed`` is ``true``, the parser records
+   ``peejay::error::ill_formed_input``. If it is ``false``, the U+FFFD REPLACEMENT
+   CHARACTER that the transcoder produces is parsed, as ``input()`` would. So
+   ``1`` followed by the first byte of a two-byte UTF-8 sequence gives
+   ``unexpected_extra_input``, where ``eof()`` alone would accept the ``1``.
+
+   As with ``input()``, if ``stop_on_ill_formed`` is ``true``, the error is
+   recorded whenever the transcoder has seen ill-formed input, not only at the end.
+
+   ``end_cp()`` is called even if the parser has already recorded an error, so the
+   transcoder is always ready for another document. The parser's error is not changed.
+
+   *Returns:* whatever ``backend().result()`` returns.
 
 Starting again
 ^^^^^^^^^^^^^^

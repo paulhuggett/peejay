@@ -61,6 +61,7 @@ if(PEEJAY_UNITTEST)
     test_rule_non_terminals.cpp
     test_rule_terminals.cpp
     test_string.cpp
+    test_transcoder_input.cpp
     test_variant.cpp
     test_writer_backend.cpp
   )

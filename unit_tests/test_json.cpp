@@ -247,6 +247,7 @@ TEST(ErrorCategory, Message) {
 #else
   EXPECT_EQ(make_error_code(peejay::error::none).message(), "none");
   EXPECT_EQ(make_error_code(peejay::error::string_too_long).message(), "string too long");
+  EXPECT_EQ(make_error_code(peejay::error::ill_formed_input).message(), "ill-formed input");
   EXPECT_EQ(peejay::error_category{}.message(-1), "unknown PJ error code");
 #endif
 }

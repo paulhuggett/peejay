@@ -12,6 +12,12 @@ UTF-8, check the bytes before they reach the parser. icubaby's UTF-8 to UTF-8
 transcoder, ``icubaby::t8_8``, does this. It is available to every program that uses
 peejay.
 
+The simplest way is to pass the transcoder to the parser along with the bytes, as
+``p.input(utf8, bytes)``, and to finish with ``p.eof(utf8)``. These overloads can either
+stop with ``peejay::error::ill_formed_input`` or replace each bad sequence with U+FFFD and
+carry on. See :ref:`reference/parser:input`. The rest of this page shows how to do the same
+check yourself.
+
 .. literalinclude:: ../examples/howto_utf8.cpp
    :language: cpp
    :start-after: SPDX-License-Identifier: MIT
