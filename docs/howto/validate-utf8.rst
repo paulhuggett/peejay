@@ -39,4 +39,4 @@ reaches the backend as ``caf`` followed by U+FFFD.
 The input can arrive in any number of pieces. Pass the same transcoder to every call
 of ``input()`` for a document, as the ``pj2-dump`` program in ``main.cpp`` in the
 repository does. The same overloads also accept UTF-16, UTF-32, and raw bytes: see
-:ref:`reference/parser:input`.
+:ref:`reference/parser:input` and :doc:`parse-unknown-encoding`.

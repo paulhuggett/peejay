@@ -13,7 +13,7 @@ the C++ type for UTF-8 code units. Text often arrives as ``std::string``,
 The same approach works for ``unsigned char`` and ``std::byte``. Alternatively,
 pass a range of ``std::byte`` straight to ``input()`` together with an
 ``icubaby::tx_8`` transcoder. It checks the encoding too, and assumes UTF-8 unless the
-bytes start with a byte order mark.
+bytes start with a byte order mark. See :doc:`parse-unknown-encoding`.
 
 If you read the data yourself, you can read it straight into a ``char8_t`` buffer
 instead. ``std::istream::read()`` takes a ``char*``, and because ``char`` may alias

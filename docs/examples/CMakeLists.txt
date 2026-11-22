@@ -8,6 +8,7 @@
 set(peejay_doc_examples
   home
   home_dom
+  howto_bytes
   howto_char_input
   howto_errors
   howto_policies
