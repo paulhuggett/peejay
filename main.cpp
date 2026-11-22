@@ -122,7 +122,7 @@ int main(int argc, char const* argv[]) {
 
   peejay::parser<print_tokens> p;
   std::array<char8_t, 256> buffer{};
-  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> discard{};
+  std::array<char8_t, icubaby::max_output_bytes<char8_t, char8_t>> discard{};
   // The UTF-8 to UTF-8 transcoder is used purely to validate the incoming byte stream:
   // for well-formed input its output is identical to its input, so we discard it and
   // pass the original bytes to the parser.

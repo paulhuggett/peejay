@@ -24,7 +24,10 @@ Output:
    ill-formed UTF-8
 
 The transcoder's output is the same as its input for well-formed text, so the program
-discards it and passes the original bytes to the parser. ``partial()`` reports input
+discards it and passes the original bytes to the parser. The array that receives the
+output must still be large enough for the most that one byte can produce, which is
+``icubaby::max_output_bytes``. When the input is ill-formed, a single byte can produce
+U+FFFD REPLACEMENT CHARACTER as well as a code point. ``partial()`` reports input
 that ends part-way through a multi-byte sequence.
 
 For simplicity, the example passes one byte at a time to both objects. To work in

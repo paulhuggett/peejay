@@ -16,7 +16,7 @@ bool check(Range const &json) {
   peejay::parser<peejay::null<>> p;
   // A UTF-8 to UTF-8 transcoder checks that its input is well formed. We don't need its output.
   icubaby::t8_8 utf8;
-  std::array<char8_t, icubaby::longest_sequence_v<char8_t>> discard{};
+  std::array<char8_t, icubaby::max_output_bytes<char8_t, char8_t>> discard{};
 
   for (char8_t const cu : json) {
     utf8(cu, discard.begin());
