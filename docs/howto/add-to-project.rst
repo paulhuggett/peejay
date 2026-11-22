@@ -3,7 +3,8 @@ Add peejay to your project
 
 peejay is header-only. To use it, your compiler needs the peejay ``include``
 directory and the include directory of `icubaby <https://github.com/paulhuggett/icubaby>`_,
-peejay's one dependency. Both libraries must be compiled as C++20 or later.
+peejay's one dependency. peejay 2.1 needs icubaby 1.5 or later. Both libraries must be
+compiled as C++20 or later.
 
 With CMake ``FetchContent``
 ---------------------------
@@ -23,7 +24,7 @@ configured:
    FetchContent_Declare(
      peejay
      GIT_REPOSITORY https://github.com/paulhuggett/peejay.git
-     GIT_TAG main   # Better: a specific commit hash, for reproducible builds.
+     GIT_TAG v2.1   # A release tag. A commit hash pins the source exactly.
    )
    FetchContent_MakeAvailable(peejay)
 
@@ -47,6 +48,7 @@ include it with ``add_subdirectory()``:
 .. code-block:: console
 
    $ git submodule add https://github.com/paulhuggett/peejay.git third_party/peejay
+   $ git -C third_party/peejay checkout v2.1
 
 .. code-block:: cmake
 
@@ -58,7 +60,7 @@ include it with ``add_subdirectory()``:
 
 peejay's own ``CMakeLists.txt`` still fetches icubaby with ``FetchContent``. To use a
 copy of icubaby that you already have, set ``FETCHCONTENT_SOURCE_DIR_ICUBABY`` to its
-directory when you configure.
+directory when you configure. It must be icubaby 1.5 or later.
 
 As an installed package
 -----------------------
@@ -77,15 +79,15 @@ Your project then finds it with ``find_package()``:
 
 .. code-block:: cmake
 
-   find_package(peejay 2.0 REQUIRED)
+   find_package(peejay 2.1 REQUIRED)
    target_link_libraries(my_app PRIVATE peejay::peejay)
 
 If the install prefix is not one that CMake searches by default, tell CMake where
 it is when you configure your project, for example with
 ``-D CMAKE_PREFIX_PATH=/opt/peejay``.
 
-The package accepts a request for any 2.x version. Linking to ``peejay::peejay``
-also brings in icubaby's installed headers.
+The package accepts a request for any 2.x version up to the one installed. Linking
+to ``peejay::peejay`` also brings in icubaby's installed headers.
 
 CMake options
 -------------
