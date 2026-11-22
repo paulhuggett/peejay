@@ -38,5 +38,5 @@ that ends part-way through a multi-byte sequence.
 
 For simplicity, the example passes one byte at a time to both objects. To work in
 larger blocks, find the length of the well-formed prefix of each block and pass that
-prefix to ``input()``. The ``pj2-dump`` program in ``main.cpp`` in the repository
-works this way.
+prefix to ``input()``, or use the overloads that take the transcoder, as the
+``pj2-dump`` program in ``main.cpp`` in the repository does.
