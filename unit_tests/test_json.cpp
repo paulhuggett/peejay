@@ -229,6 +229,17 @@ TEST_P(BadKeyword, Fails) {
   EXPECT_EQ(p.last_error(), err) << "Real error was: " << p.last_error().message();
 }
 
+TEST_P(BadKeyword, FailsOneCUAtATime) {
+  auto const& [src, err] = GetParam();
+  ASSERT_NE(err, peejay::error::none);
+  parser p{json_out_callbacks{}};
+  for (auto c: src) {
+    p.input(std::ranges::subrange{&c, &c + 1});
+  }
+  std::u8string const res = p.eof();
+  EXPECT_EQ(p.last_error(), err) << "Real error was: " << p.last_error().message();
+}
+
 INSTANTIATE_TEST_SUITE_P(BadKeyword, BadKeyword,
                          testing::Values(std::make_tuple(u8"nu"sv, peejay::error::unrecognized_token),
                                          std::make_tuple(u8"bad"sv, peejay::error::expected_token),
