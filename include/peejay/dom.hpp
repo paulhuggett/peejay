@@ -525,13 +525,24 @@ public:
   }
 };
 
+namespace details {
+
+/// The single instance of the peejay error category.
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(clang::no_destroy)
+[[clang::no_destroy]]
+#endif
+inline constinit dom_error_category const error_category_instance;
+
+}  // end namespace details
+
+// make error code
+// ~~~~~~~~~~~~~~~
 /// Converts a peejay::dom::dom_error value to a std::error_code.
 ///
-/// \param e  The error value to be converted.
+/// \param e  The peejay::error value to be converted.
 /// \returns  A std::error_code which encapsulates the error \p e.
 [[nodiscard]] inline std::error_code make_error_code(dom_error const e) noexcept {
-  static dom_error_category const cat;
-  return {static_cast<int>(e), cat};
+  return {static_cast<int>(e), details::error_category_instance};
 }
 
 //===----------------------------------------------------------------------===//
